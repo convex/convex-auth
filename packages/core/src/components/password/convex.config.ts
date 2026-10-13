@@ -2,7 +2,7 @@ import { defineComponent } from "convex/server";
 import rateLimiter from "@convex-dev/rate-limiter/convex.config.js";
 
 /**
- * The password provider component.
+ * The password component.
  *
  * Securely stores and verifies passwords, keyed only by an opaque `userId`. It
  * holds no email/username and knows nothing about the identity behind a user id

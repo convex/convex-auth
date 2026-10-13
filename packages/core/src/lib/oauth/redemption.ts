@@ -138,7 +138,7 @@ export function buildCompleteSignIn<
 >(options: {
   /** The provider's name, for the error message when a mapping returns no id. */
   providerName: string;
-  /** The core's provider-bound mutation builder. */
+  /** The core's method-bound mutation builder. */
   authMutation: AuthMutationBuilder<Profile>;
   /** Claim the ticket in this provider's component instance. */
   claimTicket: (

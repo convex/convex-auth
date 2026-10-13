@@ -1,5 +1,5 @@
 /**
- * The constants of the passkey provider that both sides of the wire read.
+ * The constants of the passkey component that both sides of the wire read.
  *
  * They live apart from `validation.ts` so that the browser bundle of
  * `react.tsx` does not retain the validators for them: a `v.object(...)`
@@ -16,7 +16,7 @@
 // https://www.w3.org/TR/webauthn-3/#sctn-timeout-recommended-range
 export const CHALLENGE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
-// The COSE signature algorithms this provider accepts, as IANA identifiers
+// The COSE signature algorithms this component accepts, as IANA identifiers
 // (https://www.iana.org/assignments/cose/cose.xhtml#algorithms). The same
 // list is offered to the authenticator in the server-built
 // `pubKeyCredParams` and enforced when the attestation is verified, so the

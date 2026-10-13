@@ -66,7 +66,7 @@ export type RemovePasskeyResult =
  * their identity, then registers a new passkey.
  *
  * @param managementApi The app module that re-exports the
- *   passkey-management functions of the provider, for example `api.auth`.
+ *   passkey-management functions of the method, for example `api.auth`.
  */
 // TODO(nicolas) Change the return value to allow showing a different UI before creating the new passkey
 export function useAddPasskey(managementApi: AddPasskeyApi) {
@@ -141,7 +141,7 @@ export function useAddPasskey(managementApi: AddPasskeyApi) {
  * before deleting the targeted passkey.
  *
  * @param managementApi The app module that re-exports the
- *   passkey-management functions of the provider, for example `api.auth`.
+ *   passkey-management functions of the method, for example `api.auth`.
  */
 export function useRemovePasskey(managementApi: RemovePasskeyApi) {
   const convex = useConvex();

@@ -8,7 +8,7 @@
  * startup code has to return right away unless it finds a sign-in of its own
  * to finish.
  *
- * A provider module exports a factory (e.g. `oauth(...)`) producing an
+ * A method module exports a factory (e.g. `oauth(...)`) producing an
  * {@link AmbientSignInClient} the app passes to `ConvexAuthProvider`'s
  * `ambientSignIns` prop. Each registration carries a unique alphanumeric
  * `id` naming the auth method. The values and storage views the setup
@@ -55,17 +55,17 @@ export type SignInFunction<Type extends "mutation" | "action"> =
   };
 
 /**
- * How a provider's sign-in functions get executed. Provider code takes this
+ * How the sign-in functions of a method get executed. Method code takes this
  * as given via {@link AmbientSignInContext} instead of picking a transport
  * itself. Executing the call is the only thing that differs between the two
- * session models, so one implementation of a provider serves both:
+ * session models, so one implementation of a method serves both:
  *
  *  - SPA: called against the deployment, returning the full `TokenBundle`
  *    for client JS to persist.
  *  - SSR: called through the auth proxy on the SSR host, returning an
  *    access-only `SlimTokenBundle` (the refresh token stays server-side).
  *
- * A provider never sees which model it is running under.
+ * A method never sees which model it is running under.
  *
  * Only functions returning the shared `SignInEnvelope` are accepted, because
  * under SSR the auth proxy refuses any other result. A function that mints no
@@ -110,12 +110,12 @@ export type AmbientSignInContext = {
   /** Persistent storage for this sign-in. Survives a reload. */
   storage: SignInStorage;
   /**
-   * Runs the provider's sign-in functions by reference. Only for functions
+   * Runs the sign-in functions of the method by reference. Only for functions
    * that return the shared sign-in envelope, because under SSR this is the
    * auth proxy, which refuses any other result.
    */
   signInApi: AuthSignInApi;
-  /** Runs the provider's other public mutations by reference. */
+  /** Runs the other public mutations of the method by reference. */
   convex: ConvexMutationApi;
   /**
    * Replaces the page URL without navigating. Use this instead of

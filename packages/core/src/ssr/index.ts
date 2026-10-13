@@ -3,7 +3,7 @@
  * abstraction, a WHATWG `Request`/`Response` cookie adapter, access-token
  * inspection, the {@link ServerAuthSession} that owns the refresh lifecycle,
  * the {@link createServerAuthChecker} that verifies an access token against the
- * backend, the provider-agnostic `(Request) => Response` refresh/sign-out
+ * backend, the method-agnostic `(Request) => Response` refresh/sign-out
  * handlers, the {@link convexProxyHandler} that serves sign-in, and the
  * {@link setupConvexAuthServer} factory that configures them all once.
  *

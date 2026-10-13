@@ -18,7 +18,7 @@ function bytes(...values: number[]): ArrayBuffer {
 }
 
 describe("toBase64URL", () => {
-  // The provider assembles its options objects without
+  // The method assembles its options objects without
   // `@simplewebauthn/server`, which would pull the X.509 and ASN.1 stack
   // into the app-side bundle for one encode. These cases hold the
   // replacement to the encoding of the library.

@@ -21,12 +21,12 @@ import { getAuthUserId } from "./userId.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
- * has access to provider-bound auth helpers on `ctx.convexAuth`.
+ * has access to method-bound auth helpers on `ctx.convexAuth`.
  *
  * The signature mirrors convex's own `MutationBuilder` inference, simplified
- * where providers never need the generality: `args` is required (dropping the
+ * where methods never need the generality: `args` is required (dropping the
  * zero-arg/function shorthand machinery) and there is no app data model
- * (providers are app-agnostic; their storage lives behind their own
+ * (methods are app-agnostic; their storage lives behind their own
  * component's functions). `returns` keeps convex's exact optional-validator
  * scheme: with a validator, the handler's return is constrained to (a promise
  * of) its type; without one, it falls back to whatever the handler declares.
@@ -49,14 +49,14 @@ export type AuthMutationBuilder<Profile> = <
 }) => RegisteredMutation<"public", ObjectType<ArgsValidator>, ReturnValue>;
 
 /**
- * The function builders a provider gets from {@link AuthCore.bindProvider}.
+ * The function builders a method gets from {@link AuthCore.bindProvider}.
  *
  * Each builds a public Convex function whose handler receives the
- * provider-bound helpers on `ctx.convexAuth` alongside the standard ctx.
+ * method-bound helpers on `ctx.convexAuth` alongside the standard ctx.
  *
  * @internal Not public until the API for custom methods is stable.
  */
-export type ProviderBuilders<Profile> = {
+export type MethodBuilders<Profile> = {
   authMutation: AuthMutationBuilder<Profile>;
 };
 
@@ -68,7 +68,7 @@ export type AuthCore<UsersTable extends string = string> = {
   /**
    * The name of the app's users table, as configured on {@link setupConvexAuth}.
    *
-   * Carried on the value (not just in the type) so provider setup functions
+   * Carried on the value (not just in the type) so method setup functions
    * can infer `UsersTable` from the `core` they are handed, and so the name is
    * available for error messages.
    */
@@ -124,20 +124,20 @@ export type AuthCore<UsersTable extends string = string> = {
     Promise<boolean>
   >;
   /**
-   * Register a provider with the core and get the function builders its
+   * Register a sign-in method with the core and get the function builders its
    * implementation uses.
    *
-   * `name` identifies the provider in the core's `accounts` table: accounts
+   * `name` identifies the method in the core's `accounts` table: accounts
    * are keyed by `(name, providerAccountId)`, so it must be unique among the
-   * providers bound to this core — a duplicate throws immediately (two
-   * providers sharing a name would silently share accounts).
+   * methods bound to this core — a duplicate throws immediately (two
+   * methods sharing a name would silently share accounts).
    *
-   * `createUser` is the app's user-creating callback for this provider and
+   * `createUser` is the app's user-creating callback for this method and
    * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
    *
-   * Provider setup functions call this from inside their `attachUserCallbacks`,
+   * Method setup functions call this from inside their `attachUserCallbacks`,
    * once the app has supplied the callbacks, so the builders can close over
-   * them and a provider with no way to create users cannot exist. It is not
+   * them and a method with no way to create users cannot exist. It is not
    * meant to be called by application code directly.
    *
    * @internal Not public until the API for custom methods is stable.
@@ -146,14 +146,14 @@ export type AuthCore<UsersTable extends string = string> = {
     options: {
       name: Provider;
     } & UserCallbacks<Provider, Profile, UsersTable>,
-  ): ProviderBuilders<Profile>;
+  ): MethodBuilders<Profile>;
 };
 
 /**
  * Build the app-facing auth-core handlers from the mounted `core` component
  * reference. Returns ready-to-export `signOut`/`refreshSession`/
  * `isAuthenticated` handlers. Give the result to the setup function of each
- * provider:
+ * method:
  *
  * ```ts
  * const auth = setupConvexAuth({ component: components.auth });
@@ -167,8 +167,8 @@ export type AuthCore<UsersTable extends string = string> = {
  * ```
  *
  * The core never triggers a sign-in itself: it has no idea how any given
- * provider authenticates a user. *Triggering sign-in is each provider's
- * responsibility.* A provider verifies the user its own way (checking a
+ * method authenticates a user. *Triggering sign-in is the responsibility of
+ * each method.* A method verifies the user its own way (checking a
  * password, say) and then calls one of the helpers the core injects on
  * `ctx.convexAuth` to exchange the verified identity for a session:
  * `completeSignUp` when it has just established the account, `completeSignIn`
@@ -189,7 +189,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    *
    * The core never reads or writes the table — it only stores the id the app's
    * `createUser` callback returns. The name is a *type-level* contract: it makes
-   * every provider's `attachUserCallbacks` demand a `createUser` returning
+   * the `attachUserCallbacks` of every method demand a `createUser` returning
    * `Id<usersTable>` and an `onSignIn` taking one, so an app cannot accidentally
    * hand back an id from some other table (and, because the app then declares
    * `v.id(usersTable)`, Convex enforces the same thing at runtime).
@@ -256,10 +256,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     },
   });
 
-  // Names of providers bound to this core, for duplicate detection. Scoped to
+  // Names of methods bound to this core, for duplicate detection. Scoped to
   // this `setupConvexAuth` call (not module-global): the collision that matters is
-  // two providers on the same core, whose accounts would silently share rows.
-  const boundProviderNames = new Set<string>();
+  // two methods on the same core, whose accounts would silently share rows.
+  const boundMethodNames = new Set<string>();
 
   const bindProvider = <Provider extends string, Profile>({
     name,
@@ -271,15 +271,15 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     Provider,
     Profile,
     UsersTable
-  >): ProviderBuilders<Profile> => {
-    if (boundProviderNames.has(name)) {
+  >): MethodBuilders<Profile> => {
+    if (boundMethodNames.has(name)) {
       throw new Error(
-        `A provider named "${name}" is already bound to this auth core. ` +
-          `Provider names key the accounts table, so each provider must ` +
+        `A sign-in method named "${name}" is already bound to this auth core. ` +
+          `Method names key the accounts table, so each method must ` +
           `have a unique name.`,
       );
     }
-    boundProviderNames.add(name);
+    boundMethodNames.add(name);
 
     // Undefined when the app attached no `onSignIn`, which tells the core to
     // mint the session without notifying the app.
@@ -341,7 +341,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           refreshTokenTtlSeconds,
         });
       },
-      // Creates the app user + account without a session, for providers where
+      // Creates the app user + account without a session, for methods where
       // the user must complete a step (e.g. an email validation) before the
       // first sign-in.
       signUpWithoutSession: async (args: {

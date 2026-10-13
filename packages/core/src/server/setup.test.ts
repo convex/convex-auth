@@ -1,10 +1,10 @@
 /**
  * Tests the helpers `setupConvexAuth`'s `bindProvider` injects on
- * `ctx.convexAuth` for provider handlers.
+ * `ctx.convexAuth` for the handlers of a method.
  *
  * Runs as an app with the core component installed (the same harness shape as
  * `methods/oauth/componentBoundary.test.ts`): the real `setupConvexAuth` binds a
- * test provider, whose `authMutation` exposes the helper under test as an
+ * test method, whose `authMutation` exposes the helper under test as an
  * app function the suite can call with a chosen identity.
  *
  * @module

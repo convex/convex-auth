@@ -163,7 +163,7 @@ export const lookupEmailResult = v.union(
 export type LookupEmailResult = Infer<typeof lookupEmailResult>;
 
 /**
- * How the `start` mutations send their email. The caller (the provider recipe)
+ * How the `start` mutations send their email. The caller (the sign-in method)
  * resolves the function handle and the runtime options; the component only
  * calls the handle.
  *

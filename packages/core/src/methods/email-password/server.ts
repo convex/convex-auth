@@ -1,5 +1,5 @@
 /**
- * The `EmailPassword` provider: accounts have an email address
+ * The `emailPassword` method: accounts have an email address
  * and a password, and the email must be validated before the first sign-in.
  *
  * @module
@@ -60,7 +60,7 @@ const RECOVERY_EMAIL = {
 };
 
 /**
- * How the provider sends emails: challenge links (through the email
+ * How the method sends emails: challenge links (through the email
  * component) and security notifications (directly).
  *
  * Only Resend is supported for now, through the `@convex-dev/resend`
@@ -106,16 +106,16 @@ export type EmailPasswordUrls = {
  */
 export type EmailPasswordOptions = {
   /**
-   * The mounted email component (`components.authEmail`). The provider uses it
+   * The mounted email component (`components.authEmail`). The method uses it
    * to track verified emails and to run the challenges.
    */
   component: ComponentApi;
   /**
    * The mounted password component (`components.authPassword`). The
-   * provider drives its `setPassword` / `verifyPassword` mutations.
+   * method drives its `setPassword` / `verifyPassword` mutations.
    */
   passwordComponent: PasswordComponentApi;
-  /** How the provider sends emails. */
+  /** How the method sends emails. */
   emailSender: EmailSenderOptions;
   /** The landing pages the emailed links point at. */
   urls: EmailPasswordUrls;
@@ -259,7 +259,7 @@ type MutationCtx = GenericMutationCtx<GenericDataModel>;
 export type EmailPasswordProfile = Record<string, never>;
 
 /**
- * A password provider where accounts have a validated email address and a password.
+ * A password sign-in method where accounts have a validated email address and a password.
  *
  * - Sign-up creates the user immediately but without a session; the user
  *   signs in only after they open the challenge link. Wire it up in
@@ -367,7 +367,7 @@ export function setupEmailPassword<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks({
       createUser,
@@ -562,7 +562,7 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: newPasswordError };
             }
 
-            // TODO: This doesn’t compose with other providers. If the user doesn’t
+            // TODO: This doesn’t compose with other sign-in methods. If the user doesn’t
             // have a password yet, they currently can’t set one. We should fix this
             // when we have a first-party “auth-flow” concept so that users can
             // re-authenticate another way.

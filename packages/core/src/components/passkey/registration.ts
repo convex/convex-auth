@@ -9,7 +9,7 @@
  *   handle to the user that the caller creates in the same transaction.
  *
  * ```
- *  Client                Provider                         Component
+ *  Client                Method                           Component
  *    │                     │                                 │
  *    │  start the sign-up  │                                 │
  *    ├────────────────────▶│                                 │
@@ -38,7 +38,7 @@
  *   the passkeys that the user already has.
  *
  * ```
- *  Client                     Provider                                   Component
+ *  Client                     Method                                     Component
  *    │                          │                                           │
  *    │  start adding a passkey  │                                           │
  *    ├─────────────────────────▶│                                           │
@@ -511,7 +511,7 @@ async function lookupRegistrationChallenge(
       `Rejected the passkey ceremony: the ceremony ran at the origin ` +
         `${JSON.stringify(clientData.origin)}, but the expected origin is ` +
         `${JSON.stringify(args.expectedOrigin)}. Check that the \`origin\` of ` +
-        `the provider matches the page that ran the ceremony.`,
+        `the sign-in method matches the page that ran the ceremony.`,
     );
     return PROTOCOL_ERROR;
   }
@@ -587,7 +587,7 @@ async function verifyAttestation(
     console.warn(
       `Rejected the passkey ceremony: the authenticator data does not match ` +
         `the expected relying party ID ${JSON.stringify(args.expectedRpId)}. ` +
-        `Check that the \`rpId\` of the provider matches the page that ran ` +
+        `Check that the \`rpId\` of the sign-in method matches the page that ran ` +
         `the ceremony.`,
     );
     return PROTOCOL_ERROR;
@@ -625,7 +625,7 @@ async function verifyAttestation(
     console.warn(
       `Rejected the passkey ceremony: the attestation did not verify. ` +
         `If this happens for every ceremony, check that the \`rpId\` and the ` +
-        `\`origin\` of the provider match the page that ran it. ` +
+        `\`origin\` of the sign-in method match the page that ran it. ` +
         `${String(cause)}`,
     );
     return PROTOCOL_ERROR;

@@ -13,7 +13,7 @@ import { defineComponent } from "convex/server";
  * `${CONVEX_CLOUD_URL}/.well-known/jwks.json`, and tokens minted here carry
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`.
  *
- * It does NOT know about any specific provider. Providers hand it identity
+ * It does NOT know about any specific sign-in method. Methods hand it identity
  * claims (see ../lib/types) and the core turns that into a session + JWT.
  *
  * Apps install it from `@convex-dev/auth/convex.config.js`.

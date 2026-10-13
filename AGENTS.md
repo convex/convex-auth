@@ -1,21 +1,21 @@
-This is Convex Auth, an authentication framework built on top of Convex. We’re currently bulding the v2 version of the system, where individual auth providers are implemented as Convex components.
+This is Convex Auth, an authentication framework built on top of Convex. We’re currently bulding the v2 version of the system, where each sign-in method uses one or more Convex components.
 
 ## Repository layout
 
 This is a pnpm monorepo:
 
 - `packages/core` — the auth package, published as `@convex-dev/auth`. Owns sessions, accounts, and JWT minting (the provider-agnostic core), plus the bundled providers: the anonymous provider and the password provider (which stores and verifies passwords keyed by an opaque user id). It also owns two non-provider components: the username component, which maps a username onto an opaque user id, and the TOTP component, which stores and verifies TOTP secrets and backup codes keyed by an opaque user id.
-- `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password provider. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
+- `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
 check:doc-examples`). It is not an example to copy.
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
-  - `react-minimal` wires up the core with the anonymous provider.
-  - `react-password` wires up the core with the password provider.
+  - `react-minimal` wires up the core with the `anonymous` method.
+  - `react-password` wires up the core with the `usernamePassword` method.
   - `react-email-password` wires up the core, password, and email components
-    with the `EmailPassword` provider (sign-up with email validation, change
+    with the `emailPassword` method (sign-up with email validation, change
     password/email, password recovery; email through `@convex-dev/resend`).
 
 ## Source layout of `packages/core/src`

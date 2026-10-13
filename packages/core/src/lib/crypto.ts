@@ -1,5 +1,5 @@
 /**
- * Crypto helpers shared across the core and provider components.
+ * Crypto helpers shared across the core and the optional components.
  *
  * @module
  */

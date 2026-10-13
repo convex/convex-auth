@@ -8,7 +8,7 @@ import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 
 export default function SignUp() {
-  // The sign-up counterpart of /signin, and likewise the provider's own hook:
+  // The sign-up counterpart of /signin, and likewise the method's own hook:
   // the auth proxy creates the account server-side and mints the session the
   // same way.
   const { signUp, pending } = useSignUpWithUsernamePassword(api.auth);

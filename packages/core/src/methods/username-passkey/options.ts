@@ -1,11 +1,11 @@
 /**
  * Assembly of the WebAuthn options objects that the start mutations of the
- * provider return.
+ * method return.
  *
- * These helpers pin the settings of this provider and build the exact wire
+ * These helpers pin the settings of this method and build the exact wire
  * shape of the validators in `validation.ts`. The objects are plain data:
  * every binary field is base64url, and every other field is a constant of
- * this provider or a value that a component start function supplied.
+ * this method or a value that a component start function supplied.
  *
  * `generateRegistrationOptions` / `generateAuthenticationOptions` of
  * `@simplewebauthn/server` build the same objects, but this module does not
@@ -35,7 +35,7 @@ import type {
 // `CHALLENGE_EXPIRED` from the server.
 const CEREMONY_TIMEOUT_MS = CHALLENGE_TTL_MS - 60 * 1000;
 
-// The settings this provider pins. They are stated here once, and the
+// The settings this method pins. They are stated here once, and the
 // `v.literal(...)` fields of the wire validators in `validation.ts` hold
 // them to it.
 //
@@ -97,7 +97,7 @@ export function buildRegistrationOptions(args: {
     excludeCredentials: descriptorsJSON(args.excludeCredentials),
     authenticatorSelection: AUTHENTICATOR_SELECTION,
     attestation: "none",
-    // This provider requests no extensions. `credProps` would be the one
+    // This method requests no extensions. `credProps` would be the one
     // worth asking for, and its answer is constant-true under
     // `residentKey: "required"`.
     extensions: {},

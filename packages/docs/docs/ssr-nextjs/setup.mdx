@@ -17,11 +17,11 @@ than in the browser:
   run authenticated Convex queries during rendering, and the browser uses it to
   authenticate the Convex client.
 
-The login provider guides still apply. Your Convex backend and the provider
+The sign-in method guides still apply. Your Convex backend and the method
 hooks you call from your UI are the same as in a single-page app. What changes
 is how the frontend connects to Convex Auth. This guide covers that wiring.
-[Login providers with Next.js](./login-providers.mdx) covers the
-provider-specific differences.
+[Sign-in methods with Next.js](./login-providers.mdx) covers the
+method-specific differences.
 
 The code below comes from the
 [Next.js example](https://github.com/convex/convex-auth/tree/reboot/examples/nextjs),
@@ -43,9 +43,9 @@ npx @convex-dev/auth
 
 </Step>
 
-<Step title="Set up the backend for your login providers">
+<Step title="Set up the backend for your sign-in methods">
 
-Follow the backend steps of the guide for each login provider you want to use:
+Follow the backend steps of the guide for each sign-in method you want to use:
 install the components, add the `users` table, set up user creation, and export
 the public functions from `convex/auth.ts`.
 
@@ -76,8 +76,8 @@ handlers that sign users in, refresh the session, and sign them out.
 The `signIn` list says which Convex functions the browser can call through
 the sign-in route. The route refuses any function that isn't listed. Add every
 function in your app that creates a session, like signing up or signing in. See
-[Login providers with Next.js](./login-providers.mdx) for the functions
-each provider needs.
+[Sign-in methods with Next.js](./login-providers.mdx) for the functions
+each method needs.
 
 ```ts file="examples/nextjs/src/lib/serverAuth.ts" title="src/lib/serverAuth.ts" highlight="signIn: [...],"
 
@@ -191,8 +191,8 @@ same as in a single-page app. Import `useConvexAuth` and the `Authenticated`,
 `Unauthenticated`, and `AuthLoading` components from `convex/react`. After you call `signOut`, navigate away from the page so the
 proxy can apply your redirects.
 
-For your sign-in and sign-up pages, use the login provider's own hooks. See
-[Login providers with Next.js](./login-providers.mdx).
+For your sign-in and sign-up pages, use the hooks of each sign-in method. See
+[Sign-in methods with Next.js](./login-providers.mdx).
 
 ```tsx file="examples/nextjs/app/Dashboard.tsx" title="app/Dashboard.tsx" highlight="import { useAuthActions, useAuthToken }" highlight="await signOut();"
 

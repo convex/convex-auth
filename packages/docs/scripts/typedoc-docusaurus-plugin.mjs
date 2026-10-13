@@ -1,7 +1,7 @@
 // Adapts typedoc-plugin-markdown output to Docusaurus. The page title lives in
 // frontmatter. The title of a module page is its full import path, for
-// example `providers/password/react`; the sidebar nests the pages by path,
-// thus it shows only the last segment. Links stay relative links to `.md`
+// example `methods/username-password/react`; the sidebar nests the pages by
+// path, thus it shows only the last segment. Links stay relative links to `.md`
 // files, which Docusaurus resolves wherever the docs are mounted.
 import { MarkdownPageEvent } from "typedoc-plugin-markdown";
 

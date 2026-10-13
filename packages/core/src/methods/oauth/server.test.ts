@@ -22,7 +22,7 @@ const minimalCatalog: OauthCatalog = {
 };
 
 /**
- * Run the provider's setup with the given options merged over a valid base.
+ * Run the setup of the `oauth` method with the given options merged over a valid base.
  * Validation runs before the core or the component are touched, so
  * fakes suffice.
  */

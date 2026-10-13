@@ -108,7 +108,7 @@ export type ChangePasswordResult = Infer<typeof changePasswordResult>;
  * / `changePassword` mutations so its clients can call them.
  *
  * Account resolution (username → app user id) is owned by the username
- * component: the provider stores the username there at sign-up, and reads the
+ * component: the method stores the username there at sign-up, and reads the
  * user id back from it at sign-in. The password component itself stores only
  * `{ userId, passwordHash }` and knows nothing about usernames.
  */
@@ -121,7 +121,7 @@ export function setupUsernamePassword<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks({
       createUser,
@@ -150,7 +150,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             // anything, so invalid input never mints a session.
             // (`setUsername` and `setPassword` do the same checks again, but by
             // then the account would already exist.)
-            // TODO(nicolas) Make the first-party providers apply stronger validation rules by default
+            // TODO(nicolas) Make the first-party methods apply stronger validation rules by default
             const usernameError = validateUsernameFormat(username);
             if (usernameError !== null) {
               return { status: "error", userError: usernameError };
@@ -177,10 +177,10 @@ export function setupUsernamePassword<UsersTable extends string>(
             // placeholder; sign-in passes the user id itself.
             //
             // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for the password provider at all: the value
+            // provider account ID for the `usernamePassword` method at all: the value
             // is an internal key ("" at sign-up, the user id afterwards) with
             // no meaning to the app. We will probably improve this when
-            // providers support typesafe profiles.
+            // methods support typesafe profiles.
             const tokens = await ctx.convexAuth.completeSignUp({
               providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
@@ -297,8 +297,8 @@ export function setupUsernamePassword<UsersTable extends string>(
               return { success: false, userError: newPasswordError };
             }
 
-            // TODO(nicolas) This does not compose with other auth
-            // providers yet: we require users to reauthenticate with their
+            // TODO(nicolas) This does not compose with other sign-in
+            // methods yet: we require users to reauthenticate with their
             // current password, so this doesn’t allow users who don’t have
             // a password at this point to add a password to their account.
             const verifyResult = await ctx.runMutation(

@@ -10,7 +10,7 @@ import { ComponentApi } from "../../components/anonymous/_generated/component.ts
 const PROVIDER_NAME = "anonymous";
 
 /**
- * An anonymous accounts provider.
+ * A sign-in method for anonymous accounts.
  *
  * Useful to establish an authenticated session without requiring a user
  * to provide any credentials.
@@ -39,11 +39,11 @@ export function setupAnonymous<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      *
      * Every anonymous sign-in establishes a new account, so `createUser` runs
      * every time. An `onSignIn` is still worth attaching for work an app does
-     * on every sign-in whatever the provider, since it runs right afterwards.
+     * on every sign-in whatever the method, since it runs right afterwards.
      */
     attachUserCallbacks({
       createUser,
