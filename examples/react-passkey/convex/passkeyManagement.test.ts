@@ -9,7 +9,7 @@
 import { convexTest, type TestConvex } from "convex-test";
 import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import { registerPasskeyProvider } from "@convex-dev/auth/components/passkey/test";
 // The software authenticator is a private package of this repository, not a
 // part of the public API of `@convex-dev/auth`. An app writes an authenticator
@@ -69,8 +69,16 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+/** A signed-up user, with the session of their sign-up. */
+type User = {
+  userId: string;
+  tokens: { accessToken: string };
+  credential: TestCredential;
+};
+
 /** The caller as a signed-in user, the way a real access token identifies one. */
-const as = (t: T, userId: string) => t.withIdentity({ subject: userId });
+const as = (t: T, user: Pick<User, "tokens">) =>
+  t.withIdentity(sessionIdentity(user.tokens));
 
 /**
  * Build the `response` of a `create()` ceremony, spreadable into args.
@@ -110,7 +118,7 @@ async function signUp(
   t: T,
   username: string,
   aaguid?: Uint8Array,
-): Promise<{ userId: string; credential: TestCredential }> {
+): Promise<User> {
   const start = await t.mutation(api.auth.startSignInWithUsernamePasskey, {
     username,
   });
@@ -125,17 +133,17 @@ async function signUp(
   if (result.status !== "complete") {
     throw new Error(`The sign-up failed: ${result.userError.error}`);
   }
-  return { userId: result.tokens.userId, credential };
+  return { userId: result.tokens.userId, tokens: result.tokens, credential };
 }
 
 /** Run the full add flow and return the new passkey. */
 async function addPasskey(
   t: T,
-  userId: string,
+  user: Pick<User, "tokens">,
   authorizeWith: TestCredential,
   aaguid?: Uint8Array,
 ): Promise<{ passkeyId: string; credential: TestCredential }> {
-  const caller = as(t, userId);
+  const caller = as(t, user);
   const start = await caller.mutation(api.auth.startAddPasskey, {});
   if (!start.success) {
     throw new Error(`The add could not start: ${start.userError.error}`);
@@ -165,10 +173,10 @@ describe("listPasskeys", () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
-    await addPasskey(t, alice.userId, alice.credential);
+    await addPasskey(t, alice, alice.credential);
 
-    const forAlice = await as(t, alice.userId).query(api.auth.listPasskeys, {});
-    const forBob = await as(t, bob.userId).query(api.auth.listPasskeys, {});
+    const forAlice = await as(t, alice).query(api.auth.listPasskeys, {});
+    const forBob = await as(t, bob).query(api.auth.listPasskeys, {});
     if (!forAlice.success || !forBob.success) {
       throw new Error("The caller is signed in.");
     }
@@ -197,9 +205,12 @@ describe("listPasskeys", () => {
 describe("default passkey names", () => {
   const APPLE_PASSWORDS = aaguidBytes("fbfc3007-154e-4ecc-8c0b-6e020557d7bd");
 
-  /** The names of the passkeys of `userId`, in the order of the list. */
-  async function names(t: T, userId: string): Promise<(string | undefined)[]> {
-    const list = await as(t, userId).query(api.auth.listPasskeys, {});
+  /** The names of the passkeys of `user`, in the order of the list. */
+  async function names(
+    t: T,
+    user: Pick<User, "tokens">,
+  ): Promise<(string | undefined)[]> {
+    const list = await as(t, user).query(api.auth.listPasskeys, {});
     if (!list.success) throw new Error("The caller is signed in.");
     return list.passkeys.map((passkey) => passkey.name);
   }
@@ -207,17 +218,14 @@ describe("default passkey names", () => {
   test("names the passkey of a sign-up after its authenticator", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice", APPLE_PASSWORDS);
-    expect(await names(t, alice.userId)).toEqual(["Apple Passwords"]);
+    expect(await names(t, alice)).toEqual(["Apple Passwords"]);
   });
 
   test("names an added passkey after its authenticator", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    await addPasskey(t, alice.userId, alice.credential, APPLE_PASSWORDS);
-    expect(await names(t, alice.userId)).toEqual([
-      undefined,
-      "Apple Passwords",
-    ]);
+    await addPasskey(t, alice, alice.credential, APPLE_PASSWORDS);
+    expect(await names(t, alice)).toEqual([undefined, "Apple Passwords"]);
   });
 
   test("stores no name for an authenticator that reports no model", async () => {
@@ -225,8 +233,8 @@ describe("default passkey names", () => {
     // passkey providers report theirs anyway.
     const t = await setup();
     const alice = await signUp(t, "alice");
-    await addPasskey(t, alice.userId, alice.credential);
-    expect(await names(t, alice.userId)).toEqual([undefined, undefined]);
+    await addPasskey(t, alice, alice.credential);
+    expect(await names(t, alice)).toEqual([undefined, undefined]);
   });
 });
 
@@ -234,7 +242,7 @@ describe("adding a passkey", () => {
   test("adds a second passkey through the whole flow", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
 
     const start = await caller.mutation(api.auth.startAddPasskey, {});
     if (!start.success) throw new Error("The caller is signed in.");
@@ -277,7 +285,7 @@ describe("adding a passkey", () => {
   test("refuses an assertion that was minted for another flow", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
 
     // A sign-in challenge carries a different purpose.
     const start = await t.mutation(api.auth.startSignInWithUsernamePasskey, {
@@ -304,7 +312,7 @@ describe("adding a passkey", () => {
         userId: alice.userId,
       }),
     );
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
 
     const start = await caller.mutation(api.auth.startAddPasskey, {});
     if (!start.success) throw new Error("The caller is signed in.");
@@ -326,7 +334,7 @@ describe("adding a passkey", () => {
 
     // No registration challenge exists at all.
     expect(
-      await as(t, alice.userId).mutation(
+      await as(t, alice).mutation(
         api.auth.finishAddPasskey,
         await attest(toBase64URL(new ArrayBuffer(32)), credential),
       ),
@@ -349,7 +357,7 @@ describe("adding a passkey", () => {
     }
     const credential = await generateES256Credential();
     expect(
-      await as(t, alice.userId).mutation(
+      await as(t, alice).mutation(
         api.auth.finishAddPasskey,
         await attest(start.options.challenge, credential),
       ),
@@ -359,11 +367,11 @@ describe("adding a passkey", () => {
   test("refuses a user who already holds the largest number of passkeys", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
 
     // The sign-up made the first passkey; fill the remaining places.
     for (let i = 1; i < MAX_PASSKEYS_PER_USER; i++) {
-      await addPasskey(t, alice.userId, alice.credential);
+      await addPasskey(t, alice, alice.credential);
     }
     const list = await caller.query(api.auth.listPasskeys, {});
     if (!list.success) throw new Error("The caller is signed in.");
@@ -378,9 +386,9 @@ describe("adding a passkey", () => {
   test("refuses a ceremony whose last place a second tab took", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
     for (let i = 2; i < MAX_PASSKEYS_PER_USER; i++) {
-      await addPasskey(t, alice.userId, alice.credential);
+      await addPasskey(t, alice, alice.credential);
     }
 
     // One place is left: this ceremony starts and gets its challenge.
@@ -393,7 +401,7 @@ describe("adding a passkey", () => {
     if (!verified.success) throw new Error("The assertion is valid.");
 
     // A second tab takes the last place before this ceremony finishes.
-    await addPasskey(t, alice.userId, alice.credential);
+    await addPasskey(t, alice, alice.credential);
 
     expect(
       await caller.mutation(
@@ -437,7 +445,7 @@ describe("renaming a passkey", () => {
   test("renames a passkey of the caller and refuses bad input", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
     const list = await caller.query(api.auth.listPasskeys, {});
     if (!list.success) throw new Error("The caller is signed in.");
     const { passkeyId } = list.passkeys[0];
@@ -461,12 +469,12 @@ describe("renaming a passkey", () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
-    const bobList = await as(t, bob.userId).query(api.auth.listPasskeys, {});
+    const bobList = await as(t, bob).query(api.auth.listPasskeys, {});
     if (!bobList.success) throw new Error("The caller is signed in.");
     const { passkeyId } = bobList.passkeys[0];
 
     expect(
-      await as(t, alice.userId).mutation(api.auth.renamePasskey, {
+      await as(t, alice).mutation(api.auth.renamePasskey, {
         passkeyId,
         name: "Not mine",
       }),
@@ -481,8 +489,8 @@ describe("removing a passkey", () => {
   test("removes a passkey through the whole flow", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const second = await addPasskey(t, alice.userId, alice.credential);
-    const caller = as(t, alice.userId);
+    const second = await addPasskey(t, alice, alice.credential);
+    const caller = as(t, alice);
 
     const start = await caller.mutation(api.auth.startRemovePasskey, {
       passkeyId: second.passkeyId,
@@ -514,11 +522,11 @@ describe("removing a passkey", () => {
   test("refuses to remove the only passkey of the account", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const list = await as(t, alice.userId).query(api.auth.listPasskeys, {});
+    const list = await as(t, alice).query(api.auth.listPasskeys, {});
     if (!list.success) throw new Error("The caller is signed in.");
 
     expect(
-      await as(t, alice.userId).mutation(api.auth.startRemovePasskey, {
+      await as(t, alice).mutation(api.auth.startRemovePasskey, {
         passkeyId: list.passkeys[0].passkeyId,
       }),
     ).toEqual({ success: false, userError: { error: "LAST_PASSKEY" } });
@@ -527,8 +535,8 @@ describe("removing a passkey", () => {
   test("refuses an assertion from the passkey that goes away", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const second = await addPasskey(t, alice.userId, alice.credential);
-    const caller = as(t, alice.userId);
+    const second = await addPasskey(t, alice, alice.credential);
+    const caller = as(t, alice);
 
     const start = await caller.mutation(api.auth.startRemovePasskey, {
       passkeyId: second.passkeyId,
@@ -555,8 +563,8 @@ describe("removing a passkey", () => {
   test("refuses a `passkeyId` that the start step did not get", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const second = await addPasskey(t, alice.userId, alice.credential);
-    const caller = as(t, alice.userId);
+    const second = await addPasskey(t, alice, alice.credential);
+    const caller = as(t, alice);
 
     // The app starts the removal of the second passkey, thus the user
     // answers the dialog with the first one.
@@ -594,13 +602,13 @@ describe("removing a passkey", () => {
   test("refuses a passkey of another account", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    await addPasskey(t, alice.userId, alice.credential);
+    await addPasskey(t, alice, alice.credential);
     const bob = await signUp(t, "bob");
-    const bobList = await as(t, bob.userId).query(api.auth.listPasskeys, {});
+    const bobList = await as(t, bob).query(api.auth.listPasskeys, {});
     if (!bobList.success) throw new Error("The caller is signed in.");
 
     expect(
-      await as(t, alice.userId).mutation(api.auth.startRemovePasskey, {
+      await as(t, alice).mutation(api.auth.startRemovePasskey, {
         passkeyId: bobList.passkeys[0].passkeyId,
       }),
     ).toEqual({ success: false, userError: { error: "PASSKEY_NOT_FOUND" } });
@@ -609,11 +617,11 @@ describe("removing a passkey", () => {
   test("refuses a passkey of another account at the finish step", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const second = await addPasskey(t, alice.userId, alice.credential);
+    const second = await addPasskey(t, alice, alice.credential);
     const bob = await signUp(t, "bob");
-    const bobList = await as(t, bob.userId).query(api.auth.listPasskeys, {});
+    const bobList = await as(t, bob).query(api.auth.listPasskeys, {});
     if (!bobList.success) throw new Error("The caller is signed in.");
-    const caller = as(t, alice.userId);
+    const caller = as(t, alice);
 
     // A valid challenge of the caller carries no target, thus the finish
     // step must check the ownership itself.
@@ -628,7 +636,7 @@ describe("removing a passkey", () => {
       }),
     ).toEqual({ success: false, userError: { error: "PASSKEY_NOT_FOUND" } });
 
-    const stillThere = await as(t, bob.userId).query(api.auth.listPasskeys, {});
+    const stillThere = await as(t, bob).query(api.auth.listPasskeys, {});
     if (!stillThere.success) throw new Error("The caller is signed in.");
     expect(stillThere.passkeys).toHaveLength(1);
   });
@@ -636,7 +644,7 @@ describe("removing a passkey", () => {
   test("refuses a signed-out caller", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const second = await addPasskey(t, alice.userId, alice.credential);
+    const second = await addPasskey(t, alice, alice.credential);
     const notSignedIn = {
       success: false,
       userError: { error: "NOT_SIGNED_IN" },

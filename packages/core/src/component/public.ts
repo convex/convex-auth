@@ -212,18 +212,25 @@ function resolveTtlConfig(args: {
   return { accessTokenTtlSeconds, refreshTokenTtlSeconds };
 }
 
-async function mintAccessToken(
-  userId: string,
-  issuer: string,
-  ttlSeconds: number,
-) {
+// The access token's subject is the session id, not the user id: the app
+// resolves the user through the session (see `getSession`), so a
+// revoked session stops resolving to a user before its tokens expire.
+async function mintAccessToken({
+  sessionId,
+  issuer,
+  ttlSeconds,
+}: {
+  sessionId: GenericId<"sessions">;
+  issuer: string;
+  ttlSeconds: number;
+}) {
   const privateKeyPkcs8 = atob(env.AUTH_PRIVATE_KEY);
   const { keys } = JSON.parse(env.AUTH_JWKS) as { keys: { kid: string }[] };
   const kid = keys[0].kid;
   return await signJwt({
     privateKeyPkcs8,
     kid,
-    subject: userId,
+    subject: sessionId,
     issuer,
     audience: AUDIENCE,
     expiresInSeconds: ttlSeconds,
@@ -250,11 +257,11 @@ async function issueSession(
     now,
     ttl,
   );
-  const accessToken = await mintAccessToken(
-    userId,
+  const accessToken = await mintAccessToken({
+    sessionId,
     issuer,
-    ttl.accessTokenTtlSeconds,
-  );
+    ttlSeconds: ttl.accessTokenTtlSeconds,
+  });
   return {
     accessToken,
     refreshToken,
@@ -535,6 +542,29 @@ export const getUserIdByAccount = query({
 });
 
 /**
+ * Look up a live session by its id.
+ *
+ * Returns an object with the session's `userId` when the session row exists.
+ * If there is no row for the session id, it returns `null`.
+ *
+ * A session is live exactly as long as its row exists: sign-out, refresh-token
+ * reuse detection, and expired-token cleanup all delete the row.
+ *
+ * This is a component-internal function (callable by the app, not by end-user
+ * clients), so it does not expose session existence to the outside world.
+ */
+export const getSession = query({
+  args: { sessionId: v.string() },
+  returns: v.union(v.object({ userId: v.string() }), v.null()),
+  handler: async (ctx, { sessionId }): Promise<{ userId: string } | null> => {
+    const id = ctx.db.normalizeId("sessions", sessionId);
+    if (id === null) return null;
+    const session = await ctx.db.get("sessions", id);
+    return session === null ? null : { userId: session.userId };
+  },
+});
+
+/**
  * Redeem an issued token, the first time it is presented.
  *
  * Its holder has evidently received it, so the session's previously redeemed
@@ -688,11 +718,11 @@ export const refresh = mutation({
       now,
       ttl,
     );
-    const accessToken = await mintAccessToken(
-      session.userId,
-      args.issuer,
-      ttl.accessTokenTtlSeconds,
-    );
+    const accessToken = await mintAccessToken({
+      sessionId: session._id,
+      issuer: args.issuer,
+      ttlSeconds: ttl.accessTokenTtlSeconds,
+    });
     return {
       kind: "rotated",
       tokens: {

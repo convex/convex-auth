@@ -24,6 +24,13 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      getSession: FunctionReference<
+        "query",
+        "internal",
+        { sessionId: string },
+        { userId: string } | null,
+        Name
+      >;
       getUserIdByAccount: FunctionReference<
         "query",
         "internal",

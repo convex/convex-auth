@@ -166,22 +166,28 @@ describe("signUp", () => {
     expect(bundle.userId).toBe("alice");
     expect(bundle.refreshToken).toBeTruthy();
 
+    const sessionId = await t.run(
+      async (ctx) => (await ctx.db.query("sessions").unique())?._id,
+    );
+    expect(sessionId).not.toBeUndefined();
+
     // The access token verifies against the served JWKS with the right claims.
     const key = await importJWK(publicJwk, "RS256");
     const { payload } = await jwtVerify(bundle.accessToken, key, {
       issuer: ISSUER,
       audience: AUDIENCE,
     });
-    expect(payload.sub).toBe("alice");
+    // The subject is the session, not the user: the app resolves the user
+    // through the session.
+    expect(payload.sub).toBe(sessionId);
     expect(payload.exp! * 1000).toBeGreaterThan(Date.now());
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(payload.exp! * 1000);
 
-    // Exactly one account and one session exist.
+    // In addition to the session verified above, there should be an account
     const counts = await t.run(async (ctx) => ({
       accounts: (await ctx.db.query("accounts").collect()).length,
-      sessions: (await ctx.db.query("sessions").collect()).length,
     }));
-    expect(counts).toEqual({ accounts: 1, sessions: 1 });
+    expect(counts).toEqual({ accounts: 1 });
   });
 
   test("invokes the app's createUser with the claims, then onSignIn", async () => {
@@ -931,5 +937,64 @@ describe("getUserIdByAccount", () => {
       providerAccountId: "alice",
     });
     expect(other).toBeNull();
+  });
+});
+
+describe("getSession", () => {
+  /** The session id a bundle's access token points at, from its `sub` claim. */
+  function sessionIdOf(bundle: TokenBundle): string {
+    return decodeJwt(bundle.accessToken).sub!;
+  }
+
+  test("returns the user id while the session is live", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const session = await t.query(api.public.getSession, {
+      sessionId: sessionIdOf(bundle),
+    });
+    expect(session).toEqual({ userId: bundle.userId });
+  });
+
+  test("keeps answering for the same session across a refresh", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const rotated = expectRotated(await refresh(t, bundle.refreshToken));
+    // The refreshed access token names the same session.
+    expect(sessionIdOf(rotated)).toBe(sessionIdOf(bundle));
+    const session = await t.query(api.public.getSession, {
+      sessionId: sessionIdOf(bundle),
+    });
+    expect(session).toEqual({ userId: bundle.userId });
+  });
+
+  test("returns null once the session is revoked", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await t.mutation(api.public.signOut, {
+      refreshToken: bundle.refreshToken,
+    });
+    const session = await t.query(api.public.getSession, {
+      sessionId: sessionIdOf(bundle),
+    });
+    expect(session).toBeNull();
+  });
+
+  test("returns null for a string that is not a session id", async () => {
+    const t = setup();
+    await signUp(t, claims());
+    expect(
+      await t.query(api.public.getSession, { sessionId: "not-a-session-id" }),
+    ).toBeNull();
+  });
+
+  test("returns null for an id in another table", async () => {
+    const t = setup();
+    await signUp(t, claims());
+    const accountId = await t.run(
+      async (ctx) => (await ctx.db.query("accounts").unique())!._id,
+    );
+    expect(
+      await t.query(api.public.getSession, { sessionId: accountId }),
+    ).toBeNull();
   });
 });

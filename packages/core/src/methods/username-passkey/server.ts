@@ -9,6 +9,7 @@ import {
 import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/passkey/_generated/component.ts";
 import type { ComponentApi as UsernameComponentApi } from "../../components/username/_generated/component.ts";
+import type { ComponentApi as CoreComponentApi } from "../../component/_generated/component.ts";
 import {
   setUsernameUserError,
   validateUsernameFormat,
@@ -75,11 +76,13 @@ export type UsernamePasskeyOptions = {
 };
 
 /**
- * {@link UsernamePasskeyOptions} with the defaults applied. The provider
- * functions, including the passkey-management ones, close over this
- * value.
+ * {@link UsernamePasskeyOptions} with the defaults applied, plus the core
+ * component (for `getAuthUserId`). The provider functions, including the
+ * passkey-management ones, close over this value.
  */
-export type UsernamePasskeyConfig = Required<UsernamePasskeyOptions>;
+export type UsernamePasskeyConfig = Required<UsernamePasskeyOptions> & {
+  coreComponent: CoreComponentApi;
+};
 
 // TODO: derive this from the component mount path rather than hardcoding it.
 const PROVIDER_NAME = "passkey";
@@ -190,7 +193,11 @@ export function setupUsernamePasskey<UsersTable extends string>(
 ) {
   const { component, usernameComponent, rpId, origin } = options;
   const rpName = options.rpName ?? rpId;
-  const config: UsernamePasskeyConfig = { ...options, rpName };
+  const config: UsernamePasskeyConfig = {
+    ...options,
+    rpName,
+    coreComponent: core.component,
+  };
 
   return {
     /**
