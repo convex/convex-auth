@@ -241,6 +241,10 @@ async function issueSession(
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
+  // TODO: cap the sessions a user may have (e.g. 100), deleting the oldest
+  // when a new one would exceed it. That bounds `listSessions`, which reads
+  // every session of the user, for a user whose sessions pile up (e.g. a
+  // script signing in over and over).
   const sessionId = await ctx.db.insert("sessions", {
     userId,
     accountId,
@@ -742,5 +746,108 @@ export const signOut = mutation({
     );
     if (token !== null) await deleteSession(ctx, token.sessionId);
     return null;
+  },
+});
+
+/**
+ * List every session of a user, with when it last refreshed and when it
+ * expires.
+ *
+ * Both come from the session's newest issued refresh token:
+ *
+ *  - `lastRefreshedAt` is when it was issued: the session's sign-in or its
+ *    latest refresh. A connected client refreshes about once per access-token
+ *    TTL, so callers may read this as a rough activity signal, but it tracks
+ *    the client holding the session, not user interaction.
+ *  - `expiresAt` is its expiry: the time after which the holder can no longer
+ *    refresh.
+ *
+ * A session with no issued token is left out with a warning. The token
+ * lifecycle never leaves one (sign-in and each refresh issue a token), so
+ * finding one means a bug.
+ *
+ * Sessions are listed newest first.
+ *
+ * Expired sessions are included, since a session's row outlives its tokens
+ * until something deletes it. The query does not read the clock, so its result
+ * stays cached until a session or token changes; callers that want only the
+ * active sessions compare `expiresAt` to the current time themselves.
+ *
+ * This is a component-internal function (callable by the app, not by end-user
+ * clients).
+ */
+export const listSessions = query({
+  args: { userId: v.string() },
+  returns: v.array(
+    v.object({
+      sessionId: v.string(),
+      creationTime: v.number(),
+      lastRefreshedAt: v.number(),
+      expiresAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, { userId }) => {
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+    const result = [];
+    for (const session of sessions) {
+      // Issued rows have no `retiredAt`, so the index orders them by
+      // `_creationTime`: the last one is the newest.
+      const newestIssued = await ctx.db
+        .query("refreshTokens")
+        .withIndex("by_session_state", (q) =>
+          q.eq("sessionId", session._id).eq("state", "issued"),
+        )
+        .order("desc")
+        .first();
+      if (newestIssued === null) {
+        console.warn(
+          `Session ${session._id} has no issued refresh token, which should ` +
+            "be impossible. Leaving it out of the session list.",
+        );
+        continue;
+      }
+      result.push({
+        sessionId: session._id as string,
+        creationTime: session._creationTime,
+        lastRefreshedAt: newestIssued._creationTime,
+        expiresAt: newestIssued.expiresAt,
+      });
+    }
+    return result;
+  },
+});
+
+/**
+ * Revoke a session, erasing it along with its refresh tokens, so its holder
+ * can no longer refresh.
+ *
+ * Returns `true` when the session existed, and `false` for an id that is no
+ * session (malformed, or already revoked).
+ *
+ * NOTE: This does no authorization. Callers decide which sessions may be
+ * revoked; e.g. revoking a user's other sessions should only follow a check
+ * that the signed-in user truly owns the current session, via confirming an
+ * authentication method. Otherwise, the request might be originating from a
+ * stolen session, which shouldn't be able to revoke other sessions.
+ */
+// TODO: when we have step-up auth revoking sessions should check its state,
+// rather than count on callers to safely invoke it.
+export const revokeSession = mutation({
+  args: { sessionId: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
+    if (
+      sessionId === null ||
+      (await ctx.db.get("sessions", sessionId)) === null
+    ) {
+      return false;
+    }
+    await deleteSession(ctx, sessionId);
+    return true;
   },
 });
