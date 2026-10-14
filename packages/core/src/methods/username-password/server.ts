@@ -281,7 +281,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             ctx,
             { currentPassword, newPassword },
           ): Promise<ChangePasswordResult> => {
-            const userId = await getAuthUserId(ctx);
+            const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_SIGNED_IN" } };
             }

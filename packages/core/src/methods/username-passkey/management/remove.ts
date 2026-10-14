@@ -91,7 +91,7 @@ export function startRemovePasskey(config: UsernamePasskeyConfig) {
     },
     returns: startRemovePasskeyResult,
     handler: async (ctx, { passkeyId }): Promise<StartRemovePasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }
@@ -141,7 +141,7 @@ export function finishRemovePasskey(config: UsernamePasskeyConfig) {
     },
     returns: finishRemovePasskeyResult,
     handler: async (ctx, args): Promise<FinishRemovePasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }

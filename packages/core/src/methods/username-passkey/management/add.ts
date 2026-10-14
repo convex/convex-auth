@@ -117,7 +117,7 @@ export function startAddPasskey(config: UsernamePasskeyConfig) {
     args: {},
     returns: startAddPasskeyResult,
     handler: async (ctx): Promise<StartAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }
@@ -159,7 +159,7 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
     },
     returns: verifyAddPasskeyResult,
     handler: async (ctx, args): Promise<VerifyAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }
@@ -235,7 +235,7 @@ export function finishAddPasskey(config: UsernamePasskeyConfig) {
     },
     returns: finishAddPasskeyResult,
     handler: async (ctx, args): Promise<FinishAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }

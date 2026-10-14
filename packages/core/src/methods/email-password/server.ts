@@ -546,7 +546,7 @@ export function setupEmailPassword<UsersTable extends string>(
             ctx,
             { currentPassword, newPassword },
           ): Promise<ChangePasswordResult> => {
-            const userId = await getAuthUserId(ctx);
+            const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
@@ -622,7 +622,7 @@ export function setupEmailPassword<UsersTable extends string>(
             ctx,
             { newEmail, currentPassword },
           ): Promise<StartChangeEmailResult> => {
-            const userId = await getAuthUserId(ctx);
+            const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
@@ -678,7 +678,7 @@ export function setupEmailPassword<UsersTable extends string>(
             // The link is bound to the user who started the change, so the
             // same user must be signed in to complete it. Another user gets
             // `WRONG_USER`, and the link still works for the right user.
-            const userId = await getAuthUserId(ctx);
+            const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
