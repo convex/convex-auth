@@ -7,21 +7,14 @@
 "use client";
 
 import { FunctionReference } from "convex/server";
-import { useConvex, useMutation, useQuery } from "convex/react";
-import {
-  useCallback,
-  useRef,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useMutation, useQuery } from "convex/react";
+import { useCallback, useRef, useContext, useEffect, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
 import { AuthClientContext, useAuth } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
-import { NamespacedStorage, defaultStorage } from "../../browser/storage.ts";
+import type { NamespacedStorage } from "../../browser/storage.ts";
 import type {
   SignUpResult as SignUpMutationResult,
   CompleteSignUpResult,
@@ -252,17 +245,12 @@ export type CompletePasswordRecoveryState =
 // Shared helpers
 //------------------------------------------------------------------------------
 
-/**
- * The storage that holds the flow secrets, namespaced by deployment URL so
- * two deployments sharing one origin (dev vs prod on localhost) do not read
- * each other's secrets.
- */
 function useSecretStorage(): NamespacedStorage {
-  const convex = useConvex();
-  return useMemo(
-    () => new NamespacedStorage(defaultStorage(), convex.url),
-    [convex],
-  );
+  const authClient = useContext(AuthClientContext);
+  if (authClient === undefined) {
+    throw new Error("Must be used within a <ConvexAuthProvider>.");
+  }
+  return authClient.storage;
 }
 
 /**
