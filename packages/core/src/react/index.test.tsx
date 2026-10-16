@@ -16,6 +16,7 @@ import { useAmbientSignInValue } from "./methods.ts";
 const API = {
   refreshSession: makeFunctionReference<"mutation">("auth:refreshSession"),
   signOut: makeFunctionReference<"mutation">("auth:signOut"),
+  isAuthenticated: makeFunctionReference<"query">("auth:isAuthenticated"),
 };
 
 /**

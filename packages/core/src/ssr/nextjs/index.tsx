@@ -14,6 +14,7 @@
  */
 
 import { ConvexHttpClient } from "convex/browser";
+import { getFunctionName } from "convex/server";
 import { cookies as nextCookies } from "next/headers.js";
 import { NextRequest, NextResponse } from "next/server.js";
 import { ReactNode } from "react";
@@ -36,9 +37,12 @@ export interface ConvexAuthNextjsConfig {
   /** The app's `refreshSession` mutation reference. The proxy uses it for
    * its optimistic refresh. */
   refreshSession: RefreshSessionFn;
-  /** The app's `isAuthenticated` query reference. Used to verify the access
-   * token against the backend (which checks its signature) rather than trusting
-   * the cookie by decoding it. */
+  /** The app's `isAuthenticated` query reference, used twice over: the server
+   * verifies the access token against the backend with it (which checks its
+   * signature and that the session is live) rather than trusting the cookie by
+   * decoding it, and the client provider subscribes to it, so a session
+   * revoked server-side signs the browser out reactively instead of at the
+   * next failed refresh. */
   isAuthenticated: IsAuthenticatedFn;
   /** Overrides the default auth cookie attributes. Unlike the base config,
    * `secure` may be omitted here; it defaults from NODE_ENV. */
@@ -221,6 +225,10 @@ export function setupConvexAuthNextjs(config: ConvexAuthNextjsConfig) {
       <ConvexAuthNextjsProvider
         convexUrl={config.convexUrl}
         initialToken={initialToken}
+        // A function reference is a runtime proxy, which does not survive the
+        // server→client serialization boundary; its name (a plain string) does,
+        // and the client rebuilds the reference from it.
+        isAuthenticatedFunctionName={getFunctionName(config.isAuthenticated)}
       >
         {children}
       </ConvexAuthNextjsProvider>
