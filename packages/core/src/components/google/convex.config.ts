@@ -6,7 +6,7 @@ import { v } from "convex/values";
  * callback is served under, and bind the OAuth client's credentials:
  *
  * ```ts
- * app.use(google, {
+ * app.use(authGoogle, {
  *   httpPrefix: "/oauth/google",
  *   env: {
  *     CLIENT_ID: app.env.AUTH_GOOGLE_CLIENT_ID,

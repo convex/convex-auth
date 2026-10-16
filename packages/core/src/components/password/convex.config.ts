@@ -12,7 +12,6 @@ import rateLimiter from "@convex-dev/rate-limiter/convex.config.js";
  * Mounts the rate-limiter component to throttle `verifyPassword` per user id.
  */
 const component = defineComponent("authPassword");
-// TODO Remove *Provider from the component names
 component.use(rateLimiter);
 
 export default component;

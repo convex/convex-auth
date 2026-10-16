@@ -7,7 +7,7 @@ import { v } from "convex/values";
  * developer account:
  *
  * ```ts
- * app.use(apple, {
+ * app.use(authApple, {
  *   httpPrefix: "/oauth/apple",
  *   env: {
  *     CLIENT_ID: app.env.AUTH_APPLE_CLIENT_ID,

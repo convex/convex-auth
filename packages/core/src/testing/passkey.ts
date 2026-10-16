@@ -24,7 +24,7 @@ const modules = import.meta.glob("../components/passkey/**/*.ts");
  * @param t - The test convex instance, e.g. from calling `convexTest`.
  * @param name - The name of the component, as registered in convex.config.ts.
  */
-export function registerPasskeyProvider(
+export function registerPasskey(
   t: TestConvex<SchemaDefinition<GenericSchema, boolean>>,
   name: string = "authPasskey",
 ) {
@@ -32,4 +32,4 @@ export function registerPasskeyProvider(
   registerBatchWorker(t, `${name}/batchWorker`);
 }
 
-export default { registerPasskeyProvider, schema, modules };
+export default { registerPasskey, schema, modules };

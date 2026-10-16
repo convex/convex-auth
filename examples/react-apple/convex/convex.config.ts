@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import apple from "@convex-dev/auth/components/apple/convex.config.js";
+import authApple from "@convex-dev/auth/components/apple/convex.config.js";
 
 const app = defineApp({
   env: {
@@ -29,7 +29,7 @@ app.use(auth);
 // tunnel.
 // The app frontend can stay on localhost, since Apple never sees where the
 // flow returns to.
-app.use(apple, {
+app.use(authApple, {
   httpPrefix: "/oauth/apple",
   env: {
     CLIENT_ID: app.env.AUTH_APPLE_CLIENT_ID,
