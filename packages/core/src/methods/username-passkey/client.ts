@@ -3,7 +3,7 @@
  *
  * This module is internal: the public surface of the method is the React
  * hooks in `react.tsx`, which are built on it. The `exports` field of the
- * package blocks `providers/passkey/client`, so an app cannot import this
+ * package blocks `methods/username-passkey/client`, so an app cannot import this
  * file. It becomes a public entry point only when a real non-React consumer
  * asks for one.
  *

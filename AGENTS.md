@@ -4,19 +4,47 @@ This is Convex Auth, an authentication framework built on top of Convex. We’re
 
 This is a pnpm monorepo:
 
-- `packages/core` — the auth package, published as `@convex-dev/auth`. Owns sessions, accounts, and JWT minting (the provider-agnostic core), plus the bundled providers: the anonymous provider and the password provider (which stores and verifies passwords keyed by an opaque user id). It also owns two non-provider components: the username component, which maps a username onto an opaque user id, and the TOTP component, which stores and verifies TOTP secrets and backup codes keyed by an opaque user id.
+- `packages/core` — the auth package, published as `@convex-dev/auth`. It
+  owns three parts:
+  - The core: sessions, accounts, and JWT minting. It knows no sign-in method.
+  - The optional components, which store the data of the sign-in methods:
+    `username`, `password`, `email`, `passkey`, `totp`, `anonymous`,
+    `oauth`, `google`, `apple`, and `github`. Most of them key their data by
+    an opaque user id. `totp` is a second factor, not part of a sign-in
+    method, and the package does not export it for now.
+  - The sign-in methods, which the app wires up: `anonymous`,
+    `username-password`, `email-password`, `username-passkey`, `oauth`,
+    `google`, `apple`, and `github`.
 - `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
 check:doc-examples`). It is not an example to copy.
+- `packages/docs` — the documentation site (private). The pages are in
+  `docs/`.
+- `packages/passkey-test-authenticator` — a software WebAuthn authenticator
+  for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
-  - `react-minimal` wires up the core with the `anonymous` method.
-  - `react-password` wires up the core with the `usernamePassword` method.
+  - `react-minimal` wires up the core and the anonymous component with the
+    `anonymous` method.
+  - `react-password` wires up the core, password, and username components
+    with the `usernamePassword` method.
   - `react-email-password` wires up the core, password, and email components
     with the `emailPassword` method (sign-up with email validation, change
     password/email, password recovery; email through `@convex-dev/resend`).
+  - `react-passkey` wires up the core, passkey, and username components with
+    the `usernamePasskey` method, and adds passkey management.
+  - `react-passkey-basic` is `react-passkey` without passkey management. The
+    passkey tutorial uses it as its first step.
+  - `react-google` wires up the core and the google component with the
+    `google` method.
+  - `react-apple` wires up the core and the apple component with the `apple`
+    method.
+  - `react-github` wires up the core and the github component with the
+    `github` method.
+  - `nextjs` is a Next.js (App Router) app with SSR sign-in. It wires up the
+    `anonymous`, `usernamePassword`, and `github` methods.
 
 ## Source layout of `packages/core/src`
 
@@ -25,8 +53,13 @@ check:doc-examples`). It is not an example to copy.
   `password`, `email`, `passkey`, `totp`, `anonymous`, `oauth`, `google`,
   `apple`, `github`).
 - `methods/<method>/` — the sign-in methods, which use one or more
-  components: `server.ts` (Convex functions of the app), `react.tsx` (hooks),
-  and the browser code.
+  components: `server.ts` (Convex functions of the app), `react.tsx` or
+  `react.ts` (hooks), and the browser code. A method is published at
+  `@convex-dev/auth/methods/<method>/server` and
+  `@convex-dev/auth/methods/<method>/react`. A method whose backend and
+  clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
+  `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
+  runtime can import.
 - `server/` — the app-side code of the core (`setupConvexAuth`, `getAuthUserId`).
 - `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
   `ssr/nextjs/` holds the Next.js bindings.
@@ -39,7 +72,7 @@ lists each one in `_generated/api.ts`. Thus a component directory holds only
 the code of the component. Put the other code in the directory of its layer,
 as the list above shows: the code of a sign-in method in `methods/<method>/`,
 the app-side code of the core in `server/`, the client and SSR code of the
-core in `ssr/`, `nextjs/`, `react/`, or `browser/`, and shared code in
+core in `ssr/`, `react/`, or `browser/`, and shared code in
 `lib/`. ESLint rejects a component module that imports client code or
 app-side code. The CLI skips a file name with two dots (`x.test.ts`,
 `x.fixture.ts`): use the `.fixture.ts` suffix for a test-only module in a
@@ -80,8 +113,9 @@ their own `/// <reference types="vite/client" />` so a consumer doesn't need
 `vite/client` in their `tsconfig`. Their schema import uses the extension of
 the file on disk, the same as the rest of `src/`. The consumer's `tsc` reads
 these files, thus the consumer must set `allowImportingTsExtensions`; without
-it, the `.ts` extension is an error (TS5097). Each example app sets it in its
-`convex/tsconfig.json`, and `pnpm typecheck` catches a regression here.
+it, the `.ts` extension is an error (TS5097). Each example app that imports a
+test helper sets it in its `convex/tsconfig.json`, and `pnpm typecheck` catches
+a regression here.
 
 Use `pnpm install` at the root. Common tasks:
 

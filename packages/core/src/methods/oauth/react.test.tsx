@@ -215,7 +215,7 @@ describe("OAuth React client", () => {
     await waitFor(() => expect(result.current.auth.isAuthenticated).toBe(true));
   });
 
-  test("signInGithub starts a flow with the GitHub references", async () => {
+  test("useSignInWithGithub starts a flow with the GitHub references", async () => {
     stubReactNative();
     const { result, convexMutation, storage } = renderOAuth(() => ({
       auth: useAuth(),
@@ -279,7 +279,7 @@ describe("OAuth React client", () => {
     });
   });
 
-  test("signInGoogle keeps a stable identity across rerenders", async () => {
+  test("useSignInWithGoogle keeps a stable identity across rerenders", async () => {
     // `anyApi` is what the generated `api` is, and it returns a new reference
     // object on every property access. The hook's memo has to key on the
     // function paths for the identity below to hold.

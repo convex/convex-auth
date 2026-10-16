@@ -3,7 +3,7 @@
 This demo shows:
 
 - The core component.
-- The Apple OAuth component ("Sign in with Apple").
+- The Apple component, with the `apple` method ("Sign in with Apple").
 
 ## Generate code / run
 

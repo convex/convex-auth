@@ -3,7 +3,8 @@
 This demo shows:
 
 - The core component.
-- The password component.
+- The password and username components, with the `usernamePassword`
+  method.
 
 ## Generate code / run
 

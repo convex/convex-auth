@@ -57,7 +57,7 @@ export type SignInAnonymouslyMutation = FunctionReference<
  * configured backend and re-renders components in an authenticated state.
  * Content within `<Authenticated>` helper components will render as will other
  * components that build on the authenticated state returned by
- * `useConvexAuthActions`.
+ * `useConvexAuth`.
  *
  * @param api The functions of the method, usually `api.auth`.
  */
@@ -67,7 +67,7 @@ export function useSignInAnonymously(api: {
   const signInMutation = useStableFunctionReference(api.signInAnonymously);
   const { setSession } = useAuthActions();
   // Running through the signInApi rather than `useMutation` is what lets this one
-  // hook serve both session models. See {@link AuthSignInApi}.
+  // hook serve both session models. See {@link useAuthSignInApi}.
   const signInApi = useAuthSignInApi();
   const signIn = useCallback(async () => {
     const result = await signInApi.mutation(signInMutation, {});
