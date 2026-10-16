@@ -241,7 +241,6 @@ async function issueSession(
   const sessionId = await ctx.db.insert("sessions", {
     userId,
     accountId,
-    lastRefreshedAt: now,
   });
   // Issued like any other token: it is redeemed on the session's first
   // refresh.
@@ -679,9 +678,10 @@ export const refresh = mutation({
     }
 
     // Every refresh token row is deleted along with its session, so if we found
-    // the token, the session also exists.
+    // the token, the session also exists. Note that a refresh never writes the
+    // session row: queries that read it (e.g. to check session liveness) stay
+    // cached across token refreshes.
     const session = (await ctx.db.get("sessions", token.sessionId))!;
-    await ctx.db.patch("sessions", session._id, { lastRefreshedAt: now });
     const { refreshToken, expiresAt } = await issueRefreshToken(
       ctx,
       session._id,
