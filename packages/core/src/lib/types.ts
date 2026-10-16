@@ -184,13 +184,14 @@ export type IsAuthenticatedFn = FunctionReference<
 >;
 
 /**
- * The auth mutations the app exports from `setupConvexAuth`.
+ * The auth functions the app exports from `setupConvexAuth`.
  * Passed as references (not names) because an app may re-export them under any
  * names. Consumed by both SPA and SSR implementations.
  */
 export type ConvexAuthApi = {
   refreshSession: RefreshSessionFn;
   signOut: SignOutFn;
+  isAuthenticated: IsAuthenticatedFn;
 };
 
 /**
