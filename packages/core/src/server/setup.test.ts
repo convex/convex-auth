@@ -98,6 +98,9 @@ const testApp = {
   signIn,
   revokeOtherSessions,
   revokeAllSessions,
+  // The core's own registered functions, exercised as an app would export them.
+  isAuthenticated: core.isAuthenticated,
+  signOut: core.signOut,
 };
 
 /**
@@ -148,6 +151,18 @@ async function sessionIdsOf(t: ReturnType<typeof setup>, userId: string) {
   );
   return sessions.map((s) => s.sessionId);
 }
+
+const isAuthenticatedRef = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  boolean
+>("testApp:isAuthenticated");
+
+const signOutRef = makeFunctionReference<
+  "mutation",
+  { refreshToken: string },
+  null
+>("testApp:signOut");
 
 describe("ctx.convexAuth.revokeOtherSessions", () => {
   test("revokes every session of the user but the caller's", async () => {
@@ -286,5 +301,33 @@ describe("ctx.convexAuth.revokeAllSessions", () => {
     expect(await t.mutation(revokeAllSessionsRef, { userId: "nobody" })).toBe(
       0,
     );
+  });
+});
+
+describe("isAuthenticated", () => {
+  test("is false for a caller with no identity", async () => {
+    const t = setup();
+    expect(await t.query(isAuthenticatedRef, {})).toBe(false);
+  });
+
+  test("is false for a subject that is no session", async () => {
+    const t = setup();
+    expect(
+      await t
+        .withIdentity({ subject: "not-a-session-id" })
+        .query(isAuthenticatedRef, {}),
+    ).toBe(false);
+  });
+
+  test("is true while the session is live, and false once it is revoked", async () => {
+    const t = setup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    const caller = t.withIdentity(sessionIdentity(bundle));
+    expect(await caller.query(isAuthenticatedRef, {})).toBe(true);
+
+    await t.mutation(signOutRef, { refreshToken: bundle.refreshToken });
+
+    // The JWT is untouched and still verifies; the session is what died.
+    expect(await caller.query(isAuthenticatedRef, {})).toBe(false);
   });
 });
