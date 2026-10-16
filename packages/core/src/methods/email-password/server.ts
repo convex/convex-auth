@@ -267,7 +267,13 @@ export type EmailPasswordProfile = Record<string, never>;
  *   `convex/auth.ts`:
  *
  * ```ts
+ * import { components, internal } from "./_generated/api";
  * import { env } from "./_generated/server";
+ * import { setupConvexAuth } from "@convex-dev/auth/server";
+ * import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
+ *
+ * // The frontend origin the emailed links point at.
+ * const SITE_URL = env.SITE_URL ?? "http://localhost:5173";
  *
  * const auth = setupConvexAuth({ component: components.auth });
  * export const { signOut, refreshSession, isAuthenticated } = auth;
@@ -292,9 +298,9 @@ export type EmailPasswordProfile = Record<string, never>;
  *     from: "My App <auth@example.com>",
  *   },
  *   urls: {
- *     signUp: `${env.SITE_URL}/validate-email`,
- *     changeEmail: `${env.SITE_URL}/confirm-email-change`,
- *     recovery: `${env.SITE_URL}/reset-password`,
+ *     signUp: `${SITE_URL}/validate-email`,
+ *     changeEmail: `${SITE_URL}/confirm-email-change`,
+ *     recovery: `${SITE_URL}/reset-password`,
  *   },
  * }).attachUserCallbacks({
  *   createUser: internal.users.createUserEmailPassword,
