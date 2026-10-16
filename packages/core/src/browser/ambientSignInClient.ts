@@ -8,8 +8,9 @@
  * startup code has to return right away unless it finds a sign-in of its own
  * to finish.
  *
- * A method module exports a factory (e.g. `oauth(...)`) producing an
- * {@link AmbientSignInClient} the app passes to `ConvexAuthProvider`'s
+ * A method module exports a factory (e.g. `oauth()`) producing an
+ * {@link AmbientSignInClient}. `ConvexAuthProvider` and
+ * `ConvexAuthNextjsProvider` register them through their internal
  * `ambientSignIns` prop. Each registration carries a unique alphanumeric
  * `id` naming the auth method. The values and storage views the setup
  * receives are scoped by it, so two ambient sign-ins (or a sign-in and the

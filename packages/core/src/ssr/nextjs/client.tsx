@@ -71,17 +71,7 @@ async function postAuth(route: string): Promise<AuthSessionResponse> {
  * ConvexProviderWithAuth} so it is properly configured for the SSR auth
  * environment.
  */
-export function ConvexAuthNextjsProvider({
-  client,
-  convexUrl,
-  initialToken = null,
-  refreshRoute = "/auth/refresh",
-  signOutRoute = "/auth/signout",
-  signInRoute = "/auth/signin",
-  storage,
-  ambientSignIns,
-  children,
-}: {
+export function ConvexAuthNextjsProvider(props: {
   /** An existing `ConvexReactClient`. If omitted, one is created from
    * `convexUrl` (or `NEXT_PUBLIC_CONVEX_URL`). */
   client?: ConvexReactClient;
@@ -106,14 +96,29 @@ export function ConvexAuthNextjsProvider({
    * oauth code from a url query param.
    *
    * Setting this replaces the default (`[oauth()]`) entirely rather than adding
-   * to it. Pass `[]` to register nothing, or include `oauth()` (from
-   * `@convex-dev/auth/methods/oauth/react`) yourself to keep it alongside
-   * other sign-ins. Read once when the client is created and not expected to
-   * change.
+   * to it. Pass `[]` to register nothing. Read once when the client is
+   * created and not expected to change.
+   *
+   * Internal until the API for custom sign-in methods is stable.
+   *
+   * @internal
    */
   ambientSignIns?: AmbientSignInClient[];
   children: ReactNode;
 }) {
+  // Destructure in the body: `ambientSignIns` is internal, and a
+  // destructured parameter would name it in the published declarations.
+  const {
+    client,
+    convexUrl,
+    initialToken = null,
+    refreshRoute = "/auth/refresh",
+    signOutRoute = "/auth/signout",
+    signInRoute = "/auth/signin",
+    storage,
+    ambientSignIns,
+    children,
+  } = props;
   const { authClient, convex, signInApi } = useMemo(() => {
     const convex =
       client ??
