@@ -1,11 +1,6 @@
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useSignInAnonymously } from "@convex-dev/auth/methods/anonymous/react";
-import {
-  useQuery,
-  Authenticated,
-  AuthLoading,
-  Unauthenticated,
-} from "convex/react";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { api } from "../convex/_generated/api";
 import "./index.css";
 
@@ -37,13 +32,10 @@ function SignIn() {
 }
 
 function Dashboard() {
-  const user = useQuery(api.currentUser.loggedInUser);
   const { signOut } = useAuthActions();
   return (
     <>
-      <p>
-        Signed in as <strong>{user ? user.id : "…"}</strong>
-      </p>
+      <p>You are signed in.</p>
       <button onClick={() => signOut()}>Sign out</button>
     </>
   );
