@@ -40,13 +40,13 @@ The `/auth/signin` route only forwards the functions listed in `signIn` in
 route refuses the call with a `403` error. Add these functions for each
 sign-in method:
 
-| Method           | Functions to list in `signIn`                                           |
-| ---------------- | ----------------------------------------------------------------------- |
-| Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`              |
-| Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`    |
-| Anonymous        | `signInAnonymously`                                                     |
-| Email + password | `signInWithEmailPassword`, `completeSignUp`, `completePasswordRecovery` |
-| OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`         |
+| Method           | Functions to list in `signIn`                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`                               |
+| Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`                     |
+| Anonymous        | `signInAnonymously`                                                                      |
+| Email + password | `signInWithEmailPassword`, `completeSignUpWithEmailPassword`, `completePasswordRecovery` |
+| OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
 
 Only list functions that create a session. The other functions a method
 exports, like `changePassword`, passkey `startSignInWithUsernamePasskey`, OAuth

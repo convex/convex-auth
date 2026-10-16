@@ -37,7 +37,7 @@ export const {
 // The email + password method has a `changePassword` too.
 export const {
   signUpWithEmailPassword,
-  completeSignUp,
+  completeSignUpWithEmailPassword,
   signInWithEmailPassword,
   changePassword: changeEmailPassword,
   startPasswordRecovery,
@@ -110,8 +110,8 @@ const createUserAcme = makeFunctionReference<
 >;
 
 export const {
-  startSignIn: startSignInAcme,
-  completeSignIn: completeSignInAcme,
+  startSignIn: startSignInWithAcme,
+  completeSignIn: completeSignInWithAcme,
 } = setupOauth(
   auth,
   "acme",

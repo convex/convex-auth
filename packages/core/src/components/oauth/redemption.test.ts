@@ -191,14 +191,14 @@ const missingIdCatalog = {
  * public mutations into the component's generated API.
  */
 const testApp = {
-  completeSignInAcme: setupOauth(
+  completeSignInWithAcme: setupOauth(
     fakeCore,
     "acme",
     claimsCatalog,
     fakeCallbacks,
     options,
   ).completeSignIn,
-  completeSignInAcmeInfo: setupOauth(
+  completeSignInWithAcmeInfo: setupOauth(
     fakeCore,
     "acmeInfo",
     userInfoCatalog,
@@ -226,11 +226,11 @@ const modules = {
   "./testApp.ts": async () => testApp,
 };
 
-const completeSignInAcme = makeFunctionReference<"mutation">(
-  "testApp:completeSignInAcme",
+const completeSignInWithAcme = makeFunctionReference<"mutation">(
+  "testApp:completeSignInWithAcme",
 );
-const completeSignInAcmeInfo = makeFunctionReference<"mutation">(
-  "testApp:completeSignInAcmeInfo",
+const completeSignInWithAcmeInfo = makeFunctionReference<"mutation">(
+  "testApp:completeSignInWithAcmeInfo",
 );
 const completeSignInEmptyId = makeFunctionReference<"mutation">(
   "testApp:completeSignInEmptyId",
@@ -288,7 +288,7 @@ describe("completeSignIn", () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
@@ -315,7 +315,7 @@ describe("completeSignIn", () => {
 
     // Only the core knows the account has been seen before.
     resolvedUserId.value = "user-1";
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
@@ -340,7 +340,7 @@ describe("completeSignIn", () => {
       payload: { userInfoResponses: { user: { id: 42, login: "octocat" } } },
     });
 
-    const result = await t.mutation(completeSignInAcmeInfo, {
+    const result = await t.mutation(completeSignInWithAcmeInfo, {
       code,
       state: "state-1",
     });
@@ -360,7 +360,7 @@ describe("completeSignIn", () => {
 
   test("an unknown code reports INVALID_CODE", async () => {
     const t = setup();
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code: "never-minted",
       state: "state-1",
     });
@@ -372,7 +372,7 @@ describe("completeSignIn", () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    const mismatched = await t.mutation(completeSignInAcme, {
+    const mismatched = await t.mutation(completeSignInWithAcme, {
       code,
       state: "someone-elses-state",
     });
@@ -380,7 +380,7 @@ describe("completeSignIn", () => {
 
     // The ticket survives a mismatched attempt, so the initiating client can
     // still complete.
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
@@ -391,13 +391,13 @@ describe("completeSignIn", () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    const first = await t.mutation(completeSignInAcme, {
+    const first = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
     expect(first).toEqual(completed);
 
-    const second = await t.mutation(completeSignInAcme, {
+    const second = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
@@ -411,7 +411,7 @@ describe("completeSignIn", () => {
     const code = await mintTicket(t);
     vi.advanceTimersByTime(3 * 60 * 1000); // well past the ticket TTL
 
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
@@ -444,13 +444,13 @@ describe("completeSignIn", () => {
     // The app rejects the sign-in...
     helperFailure.error = new Error("sign-ups are closed");
     await expect(
-      t.mutation(completeSignInAcme, { code, state: "state-1" }),
+      t.mutation(completeSignInWithAcme, { code, state: "state-1" }),
     ).rejects.toThrow("sign-ups are closed");
 
     // ...and the claim rolled back with the rest of the mutation, so the
     // ticket is not burned by the failed attempt.
     helperFailure.error = undefined;
-    const result = await t.mutation(completeSignInAcme, {
+    const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });

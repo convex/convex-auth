@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "./_generated/api.js";
 import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
-import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
+import { registerPassword } from "@convex-dev/auth/components/password/test";
 import { registerUsername } from "@convex-dev/auth/components/username/test";
 import schema from "./schema.js";
 
@@ -13,7 +13,7 @@ const PASSWORD = "correct horse battery staple"; // 28 chars, valid
 function setup() {
   const t = convexTest(schema, modules);
   registerCore(t);
-  registerPasswordProvider(t);
+  registerPassword(t);
   registerUsername(t);
   return t;
 }

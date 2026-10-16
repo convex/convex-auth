@@ -191,7 +191,7 @@ export type LinkFlowState<UserError> =
   | { status: "complete" }
   | { status: "error"; userError: UserError };
 
-/** The state of {@link useCompleteSignUp}. */
+/** The state of {@link useCompleteSignUpWithEmailPassword}. */
 export type CompleteSignUpState = LinkFlowState<
   | SignInError<ClientView<CompleteSignUpResult>>
   | MissingSecretError
@@ -462,7 +462,7 @@ export function useSignInWithEmailPassword(api: {
 
 /**
  * Client for the sign-up flow: run the `signUpWithEmailPassword` mutation and keep
- * the returned secret for {@link useCompleteSignUp}.
+ * the returned secret for {@link useCompleteSignUpWithEmailPassword}.
  *
  * A successful sign-up does *not* sign the user in: it sends the validation
  * email. Tell the user to open the link (in this same browser).
@@ -566,7 +566,7 @@ export function useSignUpWithEmailPassword(api: {
  *
  * ```tsx
  * function ValidateEmail({ emailCode }: { emailCode: string }) {
- *   const state = useCompleteSignUp(api.auth, { emailCode });
+ *   const state = useCompleteSignUpWithEmailPassword(api.auth, { emailCode });
  *   switch (state.status) {
  *     case "loading": // validating…
  *     case "complete": // signed in
@@ -578,11 +578,13 @@ export function useSignUpWithEmailPassword(api: {
  * @param api The functions of the method, usually `api.auth`.
  * @param emailCode The `code` query parameter of the link.
  */
-export function useCompleteSignUp(
-  api: { completeSignUp: CompleteSignUpMutation },
+export function useCompleteSignUpWithEmailPassword(
+  api: { completeSignUpWithEmailPassword: CompleteSignUpMutation },
   { emailCode }: { emailCode: string },
 ): CompleteSignUpState {
-  const completeSignUpMutation = useStableFunctionReference(api.completeSignUp);
+  const completeSignUpMutation = useStableFunctionReference(
+    api.completeSignUpWithEmailPassword,
+  );
   const { setSession } = useAuthActions();
   const signInApi = useAuthSignInApi();
   const withSignInPending = useWithSignInPending();

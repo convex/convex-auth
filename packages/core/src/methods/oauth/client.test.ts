@@ -70,7 +70,7 @@ describe("OAuth client", () => {
     );
     expect(mutation).toHaveBeenCalledOnce();
     // The reference is rebuilt from the persisted function path.
-    expect(calledPath(mutation)).toBe("auth:completeSignInAcme");
+    expect(calledPath(mutation)).toBe("auth:completeSignInWithAcme");
     expect(mutation.mock.calls[0]![1]).toEqual({
       code: "code-1",
       state: "state-1",
@@ -400,7 +400,7 @@ describe("OAuth client", () => {
     expect(readFlow(storage)).toEqual({
       providerName: "acme",
       state: "state-1",
-      completeSignIn: "auth:completeSignInAcme",
+      completeSignIn: "auth:completeSignInWithAcme",
     });
   });
 
@@ -414,7 +414,7 @@ describe("OAuth client", () => {
 
     expect(outcome).toEqual({ status: "complete" });
     expect(mutation).toHaveBeenCalledOnce();
-    expect(calledPath(mutation)).toBe("auth:completeSignInAcme");
+    expect(calledPath(mutation)).toBe("auth:completeSignInWithAcme");
     expect(mutation.mock.calls[0]![1]).toEqual({
       code: "code-1",
       state: "state-1",

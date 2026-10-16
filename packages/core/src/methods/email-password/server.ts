@@ -136,7 +136,7 @@ const signUpResult = v.union(
 
 /**
  * The result of `signUpWithEmailPassword`. On success, the secret the browser must keep for
- * `completeSignUp`; the session arrives only after the email is validated.
+ * `completeSignUpWithEmailPassword`; the session arrives only after the email is validated.
  */
 export type SignUpResult = Infer<typeof signUpResult>;
 
@@ -145,7 +145,7 @@ const completeSignUpResult = v.union(
   vSignInError(completeFreeAddressUserError),
 );
 
-/** The result of `completeSignUp`: the minted session tokens, or an error. */
+/** The result of `completeSignUpWithEmailPassword`: the minted session tokens, or an error. */
 export type CompleteSignUpResult = Infer<typeof completeSignUpResult>;
 
 const signInResult = v.union(
@@ -273,7 +273,7 @@ export type EmailPasswordProfile = Record<string, never>;
  *
  * export const {
  *   signUpWithEmailPassword,
- *   completeSignUp,
+ *   completeSignUpWithEmailPassword,
  *   signInWithEmailPassword,
  *   changePassword,
  *   startPasswordRecovery,
@@ -383,7 +383,7 @@ export function setupEmailPassword<UsersTable extends string>(
         /**
          * Create a new account: the app user, the account and the password are
          * written immediately, but no session is minted. The user signs in for
-         * the first time through `completeSignUp`, after they open the
+         * the first time through `completeSignUpWithEmailPassword`, after they open the
          * challenge link.
          *
          * Repeated sign-ups with one unvalidated address create separate
@@ -466,7 +466,7 @@ export function setupEmailPassword<UsersTable extends string>(
          * and the secret from the starting browser, then sign the user in.
          * Validation and sign-in happen in one transaction.
          */
-        completeSignUp: authMutation({
+        completeSignUpWithEmailPassword: authMutation({
           args: { emailCode: v.string(), browserSecret: v.string() },
           returns: completeSignUpResult,
           handler: async (
