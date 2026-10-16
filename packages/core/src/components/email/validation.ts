@@ -212,3 +212,26 @@ export function normalizeEmail(email: string): string {
   // (But she won’t be able to perform account recovery to the original account,
   // as account recovery emails will be sent to Jane.Doe@example.com).
 }
+
+/**
+ * Check that a landing URL can open from an email: it is absolute and starts
+ * with a scheme followed by `//` (`https://example.com/verify`, or an app
+ * link such as `myapp:///verify`). Return a description of the problem, or
+ * `null` when the URL is correct.
+ *
+ * The `//` check catches a URL that is missing its scheme, such as
+ * `localhost:5173/verify`: `new URL` accepts it, with `localhost:` as the
+ * scheme, but the link does not open.
+ */
+export function landingUrlProblem(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "is not a full URL";
+  }
+  if (!url.trim().slice(parsed.protocol.length).startsWith("//")) {
+    return `has no scheme ("${parsed.protocol}" is read as the scheme)`;
+  }
+  return null;
+}
