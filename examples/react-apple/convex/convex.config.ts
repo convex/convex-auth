@@ -5,8 +5,6 @@ import apple from "@convex-dev/auth/components/apple/convex.config.js";
 
 const app = defineApp({
   env: {
-    AUTH_PRIVATE_KEY: v.string(),
-    AUTH_JWKS: v.string(),
     AUTH_APPLE_CLIENT_ID: v.string(),
     AUTH_APPLE_TEAM_ID: v.string(),
     AUTH_APPLE_KEY_ID: v.string(),
@@ -14,13 +12,7 @@ const app = defineApp({
   },
 });
 
-app.use(auth, {
-  httpPrefix: "/auth",
-  env: {
-    AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
-    AUTH_JWKS: app.env.AUTH_JWKS,
-  },
-});
+app.use(auth);
 
 // The `httpPrefix` below controls where the component's `callback` route is
 // mounted. That gets combined with the `CONVEX_SITE_URL` to form the full

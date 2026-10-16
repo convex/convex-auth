@@ -15,7 +15,7 @@ import { RefreshSession, ServerAuthSession } from "./session.ts";
 function jwt(expSeconds: number, sub = "user-1"): string {
   const b64 = (obj: unknown) =>
     Buffer.from(JSON.stringify(obj)).toString("base64url");
-  return `${b64({ alg: "RS256", typ: "JWT" })}.${b64({ sub, exp: expSeconds })}.sig`;
+  return `${b64({ alg: "ES256", typ: "JWT" })}.${b64({ sub, exp: expSeconds })}.sig`;
 }
 
 // Pin "now" so token-expiry math is deterministic.

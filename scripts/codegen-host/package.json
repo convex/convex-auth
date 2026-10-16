@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "convex": "^1.46.0"
+    "convex": "1.48.0"
   }
 }

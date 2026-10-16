@@ -34,8 +34,6 @@ type Env = {
   readonly AUTH_APPLE_KEY_ID: string;
   readonly AUTH_APPLE_PRIVATE_KEY: string;
   readonly AUTH_APPLE_TEAM_ID: string;
-  readonly AUTH_JWKS: string;
-  readonly AUTH_PRIVATE_KEY: string;
 };
 
 /**

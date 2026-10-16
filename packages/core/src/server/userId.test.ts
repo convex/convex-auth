@@ -15,9 +15,9 @@ function ctxWithIdentity(identity: UserIdentity | null) {
 describe("getAuthUserId", () => {
   test("returns the identity's subject, which the core mints as the user id", async () => {
     const ctx = ctxWithIdentity({
-      tokenIdentifier: "https://example.convex.site|user-1",
+      tokenIdentifier: "https://example.convex.cloud/components/auth|user-1",
       subject: "user-1",
-      issuer: "https://example.convex.site",
+      issuer: "https://example.convex.cloud/components/auth",
     });
     expect(await getAuthUserId(ctx)).toBe("user-1");
   });

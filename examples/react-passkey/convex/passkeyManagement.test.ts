@@ -7,7 +7,6 @@
  * callback, and the mount paths of `convex.config.ts`.
  */
 import { convexTest, type TestConvex } from "convex-test";
-import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { registerCore } from "@convex-dev/auth/test";
 import { registerPasskeyProvider } from "@convex-dev/auth/components/passkey/test";
@@ -43,21 +42,6 @@ const ORIGIN = "http://localhost:5173";
 type T = TestConvex<typeof schema>;
 
 async function setup(): Promise<T> {
-  // The core signs JWTs from these env vars. Mint a real RS256 key pair for
-  // each test and stub the env so Vitest can reset it.
-  const { publicKey, privateKey } = await generateKeyPair("RS256", {
-    extractable: true,
-  });
-  const publicJwk = await exportJWK(publicKey);
-  vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
-  vi.stubEnv("AUTH_PRIVATE_KEY", btoa(await exportPKCS8(privateKey)));
-  vi.stubEnv(
-    "AUTH_JWKS",
-    JSON.stringify({
-      keys: [{ ...publicJwk, kid: "test-key", alg: "RS256", use: "sig" }],
-    }),
-  );
-
   const t = convexTest(schema, modules);
   registerCore(t);
   registerUsername(t);

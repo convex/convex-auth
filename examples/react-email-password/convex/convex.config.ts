@@ -7,8 +7,6 @@ import resend from "@convex-dev/resend/convex.config.js";
 
 const app = defineApp({
   env: {
-    AUTH_PRIVATE_KEY: v.string(),
-    AUTH_JWKS: v.string(),
     RESEND_API_KEY: v.string(),
     SENDER_EMAIL: v.string(),
     // Defaults in auth.ts.
@@ -17,13 +15,7 @@ const app = defineApp({
   },
 });
 
-app.use(auth, {
-  httpPrefix: "/auth",
-  env: {
-    AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
-    AUTH_JWKS: app.env.AUTH_JWKS,
-  },
-});
+app.use(auth);
 app.use(passwordProvider);
 app.use(authEmail);
 app.use(resend);
