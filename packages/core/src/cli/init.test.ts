@@ -41,6 +41,7 @@ function makeFs(initialFiles: Record<string, string> = {}) {
 type Overrides = {
   files?: Record<string, string>;
   getEnv?: (key: string) => string | null;
+  setEnv?: (key: string, value: string) => void;
   generateKeys?: () => Promise<{ authPrivateKey: string; authJwks: string }>;
   detectPackageManager?: (dir: string) => string;
 };
@@ -62,7 +63,10 @@ function makeDeps(overrides: Overrides = {}) {
     // A spinner writes to the terminal, which a test has none of.
     spinner: () => ({ stop: () => {} }),
     getEnv: overrides.getEnv ?? (() => null),
-    setEnv: (k: string, v: string) => setEnvCalls.push([k, v]),
+    setEnv: (k: string, v: string) => {
+      overrides.setEnv?.(k, v);
+      setEnvCalls.push([k, v]);
+    },
     generateKeys,
     detectPackageManager: overrides.detectPackageManager ?? (() => "npm"),
   };
@@ -124,6 +128,49 @@ describe("convex-auth init CLI", () => {
     const { error } = await runCli(deps);
     expect(error).toBeDefined();
     expect(error!.message).toContain("Could not parse");
+  });
+
+  test("explains how to create a deployment when there is none", async () => {
+    const { deps, fs, setEnvCalls, generateKeys } = makeDeps({
+      files: { "/project/package.json": pkgWithAuth },
+      getEnv: () => {
+        throw new Error(
+          "Could not read AUTH_PRIVATE_KEY from the Convex deployment.\n\n" +
+            "    ✖ No CONVEX_DEPLOYMENT set, run `npx convex dev` to configure a Convex project",
+        );
+      },
+    });
+
+    const { error, stderr } = await runCli(deps);
+
+    // A clean CLI error (no stack trace), with the reason and the fix.
+    expect(error).toBeDefined();
+    expect(error!.name).toBe("CommanderError");
+    expect(stderr).toContain("No CONVEX_DEPLOYMENT set");
+    expect(stderr).toContain("npx convex dev");
+    expect(stderr).not.toContain("    at ");
+    // Nothing was generated, set, or written.
+    expect(generateKeys).not.toHaveBeenCalled();
+    expect(setEnvCalls).toEqual([]);
+    expect(fs.files.has("/project/convex/auth.ts")).toBe(false);
+  });
+
+  test("reports a failure to set the keys without a stack trace", async () => {
+    const { deps, fs } = makeDeps({
+      files: { "/project/package.json": pkgWithAuth },
+      setEnv: (key) => {
+        throw new Error(`Could not set ${key} on the Convex deployment.`);
+      },
+    });
+
+    const { error, stderr } = await runCli(deps);
+
+    expect(error).toBeDefined();
+    expect(error!.name).toBe("CommanderError");
+    expect(stderr).toContain(
+      "Could not set AUTH_PRIVATE_KEY on the Convex deployment.",
+    );
+    expect(fs.files.has("/project/convex/auth.ts")).toBe(false);
   });
 
   test("sets env vars and scaffolds all files on the happy path", async () => {

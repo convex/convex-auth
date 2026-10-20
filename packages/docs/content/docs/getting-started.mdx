@@ -13,6 +13,51 @@ Every project using Convex Auth follows these steps.
 
 <Step>
 
+### Set up a Convex project
+
+Convex Auth runs on your Convex deployment, so your project needs one before
+you add auth. If you haven't set up Convex yet, install it and run `npx convex
+dev` once:
+
+{/* prettier-ignore-start */}
+
+<Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+  <Tab value="npm">
+    ```sh
+    npm i convex
+    npx convex dev
+    ```
+  </Tab>
+  <Tab value="pnpm">
+    ```sh
+    pnpm add convex
+    pnpm exec convex dev
+    ```
+  </Tab>
+  <Tab value="yarn">
+    ```sh
+    yarn add convex
+    yarn convex dev
+    ```
+  </Tab>
+  <Tab value="bun">
+    ```sh
+    bun add convex
+    bunx convex dev
+    ```
+  </Tab>
+</Tabs>
+
+{/* prettier-ignore-end */}
+
+The first run asks you to log in and to pick or create a project, then creates
+your dev deployment and saves its name to `.env.local`. You can leave it
+running, or stop it once it is ready.
+
+</Step>
+
+<Step>
+
 ### Install Convex Auth
 
 Add the Convex Auth package to your project:
@@ -55,7 +100,9 @@ Add the Convex Auth package to your project:
 
 ### Run the setup command
 
-Run the Convex Auth CLI to configure your project.
+From the root of your project, run the Convex Auth CLI to configure your
+project. It sets environment variables on the deployment you created in the
+first step.
 
 ```sh
 npx @convex-dev/auth

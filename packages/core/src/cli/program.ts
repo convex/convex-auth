@@ -191,13 +191,24 @@ async function generateAuthKeys() {
   };
 }
 
-/** Read an env var off the current directory's Convex deployment. */
+/**
+ * Read an env var off the current directory's Convex deployment. It returns
+ * `null` when the variable is not set. If the command fails (for instance,
+ * because the project has no deployment yet), its stderr goes into the error
+ * message.
+ */
 function getConvexEnv(key: string) {
   const result = spawnSync("npx", ["convex", "env", "get", key], {
     cwd: process.cwd(),
     encoding: "utf8",
   });
-  if (result.status !== 0) return null;
+  if (result.status !== 0) {
+    const reason = (result.stderr ?? "").trim();
+    throw new Error(
+      `Could not read ${key} from the Convex deployment.` +
+        (reason.length > 0 ? `\n\n${indent(reason)}` : ""),
+    );
+  }
   const value = (result.stdout ?? "").trim();
   return value.length > 0 ? value : null;
 }
@@ -287,8 +298,12 @@ async function ensureAuthKeys(
   force: boolean,
 ): Promise<KeyOutcome> {
   const reading = deps.spinner("Reading the deployment environment…");
-  const isSet = deps.getEnv("AUTH_PRIVATE_KEY") && deps.getEnv("AUTH_JWKS");
-  reading.stop();
+  let isSet;
+  try {
+    isSet = deps.getEnv("AUTH_PRIVATE_KEY") && deps.getEnv("AUTH_JWKS");
+  } finally {
+    reading.stop();
+  }
   if (!force && isSet) return "kept";
 
   const generating = deps.spinner("Generating an RS256 key pair…");
@@ -429,7 +444,21 @@ async function runInit(
 
   deps.log(`${chalk.bold("Convex Auth")} ${chalk.dim(`setup in ${dir}`)}`);
 
-  const keyOutcome = await ensureAuthKeys(deps, options.force ?? false);
+  let keyOutcome: KeyOutcome;
+  try {
+    keyOutcome = await ensureAuthKeys(deps, options.force ?? false);
+  } catch (error) {
+    // The usual cause is a project with no Convex deployment yet. Print the
+    // reason the Convex CLI gave, not a stack trace.
+    const message = error instanceof Error ? error.message : String(error);
+    command.error(
+      `${message}\n\n` +
+        "If this project has no Convex deployment yet, create one first, " +
+        "then run this command again:\n\n" +
+        `${commandLine("npx convex dev")}\n`,
+    );
+    return;
+  }
   reportKeys(deps, keyOutcome);
 
   reportFiles(deps, writeAuthFiles(deps, dir));
