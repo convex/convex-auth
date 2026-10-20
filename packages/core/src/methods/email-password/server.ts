@@ -536,15 +536,19 @@ export function setupEmailPassword<UsersTable extends string>(
         /**
          * Change the signed-in user's password. Requires the session *and* the
          * current password (OWASP ASVS v5 6.2.3), and notifies the primary
-         * email address (ASVS 6.3.7).
+         * email address (ASVS 6.3.7). Signs out the user's other sessions
+         * unless `signOutOtherSessions` is `false` (ASVS v5 7.4.3).
          */
-        // TODO: option to invalidate the user's other sessions.
         changePassword: authMutation({
-          args: { currentPassword: v.string(), newPassword: v.string() },
+          args: {
+            currentPassword: v.string(),
+            newPassword: v.string(),
+            signOutOtherSessions: v.optional(v.boolean()),
+          },
           returns: changePasswordResult,
           handler: async (
             ctx,
-            { currentPassword, newPassword },
+            { currentPassword, newPassword, signOutOtherSessions = true },
           ): Promise<ChangePasswordResult> => {
             const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
@@ -590,6 +594,13 @@ export function setupEmailPassword<UsersTable extends string>(
             );
             if (!setResult.success) {
               return { success: false, userError: setResult.userError };
+            }
+
+            // The current password was just verified, so the caller owns this
+            // session: sign out the user's other sessions, which may belong to
+            // whoever knew the old password.
+            if (signOutOtherSessions) {
+              await ctx.convexAuth.revokeOtherSessions();
             }
 
             const to = await ctx.runQuery(

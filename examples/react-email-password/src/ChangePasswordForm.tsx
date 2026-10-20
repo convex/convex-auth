@@ -11,6 +11,7 @@ export function ChangePasswordForm({
   const [pending, setPending] = useState(false);
   const [currentPasswordField, setCurrentPasswordField] = useState("");
   const [newPasswordField, setNewPasswordField] = useState("");
+  const [signOutOtherSessions, setSignOutOtherSessions] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
   return (
@@ -23,6 +24,7 @@ export function ChangePasswordForm({
           const result = await changePassword({
             currentPassword: currentPasswordField,
             newPassword: newPasswordField,
+            signOutOtherSessions,
           });
           if (result.success) {
             setCurrentPasswordField("");
@@ -91,6 +93,15 @@ export function ChangePasswordForm({
           required
           disabled={pending}
         />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={signOutOtherSessions}
+          onChange={(e) => setSignOutOtherSessions(e.target.checked)}
+          disabled={pending}
+        />
+        Sign out of all other devices
       </label>
       {message ? (
         <p role="alert">

@@ -9,6 +9,7 @@ export function PasswordSettings() {
   const changePassword = useMutation(api.auth.changePassword);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [signOutOtherSessions, setSignOutOtherSessions] = useState(true);
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
@@ -24,7 +25,11 @@ export function PasswordSettings() {
         setStatus(null);
         setPending(true);
         try {
-          const result = await changePassword({ currentPassword, newPassword });
+          const result = await changePassword({
+            currentPassword,
+            newPassword,
+            signOutOtherSessions,
+          });
           if (result.success) {
             setCurrentPassword("");
             setNewPassword("");
@@ -80,6 +85,15 @@ export function PasswordSettings() {
           required
           disabled={pending}
         />
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={signOutOtherSessions}
+          onChange={(e) => setSignOutOtherSessions(e.target.checked)}
+          disabled={pending}
+        />
+        Sign out of all other devices
       </label>
       {status && (
         <p role="alert">

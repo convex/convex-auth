@@ -259,6 +259,55 @@ describe("changePassword", () => {
     });
   });
 
+  test("signs out the user's other sessions", async () => {
+    const t = await setup();
+    const current = (await signUp(t, "alice", PASSWORD)) as PasswordSuccess;
+    const other = (await signIn(t, "alice", PASSWORD)) as PasswordSuccess;
+
+    const result = await asUser(t, current.tokens).mutation(
+      api.auth.changePassword,
+      {
+        currentPassword: PASSWORD,
+        newPassword: NEW_PASSWORD,
+      },
+    );
+    expect(result).toEqual({ success: true });
+
+    // The other session can no longer refresh; the current one can.
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: other.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "noSession" });
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: current.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "rotated" });
+  });
+
+  test("keeps the user's other sessions when asked to", async () => {
+    const t = await setup();
+    const current = (await signUp(t, "alice", PASSWORD)) as PasswordSuccess;
+    const other = (await signIn(t, "alice", PASSWORD)) as PasswordSuccess;
+
+    const result = await asUser(t, current.tokens).mutation(
+      api.auth.changePassword,
+      {
+        currentPassword: PASSWORD,
+        newPassword: NEW_PASSWORD,
+        signOutOtherSessions: false,
+      },
+    );
+    expect(result).toEqual({ success: true });
+
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: other.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "rotated" });
+  });
+
   test("refuses a signed-out caller", async () => {
     const { t } = await signedUpUser();
     const result = await t.mutation(api.auth.changePassword, {
