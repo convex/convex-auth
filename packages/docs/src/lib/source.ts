@@ -1,13 +1,42 @@
 import { docs } from "collections/server";
-import { loader } from "fumadocs-core/source";
+import { loader, type LoaderPlugin } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
+import type { ReactNode } from "react";
 import { docsContentRoute, docsImageRoute, docsRoute } from "./shared";
+
+const apiRoute = "/api/";
+
+/** The last segment of an import path, for example `convex.config` for `components/anonymous/convex.config`. */
+function lastSegment(name: ReactNode): ReactNode {
+  return typeof name === "string"
+    ? name.slice(name.lastIndexOf("/") + 1)
+    : name;
+}
+
+/**
+ * The title of an API reference page is the full import path. The sidebar
+ * nests the pages by path, thus it shows only the last segment. The page
+ * heading keeps the full path.
+ */
+const apiSidebarTitlesPlugin: LoaderPlugin = {
+  name: "convex-auth:api-sidebar-titles",
+  transformPageTree: {
+    file(node) {
+      if (!node.url.startsWith(apiRoute)) return node;
+      return { ...node, name: lastSegment(node.name) };
+    },
+    folder(node) {
+      if (!node.index?.url.startsWith(apiRoute)) return node;
+      return { ...node, name: lastSegment(node.name) };
+    },
+  },
+};
 
 // See https://fumadocs.dev/docs/headless/source-api for more info
 export const source = loader({
   baseUrl: docsRoute,
   source: docs.toFumadocsSource(),
-  plugins: [lucideIconsPlugin()],
+  plugins: [lucideIconsPlugin(), apiSidebarTitlesPlugin],
 });
 
 export function getPageImage(page: (typeof source)["$inferPage"]) {
