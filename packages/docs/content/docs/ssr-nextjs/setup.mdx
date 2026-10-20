@@ -163,10 +163,18 @@ authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
 
 <include
   lang="tsx"
-  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"'
+  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<Suspense>...</Suspense>"'
 >
   ../../../../../examples/nextjs/app/layout.tsx
 </include>
+
+The provider reads the auth cookies, which is request-time data. Apps created
+with `create-next-app` enable [Cache
+Components](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents)
+(`cacheComponents: true` in `next.config.ts`), and then `next build` fails
+with “Uncached data was accessed outside of `<Suspense>`” unless the provider
+renders inside a `<Suspense>` boundary, as above. Without Cache Components,
+the boundary isn't required.
 
 </Step>
 
