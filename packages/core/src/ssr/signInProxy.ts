@@ -125,7 +125,6 @@ function isEncodedTokenBundle(value: unknown): value is TokenBundle {
   const bundle = value as Record<string, unknown>;
   return (
     typeof bundle.accessToken === "string" &&
-    typeof bundle.accessTokenExpiresAt === "number" &&
     typeof bundle.refreshToken === "string" &&
     typeof bundle.refreshTokenExpiresAt === "number" &&
     typeof bundle.userId === "string"

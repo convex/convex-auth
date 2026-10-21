@@ -10,11 +10,11 @@ export async function signJwt(opts: {
   issuer: string;
   audience: string;
   expiresInSeconds: number;
-}): Promise<{ token: string; expiresAt: number }> {
+}): Promise<string> {
   const key = await importPKCS8(opts.privateKeyPkcs8, ALG);
   const nowSeconds = Math.floor(Date.now() / 1000);
   const expSeconds = nowSeconds + opts.expiresInSeconds;
-  const token = await new SignJWT()
+  return await new SignJWT()
     .setProtectedHeader({ alg: ALG, kid: opts.kid, typ: "JWT" })
     .setSubject(opts.subject)
     .setIssuer(opts.issuer)
@@ -22,7 +22,6 @@ export async function signJwt(opts: {
     .setIssuedAt(nowSeconds)
     .setExpirationTime(expSeconds)
     .sign(key);
-  return { token, expiresAt: expSeconds * 1000 };
 }
 
 /** Cryptographically random opaque refresh token. */

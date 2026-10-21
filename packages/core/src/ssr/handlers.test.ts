@@ -16,7 +16,6 @@ vi.mock("convex/browser", () => ({
 function bundle(n: number): TokenBundle {
   return {
     accessToken: `access-${n}`,
-    accessTokenExpiresAt: 1_000,
     refreshToken: `refresh-${n}`,
     refreshTokenExpiresAt: 2_000,
     userId: "user-1",
@@ -59,7 +58,6 @@ describe("refreshHandler", () => {
     // Access-only: no refresh token in the response body.
     expect(body.tokens).toEqual({
       accessToken: "access-2",
-      accessTokenExpiresAt: 1_000,
       userId: "user-1",
     });
     expect(body.tokens).not.toHaveProperty("refreshToken");

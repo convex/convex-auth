@@ -42,7 +42,6 @@ const RECOVERY_SECRET_KEY = "__convexAuthEmailPasswordRecoverySecret";
 
 const bundle: TokenBundle = {
   accessToken: "access-1",
-  accessTokenExpiresAt: 0,
   refreshToken: "refresh-1",
   refreshTokenExpiresAt: 0,
   userId: "user-1",

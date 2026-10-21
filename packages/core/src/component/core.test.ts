@@ -9,6 +9,7 @@ import {
   vi,
 } from "vitest";
 import {
+  decodeJwt,
   exportJWK,
   exportPKCS8,
   generateKeyPair,
@@ -164,10 +165,6 @@ describe("signUp", () => {
     // The app's createUser echoes the providerAccountId as the user id.
     expect(bundle.userId).toBe("alice");
     expect(bundle.refreshToken).toBeTruthy();
-    expect(bundle.accessTokenExpiresAt).toBeGreaterThan(Date.now());
-    expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(
-      bundle.accessTokenExpiresAt,
-    );
 
     // The access token verifies against the served JWKS with the right claims.
     const key = await importJWK(publicJwk, "RS256");
@@ -176,6 +173,8 @@ describe("signUp", () => {
       audience: AUDIENCE,
     });
     expect(payload.sub).toBe("alice");
+    expect(payload.exp! * 1000).toBeGreaterThan(Date.now());
+    expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(payload.exp! * 1000);
 
     // Exactly one account and one session exist.
     const counts = await t.run(async (ctx) => ({
@@ -850,12 +849,9 @@ describe("token lifetime configuration", () => {
       accessTokenTtlSeconds: 300, // 5 minutes
     });
     // The JWT `exp` is floored to the second, so allow a small window.
-    expect(bundle.accessTokenExpiresAt).toBeGreaterThanOrEqual(
-      before + 300_000 - 1000,
-    );
-    expect(bundle.accessTokenExpiresAt).toBeLessThanOrEqual(
-      Date.now() + 300_000,
-    );
+    const expMs = decodeJwt(bundle.accessToken).exp! * 1000;
+    expect(expMs).toBeGreaterThanOrEqual(before + 300_000 - 1000);
+    expect(expMs).toBeLessThanOrEqual(Date.now() + 300_000);
   });
 
   test("honors a custom refresh-token TTL on sign-up and on rotation", async () => {

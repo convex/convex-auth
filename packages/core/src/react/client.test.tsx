@@ -20,7 +20,6 @@ const SUFFIX = "httpshappyanimal123convexcloud";
 function bundle(n: number): TokenBundle {
   return {
     accessToken: `access-${n}`,
-    accessTokenExpiresAt: 0,
     refreshToken: `refresh-${n}`,
     refreshTokenExpiresAt: 0,
     userId: "user-1",

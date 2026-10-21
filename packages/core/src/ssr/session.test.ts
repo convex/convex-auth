@@ -29,7 +29,6 @@ function newTokenBundle(
 ): TokenBundle {
   return {
     accessToken: jwt(NOW + accessTtlSeconds),
-    accessTokenExpiresAt: nowMs + accessTtlSeconds * 1000,
     refreshToken: `refresh-${n}`,
     refreshTokenExpiresAt: nowMs + refreshTtlSeconds * 1000,
     userId: "user-1",

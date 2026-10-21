@@ -58,7 +58,6 @@ const helperFailure = { error: undefined as Error | undefined };
 /** The bundle the fake helpers mint on success. */
 const bundle: TokenBundle = {
   accessToken: "access-token-1",
-  accessTokenExpiresAt: 253402300800000,
   refreshToken: "refresh-token-1",
   refreshTokenExpiresAt: 253402300800000,
   userId: "user-1",
