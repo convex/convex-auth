@@ -92,22 +92,43 @@ export type SignInWithUsernamePasskeyResult =
  *
  * ```tsx
  * import { useSignInWithUsernamePasskey } from "@convex-dev/auth/methods/username-passkey/react";
+ * import { useState } from "react";
  * import { api } from "../convex/_generated/api";
  *
  * function LogIn() {
+ *   // While this hook is mounted, the browser also shows the stored passkeys
+ *   // in the autocompletion list of the username field.
  *   const { signIn, pending, autofill } = useSignInWithUsernamePasskey(api.auth);
+ *   const [username, setUsername] = useState("");
+ *   const [error, setError] = useState<string | null>(null);
+ *
+ *   // The alerts show the error codes. Map each code to a message for the user.
  *   return (
  *     <form
  *       onSubmit={async (e) => {
  *         e.preventDefault();
+ *         setError(null);
  *         const result = await signIn({ username });
  *         if (result.status === "error") {
- *           // map result.userError to a message
+ *           setError(result.userError.error);
  *         }
  *       }}
  *     >
- *       <input autoComplete="username webauthn" ... />
- *       <button disabled={pending}>Continue</button>
+ *       <input
+ *         type="text"
+ *         value={username}
+ *         onChange={(e) => setUsername(e.target.value)}
+ *         autoComplete="username webauthn"
+ *         required
+ *         disabled={pending}
+ *       />
+ *       {error !== null && <p role="alert">{error}</p>}
+ *       {autofill.lastError !== null && (
+ *         <p role="alert">{autofill.lastError.error}</p>
+ *       )}
+ *       <button type="submit" disabled={pending}>
+ *         {pending ? "Waiting for your passkey…" : "Continue with a passkey"}
+ *       </button>
  *     </form>
  *   );
  * }

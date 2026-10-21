@@ -43,6 +43,10 @@ jobs:
       - name: Check the published declarations
         run: pnpm check:declarations
 
+      # `tsc` does not read the code examples in the doc comments.
+      - name: Typecheck the doc comment examples
+        run: pnpm check:doc-examples
+
       - name: Lint
         run: pnpm lint
 
