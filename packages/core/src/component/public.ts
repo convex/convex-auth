@@ -251,14 +251,13 @@ async function issueSession(
     now,
     ttl,
   );
-  const access = await mintAccessToken(
+  const accessToken = await mintAccessToken(
     userId,
     issuer,
     ttl.accessTokenTtlSeconds,
   );
   return {
-    accessToken: access.token,
-    accessTokenExpiresAt: access.expiresAt,
+    accessToken,
     refreshToken,
     refreshTokenExpiresAt: expiresAt,
     userId,
@@ -689,7 +688,7 @@ export const refresh = mutation({
       now,
       ttl,
     );
-    const access = await mintAccessToken(
+    const accessToken = await mintAccessToken(
       session.userId,
       args.issuer,
       ttl.accessTokenTtlSeconds,
@@ -697,8 +696,7 @@ export const refresh = mutation({
     return {
       kind: "rotated",
       tokens: {
-        accessToken: access.token,
-        accessTokenExpiresAt: access.expiresAt,
+        accessToken,
         refreshToken,
         refreshTokenExpiresAt: expiresAt,
         userId: session.userId,

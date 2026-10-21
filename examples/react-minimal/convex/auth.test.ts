@@ -46,12 +46,8 @@ describe("anonymous sign in", () => {
     const { tokens } = result;
     expect(tokens.userId).not.toBe(null);
     expect(tokens.accessToken).not.toBe(null);
-    expect(tokens.accessTokenExpiresAt).not.toBe(null);
     expect(tokens.refreshToken).not.toBe(null);
-    expect(tokens.refreshTokenExpiresAt).not.toBe(null);
-    expect(tokens.refreshTokenExpiresAt).toBeGreaterThan(
-      tokens.accessTokenExpiresAt,
-    );
+    expect(tokens.refreshTokenExpiresAt).toBeGreaterThan(Date.now());
   });
 
   test("returned access token is valid JWT", async () => {

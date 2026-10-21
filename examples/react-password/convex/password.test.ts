@@ -67,7 +67,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),
@@ -83,7 +82,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),
@@ -93,7 +91,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),
@@ -162,7 +159,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),
@@ -175,7 +171,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),
@@ -227,7 +222,6 @@ describe("setupUsernamePassword", () => {
       status: "complete",
       tokens: {
         accessToken: expect.any(String),
-        accessTokenExpiresAt: expect.any(Number),
         refreshToken: expect.any(String),
         refreshTokenExpiresAt: expect.any(Number),
         userId: expect.any(String),

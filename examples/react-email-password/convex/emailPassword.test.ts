@@ -184,7 +184,6 @@ function emailCodeInLink(text: string): string {
 
 const SESSION_TOKENS = {
   accessToken: expect.any(String),
-  accessTokenExpiresAt: expect.any(Number),
   refreshToken: expect.any(String),
   refreshTokenExpiresAt: expect.any(Number),
   userId: expect.any(String),
