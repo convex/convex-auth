@@ -15,11 +15,7 @@
  * @module
  */
 import { convexTest } from "convex-test";
-import {
-  actionGeneric,
-  makeFunctionReference,
-  mutationGeneric,
-} from "convex/server";
+import { makeFunctionReference, mutationGeneric } from "convex/server";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { AuthCore } from "../../server/setup.ts";
@@ -51,7 +47,6 @@ const REDIRECT_TO = `${ALLOWED_ORIGIN}/after`;
 export const fakeCore = {
   bindProvider: () => ({
     authMutation: mutationGeneric,
-    authAction: actionGeneric,
   }),
 } as unknown as AuthCore;
 

@@ -307,7 +307,7 @@ export type UserCallbacks<
 };
 
 /**
- * The helpers that `authMutation`/`authAction` inject onto `ctx` for a
+ * The helpers that `authMutation` injects onto `ctx` for a
  * provider's handlers.
  *
  * This API is used for building auth providers.
@@ -368,7 +368,7 @@ export type BoundAuthHelpers<Profile> = {
 };
 
 /**
- * The ctx additions that `authMutation`/`authAction` provide to provider
+ * The ctx additions that `authMutation` provides to provider
  * handlers.
  *
  * The {@link BoundAuthHelpers} are available under `ctx.convexAuth`.
