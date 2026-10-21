@@ -377,6 +377,22 @@ export type BoundAuthHelpers<Profile> = {
    * @internal until we solidify the full session lifecycle
    */
   revokeOtherSessions(): Promise<number>;
+  /**
+   * Revokes every session of the given user, including the caller's own if
+   * it belongs to that user. Returns the number of active (non-expired)
+   * sessions revoked. Expired sessions are deleted as well, but not counted.
+   *
+   * For flows that prove ownership of an account without a trusted current
+   * session, such as password recovery. Revoke before minting the new
+   * session, which this would otherwise revoke too.
+   *
+   * NOTE: This does no authorization. Callers should only invoke it after
+   * proving that the requester owns `userId` (e.g. through an email
+   * challenge).
+   *
+   * @internal until we solidify the full session lifecycle
+   */
+  revokeAllSessions(userId: string): Promise<number>;
 };
 
 /**
