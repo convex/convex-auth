@@ -176,6 +176,12 @@ export class AuthClient {
   readonly #refresh: () => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */
   readonly #signOutInternal: () => Promise<void>;
+  /**
+   * Revoke the session of a given refresh token on the server. Only SPA
+   * clients can, since only they hold refresh tokens.
+   */
+  readonly #revokeRefreshToken:
+    ((refreshToken: string) => Promise<void>) | null;
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
@@ -229,6 +235,8 @@ export class AuthClient {
         const refreshToken = await this.#currentRefreshToken();
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
+      this.#revokeRefreshToken = (refreshToken) =>
+        authApi.signOut(refreshToken);
     } else {
       const { authApi } = config;
       // The refresh token is in an httpOnly cookie that the API reads
@@ -241,6 +249,7 @@ export class AuthClient {
           : { kind: "rotated", session };
       };
       this.#signOutInternal = () => authApi.signOut();
+      this.#revokeRefreshToken = null;
     }
 
     // Runs last so setups see a fully initialized client.
@@ -401,11 +410,39 @@ export class AuthClient {
    * their own sign-in flow returns a session: a full {@link TokenBundle} when
    * the client holds the refresh token (SPA), or an access-only {@link
    * SlimTokenBundle} when the refresh token is in a cookie (SSR).
+   *
+   * In SPA mode, a session this replaces is revoked on the server, so that
+   * its refresh token stops working. For example, an anonymous session that
+   * the user upgrades to a password account must not keep access to the
+   * account.
    */
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
+    const previousRefreshToken =
+      this.#revokeRefreshToken === null
+        ? null
+        : await this.#currentRefreshToken();
     await this.#storeFullTokenResult(session);
+    if (
+      this.#revokeRefreshToken !== null &&
+      previousRefreshToken !== null &&
+      hasRefreshToken(session) &&
+      session.refreshToken !== previousRefreshToken
+    ) {
+      // After storing the new session, so the client is signed in even if
+      // revoking fails. A failure is logged rather than thrown: the sign-in
+      // itself succeeded.
+      try {
+        await this.#revokeRefreshToken(previousRefreshToken);
+        this.#log("revoked the replaced session");
+      } catch (error) {
+        console.warn(
+          "[convex-auth] Could not revoke the session replaced by setSession:",
+          error,
+        );
+      }
+    }
   };
 
   /**

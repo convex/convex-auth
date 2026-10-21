@@ -124,6 +124,51 @@ describe("AuthClient", () => {
     );
   });
 
+  test("setSession revokes the session it replaces", async () => {
+    // E.g. an anonymous session upgraded to a password account: the guest's
+    // refresh token must not keep access to the account.
+    const signOut = vi.fn(async () => {});
+    const { client, storage } = makeClient({ signOut });
+    await client.init();
+    await client.setSession(bundle(1));
+    expect(signOut).not.toHaveBeenCalled();
+
+    await client.setSession(bundle(2));
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(signOut).toHaveBeenCalledWith("refresh-1");
+    expect(client.getAccessToken()).toBe("access-2");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-2",
+    );
+  });
+
+  test("setSession doesn't revoke when given the current session again", async () => {
+    const signOut = vi.fn(async () => {});
+    const { client } = makeClient({ signOut });
+    await client.init();
+    await client.setSession(bundle(1));
+    await client.setSession(bundle(1));
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  test("setSession keeps the new session when revoking the old one fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const signOut = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    const { client } = makeClient({ signOut });
+    await client.init();
+    await client.setSession(bundle(1));
+
+    await expect(client.setSession(bundle(2))).resolves.toBeUndefined();
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: true,
+      token: "access-2",
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
   test("hydrates a persisted session on init", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
