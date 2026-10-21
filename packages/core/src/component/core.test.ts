@@ -980,29 +980,44 @@ describe("listSessions", () => {
   });
 });
 
-describe("revokeSession", () => {
-  test("revokes the session so it can no longer be refreshed", async () => {
+describe("revokeSessions", () => {
+  test("revokes the sessions so they can no longer be refreshed", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    const otherBundle = await signIn(t, claims());
+    const second = await signIn(t, claims());
+    const third = await signIn(t, claims());
 
-    expect(
-      await t.mutation(api.public.revokeSession, {
-        sessionId: sessionIdOf(otherBundle),
-      }),
-    ).toBe(true);
+    const revoked = await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(second), sessionIdOf(third)],
+    });
+    expect(revoked.sort()).toEqual(
+      [sessionIdOf(second), sessionIdOf(third)].sort(),
+    );
     expect(await sessionCount(t)).toBe(1);
-    expect((await refresh(t, otherBundle.refreshToken)).kind).toBe("noSession");
+    expect((await refresh(t, second.refreshToken)).kind).toBe("noSession");
+    expect((await refresh(t, third.refreshToken)).kind).toBe("noSession");
     expect((await refresh(t, bundle.refreshToken)).kind).toBe("rotated");
   });
 
-  test("erases the session's refresh tokens", async () => {
+  test("revokes the sessions of any user", async () => {
+    const t = setup();
+    const alice = await signUp(t, claims());
+    const bob = await signUp(t, claims({ providerAccountId: "bob" }));
+
+    const revoked = await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(alice), sessionIdOf(bob)],
+    });
+    expect(revoked).toHaveLength(2);
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("erases the sessions' refresh tokens", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
     expectRotated(await refresh(t, bundle.refreshToken));
 
-    await t.mutation(api.public.revokeSession, {
-      sessionId: sessionIdOf(bundle),
+    await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(bundle)],
     });
     const tokens = await t.run(
       async (ctx) => await ctx.db.query("refreshTokens").collect(),
@@ -1010,29 +1025,50 @@ describe("revokeSession", () => {
     expect(tokens).toEqual([]);
   });
 
-  test("an already-revoked session id revokes nothing", async () => {
+  test("skips an already-revoked session id", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    await signIn(t, claims());
+    const otherBundle = await signIn(t, claims());
     await t.mutation(api.public.signOut, { refreshToken: bundle.refreshToken });
 
     expect(
-      await t.mutation(api.public.revokeSession, {
-        sessionId: sessionIdOf(bundle),
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: [sessionIdOf(bundle), sessionIdOf(otherBundle)],
       }),
-    ).toBe(false);
-    expect(await sessionCount(t)).toBe(1);
+    ).toEqual([sessionIdOf(otherBundle)]);
+    expect(await sessionCount(t)).toBe(0);
   });
 
-  test("a malformed session id revokes nothing", async () => {
+  test("reports a repeated session id once", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+
+    expect(
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: [sessionIdOf(bundle), sessionIdOf(bundle)],
+      }),
+    ).toEqual([sessionIdOf(bundle)]);
+  });
+
+  test("skips a malformed session id", async () => {
     const t = setup();
     await signUp(t, claims());
 
     expect(
-      await t.mutation(api.public.revokeSession, {
-        sessionId: "not a session id",
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: ["not a session id"],
       }),
-    ).toBe(false);
+    ).toEqual([]);
+    expect(await sessionCount(t)).toBe(1);
+  });
+
+  test("revokes nothing for no ids", async () => {
+    const t = setup();
+    await signUp(t, claims());
+
+    expect(
+      await t.mutation(api.public.revokeSessions, { sessionIds: [] }),
+    ).toEqual([]);
     expect(await sessionCount(t)).toBe(1);
   });
 });

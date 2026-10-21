@@ -363,24 +363,20 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         const sessions = await ctx.runQuery(component.public.listSessions, {
           userId: session.userId,
         });
+        const others = sessions.filter(
+          ({ sessionId }) => sessionId !== currentSessionId,
+        );
+        const revoked = new Set(
+          await ctx.runMutation(component.public.revokeSessions, {
+            sessionIds: others.map(({ sessionId }) => sessionId),
+          }),
+        );
         // Expired sessions are deleted too, but only the active ones count.
         const now = Date.now();
-        let numRevoked = 0;
-        for (const { sessionId, expiresAt } of sessions) {
-          if (sessionId === currentSessionId) {
-            continue;
-          }
-          const revoked = await ctx.runMutation(
-            component.public.revokeSession,
-            {
-              sessionId,
-            },
-          );
-          if (revoked && expiresAt > now) {
-            numRevoked++;
-          }
-        }
-        return numRevoked;
+        return others.filter(
+          ({ sessionId, expiresAt }) =>
+            revoked.has(sessionId) && expiresAt > now,
+        ).length;
       },
     });
 
