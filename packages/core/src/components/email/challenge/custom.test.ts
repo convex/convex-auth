@@ -512,3 +512,74 @@ describe("challenge.custom.check", () => {
     ).toBeGreaterThan(0);
   });
 });
+
+describe("challenge.custom.cancelForUser", () => {
+  /** The browser secrets of the pending challenges. */
+  async function pendingSecrets(t: ReturnType<typeof setup>) {
+    return await t.run(async (ctx) =>
+      (await ctx.db.query("challenges").collect()).map(
+        (row) => row.browserSecretHash,
+      ),
+    );
+  }
+
+  test("deletes the user's challenges of the purpose, and keeps the others", async () => {
+    const t = setup();
+    await seedEmail(t, "user1", "Alice@Example.com", true);
+    await seedEmail(t, "user1", "alice.work@example.com", false);
+    await seedEmail(t, "user2", "bob@example.com", true);
+    // Sent to an address of the user, with no user bound (recovery links).
+    await seedChallenge(t, {
+      email: "Alice@Example.com",
+      purpose: { kind: "custom", purpose: PURPOSE },
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    await seedChallenge(t, {
+      email: "alice.work@example.com",
+      purpose: { kind: "custom", purpose: PURPOSE },
+      emailCode: "code2",
+      browserSecret: "secret2",
+    });
+    // Bound to the user.
+    await seedChallenge(t, {
+      email: "new@example.com",
+      purpose: { kind: "custom", userId: "user1", purpose: PURPOSE },
+      emailCode: "code3",
+      browserSecret: "secret3",
+    });
+    // Another purpose, another kind, and another user: they stay.
+    await seedChallenge(t, {
+      email: "Alice@Example.com",
+      purpose: { kind: "custom", purpose: "myApp/other" },
+      emailCode: "code4",
+      browserSecret: "secret4",
+    });
+    await seedChallenge(t, {
+      email: "other@example.com",
+      purpose: { kind: "addEmail", userId: "user1" },
+      emailCode: "code5",
+      browserSecret: "secret5",
+    });
+    await seedChallenge(t, {
+      email: "bob@example.com",
+      purpose: { kind: "custom", purpose: PURPOSE },
+      emailCode: "code6",
+      browserSecret: "secret6",
+    });
+    const before = await pendingSecrets(t);
+
+    await t.mutation(api.challenge.custom.cancelForUser, {
+      purpose: PURPOSE,
+      userId: "user1",
+    });
+    expect(await pendingSecrets(t)).toEqual(before.slice(3));
+
+    // Idempotent.
+    await t.mutation(api.challenge.custom.cancelForUser, {
+      purpose: PURPOSE,
+      userId: "user1",
+    });
+    expect(await pendingSecrets(t)).toEqual(before.slice(3));
+  });
+});

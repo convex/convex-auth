@@ -305,7 +305,8 @@ export type EmailPasswordProfile = Record<string, never>;
  *   password (OWASP ASVS v5 6.2.3), and send a security notification to the
  *   affected address (ASVS 6.3.7).
  * - Recovery proves ownership of a verified email through a 10-minute link,
- *   then sets the new password and signs the user in.
+ *   then sets the new password and signs the user in. A password change (by
+ *   a reset or by `changePassword`) invalidates the other reset links.
  *
  * Account resolution (email → app user id) is owned by the email component;
  * the password component stores only `{ userId, passwordHash }`.
@@ -355,6 +356,21 @@ export function setupEmailPassword<UsersTable extends string>(
       to: [to],
       subject,
       text,
+    });
+  };
+
+  /**
+   * Invalidate the outstanding password-reset links of a user. Called when the
+   * password changes, by a reset or by `changePassword`: an older link must
+   * not set the password again.
+   */
+  const cancelRecoveryLinks = async (
+    ctx: MutationCtx,
+    userId: string,
+  ): Promise<void> => {
+    await ctx.runMutation(component.challenge.custom.cancelForUser, {
+      purpose: RECOVERY_PURPOSE,
+      userId,
     });
   };
 
@@ -591,6 +607,7 @@ export function setupEmailPassword<UsersTable extends string>(
             if (!setResult.success) {
               return { success: false, userError: setResult.userError };
             }
+            await cancelRecoveryLinks(ctx, userId);
 
             const to = await ctx.runQuery(
               component.verifiedEmails.getPrimaryEmail,
@@ -868,6 +885,10 @@ export function setupEmailPassword<UsersTable extends string>(
                 { cause: setResult.userError },
               );
             }
+
+            // The other reset links of the account must not set the
+            // password again.
+            await cancelRecoveryLinks(ctx, userId);
 
             const tokens = await ctx.convexAuth.completeSignIn({
               providerAccountId: userId,

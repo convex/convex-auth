@@ -9,11 +9,13 @@
 
 import { Infer, ObjectType, v } from "convex/values";
 import { mutation, query, type QueryCtx } from "../_generated/server.ts";
+import type { Doc } from "../_generated/dataModel.ts";
 import {
   CUSTOM_TTL_DEFAULT_MS,
   CUSTOM_TTL_MAX_MS,
   CUSTOM_TTL_MIN_MS,
   emailByNormalizedEmail,
+  emailsByUserId,
 } from "../helpers.ts";
 import {
   completeChallengeUserError,
@@ -219,5 +221,46 @@ export const complete = mutation({
       return claim.failure;
     }
     return await claimableResult(ctx, claim.row);
+  },
+});
+
+/**
+ * Delete every pending `custom` challenge with this `purpose` that can act on
+ * the user: the ones that `start` bound to the user, and the ones sent to a
+ * verified address of the user (for example, the links of an account
+ * recovery, which `start` gets with a `null` user).
+ *
+ * Call it when an event makes the outstanding links stale. For example, a
+ * password recovery calls it when the password changes, so that an older
+ * reset link cannot set the password again. The function is idempotent.
+ */
+export const cancelForUser = mutation({
+  args: { purpose: vPurposeName, userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { purpose, userId }): Promise<null> => {
+    const isTarget = (row: Doc<"challenges">) =>
+      row.purpose.kind === "custom" && row.purpose.purpose === purpose;
+
+    const rows = await ctx.db
+      .query("challenges")
+      .withIndex("by_purpose_userId", (q) => q.eq("purpose.userId", userId))
+      .collect();
+    for (const { email } of await emailsByUserId(ctx, userId)) {
+      rows.push(
+        ...(await ctx.db
+          .query("challenges")
+          .withIndex("by_email", (q) => q.eq("email", email))
+          .collect()),
+      );
+    }
+
+    const deleted = new Set<string>();
+    for (const row of rows) {
+      if (isTarget(row) && !deleted.has(row._id)) {
+        deleted.add(row._id);
+        await ctx.db.delete("challenges", row._id);
+      }
+    }
+    return null;
   },
 });

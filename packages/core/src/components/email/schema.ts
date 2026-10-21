@@ -66,6 +66,9 @@ export default defineSchema({
   })
     .index("by_browserSecretHash", ["browserSecretHash"])
     .index("by_purpose_userId", ["purpose.userId"])
+    // For `custom.cancelForUser`, which finds the challenges of a user's
+    // addresses when the challenge stores no user.
+    .index("by_email", ["email"])
     // For the cleanup loop (see cleanup.ts).
     .index("by_expiresAt", ["expiresAt"]),
 });

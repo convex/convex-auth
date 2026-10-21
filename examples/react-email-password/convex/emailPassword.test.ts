@@ -605,6 +605,34 @@ describe("changePassword", () => {
     expect(sent[0].to).toEqual([EMAIL]);
     expect(sent[0].subject).toMatch(/password/i);
   });
+  test("invalidates the outstanding reset links", async () => {
+    const t = await setup();
+    const userId = await seedSignedUpUser(t);
+    await seedChallenge(t, {
+      email: EMAIL,
+      purpose: RECOVERY,
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+
+    const result = await t
+      .withIdentity({ subject: userId })
+      .mutation(api.auth.changePassword, {
+        currentPassword: PASSWORD,
+        newPassword: "brand new horse staple",
+      });
+    expect(result).toEqual({ success: true });
+
+    const reset = await t.mutation(api.auth.completePasswordRecovery, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+      newPassword: "another horse battery",
+    });
+    expect(reset).toEqual({
+      status: "error",
+      userError: { error: "INVALID_CHALLENGE" },
+    });
+  });
 });
 
 describe("startChangeEmail", () => {
@@ -1052,6 +1080,49 @@ describe("completePasswordRecovery", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toEqual([EMAIL]);
     expect(sent[0].subject).toMatch(/password/i);
+  });
+
+  test("invalidates the other reset links of the account", async () => {
+    const t = await setup();
+    await seedSignedUpUser(t);
+    await seedChallenge(t, {
+      email: EMAIL,
+      purpose: RECOVERY,
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    await seedChallenge(t, {
+      email: EMAIL,
+      purpose: RECOVERY,
+      emailCode: "code2",
+      browserSecret: "secret2",
+    });
+
+    const second = await t.mutation(api.auth.completePasswordRecovery, {
+      emailCode: "code2",
+      browserSecret: "secret2",
+      newPassword: "brand new horse staple",
+    });
+    expect(second).toEqual({ status: "complete", tokens: SESSION_TOKENS });
+
+    // The older link no longer sets the password.
+    const first = await t.mutation(api.auth.completePasswordRecovery, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+      newPassword: "another horse battery",
+    });
+    expect(first).toEqual({
+      status: "error",
+      userError: { error: "INVALID_CHALLENGE" },
+    });
+    expect(
+      await t
+        .withRequestMetadata({ ip: IP })
+        .mutation(api.auth.signInWithEmailPassword, {
+          email: EMAIL,
+          password: "brand new horse staple",
+        }),
+    ).toEqual({ status: "complete", tokens: SESSION_TOKENS });
   });
 
   test("rejects an unknown secret with INVALID_CHALLENGE", async () => {

@@ -136,6 +136,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         >;
       };
       custom: {
+        cancelForUser: FunctionReference<
+          "mutation",
+          "internal",
+          { purpose: string; userId: string },
+          null,
+          Name
+        >;
         check: FunctionReference<
           "mutation",
           "internal",
