@@ -92,6 +92,8 @@ export type SignUpWithUsernamePasswordResult =
  *
  * function LogIn() {
  *   const { signIn, pending } = useSignInWithUsernamePassword(api.auth);
+ *   const [username, setUsername] = useState("");
+ *   const [password, setPassword] = useState("");
  *   return (
  *     <form
  *       onSubmit={async (e) => {
@@ -102,7 +104,37 @@ export type SignUpWithUsernamePasswordResult =
  *         }
  *       }}
  *     >
- *       <button disabled={pending}>Log in</button>
+ *       <label htmlFor="username">
+ *         Username
+ *         <input
+ *           // A static id helps password managers
+ *           id="username"
+ *           name="username"
+ *           type="text"
+ *           value={username}
+ *           onChange={(e) => setUsername(e.target.value)}
+ *           autoComplete="username"
+ *           required
+ *           disabled={pending}
+ *         />
+ *       </label>
+ *       <label htmlFor="password">
+ *         Password
+ *         <input
+ *           // A static id helps password managers
+ *           id="password"
+ *           name="password"
+ *           type="password"
+ *           value={password}
+ *           onChange={(e) => setPassword(e.target.value)}
+ *           autoComplete="current-password"
+ *           required
+ *           disabled={pending}
+ *         />
+ *       </label>
+ *       <button type="submit" disabled={pending}>
+ *         Log in
+ *       </button>
  *     </form>
  *   );
  * }
