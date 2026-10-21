@@ -92,7 +92,7 @@ export type OauthCatalog<
 };
 
 /**
- * App-defined config for setting up an OAuth provider and passing in options.
+ * App-defined config for setting up the `oauth` method for one OAuth provider.
  */
 export type OauthProviderOptions = {
   /**

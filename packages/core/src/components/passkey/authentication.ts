@@ -167,7 +167,7 @@ export const finishAuthentication = mutation({
       console.warn(
         `Rejected the passkey ceremony: the authenticator data does not ` +
           `match the expected relying party ID ${JSON.stringify(args.expectedRpId)}. ` +
-          `Check that the \`rpId\` of the provider matches the page that ran ` +
+          `Check that the \`rpId\` of the sign-in method matches the page that ran ` +
           `the ceremony.`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
@@ -226,7 +226,7 @@ export const finishAuthentication = mutation({
         `Rejected the passkey ceremony: the ceremony ran at the origin ` +
           `${JSON.stringify(clientData.origin)}, but the expected origin is ` +
           `${JSON.stringify(args.expectedOrigin)}. Check that the \`origin\` of ` +
-          `the provider matches the page that ran the ceremony.`,
+          `the sign-in method matches the page that ran the ceremony.`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
@@ -319,7 +319,7 @@ export const finishAuthentication = mutation({
       console.warn(
         `Rejected the passkey ceremony: the assertion did not verify. ` +
           `If this happens for every ceremony, check that the \`rpId\` and ` +
-          `the \`origin\` of the provider match the page that ran it. ` +
+          `the \`origin\` of the sign-in method match the page that ran it. ` +
           `${String(cause)}`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };

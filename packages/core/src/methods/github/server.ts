@@ -1,5 +1,5 @@
 /**
- * The GitHub OAuth provider, exported at
+ * The `github` sign-in method, exported at
  * `@convex-dev/auth/methods/github/server`.
  *
  * @module
@@ -23,7 +23,7 @@ import {
 export type { GithubUserInfo };
 
 /**
- * The account profile the GitHub provider produces. GitHub is plain OAuth
+ * The account profile that the `github` method produces. GitHub is plain OAuth
  * (no id_token), so identity comes from its userinfo endpoints. This is the
  * exact shape the mapping emits, so the app can validate against it
  * precisely.
@@ -74,7 +74,7 @@ export function normalizeGithubProfile(
   };
 }
 
-/** App-defined config for setting up the GitHub provider. */
+/** App-defined config for setting up the `github` method. */
 export type GithubProviderOptions = {
   /** The GitHub oauth component instance, i.e. `components.authGithub`. */
   component: ComponentApi;
@@ -86,7 +86,7 @@ export type GithubProviderOptions = {
 };
 
 /**
- * Built-in GitHub OAuth provider. Wire it up with the GitHub oauth component:
+ * Built-in sign-in method for GitHub. Wire it up with the GitHub oauth component:
  *
  * ```ts
  * export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(auth, {
@@ -118,7 +118,7 @@ export function setupGithub<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
       callbacks: UserCallbacks<"github", GithubProfile, UsersTable>,

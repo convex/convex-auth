@@ -1,7 +1,7 @@
 /**
  * Framework-agnostic `(Request) => Response` auth handlers.
  *
- * These are the provider-*agnostic* halves of the SSR auth surface. This
+ * These are the method-*agnostic* halves of the SSR auth surface. This
  * module exposes plain WHATWG handlers an application mounts at routes of its
  * choosing (e.g. `/auth/refresh`, `/auth/signout`). They read the httpOnly
  * refresh-token cookie from the request and reply with the access-only {@link
@@ -15,7 +15,7 @@
  * cookie write) by checking the `Origin` header via {@link isTrustedOrigin}.
  *
  * Sign-in has no counterpart here: it goes through the auth proxy (see
- * `./proxy`), which needs no per-provider server code.
+ * `./proxy`), which needs no per-method server code.
  *
  * @module
  */

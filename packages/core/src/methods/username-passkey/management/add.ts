@@ -5,7 +5,7 @@
  * hold a pre-existing passkey of the account.
  *
  * ```
- *  Client                             Provider
+ *  Client                             Method
  *    │                                   │
  *    │  startAddPasskey()                │
  *    ├──────────────────────────────────▶│  start the re-authentication
@@ -56,7 +56,7 @@ import { defaultPasskeyName } from "../aaguids.ts";
  * above the number of authenticators that a person uses, and the user can
  * remove a passkey to make room for a new one.
  *
- * The component stays permissive; the provider makes the policy, like it does
+ * The component stays permissive; the method makes the policy, like it does
  * for the removal of the last passkey.
  */
 export const MAX_PASSKEYS_PER_USER = 20;
@@ -254,7 +254,7 @@ export function finishAddPasskey(config: UsernamePasskeyConfig) {
           expectedOrigin: config.origin,
           verifiedUserId: userId,
           response: args.response,
-          // The app does not name a new passkey yet, thus the provider names
+          // The app does not name a new passkey yet, thus the method names
           // it after the authenticator model.
           // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
           name: defaultPasskeyName(args.response),

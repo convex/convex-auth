@@ -325,7 +325,7 @@ async function createAccount(
       throw new Error(
         `Cannot create an account: an account for provider = ${JSON.stringify(claims.providerName)} ` +
           `and provider account ID = ${JSON.stringify(claims.providerAccountId)} already ` +
-          `exists. Providers that cannot tell a first sign-in from a return visit must ` +
+          `exists. Sign-in methods that cannot tell a first sign-in from a return visit must ` +
           `look the identity up (getUserIdByAccount) and call signIn instead.`,
       );
     }
@@ -393,7 +393,7 @@ async function notifySignIn(
  *
  * Establishes a session and returns a token bundle upon success.
  *
- * Providers don't typically call this API directly, but instead use the
+ * Sign-in methods don't typically call this API directly, but instead use the
  * framework's `completeSignUp` helper. That function takes care of passing the
  * `createUserHandle` and `onSignInHandle` app callbacks.
  *
@@ -436,7 +436,7 @@ export const signUp = mutation({
  *
  * Establishes a session and returns a token bundle upon success.
  *
- * Providers don't typically call this API directly, but instead use the
+ * Sign-in methods don't typically call this API directly, but instead use the
  * framework's `completeSignIn` helper. That function takes care of passing the
  * `onSignInHandle` app callback.
  *
@@ -483,10 +483,10 @@ export const signIn = mutation({
 });
 
 /**
- * Create the account and the app user for a provider's verified identity
- * claims, without minting a session.
+ * Create the account and the app user for the verified identity claims of a method
+ * without minting a session.
  *
- * Providers use this (via the `signUpWithoutSession` helper the core hands
+ * Sign-in methods use this (via the `signUpWithoutSession` helper the core hands
  * them) when the user must complete a step before the first sign-in — for
  * example, an email validation. Account creation follows the same rules as
  * `signUp` (the app's `createUser` mutation mints the user,
@@ -515,14 +515,14 @@ export const signUpWithoutSession = mutation({
 /**
  * Resolve a provider identity to its app user id without minting a session.
  *
- * Providers use this (via the `resolveUserId` helper the core hands them) to look
+ * Sign-in methods use this (via the `resolveUserId` helper the core hands them) to look
  * up the user behind a `(provider, providerAccountId)` pair before authenticating
- * — e.g. a password provider needs the user id to verify a stored password *before*
+ * — e.g. a password method needs the user id to verify a stored password *before*
  * a session is issued. Returns `null` when no account exists for the identity.
  *
  * This is a component-internal function (callable by the app, not by end-user
  * clients), so it does not expose account existence to the outside world; the
- * provider's own public API decides what, if anything, to reveal.
+ * method's own public API decides what, if anything, to reveal.
  */
 export const getUserIdByAccount = query({
   args: { provider: v.string(), providerAccountId: v.string() },

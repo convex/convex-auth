@@ -1,5 +1,5 @@
 /**
- * React client for the passkey provider, exported at
+ * React client for the `usernamePasskey` method, exported at
  * `@convex-dev/auth/methods/username-passkey/react`.
  *
  * {@link useSignInWithUsernamePasskey} is the batteries-included hook for the

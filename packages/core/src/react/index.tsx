@@ -6,7 +6,7 @@
  * session, refreshing the access token, signing out — and feeds Convex's
  * `ConvexProviderWithAuth` a `useAuth` hook.
  *
- * Authentication methods are deliberately not part of this core: each auth provider
+ * Sign-in methods are deliberately not part of this core: each sign-in method
  * (password, OAuth, passkey, …) ships its own authentication API that returns a
  * {@link TokenBundle}. Hand that bundle to {@link useAuthActions}'s `setSession`
  * which allows the Convex client to authenticate with the backend.
@@ -101,7 +101,7 @@ export function ConvexAuthProvider({
    */
   storageNamespace?: string;
   /**
-   * Advanced. Ambient sign-ins run initialization for auth providers that can
+   * Advanced. Ambient sign-ins run initialization for sign-in methods that can
    * take action outside of a user activated sign in flow, such as reading an
    * oauth code from a url query param.
    *
@@ -125,8 +125,8 @@ export function ConvexAuthProvider({
     // Sign-in functions run against the deployment over the same websocket
     // client as the rest of the app (it isn't paused pre-auth, unlike the
     // refresh path below), so the response carries the full token bundle for
-    // `setSession` to persist. The same object serves provider setups here
-    // and, via AuthProvider below, provider hooks.
+    // `setSession` to persist. The same object serves the setups of the
+    // methods here and, via AuthProvider below, the hooks of the methods.
     const signInApi: AuthSignInApi = {
       mutation: (fn, args) => client.mutation(fn, args),
       action: (fn, args) => client.action(fn, args),
@@ -170,8 +170,8 @@ export function ConvexAuthProvider({
  * const { setSession, signOut } = useAuthActions();
  * ```
  *
- * - `setSession` adopts a {@link TokenBundle} produced by a provider's
- *   sign-in.
+ * - `setSession` adopts a {@link TokenBundle} produced by the sign-in of a
+ *   method.
  * - `signOut` revokes and clears the session.
  */
 export function useAuthActions() {

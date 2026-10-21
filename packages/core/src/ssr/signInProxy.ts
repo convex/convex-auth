@@ -2,9 +2,9 @@
  * The SSR auth proxy: a `(Request) => Response` handler that speaks the same
  * HTTP interface as `ConvexHttpClient` and forwards calls to the deployment.
  *
- * This is what lets a provider ship *one* client hook instead of a direct one
+ * This is what lets a method ship *one* client hook instead of a direct one
  * plus an SSR mirror. The browser holds a `ConvexHttpClient` aimed at this
- * handler rather than at the deployment, so a provider's sign-in call looks
+ * handler rather than at the deployment, so the sign-in call of a method looks
  * identical in both session models. The only thing this handler understands is
  * the cookie half of the exchange: a minted refresh token must land in an
  * httpOnly cookie and must never reach the response body.
@@ -17,7 +17,7 @@
  * Only allowlisted functions are reachable.
  *
  * Refresh and sign-out deliberately do *not* go through here. They have no
- * provider-specific input to unify, and the refresh token is carried in an
+ * method-specific input to unify, and the refresh token is carried in an
  * `httpOnly` cookie for SSR (not passed as an argument).
  *
  * @module
@@ -260,8 +260,9 @@ export function convexProxyHandler(config: ConvexProxyConfig): RequestHandler {
       // how a refresh token would reach browser JS.
       return textError(
         500,
-        `${envelope.path} did not return a sign-in result. Provider sign-in ` +
-          `functions must return the shared envelope (see vSignInComplete).`,
+        `${envelope.path} did not return a sign-in result. The sign-in ` +
+          `functions must return the shared envelope ` +
+          `({ status: "complete", tokens } or { status: "error", userError }).`,
       );
     }
 

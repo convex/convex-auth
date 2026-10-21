@@ -6,7 +6,7 @@
  * the user can never remove their last passkey.
  *
  * ```
- *  Client                                 Provider
+ *  Client                                 Method
  *    │                                       │
  *    │  startRemovePasskey(passkeyId)        │
  *    ├──────────────────────────────────────▶│  start the authentication
@@ -41,8 +41,8 @@ import { buildAuthenticationOptions } from "../options.ts";
  * The user-facing error when the user tries to remove their only passkey.
  *
  * With a username and a passkey, a user can never remove their last passkey
- * through this provider: a different passkey must authorize the removal.
- * The component stays permissive and does the deletion; the provider makes
+ * through this method: a different passkey must authorize the removal.
+ * The component stays permissive and does the deletion; the method makes
  * the policy. A future option could let the app allow the removal, for
  * example when the app knows that the user has a different way to sign in.
  */

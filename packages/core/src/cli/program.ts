@@ -88,7 +88,7 @@ app.use(auth, {
     AUTH_JWKS: app.env.AUTH_JWKS,
   },
 });
-// TODO Add auth providers
+// TODO Add the components of your sign-in methods
 
 export default app;
 `,
@@ -98,7 +98,7 @@ import { setupConvexAuth } from "@convex-dev/auth/server";
 const auth = setupConvexAuth({ component: components.auth });
 export const { signOut, refreshSession, isAuthenticated } = auth;
 
-// TODO Set up a login provider. For example:
+// TODO Set up a sign-in method. For example:
 // export const { signUpWithUsernamePassword, signInWithUsernamePassword } =
 //   setupUsernamePassword(auth, {
 //     component: components.authPassword,
@@ -379,7 +379,7 @@ function reportFiles(deps: InitDeps, outcomes: FileOutcome[]) {
 function reportNextSteps(deps: InitDeps) {
   deps.log(heading("Next steps"));
   deps.log(
-    step(1, "Add a login provider — see the TODO comments in the new files."),
+    step(1, "Add a sign-in method — see the TODO comments in the new files."),
   );
   deps.log(step(2, `Start your dev server: ${chalk.cyan("npx convex dev")}`));
   deps.log(`\n  ${chalk.dim("Docs:")} ${DOCS_URL}\n`);

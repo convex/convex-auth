@@ -1,5 +1,5 @@
 /**
- * The Apple OAuth provider, exported at
+ * The `apple` sign-in method, exported at
  * `@convex-dev/auth/methods/apple/server`.
  *
  * @module
@@ -25,7 +25,7 @@ import type { SanitizedAppleUser } from "../../components/apple/user.ts";
 export type { SanitizedAppleUser };
 
 /**
- * The account profile the Apple provider produces. Apple is OIDC, so
+ * The account profile that the `apple` method produces. Apple is OIDC, so
  * identity comes from validated id_token claims, with the name (when there
  * is one) coming from the callback instead. This is the exact shape the
  * mapping emits, so the app can validate against it precisely.
@@ -88,7 +88,7 @@ export function normalizeAppleProfile(
   };
 }
 
-/** App-defined config for setting up the Apple provider. */
+/** App-defined config for setting up the `apple` method. */
 export type AppleProviderOptions = {
   /** The Apple oauth component instance, i.e. `components.authApple`. */
   component: ComponentApi;
@@ -100,7 +100,7 @@ export type AppleProviderOptions = {
 };
 
 /**
- * Built-in Apple OAuth provider ("Sign in with Apple"). Wire it up with the
+ * Built-in sign-in method for Apple ("Sign in with Apple"). Wire it up with the
  * Apple oauth component:
  *
  * ```ts
@@ -137,7 +137,7 @@ export function setupApple<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
       callbacks: UserCallbacks<"apple", AppleProfile, UsersTable>,

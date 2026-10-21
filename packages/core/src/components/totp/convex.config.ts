@@ -8,8 +8,8 @@ import { defineComponent } from "convex/server";
  * nothing about the identity behind a user id: the app owns the users table
  * and maps its own identifiers onto the `userId` it passes in.
  *
- * The component is not an auth provider. It is a second factor that an auth
- * flow asks to verify a code after the first factor succeeds.
+ * The component is not a sign-in method. It is a second factor that a
+ * sign-in flow asks to verify a code after the first factor succeeds.
  */
 const component = defineComponent("authTotp");
 

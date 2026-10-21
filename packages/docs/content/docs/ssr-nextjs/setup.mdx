@@ -15,11 +15,11 @@ than in the browser:
   run authenticated Convex queries during rendering, and the browser uses it to
   authenticate the Convex client.
 
-The login provider guides still apply. Your Convex backend and the provider
+The sign-in method guides still apply. Your Convex backend and the method
 hooks you call from your UI are the same as in a single-page app. What changes
 is how the frontend connects to Convex Auth. This guide covers that wiring.
-[Login providers with Next.js](/ssr-nextjs/login-providers) covers the
-provider-specific differences.
+[Sign-in methods with Next.js](/ssr-nextjs/login-providers) covers the
+method-specific differences.
 
 The code below comes from the
 [Next.js example](https://github.com/convex/convex-auth/tree/reboot/examples/nextjs),
@@ -48,9 +48,9 @@ setup command as described in the [Getting Started](/getting-started) guide:
 
 <Step>
 
-### Set up the backend for your login providers
+### Set up the backend for your sign-in methods
 
-Follow the backend steps of the guide for each login provider you want to use:
+Follow the backend steps of the guide for each sign-in method you want to use:
 install the components, add the `users` table, set up user creation, and export
 the public functions from `convex/auth.ts`.
 
@@ -83,8 +83,8 @@ handlers that sign users in, refresh the session, and sign them out.
 The `signIn` list says which Convex functions the browser can call through
 the sign-in route. The route refuses any function that isn't listed. Add every
 function in your app that creates a session, like signing up or signing in. See
-[Login providers with Next.js](/ssr-nextjs/login-providers) for the functions
-each provider needs.
+[Sign-in methods with Next.js](/ssr-nextjs/login-providers) for the functions
+each method needs.
 
 <include
   lang="ts"
@@ -209,8 +209,8 @@ proxy can apply your redirects:
   ../../../../../examples/nextjs/app/Dashboard.tsx
 </include>
 
-For your sign-in and sign-up pages, use the login provider's own hooks. See
-[Login providers with Next.js](/ssr-nextjs/login-providers).
+For your sign-in and sign-up pages, use the hooks of each sign-in method. See
+[Sign-in methods with Next.js](/ssr-nextjs/login-providers).
 
 </Step>
 

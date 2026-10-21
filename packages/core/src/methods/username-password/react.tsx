@@ -1,12 +1,12 @@
 /**
- * React client for the password provider, exported at
+ * React client for the `usernamePassword` method, exported at
  * `@convex-dev/auth/methods/username-password/react`.
  *
- * A provider's job on the client is to run its own sign-in flow and hand the
+ * A method's job on the client is to run its own sign-in flow and hand the
  * resulting {@link TokenBundle} to the core client's `setSession` (see {@link
  * useAuthActions}).
  *
- * The password provider has two flows and provides a hook for each:
+ * The `usernamePassword` method has two flows and provides a hook for each:
  *  1. signing in to an existing account ({@link useSignInWithUsernamePassword})
  *  2. signing up a new one ({@link useSignUpWithUsernamePassword})
  *
@@ -74,7 +74,7 @@ export type SignUpWithUsernamePasswordResult =
   ClientView<SignUpResult> | UnexpectedFailure;
 
 /**
- * Client for the password provider's sign-in flow: wire the backend's
+ * Client for the sign-in flow of the `usernamePassword` method: wire the backend's
  * `signInWithUsernamePassword` mutation to the core client.
  *
  * The returned `signIn` runs the mutation with the given credentials and, on
@@ -136,7 +136,7 @@ export function useSignInWithUsernamePassword(api: {
 }
 
 /**
- * Client for the password provider's sign-up flow: wire the backend's
+ * Client for the sign-up flow of the `usernamePassword` method: wire the backend's
  * `signUpWithUsernamePassword` mutation to the core client.
  *
  * The returned `signUp` runs the mutation with the given credentials and, on

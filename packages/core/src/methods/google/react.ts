@@ -33,7 +33,7 @@ export type UseSignInWithGoogleReturn = {
 };
 
 /**
- * Sign in with Google. Pass the module exporting the provider's functions
+ * Sign in with Google. Pass the module exporting the functions of the method
  * (usually the generated `api.auth`), or an object mapping the canonical keys
  * to renamed exports.
  */

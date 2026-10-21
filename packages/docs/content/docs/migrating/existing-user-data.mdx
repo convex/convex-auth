@@ -3,9 +3,9 @@ title: Existing user data
 description: Using Convex Auth with users stored in a table not named `users`.
 ---
 
-With Convex Auth, you app remains in control of user data. Each provider calls
+With Convex Auth, you app remains in control of user data. Each sign-in method calls
 your `createUser` mutation to create a user, and Convex Auth stores the id that
-mutation returns. The login provider guides call this table `users`, but if
+mutation returns. The sign-in method guides call this table `users`, but if
 your app already keeps its users in a table with another name or you just want
 to use a different name, you can use that table instead.
 
@@ -20,7 +20,7 @@ const auth = setupConvexAuth({
 });
 ```
 
-Every provider set up with this `auth` then requires user callbacks that work
+Every sign-in method set up with this `auth` then requires user callbacks that work
 with ids from that table: `createUser` must return an `Id<"members">`, and
 `onSignIn` receives one.
 

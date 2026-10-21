@@ -10,7 +10,7 @@ import { v } from "convex/values";
  *  - the provider-account <-> app-user mapping (`accounts`)
  *  - session lifetimes (`sessions`: refresh tokens, rotation, expiry)
  *
- * It does NOT know about any specific provider. Providers hand it identity
+ * It does NOT know about any specific sign-in method. Methods hand it identity
  * claims (see ../lib/types) and the core turns that into a session + JWT.
  *
  * Apps install it from `@convex-dev/auth/convex.config.js`.

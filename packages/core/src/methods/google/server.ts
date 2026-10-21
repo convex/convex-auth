@@ -1,5 +1,5 @@
 /**
- * The Google OAuth provider, exported at
+ * The `google` sign-in method, exported at
  * `@convex-dev/auth/methods/google/server`.
  *
  * @module
@@ -21,7 +21,7 @@ import {
 } from "../../components/google/constants.ts";
 
 /**
- * The account profile the Google provider produces. Google is OIDC, so
+ * The account profile that the `google` method produces. Google is OIDC, so
  * identity comes from validated id_token claims. This is the exact shape the
  * mapping emits, so the app can validate against it precisely.
  */
@@ -61,7 +61,7 @@ export function normalizeGoogleProfile(
   };
 }
 
-/** App-defined config for setting up the Google provider. */
+/** App-defined config for setting up the `google` method. */
 export type GoogleProviderOptions = {
   /** The Google oauth component instance, i.e. `components.authGoogle`. */
   component: ComponentApi;
@@ -73,7 +73,7 @@ export type GoogleProviderOptions = {
 };
 
 /**
- * Built-in Google OAuth provider. Wire it up with the Google oauth component:
+ * Built-in sign-in method for Google. Wire it up with the Google oauth component:
  *
  * ```ts
  * export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(auth, {
@@ -105,7 +105,7 @@ export function setupGoogle<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
       callbacks: UserCallbacks<"google", GoogleProfile, UsersTable>,

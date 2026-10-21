@@ -75,8 +75,8 @@ export type UsernamePasskeyOptions = {
 };
 
 /**
- * {@link UsernamePasskeyOptions} with the defaults applied. The provider
- * functions, including the passkey-management ones, close over this
+ * {@link UsernamePasskeyOptions} with the defaults applied. The functions
+ * of the method, including the passkey-management ones, close over this
  * value.
  */
 export type UsernamePasskeyConfig = Required<UsernamePasskeyOptions>;
@@ -195,7 +195,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks({
       createUser,
@@ -238,7 +238,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
             );
             if (userId !== null) {
               // When the user has no passkeys (possible only if a flow outside
-              // this provider deletes the last passkey of a user), this branch
+              // this method deletes the last passkey of a user), this branch
               // returns an empty `allowCredentials` and the user can neither
               // sign in nor register again.
               // TODO: Should we throw an error instead?
@@ -346,7 +346,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
               };
             }
 
-            // The app does not name a new passkey yet, thus the provider
+            // The app does not name a new passkey yet, thus the method
             // names it after the authenticator model.
             // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
             const passkeyName = defaultPasskeyName(args.response);
@@ -380,10 +380,10 @@ export function setupUsernamePasskey<UsersTable extends string>(
             // mint the session.
             //
             // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for this provider at all: the value is an
+            // provider account ID for this method at all: the value is an
             // internal key ("" at sign-up, the user id afterwards) with no
             // meaning to the app. We will probably improve this when
-            // providers support typesafe profiles.
+            // methods support typesafe profiles.
             const tokens = await ctx.convexAuth.completeSignUp({
               providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
@@ -478,10 +478,10 @@ export function setupUsernamePasskey<UsersTable extends string>(
 
         // The passkey-management functions of a signed-in user.
         //
-        // TODO(nicolas) These functions do not compose with the other auth
-        // providers yet. They assume that a passkey is the only way into the
+        // TODO(nicolas) These functions do not compose with the other
+        // sign-in methods yet. They assume that a passkey is the only way into the
         // account: `startAddPasskey` re-authenticates with an existing
-        // passkey, thus a user who signed in with a different provider and
+        // passkey, thus a user who signed in with a different method and
         // has no passkey cannot add a first one; and `finishRemovePasskey`
         // refuses the last passkey, even when the user keeps another way to
         // sign in.

@@ -99,8 +99,8 @@ describe("token interception", () => {
     expect(cookies).toContain("HttpOnly");
   });
 
-  test("keeps the fields a provider adds beside the bundle", async () => {
-    // `finishSignIn` of the passkey provider returns the username alongside the
+  test("keeps the fields a method adds beside the bundle", async () => {
+    // `finishSignIn` of the passkey method returns the username alongside the
     // tokens. The refresh token is the only thing the proxy removes.
     upstream({
       status: "success",
@@ -131,7 +131,7 @@ describe("token interception", () => {
   });
 
   test("refuses a challenge-minting function, which is why those bypass the proxy", async () => {
-    // What `startSignIn` of the passkey provider returns. A provider must run
+    // What `startSignIn` of the passkey method returns. A method must run
     // this one on the Convex client, not through the sign-in API: the proxy
     // classifies every reply as the sign-in envelope, and this is not one.
     upstream({
@@ -145,7 +145,7 @@ describe("token interception", () => {
   });
 
   test("refuses a status this handler does not know", async () => {
-    // A deployment running a provider newer than the handler serving it. The
+    // A deployment running a method newer than the handler serving it. The
     // arm may well carry no tokens, but the proxy does not guess: forwarding an
     // arm it cannot classify is how a refresh token reaches browser JS.
     upstream({

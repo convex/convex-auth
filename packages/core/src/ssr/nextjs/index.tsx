@@ -3,7 +3,7 @@
  * `@convex-dev/auth/ssr/nextjs`.
  *
  * This is the thin, genuinely Next-specific layer. The auth *handlers*
- * (per-provider sign-in, plus refresh/sign-out) are framework-agnostic
+ * (per-method sign-in, plus refresh/sign-out) are framework-agnostic
  * `(Request) => Response` functions mounted directly as route handlers (see
  * `@convex-dev/auth/ssr`). What remains
  * Next-specific is the proxy (up-front refresh + redirects), reading the

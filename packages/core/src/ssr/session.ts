@@ -111,7 +111,7 @@ export class ServerAuthSession {
 
   /**
    * Persist a token bundle as cookies. Used after a sign-in whose bundle was
-   * minted elsewhere (e.g. a client provider flow) to move the refresh token
+   * minted elsewhere (e.g. a client-side sign-in flow) to move the refresh token
    * into the httpOnly cookie. Both cookies live as long as the refresh token;
    * the access token is refreshed on expiry via {@link getToken}.
    */

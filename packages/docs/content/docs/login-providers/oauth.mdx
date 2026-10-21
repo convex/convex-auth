@@ -6,8 +6,8 @@ description: Allow users to sign-in with an account on a supported provider.
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-The oauth components and supporting provider functions (`setupApple`,
-`setupGoogle`, `setupGithub`) allow your users to login via their existing
+The OAuth components and their sign-in methods (set up with `setupApple`,
+`setupGoogle`, and `setupGithub`) allow your users to login via their existing
 Apple, Google, or GitHub accounts.
 
 The steps below will guide you through configuring Apple, Google, and/or
@@ -170,7 +170,7 @@ the component.
 **Set up user creation**
 
 Write a `createUser` mutation that creates a row in your `users` table and
-returns its id. The provider calls it the first time it sees an account.
+returns its id. The method calls it the first time it sees an account.
 
 Apple is different from the other providers here. It sends the user's name
 only on the very first authorization and never again, so store it when it
@@ -189,7 +189,7 @@ it as untrusted text entered by a user.
 
 **Set up the public backend functions**
 
-Set up the Apple provider with `setupApple` and export the mutations for
+Set up the `apple` method with `setupApple` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callbacks, in `convex/auth.ts`:
 
@@ -286,7 +286,7 @@ the component.
 **Set up user creation**
 
 Write a `createUser` mutation that creates a row in your `users` table and
-returns its id. The provider calls it the first time it sees an account.
+returns its id. The method calls it the first time it sees an account.
 
 <include lang="ts" meta='title="convex/users.ts"'>
   ../../../../../examples/react-google/convex/users.ts
@@ -298,7 +298,7 @@ returns its id. The provider calls it the first time it sees an account.
 
 **Set up the public backend functions**
 
-Set up the Google provider with `setupGoogle` and export the mutations for
+Set up the `google` method with `setupGoogle` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callback that creates your user rows, in `convex/auth.ts`:
 
@@ -401,7 +401,7 @@ the component.
 **Set up user creation**
 
 Write a `createUser` mutation that creates a row in your `users` table and
-returns its id. The provider calls it the first time it sees an account.
+returns its id. The method calls it the first time it sees an account.
 
 <include lang="ts" meta='title="convex/users.ts"'>
   ../../../../../examples/react-github/convex/users.ts
@@ -413,7 +413,7 @@ returns its id. The provider calls it the first time it sees an account.
 
 **Set up the public backend functions**
 
-Set up the GitHub provider with `setupGithub` and export the mutations for
+Set up the `github` method with `setupGithub` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callback that creates your user rows, in `convex/auth.ts`:
 

@@ -39,7 +39,7 @@ describe("anonymous sign in", () => {
   test("returns a token bundle in the shared sign-in envelope", async () => {
     const t = await setup();
     const result = await t.mutation(api.auth.signInAnonymously, {});
-    // Every provider returns the same `{ status, tokens }` envelope. Fixing
+    // Every sign-in method returns the same `{ status, tokens }` envelope. Fixing
     // where the bundle sits is what lets the SSR auth proxy find the refresh
     // token and move it into an httpOnly cookie.
     expect(result.status).toBe("complete");

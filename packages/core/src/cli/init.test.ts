@@ -171,7 +171,7 @@ describe("convex-auth init CLI", () => {
         ✔ convex/auth.ts           created
 
       Next steps
-        1. Add a login provider — see the TODO comments in the new files.
+        1. Add a sign-in method — see the TODO comments in the new files.
         2. Start your dev server: npx convex dev
 
         Docs: https://auth-v2.previews.convex.dev

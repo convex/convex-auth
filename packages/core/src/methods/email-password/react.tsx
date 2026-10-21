@@ -1,5 +1,5 @@
 /**
- * React client for the `EmailPassword` provider, exported at
+ * React client for the `emailPassword` method, exported at
  * `@convex-dev/auth/methods/email-password/react`.
  *
  * @module
@@ -372,7 +372,7 @@ function useLinkFlow<UserError>(
 //------------------------------------------------------------------------------
 
 /**
- * Client for the sign-in flow: run the backend's `signIn` mutation and, on
+ * Client for the sign-in flow: run the `signInWithEmailPassword` mutation and, on
  * success, establish an authenticated session.
  *
  * ```tsx
@@ -461,7 +461,7 @@ export function useSignInWithEmailPassword(api: {
 //------------------------------------------------------------------------------
 
 /**
- * Client for the sign-up flow: run the backend's `signUp` mutation and keep
+ * Client for the sign-up flow: run the `signUpWithEmailPassword` mutation and keep
  * the returned secret for {@link useCompleteSignUp}.
  *
  * A successful sign-up does *not* sign the user in: it sends the validation

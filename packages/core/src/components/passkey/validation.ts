@@ -104,7 +104,7 @@ export type CredentialDescriptor = Infer<typeof credentialDescriptor>;
 // The WebAuthn JSON wire format
 //------------------------------------------------------------------------------
 //
-// The wire between the client and the provider carries the spec's JSON
+// The wire between the client and the method carries the spec's JSON
 // shapes (https://w3c.github.io/webauthn/#dictdef-registrationresponsejson
 // and friends): base64url strings for the binary fields, options assembled
 // on the server by `options.ts`, and responses fed to
@@ -148,7 +148,7 @@ const credentialDescriptorJSON = v.object({
  * (for example through `startRegistration` of `@simplewebauthn/browser`).
  *
  * The shape is exactly what `generateRegistrationOptions` produces with the
- * settings of this provider: `attestation: "none"`, a discoverable
+ * settings of the `usernamePasskey` method: `attestation: "none"`, a discoverable
  * credential with required user verification, and no extensions.
  */
 export const vPublicKeyCredentialCreationOptionsJSON = v.object({

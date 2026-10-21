@@ -22,7 +22,7 @@
  * The start step makes the row and sends the link:
  *
  * ```
- *  Client                    Provider                        Component
+ *  Client                    Method                          Component
  *    │                         │                               │
  *    │  submit the address     │                               │
  *    ├────────────────────────▶│                               │
@@ -41,7 +41,7 @@
  * once:
  *
  * ```
- *  Landing page                Provider                          Component
+ *  Landing page                Method                            Component
  *    │                           │                                 │
  *    ├─▶ read the code from the URL and the secret from storage    │
  *    │                           │                                 │

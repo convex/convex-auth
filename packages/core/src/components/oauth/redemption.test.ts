@@ -24,7 +24,7 @@ import type {
   AuthActionBuilder,
   AuthCore,
   AuthMutationBuilder,
-  ProviderBuilders,
+  MethodBuilders,
 } from "../../server/setup.ts";
 
 /**
@@ -83,7 +83,7 @@ const fakeCore = {
     name,
   }: {
     name: Provider;
-  }): ProviderBuilders<Profile> => {
+  }): MethodBuilders<Profile> => {
     const record =
       (kind: HelperCall["kind"]) =>
       async ({

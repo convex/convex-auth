@@ -14,7 +14,7 @@ anonymous: the refresh token is minted straight into an httpOnly cookie and
   - `app/auth/signout/route.ts` → `signOutHandler`
 - **The sign-in route** speaks the same HTTP interface as `ConvexHttpClient` and
   forwards calls to the deployment, intercepting only the minted refresh token
-  on the way back to put it in the cookie. Because of that, a provider needs no
+  on the way back to put it in the cookie. Because of that, a method needs no
   SSR-specific client hook: `app/signin/page.tsx` imports the _same_
   `useAnonymousAuth` a SPA would, from
   `@convex-dev/auth/methods/anonymous/react`.
@@ -26,8 +26,8 @@ anonymous: the refresh token is minted straight into an httpOnly cookie and
   `proxy.ts`), the Server-Component token accessor
   `convexAuthNextjsAccessToken`, and `ConvexAuthNextjsServerProvider`
   (hydrates the client from the cookie).
-- **`app/signin/page.tsx` / `app/signup/page.tsx`** use the password provider's
-  own `useSignInWithPassword` / `useSignUpWithPassword` from
+- **`app/signin/page.tsx` / `app/signup/page.tsx`** use the username-password
+  method's own `useSignInWithPassword` / `useSignUpWithPassword` from
   `@convex-dev/auth/methods/username-password/react`, the same hooks a SPA uses. The
   proxy forwards the call and adopts the access-only session it returns. On
   failure the action's `userError` (e.g. `INVALID_CREDENTIALS`,

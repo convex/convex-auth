@@ -33,9 +33,9 @@ export type TokenBundle = Infer<typeof vTokenBundle>;
 /**
  * A complete sign-in result.
  *
- * Providers compose this into their result union rather than declaring the
+ * Sign-in methods compose this into their result union rather than declaring the
  * complete arm themselves. Fixing where the minted bundle sits is what lets the
- * SSR auth proxy find the refresh token without knowing which provider produced
+ * SSR auth proxy find the refresh token without knowing which method produced
  * the response, and lets it reject a shape it doesn't recognize instead of
  * forwarding tokens to the browser.
  */
@@ -47,11 +47,11 @@ export const vSignInComplete = v.object({
 export type SignInComplete = Infer<typeof vSignInComplete>;
 
 /**
- * A sign-in that resulted in an error, carrying that provider's own
+ * A sign-in that resulted in an error, carrying the method's own
  * `userError` codes.
  *
- * The `status` is shared so every arm of every provider is discriminated the
- * same way; the payload is not, because what can go wrong is provider-specific.
+ * The `status` is shared so every arm of every method is discriminated the
+ * same way; the payload is not, because what can go wrong is method-specific.
  *
  * ```ts
  * const signInResult = v.union(
@@ -77,7 +77,7 @@ export type SignInError<UserError> = {
  *
  * Represents sign-ins that ran to completion and those that hit an error.
  *
- * `userError` is `unknown` here because each provider declares its own codes.
+ * `userError` is `unknown` here because each method declares its own codes.
  */
 export type SignInEnvelope = SignInComplete | SignInError<unknown>;
 
@@ -120,7 +120,7 @@ export type AuthSessionResponse = {
 };
 
 /**
- * A provider result as clients see it, with the token bundle narrowed to what
+ * A sign-in result as clients see it, with the token bundle narrowed to what
  * every session model delivers.
  *
  * Under SSR the auth proxy strips the refresh token before the response reaches
@@ -196,28 +196,31 @@ export type ConvexAuthApi = {
 };
 
 /**
- * Shared identity-claims contract between the *provider* components that
+ * Shared identity-claims contract between the *sign-in methods* that
  * authenticate users and the *core* component.
  *
- * After a provider authenticates a user it produces this plain payload; the app
- * forwards it to the core's `signIn`, which turns it into a session. Providers
+ * After a method authenticates a user it produces this plain payload; the app
+ * forwards it to the core's `signIn`, which turns it into a session. Methods
  * never call the core directly, they only know how to produce these claims.
  */
 export const vAuthClaims = v.object({
-  /** Provider name, e.g. "password". */
+  /**
+   * The name that the sign-in method registers with the core, e.g.
+   * "password" for the `usernamePassword` method.
+   */
   providerName: v.string(),
   /**
    * Stable, provider-scoped account identifier (e.g. the Google account ID).
    */
   providerAccountId: v.string(),
-  /** Arbitrary profile data the provider learned about the user. */
+  /** Arbitrary profile data the method learned about the user. */
   profile: v.any(),
 });
 
 export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
- * The `providerAccountId` a provider sends to `completeSignUp` when it has no
+ * The `providerAccountId` a method sends to `completeSignUp` when it has no
  * identifier of its own. The core then keys the new account by the app user id
  * `createUser` returns, and later sign-ins send that user id as the account
  * identifier.
@@ -233,8 +236,8 @@ export const USE_USER_ID_AS_ACCOUNT_ID = "";
  * one is only responsible for what is true at creation time.
  *
  * This is the core entrypoint for an application to integrate its user model
- * with Convex Auth. Apps install one per provider, although the function that
- * is passed in may be shared across multiple providers if it is typed to
+ * with Convex Auth. Apps install one per sign-in method, although the function that
+ * is passed in may be shared across multiple methods if it is typed to
  * accept a union of them.
  *
  * The application keeps ownership of its users table. The core treats the
@@ -293,7 +296,7 @@ export type OnSignInFn<
 >;
 
 /**
- * The app's user callbacks for one provider, as its `attachUserCallbacks`
+ * The app's user callbacks for one sign-in method, as its `attachUserCallbacks`
  * takes them: {@link CreateUserFn} is required (something has to create the
  * user record), {@link OnSignInFn} is optional.
  */
@@ -308,20 +311,20 @@ export type UserCallbacks<
 
 /**
  * The helpers that `authMutation`/`authAction` inject onto `ctx` for a
- * provider's handlers.
+ * method's handlers.
  *
- * This API is used for building auth providers.
+ * This API is used for building sign-in methods.
  */
 export type BoundAuthHelpers<Profile> = {
   /**
    * Exchange a *newly established* account identity for a session.
    *
-   * Call this when the provider has just created the account. The core records
+   * Call this when the method has just created the account. The core records
    * the account, calls the app's `createUser` to mint the app user, then its
    * `onSignIn` like any other sign-in, and returns the tokens a client needs to
    * make authenticated calls.
    *
-   * Throws if the identity already has an account. A provider that cannot tell
+   * Throws if the identity already has an account. A method that cannot tell
    * a first sign-in from a return visit should call
    * {@link BoundAuthHelpers.resolveUserId} first and pick the right helper.
    */
@@ -332,13 +335,13 @@ export type BoundAuthHelpers<Profile> = {
   /**
    * Exchange a verified *existing* account identity for a session.
    *
-   * Call this once the provider has authenticated a known account its own way
+   * Call this once the method has authenticated a known account its own way
    * (checking a password, say). The core resolves the account to its app user,
    * runs the app's `onSignIn` callback if one is attached, and returns the
    * tokens a client needs to make authenticated calls.
    *
    * Throws if the identity has no account: reaching this helper is the
-   * provider's assertion that the account exists, so a miss is a bug rather
+   * method's assertion that the account exists, so a miss is a bug rather
    * than an authentication failure to report to the user.
    */
   completeSignIn(args: {
@@ -353,7 +356,7 @@ export type BoundAuthHelpers<Profile> = {
    * validation) before the first sign-in. Account creation follows the same
    * rules as `completeSignUp`: the app's `createUser` mints the user, and an
    * identity that already has an account is refused. `onSignIn` does not run.
-   * The provider signs the user in later with `completeSignIn`.
+   * The method signs the user in later with `completeSignIn`.
    */
   signUpWithoutSession(args: {
     providerAccountId: string;
@@ -368,8 +371,8 @@ export type BoundAuthHelpers<Profile> = {
 };
 
 /**
- * The ctx additions that `authMutation`/`authAction` provide to provider
- * handlers.
+ * The ctx additions that `authMutation`/`authAction` provide to the handlers
+ * of a method.
  *
  * The {@link BoundAuthHelpers} are available under `ctx.convexAuth`.
  */

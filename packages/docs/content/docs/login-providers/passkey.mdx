@@ -12,7 +12,7 @@ users can store the passkey on their device (protected by a fingerprint,
 a face scan, or PIN), or use an external hardware security key.
 Your app never handles a secret that can be phished or reused.
 
-The `setupUsernamePasskey` provider implements an _identifier-first_ flow:
+The `usernamePasskey` method implements an _identifier-first_ flow:
 your login page has a single username field. A free username creates a new
 account with a new passkey; an existing username asks for a passkey of that
 account.
@@ -77,7 +77,7 @@ Convex Auth will create a row for each account. You can also add application-spe
 ### Set up user creation
 
 Write a `createUser` mutation that creates a row in your `users` table and
-returns its id. The provider calls it the first time it sees an account.
+returns its id. The method calls it the first time it sees an account.
 
 You can also attach an optional `onSignIn` mutation, called with the resolved
 `userId` on every sign-in, the first one included. Anything you want to happen
@@ -94,7 +94,7 @@ what is true at creation time. Leave it out if there is nothing to do.
 
 ### Set up the public backend functions
 
-Set up the passkey provider with `setupUsernamePasskey` and export the
+Set up the `usernamePasskey` method with `setupUsernamePasskey` and export the
 mutations it hands back once you attach the callback that creates your user
 rows, in `convex/auth.ts`:
 

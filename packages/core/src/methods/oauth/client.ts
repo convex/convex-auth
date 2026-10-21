@@ -27,7 +27,7 @@ import type { ClientView } from "../../lib/types.ts";
 import type { CompleteSignInResult } from "../../lib/oauth/redemption.ts";
 
 /**
- * The mutations an OAuth provider adds to the app's API. Passed as
+ * The mutations that the method of an OAuth provider adds to the app's API. Passed as
  * references, not names, because an app can re-export them under any name.
  */
 export type OauthProviderApi = {

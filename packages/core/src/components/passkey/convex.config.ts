@@ -2,7 +2,7 @@ import { defineComponent } from "convex/server";
 import batchWorker from "@convex-dev/batch-worker/convex.config.js";
 
 /**
- * The passkey (WebAuthn) provider component.
+ * The passkey (WebAuthn) component.
  *
  * The component owns the `passkeys` credential table and the short-lived
  * `challenges` table. It examines registrations and authentications on the
