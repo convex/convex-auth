@@ -50,6 +50,17 @@ function bundle(n: number): TokenBundle {
   };
 }
 
+/** An unsigned JWT whose `exp` is `secondsFromNow` from now. */
+function jwt(secondsFromNow: number): string {
+  const encode = (value: object) =>
+    btoa(JSON.stringify(value))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+  const exp = Math.floor(Date.now() / 1000) + secondsFromNow;
+  return `${encode({ alg: "none" })}.${encode({ sub: "user-1", exp })}.`;
+}
+
 /** A `rotated` refresh outcome carrying `bundle(n)`. */
 function rotated(n: number): RefreshResult {
   return { kind: "rotated", tokens: bundle(n) };
@@ -145,6 +156,75 @@ describe("AuthClient", () => {
     const token = await client.fetchAccessToken({ forceRefreshToken: false });
     expect(token).toBe("access-1");
     expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  test("an unforced fetch refreshes an expired stored token first", async () => {
+    // A reload or cold start after the access token expired: handing the
+    // stale token to Convex can leave the client reconnecting forever.
+    const fresh = jwt(60);
+    const refreshSession = vi.fn(async (rt: string) => {
+      expect(rt).toBe("refresh-1");
+      return {
+        kind: "rotated",
+        tokens: { ...bundle(2), accessToken: fresh },
+      } satisfies RefreshResult;
+    });
+    const storage = new InMemoryStorage();
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, jwt(-30));
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    const { client } = makeClient({ refreshSession }, storage);
+    await client.init();
+
+    const token = await client.fetchAccessToken({ forceRefreshToken: false });
+    expect(token).toBe(fresh);
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-2",
+    );
+  });
+
+  test("an unforced fetch refreshes a token about to expire", async () => {
+    const refreshSession = vi.fn(async () => rotated(2));
+    const { client } = makeClient({ refreshSession });
+    await client.init();
+    await client.setSession({ ...bundle(1), accessToken: jwt(5) });
+
+    const token = await client.fetchAccessToken({ forceRefreshToken: false });
+    expect(token).toBe("access-2");
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  test("an unforced fetch returns an unexpired stored token as-is", async () => {
+    const valid = jwt(60);
+    const refreshSession = vi.fn(async () => rotated(2));
+    const storage = new InMemoryStorage();
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, valid);
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    const { client } = makeClient({ refreshSession }, storage);
+    await client.init();
+
+    const token = await client.fetchAccessToken({ forceRefreshToken: false });
+    expect(token).toBe(valid);
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  test("an expired stored token whose session is gone signs out", async () => {
+    const storage = new InMemoryStorage();
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, jwt(-30));
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    const { client } = makeClient(
+      { refreshSession: async () => ({ kind: "noSession" }) },
+      storage,
+    );
+    await client.init();
+
+    const token = await client.fetchAccessToken({ forceRefreshToken: false });
+    expect(token).toBeNull();
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: false,
+      token: null,
+    });
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBeNull();
   });
 
   test("forced fetch rotates the session via refreshSession", async () => {
