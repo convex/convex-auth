@@ -1,3 +1,9 @@
+/**
+ * The `convex-test` helper of the TOTP component.
+ *
+ * @internal Not public until the API of the TOTP component is stable.
+ * @module
+ */
 /// <reference types="vite/client" />
 // This helper ships as TypeScript, not as part of the compiled build: the
 // `import.meta.glob` below is a Vite macro that only works if the consumer's
