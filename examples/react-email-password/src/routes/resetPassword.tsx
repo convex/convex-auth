@@ -57,9 +57,10 @@ function ResetPasswordWithCode({ emailCode }: { emailCode: string }) {
           );
         default:
           state.userError satisfies never;
+          console.error("Password reset failed:", state.userError);
           return (
             <ResetPasswordError>
-              Unknown error: {state.userError}
+              Something went wrong. Reload the page to try again.
             </ResetPasswordError>
           );
       }
@@ -97,7 +98,8 @@ function ResetPasswordWithCode({ emailCode }: { emailCode: string }) {
               return "Something went wrong. Please try again.";
             default:
               result.userError satisfies never;
-              return `Unknown error: ` + result.userError;
+              console.error("Password reset failed:", result.userError);
+              return "Something went wrong. Please try again.";
           }
         });
       }}

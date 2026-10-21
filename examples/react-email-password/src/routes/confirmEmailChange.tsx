@@ -74,10 +74,9 @@ function ConfirmEmailChangeWithCode({ emailCode }: { emailCode: string }) {
       );
     default:
       state.userError satisfies never;
+      console.error("Email change failed:", state.userError);
       return (
-        <ConfirmEmailChangeError
-          message={"Unknown error: " + state.userError}
-        />
+        <ConfirmEmailChangeError message="Something went wrong. Reload the page to try again." />
       );
   }
 }

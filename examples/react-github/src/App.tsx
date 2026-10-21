@@ -73,7 +73,11 @@ function SignedOut(): ReactNode {
               return;
             default:
               result.userError.error satisfies never;
-              setStartError(`Unknown error: ` + result.userError.error);
+              console.error(
+                "GitHub sign-in failed to start:",
+                result.userError,
+              );
+              setStartError("Couldn't start GitHub sign-in. Please try again.");
           }
         }}
       >

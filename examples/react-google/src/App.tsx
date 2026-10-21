@@ -73,7 +73,11 @@ function SignedOut(): ReactNode {
               return;
             default:
               result.userError.error satisfies never;
-              setStartError(`Unknown error: ` + result.userError.error);
+              console.error(
+                "Google sign-in failed to start:",
+                result.userError,
+              );
+              setStartError("Couldn't start Google sign-in. Please try again.");
           }
         }}
       >

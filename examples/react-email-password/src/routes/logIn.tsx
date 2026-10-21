@@ -37,7 +37,8 @@ export function LogIn() {
                 return "Something went wrong. Please try again.";
               default:
                 result.userError satisfies never;
-                return `Unknown error: ` + result.userError;
+                console.error("Sign-in failed:", result.userError);
+                return "Something went wrong. Please try again.";
             }
           });
         }}

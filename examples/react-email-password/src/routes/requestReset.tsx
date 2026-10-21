@@ -49,7 +49,11 @@ export function RequestReset() {
                 return "Something went wrong. Please try again.";
               default:
                 result.userError satisfies never;
-                return `Unknown error: ` + result.userError;
+                console.error(
+                  "Password reset request failed:",
+                  result.userError,
+                );
+                return "Something went wrong. Please try again.";
             }
           });
         }}

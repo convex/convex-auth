@@ -48,7 +48,8 @@ export function ChangePasswordForm({
                 return `Too many attempts. Try again in ${Math.ceil(result.userError.retryAfterMs / 1000)} seconds.`;
               default:
                 result.userError satisfies never;
-                return `Unknown error: ` + result.userError;
+                console.error("Password change failed:", result.userError);
+                return "Something went wrong. Please try again.";
             }
           });
         } catch (error) {
