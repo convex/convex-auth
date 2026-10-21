@@ -76,7 +76,7 @@ export type {
  * A completed sign-in carries a `flow` discriminant: `"signUp"` when the
  * ceremony created a new account, `"signIn"` when it authenticated an existing
  * one. `ALREADY_PENDING` comes back when a `signIn` call runs while the
- * previous one still does.
+ * previous one still does, or while an autofill sign-in is verified.
  */
 export type SignInWithUsernamePasskeyResult =
   SignInFlowResult | SignInError<PasskeyClientError | AlreadyPendingError>;
@@ -173,11 +173,6 @@ export function useSignInWithUsernamePasskey(
         return { success: false, userError: result.userError };
       }
 
-      // There’s a small race with the modal flow here. When the user resolves the
-      // autofill assertion just before the modal flow pauses the request,
-      // and the modal ceremony also completes, `setSession` runs twice and
-      // the last write wins. Both sessions are valid, so this is harmless.
-
       await setSession(result.tokens);
       return { success: true };
     },
@@ -225,8 +220,13 @@ export function useSignInWithUsernamePasskey(
        * with additional details about why sign-in failed.
        */
       signIn,
-      /** `true` while a `signIn` attempt is running. */
-      pending,
+      /**
+       * `true` while a sign-in runs: a `signIn` call, or an autofill
+       * sign-in that the server verifies (`autofill.status` is
+       * `"signingIn"`). A `signIn` call in this time returns
+       * `ALREADY_PENDING`.
+       */
+      pending: pending || autofill.status === "signingIn",
       /**
        * The state of the autofill flow:
        *
