@@ -104,6 +104,9 @@ export type AppleProviderOptions = {
  * Apple oauth component:
  *
  * ```ts
+ * const auth = setupConvexAuth({ component: components.auth });
+ * export const { signOut, refreshSession, isAuthenticated } = auth;
+ *
  * export const { startSignInWithApple, completeSignInWithApple } = setupApple(auth, {
  *   component: components.authApple,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],
