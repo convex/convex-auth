@@ -47,6 +47,7 @@ export interface ConvexAuthServerConfig {
  * Configure the auth handlers once and get back the routes to mount.
  *
  * ```ts
+ * // auth.ts
  * export const auth = setupConvexAuthServer({
  *   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
  *   refreshSession: api.auth.refreshSession,
@@ -54,8 +55,15 @@ export interface ConvexAuthServerConfig {
  *   signIn: [api.auth.signInAnonymously, api.auth.signInWithUsernamePassword],
  *   cookieOptions: { secure: process.env.NODE_ENV === "production" },
  * });
+ * ```
  *
- * // app/auth/signin/route.ts serves every method listed in `signIn`
+ * Then mount the routes that it returns. For example, the sign-in route
+ * serves every method listed in `signIn`:
+ *
+ * ```ts
+ * // app/auth/signin/route.ts
+ * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+ *
  * export const POST = auth.convexProxyHandler;
  * ```
  */
@@ -82,6 +90,8 @@ export function setupConvexAuthServer(config: ConvexAuthServerConfig) {
      *
      * ```ts
      * // app/auth/signin/route.ts
+     * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+     *
      * export const POST = auth.convexProxyHandler;
      * ```
      */
