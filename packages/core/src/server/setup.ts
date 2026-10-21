@@ -1,12 +1,9 @@
 import {
-  actionGeneric,
   createFunctionHandle,
-  GenericActionCtx,
   GenericDataModel,
   GenericMutationCtx,
   mutationGeneric,
   queryGeneric,
-  RegisteredAction,
   RegisteredMutation,
   RegisteredQuery,
   ReturnValueForOptionalValidator,
@@ -51,26 +48,6 @@ export type AuthMutationBuilder<Profile> = <
 }) => RegisteredMutation<"public", ObjectType<ArgsValidator>, ReturnValue>;
 
 /**
- * The action flavor of {@link AuthMutationBuilder}.
- *
- * @internal Not public until the API for custom methods is stable.
- */
-export type AuthActionBuilder<Profile> = <
-  ArgsValidator extends PropertyValidators,
-  ReturnsValidator extends
-    PropertyValidators | Validator<unknown, "required", string> | void,
-  ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> =
-    ReturnValueForOptionalValidator<ReturnsValidator>,
->(fn: {
-  args: ArgsValidator;
-  returns?: ReturnsValidator;
-  handler: (
-    ctx: GenericActionCtx<GenericDataModel> & ConvexAuthCtx<Profile>,
-    args: ObjectType<ArgsValidator>,
-  ) => ReturnValue;
-}) => RegisteredAction<"public", ObjectType<ArgsValidator>, ReturnValue>;
-
-/**
  * The function builders a provider gets from {@link AuthCore.bindProvider}.
  *
  * Each builds a public Convex function whose handler receives the
@@ -80,7 +57,6 @@ export type AuthActionBuilder<Profile> = <
  */
 export type ProviderBuilders<Profile> = {
   authMutation: AuthMutationBuilder<Profile>;
-  authAction: AuthActionBuilder<Profile>;
 };
 
 /**
@@ -303,13 +279,8 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     const onSignInHandle = async (): Promise<string | undefined> =>
       onSignIn === undefined ? undefined : await createFunctionHandle(onSignIn);
 
-    // The helpers close over the live ctx; both mutation and action ctxs
-    // expose the compatible `runMutation`/`runQuery` these need.
-    const makeHelpers = (
-      ctx:
-        | GenericActionCtx<GenericDataModel>
-        | GenericMutationCtx<GenericDataModel>,
-    ) => ({
+    // The helpers close over the live ctx.
+    const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
         providerAccountId: string;
         profile: Profile;
@@ -380,18 +351,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           ),
       });
 
-    const authAction: AuthActionBuilder<Profile> = (fn) =>
-      actionGeneric({
-        args: fn.args as PropertyValidators,
-        returns: fn.returns,
-        handler: (ctx, args) =>
-          fn.handler(
-            { ...ctx, convexAuth: makeHelpers(ctx) },
-            args as Parameters<typeof fn.handler>[1],
-          ),
-      });
-
-    return { authMutation, authAction };
+    return { authMutation };
   };
 
   return { usersTable, signOut, refreshSession, isAuthenticated, bindProvider };

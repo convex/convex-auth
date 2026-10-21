@@ -21,7 +21,6 @@ import type {
   TokenBundle,
 } from "../../lib/types.ts";
 import type {
-  AuthActionBuilder,
   AuthCore,
   AuthMutationBuilder,
   ProviderBuilders,
@@ -120,10 +119,7 @@ const fakeCore = {
             args as Parameters<typeof fn.handler>[1],
           ),
       });
-    const authAction: AuthActionBuilder<Profile> = () => {
-      throw new Error("redemption does not build actions");
-    };
-    return { authMutation, authAction };
+    return { authMutation };
   },
 } as unknown as AuthCore;
 
