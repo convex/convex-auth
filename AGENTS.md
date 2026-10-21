@@ -6,6 +6,10 @@ This is a pnpm monorepo:
 
 - `packages/core` — the auth package, published as `@convex-dev/auth`. Owns sessions, accounts, and JWT minting (the provider-agnostic core), plus the bundled providers: the anonymous provider and the password provider (which stores and verifies passwords keyed by an opaque user id). It also owns two non-provider components: the username component, which maps a username onto an opaque user id, and the TOTP component, which stores and verifies TOTP secrets and backup codes keyed by an opaque user id.
 - `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password provider. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
+- `packages/doc-examples` — a private Convex app that installs every
+  component and sets up every sign-in method. The code examples in the doc
+  comments of `packages/core/src` compile against it (`pnpm
+check:doc-examples`). It is not an example to copy.
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
   - `react-minimal` wires up the core with the anonymous provider.
@@ -91,8 +95,9 @@ Use `pnpm install` at the root. Common tasks:
 - `pnpm test` — run tests across packages (Vitest).
 - `pnpm typecheck` — typecheck across packages.
 - `pnpm check:doc-examples` — typecheck the `ts` and `tsx` code blocks in the
-  doc comments of `packages/core/src` against `dist/` (run `pnpm build`
-  first). See `scripts/checkDocExamples.ts` for the names that an example can
-  use without a declaration.
+  doc comments of `packages/core/src` as modules of `packages/doc-examples`
+  (run `pnpm build` first). When an example uses a function or a component
+  that the app does not have, add it to the app. See
+  `packages/doc-examples/README.md`.
 - `pnpm lint` — ESLint, including the Convex ESLint plugin.
 - `pnpm format` — Prettier.

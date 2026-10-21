@@ -82,6 +82,8 @@ export function setupConvexAuthServer(config: ConvexAuthServerConfig) {
      *
      * ```ts
      * // app/auth/signin/route.ts
+     * import { auth } from "@/auth";
+     *
      * export const POST = auth.convexProxyHandler;
      * ```
      */

@@ -76,6 +76,9 @@ export type GoogleProviderOptions = {
  * Built-in Google OAuth provider. Wire it up with the Google oauth component:
  *
  * ```ts
+ * const auth = setupConvexAuth({ component: components.auth });
+ * export const { signOut, refreshSession, isAuthenticated } = auth;
+ *
  * export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(auth, {
  *   component: components.authGoogle,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],

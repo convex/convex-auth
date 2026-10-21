@@ -295,7 +295,9 @@ export type EmailPasswordProfile = Record<string, never>;
  *     changeEmail: `${env.SITE_URL}/confirm-email-change`,
  *     recovery: `${env.SITE_URL}/reset-password`,
  *   },
- * }).attachUserCallbacks({ createUser: internal.users.createUser });
+ * }).attachUserCallbacks({
+ *   createUser: internal.users.createUserEmailPassword,
+ * });
  * ```
  *
  * - Sign-in accepts any verified email of the account.

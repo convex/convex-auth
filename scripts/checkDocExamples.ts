@@ -9,24 +9,25 @@
 // not exist, and no other check finds it.
 //
 // The script finds each ```ts and ```tsx block in a `/** ... */` comment
-// under `packages/core/src/`, and typechecks it as a module of its own:
+// under `packages/core/src/`, and typechecks it as a module of the app in
+// `packages/doc-examples/` (see its README):
 //
+//   - A ```tsx example is in `src/` of the app, an example from
+//     `packages/core/src/ssr/` is in `app/`, and any other example is in
+//     `convex/`. Thus `../convex/_generated/api`, `./_generated/server` and
+//     `@/auth` resolve to the files of the app.
 //   - An example can use a name that it does not import. When `tsc` cannot
-//     find a name, the script imports it from the public entry point that
-//     exports it (`@convex-dev/auth/...`, then `react`, `convex/react`,
-//     `convex/browser`, `convex/server`, `convex/values`), and from the
-//     commented file as the last choice. The entry point of the commented file comes first.
-//   - The values of the app that an example uses (`api`, `internal`,
-//     `components`, `auth`, `ctx`, `env`) have the type `any`. `PRELUDE`
-//     declares them, and the values of the frameworks. An example can declare
-//     its own value with the same name.
-//   - `import ... from "../convex/_generated/api"` and
-//     `import ... from "./_generated/server"` resolve to stubs: a ```tsx
-//     example is in `src/` of an app, and a ```ts example is in `convex/`.
+//     find a name, the script imports it from the first module that exports
+//     it: the entry point of `@convex-dev/auth` that exports the commented
+//     file, the other entry points, `react`, `convex/react`, `convex/browser`,
+//     `convex/server`, `convex/values`, the `_generated/api` and
+//     `_generated/server` modules of the app, and the commented file.
+//   - `PRELUDE` declares the other names that the examples use without a
+//     declaration. An example can declare its own value with the same name.
 //
 // To keep an example out of the check, write the language as `ts skip-check`
 // (or `tsx skip-check`). Use it only for code that cannot compile, for
-// example the code of a third-party framework that is not installed here.
+// example the code of a component, which uses names of that component.
 //
 // Usage: pnpm check:doc-examples
 
@@ -38,25 +39,17 @@ import ts from "typescript";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreDir = join(root, "packages", "core");
 const srcDir = join(coreDir, "src");
-// The examples are not on disk. They are in `packages/core/` so that
-// `@convex-dev/auth` resolves to the package itself through its `exports`
-// map, and the other packages resolve from `packages/core/node_modules/`.
-const appDir = join(coreDir, ".doc-examples");
+const appDir = join(root, "packages", "doc-examples");
 
+// Global declarations, relative to `appDir`.
 const PRELUDE = `
-declare const api: any;
-declare const internal: any;
-declare const components: any;
-declare const auth: any;
-declare const ctx: any;
-declare const env: any;
-declare const request: Request;
-declare const app: ReturnType<typeof import("convex/server").defineApp>;
-declare const query: typeof import("convex/server").queryGeneric;
+declare const ctx: import("./convex/_generated/server").QueryCtx;
+declare const app: typeof import("./convex/convex.config").default;
 declare const oauth: typeof import("@convex-dev/auth/components/oauth/convex.config").default;
 declare const google: typeof import("@convex-dev/auth/components/google/convex.config").default;
 declare const apple: typeof import("@convex-dev/auth/components/apple/convex.config").default;
 declare const github: typeof import("@convex-dev/auth/components/github/convex.config").default;
+// react-router
 declare function Navigate(props: { to: string; replace?: boolean }): null;
 declare module "expo-secure-store" {
   export function getItemAsync(key: string): Promise<string | null>;
@@ -65,46 +58,27 @@ declare module "expo-secure-store" {
 }
 `;
 
-const STUBS: Record<string, string> = {
-  "convex/_generated/api.ts": `
-export declare const api: any;
-export declare const internal: any;
-export declare const components: any;
-`,
-  "convex/_generated/server.ts": `
-export declare const env: any;
-export {
-  queryGeneric as query,
-  mutationGeneric as mutation,
-  actionGeneric as action,
-  internalQueryGeneric as internalQuery,
-  internalMutationGeneric as internalMutation,
-  internalActionGeneric as internalAction,
-  httpActionGeneric as httpAction,
-} from "convex/server";
-`,
-};
-
-const THIRD_PARTY_MODULES = [
+const MODULES = [
   "react",
   "convex/react",
   "convex/browser",
   "convex/server",
   "convex/values",
+  join(appDir, "convex", "_generated", "api.js"),
+  join(appDir, "convex", "_generated", "server.js"),
 ];
 
+const config = ts.getParsedCommandLineOfConfigFile(
+  join(appDir, "tsconfig.json"),
+  {},
+  { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} },
+);
+if (config === undefined || config.errors.length > 0) {
+  throw new Error(`Cannot read ${join(appDir, "tsconfig.json")}.`);
+}
 const compilerOptions: ts.CompilerOptions = {
-  target: ts.ScriptTarget.ESNext,
-  module: ts.ModuleKind.Preserve,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  lib: ["lib.esnext.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
-  types: ["node", "vite/client"],
-  jsx: ts.JsxEmit.ReactJSX,
-  strict: true,
+  ...config.options,
   noEmit: true,
-  skipLibCheck: true,
-  esModuleInterop: true,
-  allowImportingTsExtensions: true,
   // `React.ReactNode` without an import.
   allowUmdGlobalAccess: true,
 };
@@ -159,7 +133,11 @@ function findExamples(path: string): Example[] {
           code: lines.slice(i + 1, end).join("\n"),
           path: join(
             appDir,
-            lang === "tsx" ? "src" : "convex",
+            lang === "tsx"
+              ? "src"
+              : file.startsWith(join("packages", "core", "src", "ssr") + sep)
+                ? "app"
+                : "convex",
             `${file.replaceAll(sep, "_")}_${line}.${lang}`,
           ),
         });
@@ -190,7 +168,7 @@ function packageEntryPoints(): string[] {
 
 /** The module specifier of `entryPoint` for the file at `from`. */
 function specifierFor(from: string, entryPoint: string): string {
-  if (!entryPoint.startsWith("/")) return entryPoint;
+  if (!entryPoint.startsWith(sep)) return entryPoint;
   const path = relative(dirname(from), entryPoint).split(sep).join("/");
   return path.startsWith(".") ? path : `./${path}`;
 }
@@ -199,10 +177,10 @@ function createProgram(files: Map<string, string>): ts.Program {
   const host = ts.createCompilerHost(compilerOptions);
   const { fileExists, directoryExists, readFile, getSourceFile } = host;
   host.fileExists = (path) => files.has(path) || fileExists(path);
+  // `src/` and `app/` of the app hold only examples.
+  const virtualDirs = [join(appDir, "src"), join(appDir, "app")];
   host.directoryExists = (path) =>
-    path === appDir ||
-    path.startsWith(appDir + sep) ||
-    (directoryExists?.(path) ?? true);
+    virtualDirs.includes(path) || (directoryExists?.(path) ?? true);
   host.readFile = (path) => files.get(path) ?? readFile(path);
   host.getSourceFile = (path, languageVersion, ...rest) => {
     const text = files.get(path);
@@ -217,16 +195,13 @@ const examples = sourceFiles(srcDir).flatMap(findExamples);
 
 const baseFiles = new Map<string, string>([
   [join(appDir, "prelude.d.ts"), PRELUDE],
-  ...Object.entries(STUBS).map(
-    ([path, text]) => [join(appDir, path), text] as [string, string],
-  ),
 ]);
 
 // The names that each import source exports.
-const entryPoints = [...packageEntryPoints(), ...THIRD_PARTY_MODULES];
+const entryPoints = [...packageEntryPoints(), ...MODULES];
 const commentedFiles = [...new Set(examples.map((e) => join(root, e.file)))];
 const sources = [...entryPoints, ...commentedFiles];
-const exportsIndex = join(appDir, "exports.ts");
+const exportsIndex = join(appDir, "convex", "exports.ts");
 const indexProgram = createProgram(
   new Map([
     ...baseFiles,
