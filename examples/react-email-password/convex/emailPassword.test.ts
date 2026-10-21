@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import type { AnyDataModel, GenericMutationCtx } from "convex/server";
 import { api, components } from "./_generated/api";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
 import {
   registerEmail,
@@ -926,6 +926,63 @@ describe("completePasswordRecovery", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toEqual([EMAIL]);
     expect(sent[0].subject).toMatch(/password/i);
+  });
+
+  test("signs out the user's existing sessions, but not other users'", async () => {
+    const t = await setup();
+    await seedSignedUpUser(t);
+    await seedSignedUpUser(t, { email: "bob@example.com" });
+    const signIn = (email: string) =>
+      t
+        .withRequestMetadata({ ip: IP })
+        .mutation(api.auth.signInWithEmailPassword, {
+          email,
+          password: PASSWORD,
+        });
+    const first = await signIn(EMAIL);
+    const second = await signIn(EMAIL);
+    const bob = await signIn("bob@example.com");
+    if (
+      first.status !== "complete" ||
+      second.status !== "complete" ||
+      bob.status !== "complete"
+    ) {
+      throw new Error("Sign-in failed");
+    }
+    await seedChallenge(t, {
+      email: EMAIL,
+      purpose: RECOVERY,
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+
+    // Even a recovery from a browser signed in as the user revokes that
+    // session: the new one replaces it.
+    const result = await t
+      .withIdentity(sessionIdentity(first.tokens))
+      .mutation(api.auth.completePasswordRecovery, {
+        emailCode: "code1",
+        browserSecret: "secret1",
+        newPassword: "brand new horse staple",
+      });
+    if (result.status !== "complete") {
+      throw new Error("Recovery failed");
+    }
+
+    const refresh = (refreshToken: string) =>
+      t.mutation(api.auth.refreshSession, { refreshToken });
+    expect(await refresh(first.tokens.refreshToken)).toMatchObject({
+      kind: "noSession",
+    });
+    expect(await refresh(second.tokens.refreshToken)).toMatchObject({
+      kind: "noSession",
+    });
+    expect(await refresh(result.tokens.refreshToken)).toMatchObject({
+      kind: "rotated",
+    });
+    expect(await refresh(bob.tokens.refreshToken)).toMatchObject({
+      kind: "rotated",
+    });
   });
 
   test("rejects a malformed new password without burning the link", async () => {
