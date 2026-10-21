@@ -39,8 +39,8 @@ export type PasskeyAutofillStatus =
   "idle" | "waiting" | "signingIn" | "signedIn" | "stopped";
 
 /**
- * The pause/resume gates of an autofill flow, which
- * {@link usePasskeyAutofill} returns among its fields.
+ * The gates of an autofill flow, which {@link usePasskeyAutofill} returns
+ * among its fields.
  * `pauseAutofillFlow()` aborts the in-flight browser request and keeps the
  * loop parked; `resumeAutofillFlow()` lets the loop start a fresh request.
  * The pauses are reference-counted, so two modal flows on one page compose,
@@ -51,10 +51,16 @@ export type PasskeyAutofillStatus =
  * modal ceremony on a page that runs autofill must pause the autofill flow
  * around itself. A ceremony that skips the pause takes the slot from the
  * pending autofill request, which the flow can only answer by stopping.
+ *
+ * `isAutofillSigningIn()` tells whether the server verifies a passkey that
+ * the user picked from the autocompletion list (status `"signingIn"`). A
+ * pause cannot stop this step, because the browser ceremony is already over,
+ * thus a modal flow must not start during it.
  */
 export type PasskeyAutofillGates = {
   pauseAutofillFlow: () => void;
   resumeAutofillFlow: () => void;
+  isAutofillSigningIn: () => boolean;
 };
 
 // A pending autofill request refreshes its challenge before the server's
@@ -178,6 +184,9 @@ export function usePasskeyAutofill<E = never>(options: {
   // request: this hook aborts this controller and nobody else does, so an
   // abort here is never another ceremony taking the browser's ceremony slot.
   const controllerRef = useRef<AbortController | null>(null);
+  // `true` while `onAssertion` runs. A ref, not the `status` state, so that
+  // a modal flow started in the same tick as the pick sees it.
+  const signingInRef = useRef(false);
 
   // The loop reads the options through a ref: the callback identities
   // change on every render (they are usually inline closures), and the
@@ -196,6 +205,8 @@ export function usePasskeyAutofill<E = never>(options: {
       wakeRef.current?.();
     }
   }, []);
+
+  const isAutofillSigningIn = useCallback(() => signingInRef.current, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -359,6 +370,7 @@ export function usePasskeyAutofill<E = never>(options: {
         }
 
         setStatus("signingIn");
+        signingInRef.current = true;
         let outcome;
         try {
           outcome = await optionsRef.current.onAssertion(result.response);
@@ -369,6 +381,8 @@ export function usePasskeyAutofill<E = never>(options: {
           setLastError(foldClientError(cause));
           setStatus("stopped");
           return;
+        } finally {
+          signingInRef.current = false;
         }
         if (!alive) {
           return;
@@ -415,8 +429,17 @@ export function usePasskeyAutofill<E = never>(options: {
       pauseAutofillFlow,
       /** Resume the flow; see {@link PasskeyAutofillGates}. */
       resumeAutofillFlow,
+      /** See {@link PasskeyAutofillGates}. */
+      isAutofillSigningIn,
     }),
-    [available, status, lastError, pauseAutofillFlow, resumeAutofillFlow],
+    [
+      available,
+      status,
+      lastError,
+      pauseAutofillFlow,
+      resumeAutofillFlow,
+      isAutofillSigningIn,
+    ],
   );
 }
 
@@ -449,6 +472,8 @@ export type AlreadyPendingFailure = {
  *   {@link AlreadyPendingFailure} instead. A second modal ceremony would be
  *   rejected by the browser, and a nested call would deadlock the autofill
  *   pause/resume protocol.
+ * - It also refuses a call while the server verifies an autofill sign-in.
+ *   That sign-in cannot be paused, and both flows would set a session.
  * - It pauses the autofill flow of the page, when there is one, before
  *   `fn` and resumes it when `fn` is done, whatever the outcome. The
  *   ceremony of `fn` displaces the pending conditional request anyway (the browser runs one ceremony at a
@@ -472,11 +497,10 @@ export function usePasskeyCeremonySlot(options: {
    */
   autofill: PasskeyAutofillGates | null;
 }) {
-  // The two gates, not the object that carries them: the whole return
-  // value of `usePasskeyAutofill` changes identity whenever the reported
-  // state does, while each gate keeps its identity for the life of that
-  // hook. Reading them here is what lets `run` stay stable.
-  const { pauseAutofillFlow, resumeAutofillFlow } = options.autofill ?? {};
+  // Depend on destructured values, not on `options.autofill`, which changes
+  // identity on each state change.
+  const { pauseAutofillFlow, resumeAutofillFlow, isAutofillSigningIn } =
+    options.autofill ?? {};
 
   const [pending, setPending] = useState(false);
   // The re-entry guard reads through a ref: `pending` from `useState`
@@ -489,7 +513,7 @@ export function usePasskeyCeremonySlot(options: {
     async <T,>(
       fn: () => Promise<T>,
     ): Promise<T | PasskeyClientFailure | AlreadyPendingFailure> => {
-      if (pendingRef.current) {
+      if (pendingRef.current || isAutofillSigningIn?.()) {
         // TODO(nicolas): Consider a different behavior here. The caller has
         // nothing to show for this error, since the first ceremony keeps its
         // dialog and resolves as usual.
@@ -513,7 +537,7 @@ export function usePasskeyCeremonySlot(options: {
         setPending(false);
       }
     },
-    [pauseAutofillFlow, resumeAutofillFlow],
+    [pauseAutofillFlow, resumeAutofillFlow, isAutofillSigningIn],
   );
 
   return {

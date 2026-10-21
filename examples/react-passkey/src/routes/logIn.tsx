@@ -23,10 +23,6 @@ export function LogIn() {
     }
   }, [lastError]);
 
-  // Also lock the form while an autofill sign-in is being verified on the
-  // server.
-  const busy = pending || autofill.status === "signingIn";
-
   return (
     <form
       onSubmit={async (e) => {
@@ -52,7 +48,7 @@ export function LogIn() {
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username webauthn"
           required
-          disabled={busy}
+          disabled={pending}
         />
       </label>
       {error ? (
@@ -60,8 +56,8 @@ export function LogIn() {
           <strong>{error}</strong>
         </p>
       ) : null}
-      <button type="submit" disabled={busy}>
-        {busy ? "Waiting for your passkey…" : "Continue with a passkey"}
+      <button type="submit" disabled={pending}>
+        {pending ? "Waiting for your passkey…" : "Continue with a passkey"}
       </button>
     </form>
   );
