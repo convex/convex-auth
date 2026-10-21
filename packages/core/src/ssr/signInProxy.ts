@@ -178,6 +178,8 @@ function textError(status: number, message: string): Response {
  *
  * ```ts
  * // app/auth/signin/route.ts
+ * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+ *
  * export const POST = auth.convexProxyHandler;
  * ```
  */
