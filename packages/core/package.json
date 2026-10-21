@@ -359,35 +359,6 @@
       "default": "./dist/components/passkey/_generated/component.js"
     },
     "./components/passkey/test": "./src/testing/passkey.ts",
-    "./components/totp/convex.config.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/totp/convex.config.d.ts"
-      },
-      "types": "./dist/components/totp/convex.config.d.ts",
-      "default": "./dist/components/totp/convex.config.js"
-    },
-    "./components/totp/convex.config": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/totp/convex.config.d.ts"
-      },
-      "types": "./dist/components/totp/convex.config.d.ts",
-      "default": "./dist/components/totp/convex.config.js"
-    },
-    "./components/totp/_generated/component.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/totp/_generated/component.d.ts"
-      },
-      "types": "./dist/components/totp/_generated/component.d.ts",
-      "default": "./dist/components/totp/_generated/component.js"
-    },
-    "./components/totp/_generated/component": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/totp/_generated/component.d.ts"
-      },
-      "types": "./dist/components/totp/_generated/component.d.ts",
-      "default": "./dist/components/totp/_generated/component.js"
-    },
-    "./components/totp/test": "./src/testing/totp.ts",
     "./components/anonymous/convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/components/anonymous/convex.config.d.ts"
