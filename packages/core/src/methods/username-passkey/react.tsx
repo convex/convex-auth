@@ -96,6 +96,7 @@ export type SignInWithUsernamePasskeyResult =
  *
  * function LogIn() {
  *   const { signIn, pending, autofill } = useSignInWithUsernamePasskey(api.auth);
+ *   const [username, setUsername] = useState("");
  *   return (
  *     <form
  *       onSubmit={async (e) => {
@@ -106,7 +107,11 @@ export type SignInWithUsernamePasskeyResult =
  *         }
  *       }}
  *     >
- *       <input autoComplete="username webauthn" ... />
+ *       <input
+ *         autoComplete="username webauthn"
+ *         value={username}
+ *         onChange={(e) => setUsername(e.target.value)}
+ *       />
  *       <button disabled={pending}>Continue</button>
  *     </form>
  *   );

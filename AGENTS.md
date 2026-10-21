@@ -90,5 +90,9 @@ Use `pnpm install` at the root. Common tasks:
   (e.g. `pnpm codegen react-passkey`)
 - `pnpm test` — run tests across packages (Vitest).
 - `pnpm typecheck` — typecheck across packages.
+- `pnpm check:doc-examples` — typecheck the `ts` and `tsx` code blocks in the
+  doc comments of `packages/core/src` against `dist/` (run `pnpm build`
+  first). See `scripts/checkDocExamples.ts` for the names that an example can
+  use without a declaration.
 - `pnpm lint` — ESLint, including the Convex ESLint plugin.
 - `pnpm format` — Prettier.

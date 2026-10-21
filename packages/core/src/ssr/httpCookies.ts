@@ -47,19 +47,22 @@ export interface HttpCookies extends CookieStore {
  *
  * ```ts
  * const client = new ConvexHttpClient(process.env.CONVEX_URL!);
- * const cookies = httpCookies(request);
- * const session = new ServerAuthSession({
- *   refreshSession: (refreshToken) =>
- *     client.mutation(api.auth.refreshSession, { refreshToken }),
- *   cookies,
- *   cookieOptions: { secure: true },
- * });
- * const result = await session.refresh();
- * const res = Response.json({
- *   tokens: result.kind === "rotated" ? makeSlimBundle(result.tokens) : null,
- * });
- * cookies.applyTo(res.headers);
- * return res;
+ *
+ * export async function POST(request: Request) {
+ *   const cookies = httpCookies(request);
+ *   const session = new ServerAuthSession({
+ *     refreshSession: (refreshToken) =>
+ *       client.mutation(api.auth.refreshSession, { refreshToken }),
+ *     cookies,
+ *     cookieOptions: { secure: true },
+ *   });
+ *   const result = await session.refresh();
+ *   const res = Response.json({
+ *     tokens: result.kind === "rotated" ? makeSlimBundle(result.tokens) : null,
+ *   });
+ *   cookies.applyTo(res.headers);
+ *   return res;
+ * }
  * ```
  */
 export function httpCookies(request: Request): HttpCookies {
