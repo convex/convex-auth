@@ -773,8 +773,7 @@ export const signOut = mutation({
  * stays cached until a session or token changes; callers that want only the
  * active sessions compare `expiresAt` to the current time themselves.
  *
- * This is a component-internal function (callable by the app, not by end-user
- * clients).
+ * This is a component function callable by the app, not by end-user clients.
  */
 export const listSessions = query({
   args: { userId: v.string() },
@@ -811,7 +810,7 @@ export const listSessions = query({
         continue;
       }
       result.push({
-        sessionId: session._id as string,
+        sessionId: session._id,
         creationTime: session._creationTime,
         lastRefreshedAt: newestIssued._creationTime,
         expiresAt: newestIssued.expiresAt,
@@ -822,32 +821,40 @@ export const listSessions = query({
 });
 
 /**
- * Revoke a session, erasing it along with its refresh tokens, so its holder
- * can no longer refresh.
+ * Revoke sessions, erasing each along with its refresh tokens, so their
+ * holders can no longer refresh.
  *
- * Returns `true` when the session existed, and `false` for an id that is no
- * session (malformed, or already revoked).
+ * Returns the ids of the sessions that existed and were revoked. An id that is
+ * no session (malformed, already revoked, or repeated in `sessionIds`) is
+ * skipped.
  *
- * NOTE: This does no authorization. Callers decide which sessions may be
- * revoked; e.g. revoking a user's other sessions should only follow a check
- * that the signed-in user truly owns the current session, via confirming an
+ * This is a component function callable by the app, not by end-user clients.
+ *
+ * NOTE: This does no authorization: it revokes any session it is given,
+ * whichever user it belongs to. Callers decide which sessions may be revoked;
+ * e.g. revoking a user's other sessions should only follow a check that the
+ * signed-in user truly owns the current session, via confirming an
  * authentication method. Otherwise, the request might be originating from a
  * stolen session, which shouldn't be able to revoke other sessions.
  */
 // TODO: when we have step-up auth revoking sessions should check its state,
 // rather than count on callers to safely invoke it.
-export const revokeSession = mutation({
-  args: { sessionId: v.string() },
-  returns: v.boolean(),
+export const revokeSessions = mutation({
+  args: { sessionIds: v.array(v.string()) },
+  returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
-    if (
-      sessionId === null ||
-      (await ctx.db.get("sessions", sessionId)) === null
-    ) {
-      return false;
+    const revoked: string[] = [];
+    for (const rawId of args.sessionIds) {
+      const sessionId = ctx.db.normalizeId("sessions", rawId);
+      if (
+        sessionId === null ||
+        (await ctx.db.get("sessions", sessionId)) === null
+      ) {
+        continue;
+      }
+      await deleteSession(ctx, sessionId);
+      revoked.push(sessionId);
     }
-    await deleteSession(ctx, sessionId);
-    return true;
+    return revoked;
   },
 });

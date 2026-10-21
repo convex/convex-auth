@@ -373,6 +373,8 @@ export type BoundAuthHelpers<Profile> = {
    * logged in user truly owns the session, via confirming an authentication
    * method. Otherwise, the request might be originating from a stolen session,
    * which shouldn't be able to revoke other sessions.
+   *
+   * @internal until we solidify the full session lifecycle
    */
   revokeOtherSessions(): Promise<number>;
 };

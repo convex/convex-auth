@@ -16,8 +16,7 @@ import {
   makeFunctionReference,
 } from "convex/server";
 import { v } from "convex/values";
-import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
-import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
+import { describe, expect, test, vi } from "vitest";
 import type { ComponentApi } from "../component/_generated/component.ts";
 import type { CreateUserFn, TokenBundle } from "../lib/types.ts";
 import { registerCore, sessionIdentity } from "../testing/core.ts";
@@ -99,23 +98,7 @@ const modules = {
   "./testApp.ts": async () => testApp,
 };
 
-// `completeSignUp`/`completeSignIn` mint real JWTs from these env vars.
-beforeAll(async () => {
-  const { publicKey, privateKey } = await generateKeyPair("RS256", {
-    extractable: true,
-  });
-  process.env.AUTH_PRIVATE_KEY = btoa(await exportPKCS8(privateKey));
-  process.env.AUTH_JWKS = JSON.stringify({
-    keys: [{ ...(await exportJWK(publicKey)), kid: "test-key", alg: "RS256" }],
-  });
-});
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 function setup() {
-  vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
   const t = convexTest(undefined, modules);
   registerCore(t);
   return t;

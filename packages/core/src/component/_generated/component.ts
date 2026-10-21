@@ -70,11 +70,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         | { kind: "noSession" },
         Name
       >;
-      revokeSession: FunctionReference<
+      revokeSessions: FunctionReference<
         "mutation",
         "internal",
-        { sessionId: string },
-        boolean,
+        { sessionIds: Array<string> },
+        Array<string>,
         Name
       >;
       signIn: FunctionReference<
