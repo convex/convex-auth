@@ -46,10 +46,18 @@ export interface HttpCookies extends CookieStore {
  * Response} `Headers` and it will write the cookie values.
  *
  * ```ts
+ * const client = new ConvexHttpClient(process.env.CONVEX_URL!);
  * const cookies = httpCookies(request);
- * const session = new ServerAuthSession({ authApi, cookies });
- * const bundle = await session.refresh();
- * const res = Response.json({ tokens: bundle && makeSlimBundle(bundle) });
+ * const session = new ServerAuthSession({
+ *   refreshSession: (refreshToken) =>
+ *     client.mutation(api.auth.refreshSession, { refreshToken }),
+ *   cookies,
+ *   cookieOptions: { secure: true },
+ * });
+ * const result = await session.refresh();
+ * const res = Response.json({
+ *   tokens: result.kind === "rotated" ? makeSlimBundle(result.tokens) : null,
+ * });
  * cookies.applyTo(res.headers);
  * return res;
  * ```
