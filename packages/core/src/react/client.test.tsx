@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
 import { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { SpaAuthApi, AuthClient } from "../browser/sessionManager.ts";
@@ -207,5 +208,124 @@ describe("React bindings", () => {
 
     expect(result.current.auth.isAuthenticated).toBe(false);
     expect(result.current.token).toBeNull();
+  });
+});
+
+/** An unsigned JWT for `sub`. The client decodes tokens but never verifies them. */
+function jwt(sub: string, n: number): string {
+  const encode = (value: object) =>
+    btoa(JSON.stringify(value)).replace(/=+$/, "");
+  return `${encode({ alg: "none" })}.${encode({ sub, n })}.sig`;
+}
+
+function jwtBundle(sub: string, n: number): TokenBundle {
+  return { ...bundle(n), accessToken: jwt(sub, n), userId: sub };
+}
+
+/**
+ * Render the provider under Convex's real `ConvexProviderWithAuth` with a fake
+ * client that records each `setAuth` call, i.e. each auth handshake.
+ */
+async function renderWithConvex(client: AuthClient) {
+  const fetchers: ((args: {
+    forceRefreshToken: boolean;
+  }) => Promise<string | null | undefined>)[] = [];
+  const convex = {
+    setAuth: (fetchToken: (typeof fetchers)[number]) => {
+      fetchers.push(fetchToken);
+    },
+    clearAuth: () => {},
+  };
+  render(
+    <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
+      <ConvexProviderWithAuth
+        client={convex as unknown as ConvexReactClient}
+        useAuth={useAuth}
+      >
+        {null}
+      </ConvexProviderWithAuth>
+    </AuthProvider>,
+  );
+  await waitFor(() => expect(client.getSnapshot().isLoading).toBe(false));
+  return fetchers;
+}
+
+describe("Convex auth handshake", () => {
+  test("re-runs when a different user signs in while signed in", async () => {
+    const { client } = makeClient();
+    const fetchers = await renderWithConvex(client);
+    await act(async () => {
+      await client.setSession(jwtBundle("user-a", 1));
+    });
+    expect(fetchers).toHaveLength(1);
+
+    await act(async () => {
+      await client.setSession(jwtBundle("user-b", 2));
+    });
+
+    expect(fetchers).toHaveLength(2);
+    expect(await fetchers[1]({ forceRefreshToken: false })).toBe(
+      jwt("user-b", 2),
+    );
+  });
+
+  test("re-runs when a different user signs in after signing out", async () => {
+    const { client } = makeClient();
+    const fetchers = await renderWithConvex(client);
+    await act(async () => {
+      await client.setSession(jwtBundle("user-a", 1));
+    });
+    await act(async () => {
+      await client.signOut();
+      await client.setSession(jwtBundle("user-b", 2));
+    });
+
+    expect(fetchers).toHaveLength(2);
+    expect(await fetchers[1]({ forceRefreshToken: false })).toBe(
+      jwt("user-b", 2),
+    );
+  });
+
+  test("re-runs when another tab switches to a different user", async () => {
+    const { client, storage } = makeClient();
+    const fetchers = await renderWithConvex(client);
+    await act(async () => {
+      await client.setSession(jwtBundle("user-a", 1));
+    });
+    expect(fetchers).toHaveLength(1);
+
+    const event = Object.assign(new Event("storage"), {
+      storageArea: storage,
+      key: `${JWT_STORAGE_KEY}_${SUFFIX}`,
+      newValue: jwt("user-b", 2),
+    });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(fetchers).toHaveLength(2);
+  });
+
+  test("does not re-run when the same user's token is refreshed", async () => {
+    const { client } = makeClient({
+      refreshSession: async () => ({
+        kind: "rotated" as const,
+        tokens: jwtBundle("user-a", 2),
+      }),
+    });
+    const fetchers = await renderWithConvex(client);
+    await act(async () => {
+      await client.setSession(jwtBundle("user-a", 1));
+    });
+    expect(fetchers).toHaveLength(1);
+
+    await act(async () => {
+      await fetchers[0]({ forceRefreshToken: true });
+    });
+
+    expect(fetchers).toHaveLength(1);
+    expect(await fetchers[0]({ forceRefreshToken: false })).toBe(
+      jwt("user-a", 2),
+    );
   });
 });

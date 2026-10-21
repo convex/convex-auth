@@ -1,5 +1,6 @@
 "use client";
 
+import { decodeJwt } from "jose";
 import {
   ReactNode,
   createContext,
@@ -133,9 +134,15 @@ export function AuthProvider({
     return () => authClient.dispose();
   }, [authClient]);
 
+  // Convex re-runs its auth handshake only when `fetchAccessToken`'s identity
+  // (or `isLoading`/`isAuthenticated`) changes. Signing in as another user
+  // while signed in changes neither flag, so the callback is keyed on the
+  // token's subject: a new user gets a new callback, while a routine refresh
+  // keeps the subject and so keeps the callback.
+  const subject = tokenSubject(state.token);
   const fetchAccessToken = useCallback(
     (args: { forceRefreshToken: boolean }) => authClient.fetchAccessToken(args),
-    [authClient],
+    [authClient, subject],
   );
 
   const authState = useMemo(
@@ -168,4 +175,19 @@ export function AuthProvider({
       </ConvexAuthInternalContext.Provider>
     </AuthClientContext.Provider>
   );
+}
+
+/**
+ * The subject (user id) of an access token, for keying the Convex handshake.
+ * The token is decoded, not verified. A token that doesn't decode is its own
+ * key, so any change to it still re-runs the handshake.
+ */
+function tokenSubject(token: string | null): string | null {
+  if (token === null) return null;
+  try {
+    const { sub } = decodeJwt(token);
+    return typeof sub === "string" ? sub : token;
+  } catch {
+    return token;
+  }
 }
