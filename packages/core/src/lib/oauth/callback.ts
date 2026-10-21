@@ -378,19 +378,21 @@ export async function runCallback<Request extends ClaimedRequest>(options: {
   // From here on the flow is legitimate, so failures go back to the app
   // as a normalized error param; raw detail goes to logs only.
   if (params.error !== null || params.code === null) {
-    console.error(
+    const error = normalizeProviderError(
+      params.error,
+      options.extraDeniedErrorCodes,
+    );
+    // A user who declines at the provider is normal behavior, not a
+    // failure, so it is logged below the error level.
+    const log = error === "access_denied" ? console.info : console.error;
+    log(
       `OAuth callback error from provider "${config.providerName}":`,
       params.error ?? "missing code",
       params.errorDescription ?? "",
     );
     return redirectToApp(
       authRequest.redirectTo,
-      {
-        [OAUTH_ERROR_PARAM]: normalizeProviderError(
-          params.error,
-          options.extraDeniedErrorCodes,
-        ),
-      },
+      { [OAUTH_ERROR_PARAM]: error },
       redirectStatus,
     );
   }

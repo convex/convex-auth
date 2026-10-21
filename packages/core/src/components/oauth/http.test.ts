@@ -289,7 +289,8 @@ describe("oauth callback", () => {
 
   test("a provider error of access_denied passes through normalized", async () => {
     const t = setup();
-    spyConsoleError();
+    const errors = spyConsoleError();
+    const infos = vi.spyOn(console, "info").mockImplementation(() => {});
     const { state } = await startFlow(t, idTokenRequest);
     const response = await callback(t, {
       state,
@@ -298,17 +299,21 @@ describe("oauth callback", () => {
     expect(redirectParams(response).get(OAUTH_ERROR_PARAM)).toBe(
       "access_denied",
     );
+    // The user declining is logged, but not as an error.
+    expect(loggedText(infos)).toContain("access_denied");
+    expect(errors).not.toHaveBeenCalled();
   });
 
   test("any other provider error normalizes to oauth_error", async () => {
     const t = setup();
-    spyConsoleError();
+    const errors = spyConsoleError();
     const { state } = await startFlow(t, idTokenRequest);
     const response = await callback(t, {
       state,
       error: "temporarily_unavailable",
     });
     expect(redirectParams(response).get(OAUTH_ERROR_PARAM)).toBe("oauth_error");
+    expect(loggedText(errors)).toContain("temporarily_unavailable");
   });
 
   test("a callback with neither code nor error normalizes to oauth_error", async () => {

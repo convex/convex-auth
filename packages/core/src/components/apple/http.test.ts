@@ -285,13 +285,16 @@ describe("apple callback", () => {
     const t = setup();
     const state = await startFlow(t);
     const errors = spyConsoleError();
+    const infos = vi.spyOn(console, "info").mockImplementation(() => {});
 
     const params = redirectParams(
       await callback(t, { state, error: "user_cancelled_authorize" }),
     );
     expect(params.get(OAUTH_ERROR_PARAM)).toBe("access_denied");
     expect(params.get(OAUTH_CODE_PARAM)).toBeNull();
-    expect(errors).toHaveBeenCalled();
+    // A cancel is logged, but not as an error.
+    expect(infos).toHaveBeenCalled();
+    expect(errors).not.toHaveBeenCalled();
   });
 
   test("an id_token from another issuer is refused", async () => {
