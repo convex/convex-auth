@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The Next.js alias. The SSR examples import `auth` from `@/auth`.
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["auth.ts", "convex/**/*"],
+  "exclude": ["node_modules", "convex/_generated"]
+}

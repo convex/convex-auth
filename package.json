@@ -5,6 +5,7 @@
   "scripts": {
     "build": "pnpm --filter @convex-dev/auth build",
     "check:declarations": "tsx scripts/checkDeclarations.ts",
+    "check:doc-examples": "tsx scripts/checkDocExamples.ts",
     "codegen": "tsx scripts/codegen.ts",
     "clean": "pnpm --filter @convex-dev/auth clean",
     "lint": "eslint .",
