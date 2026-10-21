@@ -89,6 +89,9 @@ export type GithubProviderOptions = {
  * Built-in GitHub OAuth provider. Wire it up with the GitHub oauth component:
  *
  * ```ts
+ * const auth = setupConvexAuth({ component: components.auth });
+ * export const { signOut, refreshSession, isAuthenticated } = auth;
+ *
  * export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(auth, {
  *   component: components.authGithub,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],
