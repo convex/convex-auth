@@ -16,7 +16,8 @@ import {
   jwtVerify,
   type JWK,
 } from "jose";
-import { api } from "./_generated/api.ts";
+import { api, internal } from "./_generated/api.ts";
+import { createFunctionHandle, makeFunctionReference } from "convex/server";
 import type { Doc } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
 import * as testApp from "./testApp.fixture.ts";
@@ -81,6 +82,33 @@ function setup() {
 }
 
 type ConvexTestApi = ReturnType<typeof setup>;
+
+async function configure(
+  t: ConvexTestApi,
+  options: {
+    onSignIn?: boolean;
+    accessTokenTtlSeconds?: number;
+    refreshTokenTtlSeconds?: number;
+  } = {},
+) {
+  const provider = await t.run(async () => ({
+    name: "password",
+    createUser: await createFunctionHandle(
+      makeFunctionReference<"mutation">(CREATE_USER_HANDLE),
+    ),
+    onSignIn:
+      options.onSignIn === false
+        ? undefined
+        : await createFunctionHandle(
+            makeFunctionReference<"mutation">(ON_SIGN_IN_HANDLE),
+          ),
+  }));
+  await t.mutation(internal.init.configure, {
+    providers: [provider],
+    accessTokenTtlSeconds: options.accessTokenTtlSeconds,
+    refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
+  });
+}
 
 /** Establish a brand new identity: the account, its app user, and a session. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
@@ -935,5 +963,118 @@ describe("getUserIdByAccount", () => {
       providerAccountId: "alice",
     });
     expect(other).toBeNull();
+  });
+});
+
+describe("component configuration", () => {
+  beforeEach(() => {
+    testApp.resetUserCallbackCalls();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+  test("a rejecting configured hook rolls back account and session creation", async () => {
+    const t = setup();
+    await configure(t);
+    const config = await t.run((ctx) => ctx.db.query("configuration").unique());
+    const onSignIn = await t.run(() =>
+      createFunctionHandle(
+        makeFunctionReference<"mutation">(THROWING_ON_SIGN_IN_HANDLE),
+      ),
+    );
+    await t.mutation(internal.init.configure, {
+      providers: [{ ...config!.providers![0], onSignIn }],
+    });
+    await expect(
+      t.mutation(api.public.signUp, { claims: claims(), issuer: ISSUER }),
+    ).rejects.toThrow("no sign-ins for you");
+    expect(await sessionCount(t)).toBe(0);
+    expect(
+      await t.run((ctx) => ctx.db.query("accounts").collect()),
+    ).toHaveLength(0);
+  });
+  test("sign-up and sign-in invoke configured callbacks without per-call handles", async () => {
+    const t = setup();
+    await configure(t);
+    const args = { claims: claims(), issuer: ISSUER };
+    await t.mutation(api.public.signUp, args);
+    await t.mutation(api.public.signIn, args);
+    expect(testApp.getCreateUserCalls()).toHaveLength(1);
+    expect(testApp.getOnSignInCalls()).toHaveLength(2);
+  });
+
+  test("replacing settings removes omitted hooks and TTL overrides", async () => {
+    const t = setup();
+    await configure(t, {
+      accessTokenTtlSeconds: 120,
+      refreshTokenTtlSeconds: 3600,
+    });
+    await t.mutation(api.public.signUp, { claims: claims(), issuer: ISSUER });
+    await configure(t, { onSignIn: false });
+    await t.mutation(api.public.signIn, { claims: claims(), issuer: ISSUER });
+    expect(testApp.getOnSignInCalls()).toHaveLength(1);
+    const config = await t.run((ctx) => ctx.db.query("configuration").unique());
+    expect(config?.providers?.[0].onSignIn).toBeUndefined();
+    expect(config?.accessTokenTtlSeconds).toBeUndefined();
+    expect(config?.refreshTokenTtlSeconds).toBeUndefined();
+  });
+
+  test("configuration preserves accounts and sessions created before init", async () => {
+    const t = setup();
+    const original = await signUp(t, claims());
+    await configure(t, {
+      accessTokenTtlSeconds: 120,
+      refreshTokenTtlSeconds: 3600,
+    });
+    await configure(t, {
+      accessTokenTtlSeconds: 120,
+      refreshTokenTtlSeconds: 3600,
+    });
+    const rotated = expectRotated(await refresh(t, original.refreshToken));
+    expect(rotated.userId).toBe(original.userId);
+    expect(rotated.accessTokenExpiresAt - Date.now()).toBe(120_000);
+    expect(rotated.refreshTokenExpiresAt - Date.now()).toBe(3_600_000);
+    expect(await sessionCount(t)).toBe(1);
+    expect(
+      await t.run((ctx) => ctx.db.query("accounts").collect()),
+    ).toHaveLength(1);
+    expect(
+      await t.run((ctx) => ctx.db.query("configuration").collect()),
+    ).toHaveLength(1);
+  });
+
+  test("unregistered providers fail before creating users", async () => {
+    const t = setup();
+    await configure(t);
+    await expect(
+      t.mutation(api.public.signUp, {
+        claims: claims({ providerName: "missing" }),
+        issuer: ISSUER,
+      }),
+    ).rejects.toThrow('Auth provider "missing" is not configured');
+    expect(testApp.getCreateUserCalls()).toHaveLength(0);
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("duplicate providers and invalid lifetimes leave existing settings intact", async () => {
+    const t = setup();
+    await configure(t);
+    const before = await t.run((ctx) => ctx.db.query("configuration").unique());
+    const provider = before!.providers![0];
+    await expect(
+      t.mutation(internal.init.configure, {
+        providers: [provider, provider],
+      }),
+    ).rejects.toThrow("already configured");
+    await expect(
+      t.mutation(internal.init.configure, {
+        providers: [],
+        accessTokenTtlSeconds: 100,
+        refreshTokenTtlSeconds: 1,
+      }),
+    ).rejects.toThrow("shorter than");
+    expect(
+      await t.run((ctx) => ctx.db.query("configuration").unique()),
+    ).toEqual(before);
   });
 });

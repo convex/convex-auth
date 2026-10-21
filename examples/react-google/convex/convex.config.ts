@@ -1,3 +1,6 @@
+import { internal } from "./_generated/api";
+import { defineAuthProvider } from "@convex-dev/auth/server";
+import { vGoogleProfile } from "@convex-dev/auth/methods/google/server";
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
@@ -14,6 +17,15 @@ const app = defineApp({
 
 app.use(auth, {
   httpPrefix: "/auth",
+  args: {
+    providers: [
+      defineAuthProvider({
+        name: "google",
+        profile: vGoogleProfile,
+        createUser: internal.users.createUser,
+      }),
+    ],
+  },
   env: {
     AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
     AUTH_JWKS: app.env.AUTH_JWKS,

@@ -9,7 +9,14 @@
 // set `allowImportingTsExtensions`. If it is not set, TypeScript gives the
 // error TS5097.
 import type { TestConvex } from "convex-test";
-import type { GenericSchema, SchemaDefinition } from "convex/server";
+import { componentsGeneric, createFunctionHandle } from "convex/server";
+import type {
+  FunctionReference,
+  GenericSchema,
+  SchemaDefinition,
+} from "convex/server";
+import type { ProviderConfiguration } from "../lib/configuration.ts";
+import type { ComponentApi } from "../component/_generated/component.ts";
 import schema from "../component/schema.ts";
 const modules = import.meta.glob([
   "../component/**/*.ts",
@@ -27,4 +34,41 @@ export function registerCore(
 ) {
   t.registerComponent(name, schema, modules);
 }
-export default { registerCore, schema, modules };
+
+/** Apply installation settings when convex-test does not run component init. */
+export async function configureCore(
+  t: TestConvex<SchemaDefinition<GenericSchema, boolean>>,
+  options: {
+    providers: Array<{
+      name: string;
+      createUser: FunctionReference<"mutation", "public" | "internal">;
+      onSignIn?: FunctionReference<"mutation", "public" | "internal">;
+    }>;
+    accessTokenTtlSeconds?: number;
+    refreshTokenTtlSeconds?: number;
+  },
+  name: string = "auth",
+) {
+  const component = (
+    componentsGeneric() as unknown as Record<string, ComponentApi>
+  )[name];
+  await t.run(async (ctx) => {
+    const providers = await Promise.all(
+      options.providers.map(async (provider) => ({
+        name: provider.name,
+        createUser: (await createFunctionHandle(
+          provider.createUser,
+        )) as ProviderConfiguration["createUser"],
+        onSignIn:
+          provider.onSignIn === undefined
+            ? undefined
+            : ((await createFunctionHandle(
+                provider.onSignIn,
+              )) as ProviderConfiguration["onSignIn"]),
+      })),
+    );
+    await ctx.runMutation(component.init.configure, { ...options, providers });
+  });
+}
+
+export default { registerCore, configureCore, schema, modules };

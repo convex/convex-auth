@@ -1,4 +1,3 @@
-import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/oauth/_generated/component.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
@@ -125,13 +124,11 @@ export type OauthProviderOptions = {
 export function setupOauth<
   Provider extends string,
   Profile extends { id: string },
-  UsersTable extends string,
   UserInfo extends Record<string, unknown> = Record<string, unknown>,
 >(
-  core: AuthCore<UsersTable>,
+  core: AuthCore,
   providerName: Provider,
   catalog: OauthCatalog<Profile, UserInfo>,
-  callbacks: UserCallbacks<Provider, Profile, UsersTable>,
   options: OauthProviderOptions,
 ) {
   // Validate the app-supplied options up front so mistakes fail at deploy
@@ -178,10 +175,8 @@ export function setupOauth<
     }
   }
 
-  const { authMutation } = core.bindProvider({
+  const { authMutation } = core.bindProvider<Provider, Profile>({
     name: providerName,
-    createUser: callbacks.createUser,
-    onSignIn: callbacks.onSignIn,
   });
 
   const startSignIn = buildStartSignIn({

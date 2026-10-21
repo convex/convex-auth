@@ -4,7 +4,6 @@ import {
   vSignInComplete,
   vSignInError,
   USE_USER_ID_AS_ACCOUNT_ID,
-  type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/passkey/_generated/component.ts";
@@ -181,323 +180,313 @@ export type FinishSignInResult = Infer<typeof finishSignInResult>;
  *   usernameComponent: components.authUsername,
  *   rpId: "localhost",
  *   origin: "http://localhost:5173",
- * }).attachUserCallbacks({ createUser: internal.users.createUserPasskey });
+ * });
  * ```
  */
-export function setupUsernamePasskey<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
+export function setupUsernamePasskey(
+  core: AuthCore,
   options: UsernamePasskeyOptions,
 ) {
   const { component, usernameComponent, rpId, origin } = options;
   const rpName = options.rpName ?? rpId;
   const config: UsernamePasskeyConfig = { ...options, rpName };
 
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    Record<string, never>
+  >({
+    name: PROVIDER_NAME,
+  });
+
   return {
     /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * The identifier-first entry point: look the username up and start
+     * the matching ceremony.
+     *
+     * - The username has an account: start an authentication ceremony
+     *   that is bound to that user (`step: "authenticate"`).
+     * - The username is free: start a registration ceremony for a new
+     *   account (`step: "register"`). The account is not created here;
+     *   `finishSignUpWithUsernamePasskey` creates everything in one transaction.
+     *
+     * Note: this flow lets an attacker enumerate which usernames exist.
+     * That is intrinsic to identifier-first passkey sign-in (and account
+     * existence is also observable through sign-up), so it is accepted.
      */
-    attachUserCallbacks({
-      createUser,
-      onSignIn,
-    }: UserCallbacks<"passkey", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser,
-        onSignIn,
-      });
+    startSignInWithUsernamePasskey: mutationGeneric({
+      args: { username: v.string() },
+      returns: startSignInResult,
+      handler: async (ctx, { username }): Promise<StartSignInResult> => {
+        // Reject a malformed username before any ceremony starts.
+        const usernameError = validateUsernameFormat(username);
+        if (usernameError !== null) {
+          return { success: false, userError: usernameError };
+        }
 
-      return {
-        /**
-         * The identifier-first entry point: look the username up and start
-         * the matching ceremony.
-         *
-         * - The username has an account: start an authentication ceremony
-         *   that is bound to that user (`step: "authenticate"`).
-         * - The username is free: start a registration ceremony for a new
-         *   account (`step: "register"`). The account is not created here;
-         *   `finishSignUpWithUsernamePasskey` creates everything in one transaction.
-         *
-         * Note: this flow lets an attacker enumerate which usernames exist.
-         * That is intrinsic to identifier-first passkey sign-in (and account
-         * existence is also observable through sign-up), so it is accepted.
-         */
-        startSignInWithUsernamePasskey: mutationGeneric({
-          args: { username: v.string() },
-          returns: startSignInResult,
-          handler: async (ctx, { username }): Promise<StartSignInResult> => {
-            // Reject a malformed username before any ceremony starts.
-            const usernameError = validateUsernameFormat(username);
-            if (usernameError !== null) {
-              return { success: false, userError: usernameError };
-            }
+        const userId = await ctx.runQuery(
+          usernameComponent.public.getUserIdByUsername,
+          { username },
+        );
+        if (userId !== null) {
+          // When the user has no passkeys (possible only if a flow outside
+          // this provider deletes the last passkey of a user), this branch
+          // returns an empty `allowCredentials` and the user can neither
+          // sign in nor register again.
+          // TODO: Should we throw an error instead?
+          const { challenge, allowCredentials } = await ctx.runMutation(
+            component.authentication.startAuthentication,
+            { purpose: SIGN_IN_PURPOSE, userId },
+          );
+          return {
+            success: true,
+            step: "authenticate",
+            options: buildAuthenticationOptions({
+              rpId,
+              challenge,
+              allowCredentials,
+            }),
+          };
+        }
 
-            const userId = await ctx.runQuery(
-              usernameComponent.public.getUserIdByUsername,
-              { username },
-            );
-            if (userId !== null) {
-              // When the user has no passkeys (possible only if a flow outside
-              // this provider deletes the last passkey of a user), this branch
-              // returns an empty `allowCredentials` and the user can neither
-              // sign in nor register again.
-              // TODO: Should we throw an error instead?
-              const { challenge, allowCredentials } = await ctx.runMutation(
-                component.authentication.startAuthentication,
-                { purpose: SIGN_IN_PURPOSE, userId },
-              );
-              return {
-                success: true,
-                step: "authenticate",
-                options: buildAuthenticationOptions({
-                  rpId,
-                  challenge,
-                  allowCredentials,
-                }),
-              };
-            }
+        const { challenge, userHandle } = await ctx.runMutation(
+          component.registration.startRegistrationForNewUser,
+          {},
+        );
+        return {
+          success: true,
+          step: "register",
+          options: buildRegistrationOptions({
+            rpId,
+            rpName,
+            challenge,
+            userHandle,
+            // What the browser shows for the new passkey in its passkey manager.
+            // TODO(nicolas) Think of how we could allow the app to customize this
+            userName: username,
+            userDisplayName: username,
+            // A sign-up ceremony makes the first passkey of a brand-new
+            // user, so there are no credentials to exclude.
+            excludeCredentials: [],
+          }),
+        };
+      },
+    }),
 
-            const { challenge, userHandle } = await ctx.runMutation(
-              component.registration.startRegistrationForNewUser,
-              {},
-            );
-            return {
-              success: true,
-              step: "register",
-              options: buildRegistrationOptions({
-                rpId,
-                rpName,
-                challenge,
-                userHandle,
-                // What the browser shows for the new passkey in its passkey manager.
-                // TODO(nicolas) Think of how we could allow the app to customize this
-                userName: username,
-                userDisplayName: username,
-                // A sign-up ceremony makes the first passkey of a brand-new
-                // user, so there are no credentials to exclude.
-                excludeCredentials: [],
-              }),
-            };
+    /**
+     * Start a conditional-mediation (passkey autofill) ceremony: an
+     * authentication challenge that is not bound to a user. The passkey
+     * that the user selects identifies the account.
+     */
+    startAutofillSignInWithUsernamePasskey: mutationGeneric({
+      args: {},
+      returns: startAutofillSignInResult,
+      handler: async (ctx): Promise<StartAutofillSignInResult> => {
+        const { challenge } = await ctx.runMutation(
+          component.authentication.startAuthentication,
+          { purpose: SIGN_IN_PURPOSE },
+        );
+        return {
+          options: buildAuthenticationOptions({
+            rpId,
+            challenge,
+            allowCredentials: [],
+          }),
+        };
+      },
+    }),
+
+    /**
+     * Create a new account: the user, the username, the account, the
+     * session, and the passkey, all in ONE mutation. When any step
+     * fails, nothing is committed.
+     *
+     * The order of the steps gives that guarantee:
+     * 1. Checks that write nothing: the username format, the username
+     *    conflict, and `checkRegistrationForNewUser` (the full WebAuthn
+     *    verification as a query). Each failure, correctable or not,
+     *    returns a `userError` here, before anything exists.
+     * 2. Writes that cannot fail after the checks: `completeSignUp` mints
+     *    the user, the account, and the session, `setUsername` stores the
+     *    username, and `finishRegistrationForNewUser` stores the
+     *    passkey. None of
+     *    them can fail after step 1 inside the same transaction, so a
+     *    failure throws and rolls everything back.
+     */
+    finishSignUpWithUsernamePasskey: authMutation({
+      args: {
+        username: v.string(),
+        response: vRegistrationResponseJSON,
+      },
+      returns: finishSignUpResult,
+      handler: async (ctx, args): Promise<FinishSignUpResult> => {
+        const { username } = args;
+        const usernameError = validateUsernameFormat(username);
+        if (usernameError !== null) {
+          return { status: "error", userError: usernameError };
+        }
+
+        // Fail early if the username is taken
+        const existing = await ctx.runQuery(
+          usernameComponent.public.getUserIdByUsername,
+          { username },
+        );
+        if (existing !== null) {
+          return {
+            status: "error",
+            userError: { error: "USERNAME_TAKEN" },
+          };
+        }
+
+        // The app does not name a new passkey yet, thus the provider
+        // names it after the authenticator model.
+        // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
+        const passkeyName = defaultPasskeyName(args.response);
+
+        // Fail early if the passkey registration fails
+        const checkResult = await ctx.runQuery(
+          component.registration.checkRegistrationForNewUser,
+          {
+            expectedRpId: rpId,
+            expectedOrigin: origin,
+            response: args.response,
+            name: passkeyName,
           },
-        }),
-
-        /**
-         * Start a conditional-mediation (passkey autofill) ceremony: an
-         * authentication challenge that is not bound to a user. The passkey
-         * that the user selects identifies the account.
-         */
-        startAutofillSignInWithUsernamePasskey: mutationGeneric({
-          args: {},
-          returns: startAutofillSignInResult,
-          handler: async (ctx): Promise<StartAutofillSignInResult> => {
-            const { challenge } = await ctx.runMutation(
-              component.authentication.startAuthentication,
-              { purpose: SIGN_IN_PURPOSE },
+        );
+        if (!checkResult.success) {
+          const { userError } = checkResult;
+          if (userError.error === "INVALID_NAME") {
+            // Not possible: the only name that this function passes is a
+            // default name, and every default name is a short label that
+            // the component stores. See the same case in
+            // `finishAddPasskey`.
+            throw new Error(
+              "Unexpected error when storing the passkey: INVALID_NAME",
+              { cause: userError },
             );
-            return {
-              options: buildAuthenticationOptions({
-                rpId,
-                challenge,
-                allowCredentials: [],
-              }),
-            };
-          },
-        }),
+          }
+          return { status: "error", userError };
+        }
 
-        /**
-         * Create a new account: the user, the username, the account, the
-         * session, and the passkey, all in ONE mutation. When any step
-         * fails, nothing is committed.
-         *
-         * The order of the steps gives that guarantee:
-         * 1. Checks that write nothing: the username format, the username
-         *    conflict, and `checkRegistrationForNewUser` (the full WebAuthn
-         *    verification as a query). Each failure, correctable or not,
-         *    returns a `userError` here, before anything exists.
-         * 2. Writes that cannot fail after the checks: `completeSignUp` mints
-         *    the user, the account, and the session, `setUsername` stores the
-         *    username, and `finishRegistrationForNewUser` stores the
-         *    passkey. None of
-         *    them can fail after step 1 inside the same transaction, so a
-         *    failure throws and rolls everything back.
-         */
-        finishSignUpWithUsernamePasskey: authMutation({
-          args: {
-            username: v.string(),
-            response: vRegistrationResponseJSON,
-          },
-          returns: finishSignUpResult,
-          handler: async (ctx, args): Promise<FinishSignUpResult> => {
-            const { username } = args;
-            const usernameError = validateUsernameFormat(username);
-            if (usernameError !== null) {
-              return { status: "error", userError: usernameError };
-            }
-
-            // Fail early if the username is taken
-            const existing = await ctx.runQuery(
-              usernameComponent.public.getUserIdByUsername,
-              { username },
-            );
-            if (existing !== null) {
-              return {
-                status: "error",
-                userError: { error: "USERNAME_TAKEN" },
-              };
-            }
-
-            // The app does not name a new passkey yet, thus the provider
-            // names it after the authenticator model.
-            // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
-            const passkeyName = defaultPasskeyName(args.response);
-
-            // Fail early if the passkey registration fails
-            const checkResult = await ctx.runQuery(
-              component.registration.checkRegistrationForNewUser,
-              {
-                expectedRpId: rpId,
-                expectedOrigin: origin,
-                response: args.response,
-                name: passkeyName,
-              },
-            );
-            if (!checkResult.success) {
-              const { userError } = checkResult;
-              if (userError.error === "INVALID_NAME") {
-                // Not possible: the only name that this function passes is a
-                // default name, and every default name is a short label that
-                // the component stores. See the same case in
-                // `finishAddPasskey`.
-                throw new Error(
-                  "Unexpected error when storing the passkey: INVALID_NAME",
-                  { cause: userError },
-                );
-              }
-              return { status: "error", userError };
-            }
-
-            // Create the account + app user (via the app's createUser) and
-            // mint the session.
-            //
-            // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for this provider at all: the value is an
-            // internal key ("" at sign-up, the user id afterwards) with no
-            // meaning to the app. We will probably improve this when
-            // providers support typesafe profiles.
-            const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
-              profile: {},
-            });
-
-            const setUsernameResult = await ctx.runMutation(
-              usernameComponent.public.setUsername,
-              { userId: tokens.userId, username },
-            );
-            if (!setUsernameResult.success) {
-              // Not possible: the username format was validated and the
-              // username was free above, in the same transaction. Throwing
-              // rolls everything back.
-              throw new Error(
-                "Unexpected error when setting the username: " +
-                  setUsernameResult.userError.error,
-                { cause: setUsernameResult.userError },
-              );
-            }
-
-            // Store the verified credential, link the handle to the new
-            // user, and consume the challenge.
-            const registrationResult = await ctx.runMutation(
-              component.registration.finishRegistrationForNewUser,
-              {
-                expectedRpId: rpId,
-                expectedOrigin: origin,
-                newUserId: tokens.userId,
-                response: args.response,
-                name: passkeyName,
-              },
-            );
-            if (!registrationResult.success) {
-              // Not possible: `checkRegistrationForNewUser` succeeded
-              // above, in the same transaction. Throwing rolls everything
-              // back.
-              throw new Error(
-                "Unexpected error when storing the passkey: " +
-                  registrationResult.userError.error,
-                { cause: registrationResult.userError },
-              );
-            }
-
-            return { status: "complete", tokens };
-          },
-        }),
-
-        /**
-         * Verify a passkey assertion and, on success, mint a session.
-         *
-         * The function serves both ceremonies that produce an assertion: the
-         * username-first branch (`startSignInWithUsernamePasskey` → `step: "authenticate"`, a
-         * challenge bound to the user) and passkey autofill
-         * (`startAutofillSignInWithUsernamePasskey`, an unbound challenge where the credential
-         * identifies the user).
-         */
-        finishSignInWithUsernamePasskey: authMutation({
-          args: {
-            response: vAuthenticationResponseJSON,
-          },
-          returns: finishSignInResult,
-          handler: async (ctx, args): Promise<FinishSignInResult> => {
-            const authenticationResult = await ctx.runMutation(
-              component.authentication.finishAuthentication,
-              {
-                purpose: SIGN_IN_PURPOSE,
-                expectedRpId: rpId,
-                expectedOrigin: origin,
-                response: args.response,
-              },
-            );
-            if (!authenticationResult.success) {
-              return {
-                status: "error",
-                userError: authenticationResult.userError,
-              };
-            }
-
-            const { userId } = authenticationResult;
-            const username = await ctx.runQuery(
-              usernameComponent.public.getUsername,
-              { userId },
-            );
-
-            const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
-              profile: {},
-            });
-            return { status: "complete", tokens, username };
-          },
-        }),
-
-        // The passkey-management functions of a signed-in user.
+        // Create the account + app user (via the app's createUser) and
+        // mint the session.
         //
-        // TODO(nicolas) These functions do not compose with the other auth
-        // providers yet. They assume that a passkey is the only way into the
-        // account: `startAddPasskey` re-authenticates with an existing
-        // passkey, thus a user who signed in with a different provider and
-        // has no passkey cannot add a first one; and `finishRemovePasskey`
-        // refuses the last passkey, even when the user keeps another way to
-        // sign in.
-        //
-        // None of them mints a session, thus none of them goes through
-        // `authMutation`. Each one resolves the caller with the session of
-        // the request and refuses a signed-out caller. Each mutation
-        // composes the functions of the component in one transaction.
-        listPasskeys: listPasskeys(config),
-        renamePasskey: renamePasskey(config),
-        startAddPasskey: startAddPasskey(config),
-        verifyAddPasskey: verifyAddPasskey(config),
-        finishAddPasskey: finishAddPasskey(config),
-        startRemovePasskey: startRemovePasskey(config),
-        finishRemovePasskey: finishRemovePasskey(config),
-      };
-    },
+        // TODO(nicolas) The app's user callbacks should not receive a
+        // provider account ID for this provider at all: the value is an
+        // internal key ("" at sign-up, the user id afterwards) with no
+        // meaning to the app. We will probably improve this when
+        // providers support typesafe profiles.
+        const tokens = await ctx.convexAuth.completeSignUp({
+          providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
+          profile: {},
+        });
+
+        const setUsernameResult = await ctx.runMutation(
+          usernameComponent.public.setUsername,
+          { userId: tokens.userId, username },
+        );
+        if (!setUsernameResult.success) {
+          // Not possible: the username format was validated and the
+          // username was free above, in the same transaction. Throwing
+          // rolls everything back.
+          throw new Error(
+            "Unexpected error when setting the username: " +
+              setUsernameResult.userError.error,
+            { cause: setUsernameResult.userError },
+          );
+        }
+
+        // Store the verified credential, link the handle to the new
+        // user, and consume the challenge.
+        const registrationResult = await ctx.runMutation(
+          component.registration.finishRegistrationForNewUser,
+          {
+            expectedRpId: rpId,
+            expectedOrigin: origin,
+            newUserId: tokens.userId,
+            response: args.response,
+            name: passkeyName,
+          },
+        );
+        if (!registrationResult.success) {
+          // Not possible: `checkRegistrationForNewUser` succeeded
+          // above, in the same transaction. Throwing rolls everything
+          // back.
+          throw new Error(
+            "Unexpected error when storing the passkey: " +
+              registrationResult.userError.error,
+            { cause: registrationResult.userError },
+          );
+        }
+
+        return { status: "complete", tokens };
+      },
+    }),
+
+    /**
+     * Verify a passkey assertion and, on success, mint a session.
+     *
+     * The function serves both ceremonies that produce an assertion: the
+     * username-first branch (`startSignInWithUsernamePasskey` → `step: "authenticate"`, a
+     * challenge bound to the user) and passkey autofill
+     * (`startAutofillSignInWithUsernamePasskey`, an unbound challenge where the credential
+     * identifies the user).
+     */
+    finishSignInWithUsernamePasskey: authMutation({
+      args: {
+        response: vAuthenticationResponseJSON,
+      },
+      returns: finishSignInResult,
+      handler: async (ctx, args): Promise<FinishSignInResult> => {
+        const authenticationResult = await ctx.runMutation(
+          component.authentication.finishAuthentication,
+          {
+            purpose: SIGN_IN_PURPOSE,
+            expectedRpId: rpId,
+            expectedOrigin: origin,
+            response: args.response,
+          },
+        );
+        if (!authenticationResult.success) {
+          return {
+            status: "error",
+            userError: authenticationResult.userError,
+          };
+        }
+
+        const { userId } = authenticationResult;
+        const username = await ctx.runQuery(
+          usernameComponent.public.getUsername,
+          { userId },
+        );
+
+        const tokens = await ctx.convexAuth.completeSignIn({
+          providerAccountId: userId,
+          profile: {},
+        });
+        return { status: "complete", tokens, username };
+      },
+    }),
+
+    // The passkey-management functions of a signed-in user.
+    //
+    // TODO(nicolas) These functions do not compose with the other auth
+    // providers yet. They assume that a passkey is the only way into the
+    // account: `startAddPasskey` re-authenticates with an existing
+    // passkey, thus a user who signed in with a different provider and
+    // has no passkey cannot add a first one; and `finishRemovePasskey`
+    // refuses the last passkey, even when the user keeps another way to
+    // sign in.
+    //
+    // None of them mints a session, thus none of them goes through
+    // `authMutation`. Each one resolves the caller with the session of
+    // the request and refuses a signed-out caller. Each mutation
+    // composes the functions of the component in one transaction.
+    listPasskeys: listPasskeys(config),
+    renamePasskey: renamePasskey(config),
+    startAddPasskey: startAddPasskey(config),
+    verifyAddPasskey: verifyAddPasskey(config),
+    finishAddPasskey: finishAddPasskey(config),
+    startRemovePasskey: startRemovePasskey(config),
+    finishRemovePasskey: finishRemovePasskey(config),
   };
 }

@@ -30,7 +30,6 @@ import type { ComponentApi as GoogleComponentApi } from "../../components/google
 import { setupGoogle } from "../google/server.ts";
 import {
   ALLOWED_ORIGINS,
-  fakeCallbacks,
   fakeCore,
 } from "../../lib/oauth/componentContract.test.ts";
 import { CALLBACK_PATH } from "../../lib/oauth/constants.ts";
@@ -56,7 +55,6 @@ const acme = setupOauth(
     scopes: [],
     profile: () => ({ id: "account-1" }),
   },
-  fakeCallbacks,
   { component: components.authOauth, allowedRedirectOrigins: ALLOWED_ORIGINS },
 );
 
@@ -66,15 +64,15 @@ const testApp = {
   ...setupApple(fakeCore, {
     component: components.authApple,
     allowedRedirectOrigins: ALLOWED_ORIGINS,
-  }).attachUserCallbacks(fakeCallbacks),
+  }),
   ...setupGithub(fakeCore, {
     component: components.authGithub,
     allowedRedirectOrigins: ALLOWED_ORIGINS,
-  }).attachUserCallbacks(fakeCallbacks),
+  }),
   ...setupGoogle(fakeCore, {
     component: components.authGoogle,
     allowedRedirectOrigins: ALLOWED_ORIGINS,
-  }).attachUserCallbacks(fakeCallbacks),
+  }),
 };
 
 /**

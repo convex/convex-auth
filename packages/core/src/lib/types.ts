@@ -239,7 +239,7 @@ export const USE_USER_ID_AS_ACCOUNT_ID = "";
  *
  * The application keeps ownership of its users table. The core treats the
  * returned id as an opaque string at runtime; at the type level the table is
- * named by `setupConvexAuth`'s `usersTable` option, which is what makes the return
+ * named by `defineAuthProvider`'s `usersTable` option, which is what makes the return
  * type `Id<usersTable>` rather than a bare string.
  */
 export type CreateUserFn<
@@ -293,9 +293,9 @@ export type OnSignInFn<
 >;
 
 /**
- * The app's user callbacks for one provider, as its `attachUserCallbacks`
- * takes them: {@link CreateUserFn} is required (something has to create the
- * user record), {@link OnSignInFn} is optional.
+ * The app's user callbacks for one provider, as `defineAuthProvider` takes them.
+ * {@link CreateUserFn} is required (something has to create the user record),
+ * {@link OnSignInFn} is optional.
  */
 export type UserCallbacks<
   Provider extends string,

@@ -11,7 +11,6 @@ import { setupGoogle } from "../../methods/google/server.ts";
 import {
   ALLOWED_ORIGINS,
   asComponentApi,
-  fakeCallbacks,
   fakeCore,
   testAuthorizationUrl,
 } from "../../lib/oauth/componentContract.test.ts";
@@ -21,7 +20,7 @@ const modules = import.meta.glob("./**/*.ts");
 const { startSignInWithGoogle } = setupGoogle(fakeCore, {
   component: asComponentApi<ComponentApi>(api),
   allowedRedirectOrigins: ALLOWED_ORIGINS,
-}).attachUserCallbacks(fakeCallbacks);
+});
 
 testAuthorizationUrl(schema, modules, startSignInWithGoogle, {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",

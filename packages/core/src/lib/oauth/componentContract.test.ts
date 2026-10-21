@@ -55,9 +55,6 @@ export const fakeCore = {
   }),
 } as unknown as AuthCore;
 
-/** The app's user callbacks. The fake core never invokes them. */
-export const fakeCallbacks = {} as never;
-
 /**
  * Type a component's own generated `api` as its `ComponentApi`, for tests that
  * run the component's modules at the root. `ComponentApi` types the

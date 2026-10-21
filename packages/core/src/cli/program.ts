@@ -103,7 +103,8 @@ export const { signOut, refreshSession, isAuthenticated } = auth;
 //   setupUsernamePassword(auth, {
 //     component: components.authPassword,
 //     usernameComponent: components.authUsername,
-//   }).attachUserCallbacks({ createUser: internal.users.createUser });
+//   });
+// Register the provider callbacks in convex.config.ts with defineAuthProvider.
 `,
 };
 

@@ -23,6 +23,34 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    init: {
+      configure: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessTokenTtlSeconds?: number;
+          refreshTokenTtlSeconds?: number;
+          providers?: Array<{
+            name: string;
+            createUser: import("convex/server").FunctionHandle_future<
+              "mutation",
+              { provider: { name: string; accountId: string; profile: any } },
+              string
+            >;
+            onSignIn?: import("convex/server").FunctionHandle_future<
+              "mutation",
+              {
+                provider: { name: string; accountId: string; profile: any };
+                userId: string;
+              },
+              null
+            >;
+          }>;
+        },
+        null,
+        Name
+      >;
+    };
     public: {
       getUserIdByAccount: FunctionReference<
         "query",
@@ -93,7 +121,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             providerAccountId: string;
             providerName: string;
           };
-          createUserHandle: string;
+          createUserHandle?: string;
           issuer: string;
           onSignInHandle?: string;
           refreshTokenTtlSeconds?: number;
@@ -116,7 +144,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             providerAccountId: string;
             providerName: string;
           };
-          createUserHandle: string;
+          createUserHandle?: string;
         },
         { userId: string },
         Name

@@ -7,7 +7,6 @@ import schema from "./schema.ts";
 import { setupOauth, type OauthCatalog } from "../../methods/oauth/server.ts";
 import {
   asComponentApi,
-  fakeCallbacks,
   fakeCore,
 } from "../../lib/oauth/componentContract.test.ts";
 import { sha256Base64Url } from "../../lib/oauth/crypto.ts";
@@ -70,25 +69,14 @@ const formPostCatalog = {
  * public mutations into the component's generated API.
  */
 const testApp = {
-  startSignInScoped: setupOauth(
-    fakeCore,
-    "scoped",
-    scopedCatalog,
-    fakeCallbacks,
-    options,
-  ).startSignIn,
-  startSignInBare: setupOauth(
-    fakeCore,
-    "bare",
-    bareCatalog,
-    fakeCallbacks,
-    options,
-  ).startSignIn,
+  startSignInScoped: setupOauth(fakeCore, "scoped", scopedCatalog, options)
+    .startSignIn,
+  startSignInBare: setupOauth(fakeCore, "bare", bareCatalog, options)
+    .startSignIn,
   startSignInFormPost: setupOauth(
     fakeCore,
     "formPost",
     formPostCatalog,
-    fakeCallbacks,
     options,
   ).startSignIn,
 };

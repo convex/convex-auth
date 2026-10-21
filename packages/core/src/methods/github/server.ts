@@ -5,7 +5,6 @@
  * @module
  */
 import { Infer, v } from "convex/values";
-import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
@@ -92,7 +91,7 @@ export type GithubProviderOptions = {
  * export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(auth, {
  *   component: components.authGithub,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],
- * }).attachUserCallbacks({ createUser: internal.users.createUserGithub });
+ * });
  * ```
  *
  * Setup:
@@ -105,53 +104,41 @@ export type GithubProviderOptions = {
  *
  * The `httpPrefix` alone determines the callback URL.
  */
-export function setupGithub<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
-  options: GithubProviderOptions,
-) {
+export function setupGithub(core: AuthCore, options: GithubProviderOptions) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time, not on the first sign-in.
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
   );
 
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    GithubProfile
+  >({
+    name: PROVIDER_NAME,
+  });
+
+  const startSignIn = buildStartSignIn({
+    allowedOrigins,
+    authorizationEndpoint: AUTHORIZATION_ENDPOINT,
+    scopes: SCOPES,
+    createAuthorizationRequest:
+      options.component.provider.createAuthorizationRequest,
+  });
+
+  const completeSignIn = buildCompleteSignIn<
+    GithubProfile,
+    { userInfoResponses?: GithubUserInfo }
+  >({
+    providerName: PROVIDER_NAME,
+    authMutation,
+    claimTicket: (ctx, args) =>
+      ctx.runMutation(options.component.provider.claimTicket, args),
+    profile: (payload) => normalizeGithubProfile(payload.userInfoResponses),
+  });
+
   return {
-    /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
-     */
-    attachUserCallbacks(
-      callbacks: UserCallbacks<"github", GithubProfile, UsersTable>,
-    ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser: callbacks.createUser,
-        onSignIn: callbacks.onSignIn,
-      });
-
-      const startSignIn = buildStartSignIn({
-        allowedOrigins,
-        authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-        scopes: SCOPES,
-        createAuthorizationRequest:
-          options.component.provider.createAuthorizationRequest,
-      });
-
-      const completeSignIn = buildCompleteSignIn<
-        GithubProfile,
-        { userInfoResponses?: GithubUserInfo }
-      >({
-        providerName: PROVIDER_NAME,
-        authMutation,
-        claimTicket: (ctx, args) =>
-          ctx.runMutation(options.component.provider.claimTicket, args),
-        profile: (payload) => normalizeGithubProfile(payload.userInfoResponses),
-      });
-
-      return {
-        startSignInWithGithub: startSignIn,
-        completeSignInWithGithub: completeSignIn,
-      };
-    },
+    startSignInWithGithub: startSignIn,
+    completeSignInWithGithub: completeSignIn,
   };
 }

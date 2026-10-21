@@ -11,7 +11,6 @@ import { setupApple } from "../../methods/apple/server.ts";
 import {
   ALLOWED_ORIGINS,
   asComponentApi,
-  fakeCallbacks,
   fakeCore,
   testAuthorizationUrl,
 } from "../../lib/oauth/componentContract.test.ts";
@@ -21,7 +20,7 @@ const modules = import.meta.glob("./**/*.ts");
 const { startSignInWithApple } = setupApple(fakeCore, {
   component: asComponentApi<ComponentApi>(api),
   allowedRedirectOrigins: ALLOWED_ORIGINS,
-}).attachUserCallbacks(fakeCallbacks);
+});
 
 testAuthorizationUrl(schema, modules, startSignInWithApple, {
   authorizationEndpoint: "https://appleid.apple.com/auth/authorize",

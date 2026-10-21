@@ -1,4 +1,4 @@
-import { components, internal } from "./_generated/api";
+import { components } from "./_generated/api";
 import { env } from "./_generated/server";
 import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
@@ -37,6 +37,4 @@ export const {
     changeEmail: `${SITE_URL}/confirm-email-change`,
     recovery: `${SITE_URL}/reset-password`,
   },
-}).attachUserCallbacks({
-  createUser: internal.users.createUser,
 });

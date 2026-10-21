@@ -2,8 +2,8 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import type { AnyDataModel, GenericMutationCtx } from "convex/server";
-import { api, components } from "./_generated/api";
-import { registerCore } from "@convex-dev/auth/test";
+import { api, components, internal } from "./_generated/api";
+import { registerCore, configureCore } from "@convex-dev/auth/test";
 import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
 import {
   registerEmail,
@@ -43,6 +43,11 @@ async function setup() {
   registerPasswordProvider(t);
   registerEmail(t);
   registerResendStub(t);
+  await configureCore(t, {
+    providers: [
+      { name: "emailPassword", createUser: internal.users.createUser },
+    ],
+  });
   return t;
 }
 

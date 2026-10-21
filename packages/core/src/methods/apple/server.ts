@@ -5,7 +5,6 @@
  * @module
  */
 import { Infer, v } from "convex/values";
-import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
@@ -107,7 +106,7 @@ export type AppleProviderOptions = {
  * export const { startSignInWithApple, completeSignInWithApple } = setupApple(auth, {
  *   component: components.authApple,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],
- * }).attachUserCallbacks({ createUser: internal.users.createUserApple });
+ * });
  * ```
  *
  * Setup:
@@ -124,68 +123,54 @@ export type AppleProviderOptions = {
  * reachable. The app the flow returns to is unaffected and can stay on
  * localhost.
  */
-export function setupApple<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
-  options: AppleProviderOptions,
-) {
+export function setupApple(core: AuthCore, options: AppleProviderOptions) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time.
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
   );
 
-  return {
-    /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
-     */
-    attachUserCallbacks(
-      callbacks: UserCallbacks<"apple", AppleProfile, UsersTable>,
-    ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser: callbacks.createUser,
-        onSignIn: callbacks.onSignIn,
-      });
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    AppleProfile
+  >({
+    name: PROVIDER_NAME,
+  });
 
-      const startSignIn = buildStartSignIn({
-        allowedOrigins,
-        authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-        scopes: SCOPES,
-        callbackMethod: CALLBACK_METHOD,
-        createAuthorizationRequest:
-          options.component.provider.createAuthorizationRequest,
-      });
+  const startSignIn = buildStartSignIn({
+    allowedOrigins,
+    authorizationEndpoint: AUTHORIZATION_ENDPOINT,
+    scopes: SCOPES,
+    callbackMethod: CALLBACK_METHOD,
+    createAuthorizationRequest:
+      options.component.provider.createAuthorizationRequest,
+  });
 
-      /**
-       * Complete an Apple sign-in by redeeming the one-time `code` from the
-       * callback redirect together with the state held since `startSignIn`.
-       */
-      const completeSignIn = buildCompleteSignIn<
-        AppleProfile,
-        { claims?: OidcClaims; callbackParams?: { user?: SanitizedAppleUser } }
-      >({
-        providerName: PROVIDER_NAME,
-        authMutation,
-        claimTicket: (ctx, args) =>
-          ctx.runMutation(options.component.provider.claimTicket, args),
-        profile: (payload) => {
-          if (payload.claims === undefined) {
-            throw new Error(
-              "Apple returned no id_token to build a profile from",
-            );
-          }
-          return normalizeAppleProfile(
-            payload.claims,
-            payload.callbackParams?.user,
-          );
-        },
-      });
-
-      return {
-        startSignInWithApple: startSignIn,
-        completeSignInWithApple: completeSignIn,
-      };
+  /**
+   * Complete an Apple sign-in by redeeming the one-time `code` from the
+   * callback redirect together with the state held since `startSignIn`.
+   */
+  const completeSignIn = buildCompleteSignIn<
+    AppleProfile,
+    { claims?: OidcClaims; callbackParams?: { user?: SanitizedAppleUser } }
+  >({
+    providerName: PROVIDER_NAME,
+    authMutation,
+    claimTicket: (ctx, args) =>
+      ctx.runMutation(options.component.provider.claimTicket, args),
+    profile: (payload) => {
+      if (payload.claims === undefined) {
+        throw new Error("Apple returned no id_token to build a profile from");
+      }
+      return normalizeAppleProfile(
+        payload.claims,
+        payload.callbackParams?.user,
+      );
     },
+  });
+
+  return {
+    startSignInWithApple: startSignIn,
+    completeSignInWithApple: completeSignIn,
   };
 }

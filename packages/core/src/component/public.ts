@@ -6,12 +6,7 @@ import {
   env,
 } from "./_generated/server.ts";
 import { Doc, Id } from "./_generated/dataModel.ts";
-import { GenericId, v } from "convex/values";
-import {
-  FunctionArgs,
-  FunctionHandle,
-  FunctionReturnType,
-} from "convex/server";
+import { v } from "convex/values";
 import {
   vAuthClaims,
   type AuthClaims,
@@ -20,21 +15,23 @@ import {
   vRefreshResult,
   type RefreshResult,
   USE_USER_ID_AS_ACCOUNT_ID,
-  type CreateUserFn,
-  type OnSignInFn,
 } from "../lib/types.ts";
+import type { ProviderConfiguration } from "../lib/configuration.ts";
 import { signJwt, generateRefreshToken } from "./crypto.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import {
+  getConfiguration,
+  getProvider,
+  resolveTtlConfig,
+  type TtlConfig,
+} from "./configuration.ts";
 
 // --- Configuration ---------------------------------------------------------
 
 // `aud` claim; must match `applicationID` in the app's auth.config.ts.
 const AUDIENCE = "convex";
-// Defaults for the configurable token lifetimes. The app overrides them per
-// deployment via `setupConvexAuth`, which threads the chosen values in as call args;
-// when it passes nothing, these apply.
-const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60; // 1 minute
-const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// Token lifetimes come from installation configuration. Optional per-call
+// overrides remain for compatibility with existing server-side callers.
 // How many issued, never-presented refresh tokens a session may have. Each
 // refresh presenting the redeemed token adds one, and the first issued token
 // presented clears them all, so the count only climbs when responses are lost
@@ -183,35 +180,6 @@ async function issueRefreshToken(
   return { refreshToken, expiresAt };
 }
 
-/**
- * The token lifetimes for a call, with the app's overrides applied over the
- * defaults. Validated so a misconfiguration fails loudly rather than minting
- * nonsensical sessions.
- */
-type TtlConfig = {
-  accessTokenTtlSeconds: number;
-  refreshTokenTtlSeconds: number;
-};
-
-function resolveTtlConfig(args: {
-  accessTokenTtlSeconds?: number;
-  refreshTokenTtlSeconds?: number;
-}): TtlConfig {
-  const accessTokenTtlSeconds =
-    args.accessTokenTtlSeconds ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
-  const refreshTokenTtlSeconds =
-    args.refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS;
-  if (accessTokenTtlSeconds <= 0 || refreshTokenTtlSeconds <= 0) {
-    throw new Error("Token TTLs must be positive.");
-  }
-  if (accessTokenTtlSeconds >= refreshTokenTtlSeconds) {
-    throw new Error(
-      "Access-token TTL must be shorter than the refresh-token TTL.",
-    );
-  }
-  return { accessTokenTtlSeconds, refreshTokenTtlSeconds };
-}
-
 async function mintAccessToken(
   userId: string,
   issuer: string,
@@ -265,32 +233,8 @@ async function issueSession(
   };
 }
 
-// The callback types carry their args and return type in the `_fn` slot and
-// have no `_args`/`_returnType` of their own, so read both back through
-// `FunctionArgs`/`FunctionReturnType` rather than by indexing.
-type CreateUserFunctionHandle = FunctionHandle<
-  CreateUserFn<string, unknown>["_type"],
-  FunctionArgs<CreateUserFn<string, unknown>>,
-  FunctionReturnType<CreateUserFn<string, unknown>>
->;
-
-type OnSignInFunctionHandle = FunctionHandle<
-  OnSignInFn<string, unknown>["_type"],
-  FunctionArgs<OnSignInFn<string, unknown>>,
-  FunctionReturnType<OnSignInFn<string, unknown>>
->;
-
-/**
- * Type the given userId string as a {@link GenericId}.
- *
- * The core stores app user ids as opaque strings and has no access to the
- * app's data model. The type for user-supplied callbacks types them as
- * `Id<usersTable>` for the app's benefit, so re-brand on the way back out. The
- * value is the same string either way.
- */
-function asUserId(userId: string): GenericId<string> {
-  return userId as GenericId<string>;
-}
+type CreateUserFunctionHandle = ProviderConfiguration["createUser"];
+type OnSignInFunctionHandle = NonNullable<ProviderConfiguration["onSignIn"]>;
 
 /**
  * Create the account and app-level user for an identity the core has not seen before.
@@ -382,7 +326,7 @@ async function notifySignIn(
       accountId: claims.providerAccountId,
       profile: claims.profile,
     },
-    userId: asUserId(userId),
+    userId,
   });
 }
 
@@ -395,7 +339,7 @@ async function notifySignIn(
  *
  * Providers don't typically call this API directly, but instead use the
  * framework's `completeSignUp` helper. That function takes care of passing the
- * `createUserHandle` and `onSignInHandle` app callbacks.
+ * configured provider name. Callback handles are resolved from init settings.
  *
  * `createUser` mints the app user, then `onSignIn` runs like it does for any
  * other sign-in. An `onSignIn` that throws therefore rolls back the user
@@ -404,7 +348,7 @@ async function notifySignIn(
  * The JWT accessToken in the return value is issued with `issuer` as its
  * `iss`. Token lifetimes default to 1m (access) and 30d (refresh) unless
  * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
- * sets these once via `setupConvexAuth`).
+ * configures these in `convex.config.ts`).
  *
  * Throws when the identity already has an account. See {@link signIn} for the
  * return-visit path.
@@ -412,7 +356,8 @@ async function notifySignIn(
 export const signUp = mutation({
   args: {
     claims: vAuthClaims,
-    createUserHandle: v.string(),
+    // Legacy callers may still supply handles; configured apps omit them.
+    createUserHandle: v.optional(v.string()),
     onSignInHandle: v.optional(v.string()),
     issuer: v.string(),
     accessTokenTtlSeconds: v.optional(v.number()),
@@ -420,13 +365,29 @@ export const signUp = mutation({
   },
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
-    const ttl = resolveTtlConfig(args);
+    const config = await getConfiguration(ctx);
+    const ttl = resolveTtlConfig({
+      accessTokenTtlSeconds:
+        args.accessTokenTtlSeconds ?? config?.accessTokenTtlSeconds,
+      refreshTokenTtlSeconds:
+        args.refreshTokenTtlSeconds ?? config?.refreshTokenTtlSeconds,
+    });
     const { accountId, userId } = await createAccount(
       ctx,
       args.claims,
-      args.createUserHandle as CreateUserFunctionHandle,
+      (args.createUserHandle ??
+        (await getProvider(ctx, args.claims.providerName))
+          .createUser) as CreateUserFunctionHandle,
     );
-    await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
+    await notifySignIn(
+      ctx,
+      args.claims,
+      userId,
+      args.onSignInHandle ??
+        (config?.providers === undefined
+          ? undefined
+          : (await getProvider(ctx, args.claims.providerName)).onSignIn),
+    );
     return await issueSession(ctx, accountId, userId, args.issuer, ttl);
   },
 });
@@ -438,12 +399,12 @@ export const signUp = mutation({
  *
  * Providers don't typically call this API directly, but instead use the
  * framework's `completeSignIn` helper. That function takes care of passing the
- * `onSignInHandle` app callback.
+ * configured provider name.
  *
  * The JWT accessToken in the return value is issued with `issuer` as its
  * `iss`. Token lifetimes default to 1m (access) and 30d (refresh) unless
  * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
- * sets these once via `setupConvexAuth`).
+ * configures these in `convex.config.ts`).
  *
  * Throws when the identity has no account.
  */
@@ -457,7 +418,13 @@ export const signIn = mutation({
   },
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
-    const ttl = resolveTtlConfig(args);
+    const config = await getConfiguration(ctx);
+    const ttl = resolveTtlConfig({
+      accessTokenTtlSeconds:
+        args.accessTokenTtlSeconds ?? config?.accessTokenTtlSeconds,
+      refreshTokenTtlSeconds:
+        args.refreshTokenTtlSeconds ?? config?.refreshTokenTtlSeconds,
+    });
     const { claims } = args;
     const account = await accountByIdentity(
       ctx,
@@ -471,7 +438,15 @@ export const signIn = mutation({
           `A first sign-in for an identity must go through signUp.`,
       );
     }
-    await notifySignIn(ctx, claims, account.userId, args.onSignInHandle);
+    await notifySignIn(
+      ctx,
+      claims,
+      account.userId,
+      args.onSignInHandle ??
+        (config?.providers === undefined
+          ? undefined
+          : (await getProvider(ctx, claims.providerName)).onSignIn),
+    );
     return await issueSession(
       ctx,
       account._id,
@@ -498,7 +473,8 @@ export const signIn = mutation({
 export const signUpWithoutSession = mutation({
   args: {
     claims: vAuthClaims,
-    createUserHandle: v.string(),
+    // Legacy callers may still supply handles; configured apps omit them.
+    createUserHandle: v.optional(v.string()),
   },
   returns: v.object({ userId: v.string() }),
   handler: async (ctx, args): Promise<{ userId: string }> => {
@@ -506,7 +482,9 @@ export const signUpWithoutSession = mutation({
     const { userId } = await createAccount(
       ctx,
       args.claims,
-      args.createUserHandle as CreateUserFunctionHandle,
+      (args.createUserHandle ??
+        (await getProvider(ctx, args.claims.providerName))
+          .createUser) as CreateUserFunctionHandle,
     );
     return { userId };
   },
@@ -617,7 +595,13 @@ export const refresh = mutation({
     // Resolve the TTL config well before use below - it does some validation
     // of the config that will throw if invalid, and that should be
     // unconditional.
-    const ttl = resolveTtlConfig(args);
+    const config = await getConfiguration(ctx);
+    const ttl = resolveTtlConfig({
+      accessTokenTtlSeconds:
+        args.accessTokenTtlSeconds ?? config?.accessTokenTtlSeconds,
+      refreshTokenTtlSeconds:
+        args.refreshTokenTtlSeconds ?? config?.refreshTokenTtlSeconds,
+    });
     const now = Date.now();
 
     const token = await lookupRefreshTokenByHash(

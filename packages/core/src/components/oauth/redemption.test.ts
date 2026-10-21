@@ -6,10 +6,7 @@ import { api, internal } from "./_generated/api.ts";
 import type { ComponentApi } from "./_generated/component.ts";
 import schema from "./schema.ts";
 import { setupOauth, type OauthProfile } from "../../methods/oauth/server.ts";
-import {
-  asComponentApi,
-  fakeCallbacks,
-} from "../../lib/oauth/componentContract.test.ts";
+import { asComponentApi } from "../../lib/oauth/componentContract.test.ts";
 import {
   encryptTicketPayload,
   generateRandomToken,
@@ -190,32 +187,24 @@ const missingIdCatalog = {
  * public mutations into the component's generated API.
  */
 const testApp = {
-  completeSignInAcme: setupOauth(
-    fakeCore,
-    "acme",
-    claimsCatalog,
-    fakeCallbacks,
-    options,
-  ).completeSignIn,
+  completeSignInAcme: setupOauth(fakeCore, "acme", claimsCatalog, options)
+    .completeSignIn,
   completeSignInAcmeInfo: setupOauth(
     fakeCore,
     "acmeInfo",
     userInfoCatalog,
-    fakeCallbacks,
     options,
   ).completeSignIn,
   completeSignInEmptyId: setupOauth(
     fakeCore,
     "emptyId",
     emptyIdCatalog,
-    fakeCallbacks,
     options,
   ).completeSignIn,
   completeSignInMissingId: setupOauth(
     fakeCore,
     "missingId",
     missingIdCatalog,
-    fakeCallbacks,
     options,
   ).completeSignIn,
 };

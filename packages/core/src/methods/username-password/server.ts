@@ -5,7 +5,6 @@ import {
   vSignInComplete,
   vSignInError,
   USE_USER_ID_AS_ACCOUNT_ID,
-  type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/password/_generated/component.ts";
@@ -102,7 +101,7 @@ export type ChangePasswordResult = Infer<typeof changePasswordResult>;
  *   setupUsernamePassword(auth, {
  *     component: components.authPassword,
  *     usernameComponent: components.authUsername,
- *   }).attachUserCallbacks({ createUser: internal.users.createUserPassword });
+ *   });
  * ```
  *
  * The app re-exports the returned `signUpWithUsernamePassword` / `signInWithUsernamePassword`
@@ -113,231 +112,212 @@ export type ChangePasswordResult = Infer<typeof changePasswordResult>;
  * user id back from it at sign-in. The password component itself stores only
  * `{ userId, passwordHash }` and knows nothing about usernames.
  */
-export function setupUsernamePassword<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
+export function setupUsernamePassword(
+  core: AuthCore,
   options: UsernamePasswordOptions,
 ) {
   const { component, usernameComponent } = options;
 
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    Record<string, never>
+  >({
+    name: PROVIDER_NAME,
+  });
+
   return {
     /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
+     * Create a new account: reject a taken username or an invalid password,
+     * otherwise create the user + session and store the username and the
+     * password.
      */
-    attachUserCallbacks({
-      createUser,
-      onSignIn,
-    }: UserCallbacks<"password", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser,
-        onSignIn,
-      });
+    signUpWithUsernamePassword: authMutation({
+      args: { username: v.string(), password: v.string() },
+      returns: signUpResult,
+      handler: async (ctx, { username, password }): Promise<SignUpResult> => {
+        // Validate the username and the password *before* creating
+        // anything, so invalid input never mints a session.
+        // (`setUsername` and `setPassword` do the same checks again, but by
+        // then the account would already exist.)
+        // TODO(nicolas) Make the first-party providers apply stronger validation rules by default
+        const usernameError = validateUsernameFormat(username);
+        if (usernameError !== null) {
+          return { status: "error", userError: usernameError };
+        }
+        const userError = validateNewPassword(password);
+        if (userError !== null) {
+          return { status: "error", userError };
+        }
 
-      return {
-        /**
-         * Create a new account: reject a taken username or an invalid password,
-         * otherwise create the user + session and store the username and the
-         * password.
-         */
-        signUpWithUsernamePassword: authMutation({
-          args: { username: v.string(), password: v.string() },
-          returns: signUpResult,
-          handler: async (
-            ctx,
-            { username, password },
-          ): Promise<SignUpResult> => {
-            // Validate the username and the password *before* creating
-            // anything, so invalid input never mints a session.
-            // (`setUsername` and `setPassword` do the same checks again, but by
-            // then the account would already exist.)
-            // TODO(nicolas) Make the first-party providers apply stronger validation rules by default
-            const usernameError = validateUsernameFormat(username);
-            if (usernameError !== null) {
-              return { status: "error", userError: usernameError };
-            }
-            const userError = validateNewPassword(password);
-            if (userError !== null) {
-              return { status: "error", userError };
-            }
+        const existing = await ctx.runQuery(
+          usernameComponent.public.getUserIdByUsername,
+          { username },
+        );
+        if (existing !== null) {
+          return {
+            status: "error",
+            userError: { error: "USERNAME_TAKEN" },
+          };
+        }
 
-            const existing = await ctx.runQuery(
-              usernameComponent.public.getUserIdByUsername,
-              { username },
-            );
-            if (existing !== null) {
-              return {
-                status: "error",
-                userError: { error: "USERNAME_TAKEN" },
-              };
-            }
+        // Create the account + app user (via the app's createUser) and
+        // mint the session. Password accounts are keyed by the app user id,
+        // which does not exist before this call mints it, hence the
+        // placeholder; sign-in passes the user id itself.
+        //
+        // TODO(nicolas) The app's user callbacks should not receive a
+        // provider account ID for the password provider at all: the value
+        // is an internal key ("" at sign-up, the user id afterwards) with
+        // no meaning to the app. We will probably improve this when
+        // providers support typesafe profiles.
+        const tokens = await ctx.convexAuth.completeSignUp({
+          providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
+          profile: {},
+        });
 
-            // Create the account + app user (via the app's createUser) and
-            // mint the session. Password accounts are keyed by the app user id,
-            // which does not exist before this call mints it, hence the
-            // placeholder; sign-in passes the user id itself.
-            //
-            // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for the password provider at all: the value
-            // is an internal key ("" at sign-up, the user id afterwards) with
-            // no meaning to the app. We will probably improve this when
-            // providers support typesafe profiles.
-            const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
-              profile: {},
-            });
+        const setUsernameResult = await ctx.runMutation(
+          usernameComponent.public.setUsername,
+          { userId: tokens.userId, username },
+        );
+        if (!setUsernameResult.success) {
+          // Unexpected: we validated the username above, and this handler
+          // is a mutation, thus the check for a conflict above and this
+          // call are in the same transaction.
+          // Throwing so that the transaction doesn’t commit.
+          throw new Error(
+            "Unexpected error when setting the username: " +
+              setUsernameResult.userError.error,
+            { cause: setUsernameResult.userError },
+          );
+        }
 
-            const setUsernameResult = await ctx.runMutation(
-              usernameComponent.public.setUsername,
-              { userId: tokens.userId, username },
-            );
-            if (!setUsernameResult.success) {
-              // Unexpected: we validated the username above, and this handler
-              // is a mutation, thus the check for a conflict above and this
-              // call are in the same transaction.
-              // Throwing so that the transaction doesn’t commit.
-              throw new Error(
-                "Unexpected error when setting the username: " +
-                  setUsernameResult.userError.error,
-                { cause: setUsernameResult.userError },
-              );
-            }
+        const setResult = await ctx.runMutation(component.public.setPassword, {
+          userId: tokens.userId,
+          password,
+        });
+        if (!setResult.success) {
+          // Unexpected: we pre-validated the password above,
+          // so this call should not fail.
+          // Throwing so that the transaction doesn’t commit.
+          //
+          // TODO(nicolas) can we improve this?
+          throw new Error(
+            "Unexpected error when setting the password: " + userError,
+            { cause: userError },
+          );
+        }
 
-            const setResult = await ctx.runMutation(
-              component.public.setPassword,
-              {
-                userId: tokens.userId,
-                password,
-              },
-            );
-            if (!setResult.success) {
-              // Unexpected: we pre-validated the password above,
-              // so this call should not fail.
-              // Throwing so that the transaction doesn’t commit.
-              //
-              // TODO(nicolas) can we improve this?
-              throw new Error(
-                "Unexpected error when setting the password: " + userError,
-                { cause: userError },
-              );
-            }
+        return { status: "complete", tokens };
+      },
+    }),
 
-            return { status: "complete", tokens };
-          },
-        }),
+    /**
+     * Verify an existing account's password and, on success, mint a session.
+     * Returns `USER_NOT_FOUND` when the username has no account and
+     * `INVALID_CREDENTIALS` when the password is wrong, so callers can tell
+     * the two apart. (Account existence is already observable via sign-up's
+     * `USERNAME_TAKEN`, so distinguishing them here leaks nothing new.)
+     */
+    signInWithUsernamePassword: authMutation({
+      args: { username: v.string(), password: v.string() },
+      returns: signInResult,
+      handler: async (ctx, { username, password }): Promise<SignInResult> => {
+        const userId = await ctx.runQuery(
+          usernameComponent.public.getUserIdByUsername,
+          { username },
+        );
+        if (userId === null) {
+          return {
+            status: "error",
+            userError: { error: "USER_NOT_FOUND" },
+          };
+        }
 
-        /**
-         * Verify an existing account's password and, on success, mint a session.
-         * Returns `USER_NOT_FOUND` when the username has no account and
-         * `INVALID_CREDENTIALS` when the password is wrong, so callers can tell
-         * the two apart. (Account existence is already observable via sign-up's
-         * `USERNAME_TAKEN`, so distinguishing them here leaks nothing new.)
-         */
-        signInWithUsernamePassword: authMutation({
-          args: { username: v.string(), password: v.string() },
-          returns: signInResult,
-          handler: async (
-            ctx,
-            { username, password },
-          ): Promise<SignInResult> => {
-            const userId = await ctx.runQuery(
-              usernameComponent.public.getUserIdByUsername,
-              { username },
-            );
-            if (userId === null) {
-              return {
-                status: "error",
-                userError: { error: "USER_NOT_FOUND" },
-              };
-            }
+        const verifyResult = await ctx.runMutation(
+          component.public.verifyPassword,
+          { userId, password },
+        );
+        if (!verifyResult.success) {
+          return { status: "error", userError: verifyResult.userError };
+        }
 
-            const verifyResult = await ctx.runMutation(
-              component.public.verifyPassword,
-              { userId, password },
-            );
-            if (!verifyResult.success) {
-              return { status: "error", userError: verifyResult.userError };
-            }
+        // The username resolved to a user id and its password verified, so
+        // the account exists and `completeSignIn` (which throws otherwise)
+        // is the right helper.
+        const tokens = await ctx.convexAuth.completeSignIn({
+          providerAccountId: userId,
+          profile: {},
+        });
+        return { status: "complete", tokens };
+      },
+    }),
 
-            // The username resolved to a user id and its password verified, so
-            // the account exists and `completeSignIn` (which throws otherwise)
-            // is the right helper.
-            const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
-              profile: {},
-            });
-            return { status: "complete", tokens };
-          },
-        }),
+    /**
+     * Change the password of the signed-in user. The user must re-authenticate
+     * by giving their current password.
+     */
+    changePassword: mutationGeneric({
+      args: { currentPassword: v.string(), newPassword: v.string() },
+      returns: changePasswordResult,
+      handler: async (
+        ctx,
+        { currentPassword, newPassword },
+      ): Promise<ChangePasswordResult> => {
+        const userId = await getAuthUserId(ctx);
+        if (userId === null) {
+          return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        }
 
-        /**
-         * Change the password of the signed-in user. The user must re-authenticate
-         * by giving their current password.
-         */
-        changePassword: mutationGeneric({
-          args: { currentPassword: v.string(), newPassword: v.string() },
-          returns: changePasswordResult,
-          handler: async (
-            ctx,
-            { currentPassword, newPassword },
-          ): Promise<ChangePasswordResult> => {
-            const userId = await getAuthUserId(ctx);
-            if (userId === null) {
-              return { success: false, userError: { error: "NOT_SIGNED_IN" } };
-            }
+        // Validate the new password before verifying the current one, so
+        // that invalid new password are ignored by the rate limit.
+        const newPasswordError = validateNewPassword(newPassword);
+        if (newPasswordError !== null) {
+          return { success: false, userError: newPasswordError };
+        }
 
-            // Validate the new password before verifying the current one, so
-            // that invalid new password are ignored by the rate limit.
-            const newPasswordError = validateNewPassword(newPassword);
-            if (newPasswordError !== null) {
-              return { success: false, userError: newPasswordError };
-            }
+        // TODO(nicolas) This does not compose with other auth
+        // providers yet: we require users to reauthenticate with their
+        // current password, so this doesn’t allow users who don’t have
+        // a password at this point to add a password to their account.
+        const verifyResult = await ctx.runMutation(
+          component.public.verifyPassword,
+          { userId, password: currentPassword },
+        );
+        if (!verifyResult.success) {
+          if (verifyResult.userError.error === "RATE_LIMITED") {
+            return { success: false, userError: verifyResult.userError };
+          }
+          // `verifyPassword` also reports format errors. Here we use
+          // INVALID_CREDENTIALS for all current password formatting errors,
+          // so that the user doesn’t think that there is an issue
+          // in their new password.
+          verifyResult.userError.error satisfies
+            | "PASSWORD_TOO_SHORT"
+            | "PASSWORD_TOO_LONG"
+            | "PASSWORD_HAS_SURROUNDING_WHITESPACE"
+            | "INVALID_CREDENTIALS";
+          return {
+            success: false,
+            userError: { error: "INVALID_CREDENTIALS" },
+          };
+        }
 
-            // TODO(nicolas) This does not compose with other auth
-            // providers yet: we require users to reauthenticate with their
-            // current password, so this doesn’t allow users who don’t have
-            // a password at this point to add a password to their account.
-            const verifyResult = await ctx.runMutation(
-              component.public.verifyPassword,
-              { userId, password: currentPassword },
-            );
-            if (!verifyResult.success) {
-              if (verifyResult.userError.error === "RATE_LIMITED") {
-                return { success: false, userError: verifyResult.userError };
-              }
-              // `verifyPassword` also reports format errors. Here we use
-              // INVALID_CREDENTIALS for all current password formatting errors,
-              // so that the user doesn’t think that there is an issue
-              // in their new password.
-              verifyResult.userError.error satisfies
-                | "PASSWORD_TOO_SHORT"
-                | "PASSWORD_TOO_LONG"
-                | "PASSWORD_HAS_SURROUNDING_WHITESPACE"
-                | "INVALID_CREDENTIALS";
-              return {
-                success: false,
-                userError: { error: "INVALID_CREDENTIALS" },
-              };
-            }
+        const setResult = await ctx.runMutation(component.public.setPassword, {
+          userId,
+          password: newPassword,
+        });
+        if (!setResult.success) {
+          // Unexpected: we pre-validated the new password above.
+          throw new Error(
+            "Unexpected error when setting the password: " +
+              setResult.userError.error,
+            { cause: setResult.userError },
+          );
+        }
 
-            const setResult = await ctx.runMutation(
-              component.public.setPassword,
-              { userId, password: newPassword },
-            );
-            if (!setResult.success) {
-              // Unexpected: we pre-validated the new password above.
-              throw new Error(
-                "Unexpected error when setting the password: " +
-                  setResult.userError.error,
-                { cause: setResult.userError },
-              );
-            }
-
-            // TODO(nicolas) Allow the user to choose to revoke their existing sessions here (needs core support)
-            return { success: true };
-          },
-        }),
-      };
-    },
+        // TODO(nicolas) Allow the user to choose to revoke their existing sessions here (needs core support)
+        return { success: true };
+      },
+    }),
   };
 }

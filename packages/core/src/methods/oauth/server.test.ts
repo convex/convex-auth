@@ -1,9 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ComponentApi } from "../../components/oauth/_generated/component.ts";
-import {
-  fakeCallbacks,
-  fakeCore,
-} from "../../lib/oauth/componentContract.test.ts";
+import { fakeCore } from "../../lib/oauth/componentContract.test.ts";
 import {
   setupOauth,
   type OauthCatalog,
@@ -30,7 +27,7 @@ function setup(
   options: Partial<OauthProviderOptions> = {},
   catalog: OauthCatalog = minimalCatalog,
 ) {
-  return setupOauth(fakeCore, "acme", catalog, fakeCallbacks, {
+  return setupOauth(fakeCore, "acme", catalog, {
     component: {} as ComponentApi,
     allowedRedirectOrigins: ["https://app.example.com"],
     ...options,

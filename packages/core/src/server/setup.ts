@@ -1,6 +1,5 @@
 import {
   actionGeneric,
-  createFunctionHandle,
   GenericActionCtx,
   GenericDataModel,
   GenericMutationCtx,
@@ -18,7 +17,6 @@ import {
   vRefreshResult,
   type RefreshResult,
   type ConvexAuthCtx,
-  type UserCallbacks,
 } from "../lib/types.ts";
 
 /**
@@ -87,15 +85,7 @@ export type ProviderBuilders<Profile> = {
  * The core auth API returned by {@link setupConvexAuth}: the session handlers the
  * app re-exports. The sign-in methods also use it to bind to the core.
  */
-export type AuthCore<UsersTable extends string = string> = {
-  /**
-   * The name of the app's users table, as configured on {@link setupConvexAuth}.
-   *
-   * Carried on the value (not just in the type) so provider setup functions
-   * can infer `UsersTable` from the `core` they are handed, and so the name is
-   * available for error messages.
-   */
-  usersTable: UsersTable;
+export type AuthCore = {
   /**
    * Signs out of the current session.
    *
@@ -142,21 +132,14 @@ export type AuthCore<UsersTable extends string = string> = {
    * providers bound to this core — a duplicate throws immediately (two
    * providers sharing a name would silently share accounts).
    *
-   * `createUser` is the app's user-creating callback for this provider and
-   * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
-   *
-   * Provider setup functions call this from inside their `attachUserCallbacks`,
-   * once the app has supplied the callbacks, so the builders can close over
-   * them and a provider with no way to create users cannot exist. It is not
-   * meant to be called by application code directly.
+   * Callbacks are registered once in `convex.config.ts` with
+   * `defineAuthProvider`. Provider setup functions bind only their stable name.
    *
    * @internal Not public until the API for custom methods is stable.
    */
-  bindProvider<Provider extends string, Profile>(
-    options: {
-      name: Provider;
-    } & UserCallbacks<Provider, Profile, UsersTable>,
-  ): ProviderBuilders<Profile>;
+  bindProvider<Provider extends string, Profile>(options: {
+    name: Provider;
+  }): ProviderBuilders<Profile>;
 };
 
 /**
@@ -173,7 +156,7 @@ export type AuthCore<UsersTable extends string = string> = {
  *   setupUsernamePassword(auth, {
  *     component: components.authPassword,
  *     usernameComponent: components.authUsername,
- *   }).attachUserCallbacks({ createUser: internal.users.createUserPassword });
+ *   });
  * ```
  *
  * The core never triggers a sign-in itself: it has no idea how any given
@@ -184,52 +167,13 @@ export type AuthCore<UsersTable extends string = string> = {
  * `completeSignUp` when it has just established the account, `completeSignIn`
  * when the account already exists.
  *
- * Token lifetimes are configurable here and default to 1m (access) and 30d
- * (refresh). The access-token TTL must be shorter than the refresh-token TTL,
- * and (since the client refreshes shortly before expiry) comfortably longer
- * than a few seconds.
- *
- * Changes to token TTLs impact newly minted tokens, not ones that have
- * already been issued.
+ * Callbacks and token lifetimes are configured in `app.use(auth, { args })`.
+ * The issuer stays app-side so it remains the bare deployment site URL.
  */
-export function setupConvexAuth<UsersTable extends string = "users">(options: {
+export function setupConvexAuth(options: {
   component: ComponentApi;
-  /**
-   * The name of the app's users table. Defaults to `"users"`.
-   *
-   * The core never reads or writes the table — it only stores the id the app's
-   * `createUser` callback returns. The name is a *type-level* contract: it makes
-   * every provider's `attachUserCallbacks` demand a `createUser` returning
-   * `Id<usersTable>` and an `onSignIn` taking one, so an app cannot accidentally
-   * hand back an id from some other table (and, because the app then declares
-   * `v.id(usersTable)`, Convex enforces the same thing at runtime).
-   *
-   * Set this if the app's users live in a table with a different name:
-   *
-   * ```ts
-   * const auth = setupConvexAuth({ component: components.auth, usersTable: "members" });
-   * ```
-   */
-  usersTable?: UsersTable;
-  /**
-   * Access-token lifetime in seconds. Defaults to 60 (1 minute).
-   *
-   * Changes to this value impact newly minted tokens, not ones that have
-   * already been issued.
-   */
-  accessTokenTtlSeconds?: number;
-  /**
-   * Refresh-token lifetime in seconds. Defaults to 30 days.
-   *
-   * Changes to this value impact newly minted tokens, not ones that have
-   * already been issued.
-   */
-  refreshTokenTtlSeconds?: number;
-}): AuthCore<UsersTable> {
-  const { component, accessTokenTtlSeconds, refreshTokenTtlSeconds } = options;
-  // The default only matters to the type system (the core never touches the
-  // table), but keep the value in sync with the `= "users"` default above.
-  const usersTable = options.usersTable ?? ("users" as UsersTable);
+}): AuthCore {
+  const { component } = options;
 
   const issuer = (): string => {
     const url = process.env.CONVEX_SITE_URL;
@@ -244,8 +188,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       return await ctx.runMutation(component.public.refresh, {
         refreshToken: args.refreshToken,
         issuer: issuer(),
-        accessTokenTtlSeconds,
-        refreshTokenTtlSeconds,
       });
     },
   });
@@ -280,15 +222,9 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
   const bindProvider = <Provider extends string, Profile>({
     name,
-    createUser,
-    onSignIn,
   }: {
     name: Provider;
-  } & UserCallbacks<
-    Provider,
-    Profile,
-    UsersTable
-  >): ProviderBuilders<Profile> => {
+  }): ProviderBuilders<Profile> => {
     if (boundProviderNames.has(name)) {
       throw new Error(
         `A provider named "${name}" is already bound to this auth core. ` +
@@ -297,11 +233,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       );
     }
     boundProviderNames.add(name);
-
-    // Undefined when the app attached no `onSignIn`, which tells the core to
-    // mint the session without notifying the app.
-    const onSignInHandle = async (): Promise<string | undefined> =>
-      onSignIn === undefined ? undefined : await createFunctionHandle(onSignIn);
 
     // The helpers close over the live ctx; both mutation and action ctxs
     // expose the compatible `runMutation`/`runQuery` these need.
@@ -320,11 +251,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
-          createUserHandle: await createFunctionHandle(createUser),
-          onSignInHandle: await onSignInHandle(),
           issuer: issuer(),
-          accessTokenTtlSeconds,
-          refreshTokenTtlSeconds,
         });
       },
       completeSignIn: async (args: {
@@ -337,10 +264,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
-          onSignInHandle: await onSignInHandle(),
           issuer: issuer(),
-          accessTokenTtlSeconds,
-          refreshTokenTtlSeconds,
         });
       },
       // Creates the app user + account without a session, for providers where
@@ -356,7 +280,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
-          createUserHandle: await createFunctionHandle(createUser),
         });
       },
       resolveUserId: async (
@@ -394,5 +317,5 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     return { authMutation, authAction };
   };
 
-  return { usersTable, signOut, refreshSession, isAuthenticated, bindProvider };
+  return { signOut, refreshSession, isAuthenticated, bindProvider };
 }

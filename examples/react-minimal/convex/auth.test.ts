@@ -1,8 +1,8 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test, vi, afterEach } from "vitest";
-import { api } from "./_generated/api.js";
+import { api, internal } from "./_generated/api.js";
 import { registerAnonymousProvider } from "@convex-dev/auth/components/anonymous/test";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, configureCore } from "@convex-dev/auth/test";
 import schema from "./schema.js";
 import { generateKeyPair, exportPKCS8, exportJWK, decodeJwt } from "jose";
 import { randomUUID } from "crypto";
@@ -28,6 +28,9 @@ async function setup() {
   const t = convexTest(schema, modules);
   registerCore(t);
   registerAnonymousProvider(t);
+  await configureCore(t, {
+    providers: [{ name: "anonymous", createUser: internal.users.createUser }],
+  });
   return t;
 }
 

@@ -10,3 +10,4 @@
 
 export { setupConvexAuth, type AuthCore } from "./setup.ts";
 export { getAuthUserId } from "./userId.ts";
+export { defineAuthProvider } from "./configuration.ts";

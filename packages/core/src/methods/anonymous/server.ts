@@ -1,8 +1,4 @@
-import {
-  vSignInComplete,
-  type SignInComplete,
-  type UserCallbacks,
-} from "../../lib/types.ts";
+import { vSignInComplete, type SignInComplete } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { ComponentApi } from "../../components/anonymous/_generated/component.ts";
 
@@ -24,11 +20,11 @@ const PROVIDER_NAME = "anonymous";
  *
  * export const { signInAnonymously } = setupAnonymous(auth, {
  *   component: components.authAnonymous,
- * }).attachUserCallbacks({ createUser: internal.users.createUserAnonymous });
+ * });
  * ```
  */
-export function setupAnonymous<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
+export function setupAnonymous(
+  core: AuthCore,
   options: {
     /** The mounted anonymous component (`components.authAnonymous`). */
     component: ComponentApi;
@@ -36,48 +32,34 @@ export function setupAnonymous<UsersTable extends string>(
 ) {
   const { component } = options;
 
-  return {
-    /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
-     *
-     * Every anonymous sign-in establishes a new account, so `createUser` runs
-     * every time. An `onSignIn` is still worth attaching for work an app does
-     * on every sign-in whatever the provider, since it runs right afterwards.
-     */
-    attachUserCallbacks({
-      createUser,
-      onSignIn,
-    }: UserCallbacks<"anonymous", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser,
-        onSignIn,
-      });
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    Record<string, never>
+  >({
+    name: PROVIDER_NAME,
+  });
 
-      return {
-        // Anonymous sign-in cannot fail per-user, so this only ever produces
-        // the complete arm. It still returns the shared envelope rather than a
-        // bare bundle: that is the shape the SSR auth proxy recognizes (and
-        // validates before moving the refresh token into its cookie), and it
-        // leaves room for a `userError` arm later without another breaking
-        // change.
-        signInAnonymously: authMutation({
-          args: {},
-          returns: vSignInComplete,
-          handler: async (ctx): Promise<SignInComplete> => {
-            const anonymousId = await ctx.runMutation(
-              component.provider.createAnonymousAccount,
-              {},
-            );
-            const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: anonymousId,
-              profile: {},
-            });
-            return { status: "complete", tokens };
-          },
-        }),
-      };
-    },
+  return {
+    // Anonymous sign-in cannot fail per-user, so this only ever produces
+    // the complete arm. It still returns the shared envelope rather than a
+    // bare bundle: that is the shape the SSR auth proxy recognizes (and
+    // validates before moving the refresh token into its cookie), and it
+    // leaves room for a `userError` arm later without another breaking
+    // change.
+    signInAnonymously: authMutation({
+      args: {},
+      returns: vSignInComplete,
+      handler: async (ctx): Promise<SignInComplete> => {
+        const anonymousId = await ctx.runMutation(
+          component.provider.createAnonymousAccount,
+          {},
+        );
+        const tokens = await ctx.convexAuth.completeSignUp({
+          providerAccountId: anonymousId,
+          profile: {},
+        });
+        return { status: "complete", tokens };
+      },
+    }),
   };
 }

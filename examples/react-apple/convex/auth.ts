@@ -1,4 +1,4 @@
-import { components, internal } from "./_generated/api";
+import { components } from "./_generated/api";
 import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
 
@@ -11,7 +11,4 @@ export const { startSignInWithApple, completeSignInWithApple } = setupApple(
     component: components.authApple,
     allowedRedirectOrigins: ["http://localhost:5173"],
   },
-).attachUserCallbacks({
-  createUser: internal.users.createUser,
-  onSignIn: internal.users.onSignIn,
-});
+);

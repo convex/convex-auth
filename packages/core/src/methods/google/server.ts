@@ -5,7 +5,6 @@
  * @module
  */
 import { Infer, v } from "convex/values";
-import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
@@ -79,7 +78,7 @@ export type GoogleProviderOptions = {
  * export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(auth, {
  *   component: components.authGoogle,
  *   allowedRedirectOrigins: ["https://app.example.com", "http://localhost:5173"],
- * }).attachUserCallbacks({ createUser: internal.users.createUserGoogle });
+ * });
  * ```
  *
  * Setup:
@@ -92,53 +91,41 @@ export type GoogleProviderOptions = {
  *
  * The `httpPrefix` alone determines the callback URL.
  */
-export function setupGoogle<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
-  options: GoogleProviderOptions,
-) {
+export function setupGoogle(core: AuthCore, options: GoogleProviderOptions) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time, not on the first sign-in.
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
   );
 
+  const { authMutation } = core.bindProvider<
+    typeof PROVIDER_NAME,
+    GoogleProfile
+  >({
+    name: PROVIDER_NAME,
+  });
+
+  const startSignIn = buildStartSignIn({
+    allowedOrigins,
+    authorizationEndpoint: AUTHORIZATION_ENDPOINT,
+    scopes: SCOPES,
+    createAuthorizationRequest:
+      options.component.provider.createAuthorizationRequest,
+  });
+
+  const completeSignIn = buildCompleteSignIn<
+    GoogleProfile,
+    { claims?: OidcClaims }
+  >({
+    providerName: PROVIDER_NAME,
+    authMutation,
+    claimTicket: (ctx, args) =>
+      ctx.runMutation(options.component.provider.claimTicket, args),
+    profile: (payload) => normalizeGoogleProfile(payload.claims),
+  });
+
   return {
-    /**
-     * Supply the app's user callbacks (see {@link UserCallbacks} for how their
-     * args must be declared) and get this provider's functions to export.
-     */
-    attachUserCallbacks(
-      callbacks: UserCallbacks<"google", GoogleProfile, UsersTable>,
-    ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
-        createUser: callbacks.createUser,
-        onSignIn: callbacks.onSignIn,
-      });
-
-      const startSignIn = buildStartSignIn({
-        allowedOrigins,
-        authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-        scopes: SCOPES,
-        createAuthorizationRequest:
-          options.component.provider.createAuthorizationRequest,
-      });
-
-      const completeSignIn = buildCompleteSignIn<
-        GoogleProfile,
-        { claims?: OidcClaims }
-      >({
-        providerName: PROVIDER_NAME,
-        authMutation,
-        claimTicket: (ctx, args) =>
-          ctx.runMutation(options.component.provider.claimTicket, args),
-        profile: (payload) => normalizeGoogleProfile(payload.claims),
-      });
-
-      return {
-        startSignInWithGoogle: startSignIn,
-        completeSignInWithGoogle: completeSignIn,
-      };
-    },
+    startSignInWithGoogle: startSignIn,
+    completeSignInWithGoogle: completeSignIn,
   };
 }

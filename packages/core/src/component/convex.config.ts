@@ -1,5 +1,6 @@
 import { defineComponent } from "convex/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api.ts";
 
 /**
  * The core auth component.
@@ -16,6 +17,7 @@ import { v } from "convex/values";
  * Apps install it from `@convex-dev/auth/convex.config.js`.
  */
 const component = defineComponent("auth", {
+  init: internal.init.configure,
   env: {
     AUTH_PRIVATE_KEY: v.string(),
     AUTH_JWKS: v.string(),

@@ -1,7 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authConfiguration } from "../lib/configuration.ts";
 
 export default defineSchema({
+  configuration: defineTable(authConfiguration),
   // Maps a provider-scoped identity to an opaque app user id. The app owns the
   // actual users table; we only store the id string it gives us back.
   accounts: defineTable({

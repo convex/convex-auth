@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as init from "../init.js";
+import type * as configuration from "../configuration.js";
 import type * as crypto from "../crypto.js";
 import type * as http from "../http.js";
 import type * as public_ from "../public.js";
@@ -20,6 +22,8 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  init: typeof init;
+  configuration: typeof configuration;
   crypto: typeof crypto;
   http: typeof http;
   public: typeof public_;

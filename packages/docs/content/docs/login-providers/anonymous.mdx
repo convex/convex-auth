@@ -80,12 +80,12 @@ one establishes a new account.
 ### Set up the public backend functions
 
 Set up the anonymous provider with `setupAnonymous` and export the sign-in
-mutation it hands back once you attach the callback that creates your user
-rows, in `convex/auth.ts`:
+mutation in `convex/auth.ts`. User callbacks are registered with
+`defineAuthProvider` in `convex.config.ts`:
 
 <include
   lang="ts"
-  meta='title="convex/auth.ts" highlight="import { setupAnonymous }" highlight="export const { signInAnonymously } = setupAnonymous(auth, {...}).attachUserCallbacks({ createUser: internal.users.createUser });"'
+  meta='title="convex/auth.ts" highlight="import { setupAnonymous }"'
 >
   ../../../../../examples/react-minimal/convex/auth.ts
 </include>

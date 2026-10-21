@@ -1,4 +1,4 @@
-import { components, internal } from "./_generated/api";
+import { components } from "./_generated/api";
 import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupUsernamePasskey } from "@convex-dev/auth/methods/username-passkey/server";
 
@@ -27,4 +27,4 @@ export const {
   // app uses its own domain here.
   rpId: "localhost",
   origin: "http://localhost:5173",
-}).attachUserCallbacks({ createUser: internal.users.createUser });
+});
