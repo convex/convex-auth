@@ -96,6 +96,7 @@ export type SignInWithUsernamePasskeyResult =
  *
  * function LogIn() {
  *   const { signIn, pending, autofill } = useSignInWithUsernamePasskey(api.auth);
+ *   const [username, setUsername] = useState("");
  *   return (
  *     <form
  *       onSubmit={async (e) => {
@@ -106,8 +107,24 @@ export type SignInWithUsernamePasskeyResult =
  *         }
  *       }}
  *     >
- *       <input autoComplete="username webauthn" ... />
- *       <button disabled={pending}>Continue</button>
+ *       <label>
+ *         Username
+ *         <input
+ *           value={username}
+ *           onChange={(e) => setUsername(e.target.value)}
+ *           // `webauthn` lets the browser offer the stored passkeys here.
+ *           autoComplete="username webauthn"
+ *           required
+ *           disabled={pending}
+ *         />
+ *       </label>
+ *       {autofill.lastError !== null && (
+ *         // map autofill.lastError (UNKNOWN_CREDENTIAL, …) to a message
+ *         <p role="alert">{autofill.lastError.error}</p>
+ *       )}
+ *       <button type="submit" disabled={pending}>
+ *         Continue
+ *       </button>
  *     </form>
  *   );
  * }
@@ -228,7 +245,9 @@ export function useSignInWithUsernamePasskey(
        */
       pending: pending || autofill.status === "signingIn",
       /**
-       * The state of the autofill flow:
+       * The state of the autofill flow. A failed autofill sign-in has no
+       * `signIn` call to return to, thus it is reported only in `lastError`:
+       * show it to the user.
        *
        * - `available`: whether the browser can offer passkeys in the
        *   autocompletion list; `null` while the detection runs.
