@@ -541,6 +541,39 @@ describe("oauth callback", () => {
       expect(loggedText(errors)).toContain("no issuer is configured");
     });
 
+    test("an unrequested id_token is ignored when identity comes from userinfo", async () => {
+      // A plain OAuth provider (no issuer) that sends an id_token anyway.
+      const t = setup();
+      const profile = { id: "user-1" };
+      const { profile: profileUrl, emails: emailsUrl } =
+        userInfoRequest.userInfoEndpoints;
+      stubFetch({
+        [userInfoRequest.tokenEndpoint]: () =>
+          jsonResponse({
+            id_token: unsignedJwt(idTokenClaims()),
+            access_token: "access-token-1",
+          }),
+        [profileUrl]: () => jsonResponse(profile),
+        [emailsUrl]: () => jsonResponse([]),
+      });
+      const { state, stateHash } = await startFlow(t, userInfoRequest);
+
+      const response = await callback(t, { state, code: "code-1" });
+
+      const ticketCode = redirectParams(response).get(OAUTH_CODE_PARAM)!;
+      const claimed = await t.mutation(api.provider.claimTicket, {
+        providerName: PROVIDER_NAME,
+        ticketCodeHash: await sha256Hex(ticketCode),
+        stateHash,
+      });
+      const payload = JSON.parse(
+        await decryptTicketPayload(ticketCode, claimed!.encryptedPayload),
+      );
+      expect(payload).toEqual({
+        userInfoResponses: { profile, emails: [] },
+      });
+    });
+
     test("an id_token from any of the configured issuers is accepted", async () => {
       const t = setup();
       const request = {

@@ -296,7 +296,10 @@ export type ExchangeConfig = {
    * where a failure redirects back to the app with `oauth_error`.
    */
   clientSecret: () => string | Promise<string>;
-  /** Accepted `iss` values, required when the provider returns an id_token. */
+  /**
+   * Accepted `iss` values. Without them, an id_token is ignored when
+   * `userInfoEndpoints` identify the user, and refused otherwise.
+   */
   issuers?: string[];
   /** Endpoints to fetch with the access token, keyed as the mapping reads them. */
   userInfoEndpoints?: Record<string, string>;
@@ -407,8 +410,16 @@ export async function runCallback<Request extends ClaimedRequest>(options: {
       clientSecret: await config.clientSecret(),
     });
 
+    // A plain OAuth provider (no issuer) identifies the user through its
+    // userinfo endpoints. Some providers send an id_token anyway, without
+    // the `openid` scope, so that one is ignored. Without userinfo endpoints
+    // the id_token is all there is, so it goes through validation, which
+    // asks for an issuer.
+    const ignoreIdToken =
+      (config.issuers ?? []).length === 0 &&
+      config.userInfoEndpoints !== undefined;
     const claims =
-      idToken === undefined
+      idToken === undefined || ignoreIdToken
         ? undefined
         : validateIdToken(idToken, config.issuers, config.clientId);
 
