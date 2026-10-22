@@ -15,7 +15,7 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { cookies as nextCookies } from "next/headers.js";
-import { NextRequest, NextResponse } from "next/server.js";
+import { connection, NextRequest, NextResponse } from "next/server.js";
 import { ReactNode } from "react";
 import type { IsAuthenticatedFn, RefreshSessionFn } from "../../lib/types.ts";
 import {
@@ -191,7 +191,13 @@ export function setupConvexAuthNextjs(config: ConvexAuthNextjsConfig) {
    */
   async function convexAuthNextjsAccessToken(): Promise<string | null> {
     const token = (await nextCookies()).get(AUTH_JWT_COOKIE)?.value ?? null;
-    return token !== null && !isTokenExpiring(token, 0) ? token : null;
+    if (token === null) return null;
+    // The expiry check reads the clock. With Cache Components (and Partial
+    // Prefetching), Next refuses `Date.now()` during a prerender until the
+    // render has opted into request time, which reading cookies alone doesn't
+    // do, so do it explicitly first.
+    await connection();
+    return !isTokenExpiring(token, 0) ? token : null;
   }
 
   /**
