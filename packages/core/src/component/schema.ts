@@ -47,6 +47,11 @@ export default defineSchema({
   // Each refresh inserts a row, so a session's freshness (when it last
   // refreshed) can be derived from the `_creationTime` of its newest row via
   // the `by_session_state` index; the session row itself stores no timestamp.
+  //
+  // A token stores no expiry: it expires `refreshTokenTtlSeconds` after its
+  // `_creationTime`, under the TTL configured when it is checked. A changed
+  // TTL thus applies to every outstanding token, not just the ones issued
+  // after the change.
   refreshTokens: defineTable({
     hash: v.string(),
     sessionId: v.id("sessions"),
@@ -56,7 +61,6 @@ export default defineSchema({
       v.literal("spent"),
       v.literal("dropped"),
     ),
-    expiresAt: v.number(),
     // When the token became spent or dropped.
     retiredAt: v.optional(v.number()),
   })
