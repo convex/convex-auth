@@ -6,8 +6,9 @@
   provider itself. Render `ConvexAuthNextjsProvider`, now exported from
   `@convex-dev/auth/ssr/nextjs/client`, in a Client Component inside it and
   pass it your `ConvexReactClient`, so the client can be configured and shared
-  (e.g. with `ConvexQueryClient`). `setupConvexAuthNextjs` takes `routes` for
-  auth handlers mounted away from `/auth/*`.
+  (e.g. with `ConvexQueryClient`)
+- added an optional `routes` config to `setupConvexAuthNextjs`, for auth
+  handlers mounted somewhere other than `/auth/*`
 
 ## 2.0.0-beta.0
 

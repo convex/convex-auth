@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, render, waitFor } from "@testing-library/react";
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, useConvexAuth } from "convex/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { InMemoryStorage } from "../../browser/storage.ts";
 import { NAMESPACE, bundle } from "../../methods/oauth/testFlow.ts";
@@ -57,10 +57,12 @@ describe("ConvexAuthNextjsProvider under ConvexAuthNextjsServerStateProvider", (
     await waitFor(() => expect(token).toBe(bundle.accessToken));
   });
 
-  test("an explicit initialToken prop wins over the server state", () => {
+  test("an explicit initialToken prop wins over the server state", async () => {
     let token: string | null | undefined;
+    let isLoading = true;
     function Probe() {
       token = useAuthToken();
+      ({ isLoading } = useConvexAuth());
       return null;
     }
     render(
@@ -74,6 +76,8 @@ describe("ConvexAuthNextjsProvider under ConvexAuthNextjsServerStateProvider", (
         </ConvexAuthNextjsProvider>
       </ConvexAuthNextjsServerStateProvider>,
     );
+    // Read after init, since that is when the server state would be adopted.
+    await waitFor(() => expect(isLoading).toBe(false));
     expect(token).toBeNull();
   });
 

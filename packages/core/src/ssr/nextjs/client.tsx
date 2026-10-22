@@ -6,12 +6,6 @@
  * hands it the app's `ConvexReactClient`. Client Components import the hooks
  * from `@convex-dev/auth/react`.
  *
- * The server provider can't pass the client in: a `ConvexReactClient` is not
- * serializable across the Server Component boundary. What it knows (the access
- * token from the cookie, the auth route paths) is, so it renders
- * {@link ConvexAuthNextjsServerStateProvider} with that state and
- * {@link ConvexAuthNextjsProvider} reads it from context below.
- *
  * When running under SSR, authentication is performed for two parties:
  *
  *  1. The Convex client (for all of the reactive/transactional client-side
@@ -70,19 +64,11 @@ async function postAuth(route: string): Promise<AuthSessionResponse> {
     .catch(() => ({ tokens: null }))) as AuthSessionResponse;
 }
 
-/**
- * What the server knows and the client provider needs: the access token read
- * from the cookie, and where the auth route handlers are mounted. Every field
- * is serializable, so a Server Component can pass it as props.
- */
+/** What `ConvexAuthNextjsServerProvider` passes down to the client provider. */
 export interface ConvexAuthNextjsServerState {
-  /** The access token from the cookie, or null when signed out or expired. */
   initialToken: string | null;
-  /** Route that refreshes the access token from the httpOnly cookie. */
   refreshRoute?: string;
-  /** Route that revokes the session and clears cookies. */
   signOutRoute?: string;
-  /** Route the auth proxy is mounted at. Provider sign-in calls go here. */
   signInRoute?: string;
 }
 
@@ -90,13 +76,7 @@ const ServerStateContext = createContext<ConvexAuthNextjsServerState | null>(
   null,
 );
 
-/**
- * Carries {@link ConvexAuthNextjsServerState} into the client tree, where
- * {@link ConvexAuthNextjsProvider} reads it. Rendered by
- * `ConvexAuthNextjsServerProvider`; an app doesn't render it directly.
- *
- * @internal
- */
+/** Rendered by `ConvexAuthNextjsServerProvider`. @internal */
 export function ConvexAuthNextjsServerStateProvider({
   initialToken,
   refreshRoute,
@@ -116,24 +96,14 @@ export function ConvexAuthNextjsServerStateProvider({
 }
 
 /**
- * Wrap your app in this, from a Client Component rendered inside the
- * server-side `ConvexAuthNextjsServerProvider`, to enable authentication under
- * SSR. Pass it your `ConvexReactClient`:
+ * Wrap your app in this (in a Client Component, rendered inside the
+ * server-side `ConvexAuthNextjsServerProvider`) to enable authentication under
+ * SSR.
  *
- * ```tsx
- * "use client";
- * const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
- * export function ConvexClientProvider({ children }: { children: ReactNode }) {
- *   return (
- *     <ConvexAuthNextjsProvider client={convex}>{children}</ConvexAuthNextjsProvider>
- *   );
- * }
- * ```
- *
- * It wraps the client with {@link ConvexProviderWithAuth} configured for the
- * SSR auth environment. The access token and the auth route paths come from
- * the surrounding `ConvexAuthNextjsServerProvider`; the props of the same name
- * override them, for rendering outside it (in tests, say).
+ * It takes your {@link ConvexReactClient} and wraps it with {@link
+ * ConvexProviderWithAuth} so it is properly configured for the SSR auth
+ * environment. The access token and route paths default to what the server
+ * provider passes down.
  */
 export function ConvexAuthNextjsProvider({
   client,
@@ -146,25 +116,20 @@ export function ConvexAuthNextjsProvider({
   ambientSignIns,
   children,
 }: {
-  /** The app's `ConvexReactClient`. If omitted, one is created from
+  /** An existing `ConvexReactClient`. If omitted, one is created from
    * `convexUrl` (or `NEXT_PUBLIC_CONVEX_URL`). */
   client?: ConvexReactClient;
-  /** The Convex deployment URL for the client created when `client` is
-   * omitted. Defaults to `NEXT_PUBLIC_CONVEX_URL`. */
+  /** The Convex deployment URL. Defaults to `NEXT_PUBLIC_CONVEX_URL`. */
   convexUrl?: string;
-  /** The access token from the SSR host, so the Convex client hydrates ready
-   * to authenticate. Defaults to the one `ConvexAuthNextjsServerProvider`
-   * read from the cookie. */
+  /** The access token from SSR host, if available, so the Convex client
+   * hydrates ready to authenticate. */
   initialToken?: string | null;
-  /** Route that refreshes the access token from the httpOnly cookie. Defaults
-   * to the server provider's, then `/auth/refresh`. */
+  /** Route that refreshes the access token from the httpOnly cookie. */
   refreshRoute?: string;
-  /** Route that revokes the session and clears cookies. Defaults to the server
-   * provider's, then `/auth/signout`. */
+  /** Route that revokes the session and clears cookies. */
   signOutRoute?: string;
   /** Route the auth proxy is mounted at, i.e. the single route file exporting
-   * `auth.convexProxyHandler`. Provider sign-in calls go here. Defaults to the
-   * server provider's, then `/auth/signin`. */
+   * `auth.convexProxyHandler`. Provider sign-in calls go here. */
   signInRoute?: string;
   /** A custom {@link TokenStorage}. Defaults to `localStorage` in the browser.
    * Under SSR, it only stores the access token. */
@@ -184,10 +149,11 @@ export function ConvexAuthNextjsProvider({
   children: ReactNode;
 }) {
   // Props win over the server provider's state, which wins over the defaults.
-  // The access token has no default: outside the server provider there is no
-  // cookie to have read it from.
+  // `initialToken` may be an explicit null, so only `undefined` falls through.
   const serverState = useContext(ServerStateContext);
-  initialToken ??= serverState?.initialToken ?? null;
+  if (initialToken === undefined) {
+    initialToken = serverState?.initialToken ?? null;
+  }
   refreshRoute ??= serverState?.refreshRoute ?? "/auth/refresh";
   signOutRoute ??= serverState?.signOutRoute ?? "/auth/signout";
   signInRoute ??= serverState?.signInRoute ?? "/auth/signin";

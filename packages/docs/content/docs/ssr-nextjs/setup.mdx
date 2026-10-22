@@ -123,8 +123,8 @@ the parts of the integration that are specific to Next.js:
 - `nextjsProxyRedirect` redirects a request from inside the proxy.
 - `convexAuthNextjsAccessToken` reads the access token in a Server Component.
 - `isAuthenticatedNextjs` checks whether the current request is signed in.
-- `ConvexAuthNextjsServerProvider` hands the access token to the client
-  provider.
+- `ConvexAuthNextjsServerProvider`, with `ConvexAuthNextjsProvider`, replaces
+  `ConvexAuthProvider`.
 
 <include lang="tsx" meta='title="src/lib/convexAuth.tsx"'>
   ../../../../../examples/nextjs/src/lib/convexAuth.tsx
@@ -156,16 +156,14 @@ requests based on whether the user is signed in.
 
 ### Set up the providers
 
-Two providers wrap your app, one on each side of the Server Component
-boundary:
+Under SSR, `ConvexAuthProvider` is replaced by a pair:
 
 - `ConvexAuthNextjsServerProvider` (from `src/lib/convexAuth.tsx`) is a Server
-  Component. It reads the access token from the cookie and hands it to the
-  client tree.
+  Component that reads the access token from the cookie.
 - `ConvexAuthNextjsProvider` (from `@convex-dev/auth/ssr/nextjs/client`) is a
-  Client Component. It takes your `ConvexReactClient` and configures it for
-  SSR, so the client is ready to authenticate when the page loads. Use it in
-  place of `ConvexProvider` and `ConvexAuthProvider`.
+  Client Component that takes your `ConvexReactClient` and configures it for
+  SSR, so it is ready to authenticate when the page loads. It also replaces
+  `ConvexProvider`.
 
 Create `app/ConvexClientProvider.tsx` with your Convex client. If you already
 have one from the Convex quickstart, swap `ConvexProvider` for
@@ -186,12 +184,6 @@ Then nest it inside `ConvexAuthNextjsServerProvider` in the root layout:
 >
   ../../../../../examples/nextjs/app/layout.tsx
 </include>
-
-<Callout>
-  Because you construct the `ConvexReactClient`, you can configure it, share it
-  with `ConvexQueryClient` from `@convex-dev/react-query`, or use it outside
-  React.
-</Callout>
 
 </Step>
 

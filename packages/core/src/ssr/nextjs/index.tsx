@@ -217,10 +217,6 @@ export function setupConvexAuthNextjs(config: ConvexAuthNextjsConfig) {
    * Wrap the root layout in it, and render `ConvexAuthNextjsProvider` (from
    * `@convex-dev/auth/ssr/nextjs/client`) with the app's `ConvexReactClient`
    * in a Client Component inside it.
-   *
-   * It doesn't render the client provider itself because a `ConvexReactClient`
-   * can't cross the Server Component boundary; the token and the route paths
-   * can, and that's all it passes.
    */
   async function ConvexAuthNextjsServerProvider({
     children,
