@@ -44,7 +44,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { userId: string },
         Array<{
           creationTime: number;
-          expiresAt: number;
           lastRefreshedAt: number;
           sessionId: string;
         }>,
