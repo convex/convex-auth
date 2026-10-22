@@ -36,6 +36,13 @@ which supports username + password, anonymous, and GitHub sign-in.
 Start from a Next.js App Router project. Then install Convex Auth and run its
 setup command as described in the [Getting Started](/getting-started) guide:
 
+<Callout type="info">
+  Convex Auth requires Next.js 16 or later and the App Router. Next.js 15 isn't
+  supported: `@convex-dev/auth` declares a peer dependency on `next@^16`, and
+  this guide uses the `proxy.ts` file of Next.js 16 (called `middleware.ts` in
+  Next.js 15).
+</Callout>
+
 <Cards>
   <Card
     href="/getting-started"
@@ -135,7 +142,8 @@ the parts of the integration that are specific to Next.js:
 
 ### Set up the proxy
 
-Create `proxy.ts` at the root of your app. The proxy runs before each page
+Create `proxy.ts` next to your `app` directory: at the root of your project,
+or in `src/` if your app lives in `src/app`. The proxy runs before each page
 request. It refreshes the session if the access token is about to expire, so
 Server Components always see a current token. It also lets you redirect
 requests based on whether the user is signed in.
@@ -190,6 +198,53 @@ To decide on the server whether the user is signed in, use
 `isAuthenticatedNextjs()` and not the presence of a token.
 `convexAuthNextjsAccessToken` only checks that the token hasn't expired.
 `isAuthenticatedNextjs` checks the token's signature with your deployment.
+
+</Step>
+
+<Step>
+
+### Call Convex from server actions and route handlers
+
+Server actions and route handlers authenticate the same way: pass the access
+token to `fetchMutation`, `fetchQuery`, or `fetchAction` from `convex/nextjs`.
+The function then runs as the signed-in user.
+
+```ts title="app/actions.ts"
+"use server";
+
+import { fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { convexAuthNextjsAccessToken } from "@/src/lib/convexAuth";
+
+export async function createProject(name: string) {
+  const token = await convexAuthNextjsAccessToken();
+  await fetchMutation(
+    api.projects.create,
+    { name },
+    { token: token ?? undefined },
+  );
+}
+```
+
+```ts title="app/api/projects/route.ts"
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { convexAuthNextjsAccessToken } from "@/src/lib/convexAuth";
+
+export async function GET() {
+  const token = await convexAuthNextjsAccessToken();
+  if (token === null) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  return Response.json(await fetchQuery(api.projects.list, {}, { token }));
+}
+```
+
+`convexAuthNextjsAccessToken` doesn't refresh the session, and access tokens
+are short-lived, so it returns `null` once the token has expired. The proxy
+refreshes the token before the request reaches your code, so make sure its
+`matcher` covers the routes of your route handlers and the pages that call
+your server actions (a server action is a `POST` to the page's URL).
 
 </Step>
 
