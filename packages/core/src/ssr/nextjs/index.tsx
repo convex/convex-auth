@@ -43,6 +43,14 @@ export interface ConvexAuthNextjsConfig {
   /** Overrides the default auth cookie attributes. Unlike the base config,
    * `secure` may be omitted here; it defaults from NODE_ENV. */
   cookieOptions?: Partial<AuthCookieOptions>;
+  /** Where the app mounts the auth route handlers, when not at the defaults
+   * (`/auth/signin`, `/auth/refresh`, `/auth/signout`). Handed to the client
+   * provider through `ConvexAuthNextjsServerProvider`. */
+  routes?: {
+    signIn?: string;
+    refresh?: string;
+    signOut?: string;
+  };
 }
 
 /** Context handed to a proxy handler. */
@@ -203,27 +211,36 @@ export function setupConvexAuthNextjs(config: ConvexAuthNextjsConfig) {
     return checkAuthenticated(await convexAuthNextjsAccessToken());
   }
 
-  /** Server Component that reads the cookie token and renders the client
-   * provider, so the client hydrates ready to authenticate. */
-  // TODO: Accept `signInRoute`, `refreshRoute`, and `signOutRoute` and pass
-  // them through to `ConvexAuthNextjsProvider`, so the auth route handlers can
-  // be mounted somewhere other than the default `/auth/*` paths.
+  /**
+   * Server Component that reads the access token from the cookie and hands it
+   * to the client tree, so the Convex client hydrates ready to authenticate.
+   * Wrap the root layout in it, and render `ConvexAuthNextjsProvider` (from
+   * `@convex-dev/auth/ssr/nextjs/client`) with the app's `ConvexReactClient`
+   * in a Client Component inside it.
+   *
+   * It doesn't render the client provider itself because a `ConvexReactClient`
+   * can't cross the Server Component boundary; the token and the route paths
+   * can, and that's all it passes.
+   */
   async function ConvexAuthNextjsServerProvider({
     children,
   }: {
     children: ReactNode;
   }) {
     const initialToken = await convexAuthNextjsAccessToken();
-    // Lazily import the client component so other consumers of this module
+    // Lazily import the client module so other consumers of this module
     // don't have to take on those dependencies.
-    const { ConvexAuthNextjsProvider } = await import("./client.tsx");
+    const { ConvexAuthNextjsServerStateProvider } =
+      await import("./client.tsx");
     return (
-      <ConvexAuthNextjsProvider
-        convexUrl={config.convexUrl}
+      <ConvexAuthNextjsServerStateProvider
         initialToken={initialToken}
+        signInRoute={config.routes?.signIn}
+        refreshRoute={config.routes?.refresh}
+        signOutRoute={config.routes?.signOut}
       >
         {children}
-      </ConvexAuthNextjsProvider>
+      </ConvexAuthNextjsServerStateProvider>
     );
   }
 

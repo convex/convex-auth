@@ -123,7 +123,8 @@ the parts of the integration that are specific to Next.js:
 - `nextjsProxyRedirect` redirects a request from inside the proxy.
 - `convexAuthNextjsAccessToken` reads the access token in a Server Component.
 - `isAuthenticatedNextjs` checks whether the current request is signed in.
-- `ConvexAuthNextjsServerProvider` replaces `ConvexAuthProvider`.
+- `ConvexAuthNextjsServerProvider` hands the access token to the client
+  provider.
 
 <include lang="tsx" meta='title="src/lib/convexAuth.tsx"'>
   ../../../../../examples/nextjs/src/lib/convexAuth.tsx
@@ -153,20 +154,44 @@ requests based on whether the user is signed in.
 
 <Step>
 
-### Set up the provider
+### Set up the providers
 
-Wrap your app in `ConvexAuthNextjsServerProvider` in the root layout. It is a
-Server Component that reads the access token from the cookie and renders the
-client-side `ConvexAuthNextjsProvider`, so the Convex client is ready to
-authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
-`ConvexProvider`.
+Two providers wrap your app, one on each side of the Server Component
+boundary:
+
+- `ConvexAuthNextjsServerProvider` (from `src/lib/convexAuth.tsx`) is a Server
+  Component. It reads the access token from the cookie and hands it to the
+  client tree.
+- `ConvexAuthNextjsProvider` (from `@convex-dev/auth/ssr/nextjs/client`) is a
+  Client Component. It takes your `ConvexReactClient` and configures it for
+  SSR, so the client is ready to authenticate when the page loads. Use it in
+  place of `ConvexProvider` and `ConvexAuthProvider`.
+
+Create `app/ConvexClientProvider.tsx` with your Convex client. If you already
+have one from the Convex quickstart, swap `ConvexProvider` for
+`ConvexAuthNextjsProvider`:
 
 <include
   lang="tsx"
-  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"'
+  meta='title="app/ConvexClientProvider.tsx" highlight="import { ConvexAuthNextjsProvider }" highlight="<ConvexAuthNextjsProvider client={convex}>"'
+>
+  ../../../../../examples/nextjs/app/ConvexClientProvider.tsx
+</include>
+
+Then nest it inside `ConvexAuthNextjsServerProvider` in the root layout:
+
+<include
+  lang="tsx"
+  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="import { ConvexClientProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"'
 >
   ../../../../../examples/nextjs/app/layout.tsx
 </include>
+
+<Callout>
+  Because you construct the `ConvexReactClient`, you can configure it, share it
+  with `ConvexQueryClient` from `@convex-dev/react-query`, or use it outside
+  React.
+</Callout>
 
 </Step>
 

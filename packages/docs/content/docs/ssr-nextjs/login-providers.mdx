@@ -27,9 +27,10 @@ have already followed [Setting up Next.js](/ssr-nextjs/setup).
 
 ### Skip “Set up the provider on the client”
 
-Don't wrap your app in `ConvexAuthProvider`. Use
-`ConvexAuthNextjsServerProvider` in your root layout instead (see
-[Set up the provider](/ssr-nextjs/setup#set-up-the-provider)).
+Don't wrap your app in `ConvexAuthProvider`. Use `ConvexAuthNextjsProvider`
+from `@convex-dev/auth/ssr/nextjs/client`, inside
+`ConvexAuthNextjsServerProvider` in your root layout (see
+[Set up the providers](/ssr-nextjs/setup#set-up-the-providers)).
 
 ### Add the sign-in functions to the `signIn` list
 
