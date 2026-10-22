@@ -154,6 +154,32 @@ function setup() {
   return t;
 }
 
+/**
+ * Let the scheduled functions that are due run to completion: the runs of the
+ * core's session cleanup loop, and the polls of its cooldown. Moves the clock
+ * by a few seconds, which is past the cooldown of the batch worker (2s).
+ */
+async function settleScheduledFunctions(t: ReturnType<typeof setup>) {
+  for (let i = 0; i < 20; i++) {
+    await t.finishInProgressScheduledFunctions();
+    vi.advanceTimersByTime(250);
+  }
+  await t.finishInProgressScheduledFunctions();
+}
+
+/**
+ * Move the clock by `ms` in steps of at most a day, the longest the cleanup
+ * loop sleeps, and let the loop's runs that come due on the way complete.
+ */
+async function advanceWithCleanup(t: ReturnType<typeof setup>, ms: number) {
+  const day = 24 * 60 * 60 * 1000;
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    vi.advanceTimersByTime(Math.min(day, end - Date.now()));
+    await settleScheduledFunctions(t);
+  }
+}
+
 const signUpRef = makeFunctionReference<
   "mutation",
   { accountId: string },
@@ -215,20 +241,20 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
     expect(bobRevoked).toBe(1);
   });
 
-  test("deletes expired sessions without counting them", async () => {
+  test("doesn't count a session that the cleanup loop erased once it expired", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
       const t = setup();
       await t.mutation(signUpRef, { accountId: "alice" });
       // Past the default 30-day refresh-token TTL.
-      vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
+      await advanceWithCleanup(t, 31 * 24 * 60 * 60 * 1000);
       await t.mutation(signInRef, { accountId: "alice" });
       const bundle = await t.mutation(signInRef, { accountId: "alice" });
 
       const asCaller = t.withIdentity(sessionIdentity(bundle));
       expect(await asCaller.mutation(revokeOtherSessionsRef, {})).toBe(1);
-      // The expired session was deleted too, so nothing is left to revoke.
+      // Only the caller's session is left.
       const remaining = await asCaller.run(
         async (ctx) =>
           await ctx.runQuery(components.auth.public.listSessions, {
@@ -243,7 +269,7 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
     }
   });
 
-  test("counts a session as expired under a TTL lowered since it last refreshed", async () => {
+  test("doesn't count a session that a lowered TTL expired", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
@@ -251,11 +277,14 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
       // Signed in under the default 30-day TTL.
       await t.mutation(signUpRef, { accountId: "alice" });
       // Past the lowered TTL, though days short of the default.
-      vi.advanceTimersByTime(2 * SHORT_REFRESH_TOKEN_TTL_SECONDS * 1000);
+      await advanceWithCleanup(t, 2 * SHORT_REFRESH_TOKEN_TTL_SECONDS * 1000);
+      // Signing in under the lowered TTL stores it, and the cleanup loop
+      // erases the session that it expires.
       await t.mutation(signInShortTtlRef, { accountId: "alice" });
       const bundle = await t.mutation(signInShortTtlRef, {
         accountId: "alice",
       });
+      await settleScheduledFunctions(t);
 
       const revoked = await t
         .withIdentity(sessionIdentity(bundle))

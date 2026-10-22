@@ -365,9 +365,10 @@ export type BoundAuthHelpers<Profile> = {
   resolveUserId(providerAccountId: string): Promise<string | null>;
   /**
    * Revokes every session of the signed-in user other than the current one
-   * (the JWT's subject). Returns the number of active (non-expired)
-   * sessions revoked; returns 0 when not authenticated. Expired sessions are
-   * deleted as well, but not counted.
+   * (the JWT's subject). Returns the number of sessions revoked; returns 0
+   * when not authenticated. Expired sessions are deleted in the background,
+   * so one that expired moments ago, which the cleanup loop hasn't reached
+   * yet, can be revoked and counted too.
    *
    * NOTE: Callers should only invoke this function after verifying that the
    * logged in user truly owns the session, via confirming an authentication
