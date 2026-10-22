@@ -25,16 +25,15 @@ import {
 } from "../lib/types.ts";
 import { signJwt, generateRefreshToken } from "./crypto.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import {
+  DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+  DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
+} from "../lib/ttl.ts";
 
 // --- Configuration ---------------------------------------------------------
 
 // `aud` claim; must match `applicationID` in the app's auth.config.ts.
 const AUDIENCE = "convex";
-// Defaults for the configurable token lifetimes. The app overrides them per
-// deployment via `setupConvexAuth`, which threads the chosen values in as call args;
-// when it passes nothing, these apply.
-const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60; // 1 minute
-const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 // How many issued, never-presented refresh tokens a session may have. Each
 // refresh presenting the redeemed token adds one, and the first issued token
 // presented clears them all, so the count only climbs when responses are lost
@@ -235,9 +234,26 @@ async function pruneRetiredTokens(
 }
 
 /**
- * Issue a new refresh token for a session, valid until `ttl` from now.
+ * When a refresh token expires under the TTL configured now.
  *
- * Returns the raw token, and stores its hash for later lookup.
+ * Expiry is derived rather than stored, so a changed TTL applies to every
+ * outstanding token. It also means a session's newest token is always its
+ * last to expire.
+ */
+function refreshTokenExpiresAt(
+  token: Pick<Doc<"refreshTokens">, "_creationTime">,
+  ttl: TtlConfig,
+): number {
+  return token._creationTime + ttl.refreshTokenTtlSeconds * 1000;
+}
+
+/**
+ * Issue a new refresh token for a session.
+ *
+ * Returns the raw token, and stores its hash for later lookup. The returned
+ * `expiresAt` holds under the current TTL; a later change to the TTL moves it.
+ * It is computed from `now` rather than the row's `_creationTime`, so it can
+ * differ from what `refresh` enforces by a fraction of a millisecond.
  */
 async function issueRefreshToken(
   ctx: MutationCtx,
@@ -246,14 +262,15 @@ async function issueRefreshToken(
   ttl: TtlConfig,
 ): Promise<{ refreshToken: string; expiresAt: number }> {
   const refreshToken = generateRefreshToken();
-  const expiresAt = now + ttl.refreshTokenTtlSeconds * 1000;
   await ctx.db.insert("refreshTokens", {
     hash: await sha256Hex(refreshToken),
     sessionId,
     state: "issued",
-    expiresAt,
   });
-  return { refreshToken, expiresAt };
+  return {
+    refreshToken,
+    expiresAt: now + ttl.refreshTokenTtlSeconds * 1000,
+  };
 }
 
 /**
@@ -750,7 +767,7 @@ export const refresh = mutation({
         break;
     }
 
-    if (token.expiresAt <= now) {
+    if (refreshTokenExpiresAt(token, ttl) <= now) {
       await deleteSession(ctx, token.sessionId);
       return { kind: "noSession" };
     }
@@ -831,17 +848,19 @@ export const signOut = mutation({
 });
 
 /**
- * List every session of a user, with when it last refreshed and when it
- * expires.
+ * List every session of a user, with when it last refreshed.
  *
- * Both come from the session's newest issued refresh token:
+ * `lastRefreshedAt` is when the session's newest issued refresh token was
+ * issued: the session's sign-in or its latest refresh. A connected client
+ * refreshes about once per access-token TTL, so callers may read this as a
+ * rough activity signal, but it tracks the client holding the session, not
+ * user interaction.
  *
- *  - `lastRefreshedAt` is when it was issued: the session's sign-in or its
- *    latest refresh. A connected client refreshes about once per access-token
- *    TTL, so callers may read this as a rough activity signal, but it tracks
- *    the client holding the session, not user interaction.
- *  - `expiresAt` is its expiry: the time after which the holder can no longer
- *    refresh.
+ * It also dates the session's expiry: the session expires one refresh-token
+ * TTL after `lastRefreshedAt`. A token expires one TTL after it was issued,
+ * under the TTL configured when it is presented, and every other token the
+ * session remembers is older than the newest issued one, so none outlives it.
+ * The TTL is the app's configuration, so callers apply it themselves.
  *
  * A session with no issued token is left out with a warning. The token
  * lifecycle never leaves one (sign-in and each refresh issue a token), so
@@ -852,7 +871,7 @@ export const signOut = mutation({
  * Expired sessions are included, since a session's row outlives its tokens
  * until something deletes it. The query does not read the clock, so its result
  * stays cached until a session or token changes; callers that want only the
- * active sessions compare `expiresAt` to the current time themselves.
+ * active sessions compare the expiry to the current time themselves.
  *
  * This is a component-internal function (callable by the app, not by end-user
  * clients).
@@ -864,7 +883,6 @@ export const listSessions = query({
       sessionId: v.string(),
       creationTime: v.number(),
       lastRefreshedAt: v.number(),
-      expiresAt: v.number(),
     }),
   ),
   handler: async (ctx, { userId }) => {
@@ -887,7 +905,6 @@ export const listSessions = query({
         sessionId: session._id as string,
         creationTime: session._creationTime,
         lastRefreshedAt: newestIssued._creationTime,
-        expiresAt: newestIssued.expiresAt,
       });
     }
     return result;

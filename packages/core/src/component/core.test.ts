@@ -429,6 +429,10 @@ describe("signUpWithoutSession", () => {
 });
 
 describe("refresh", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test("rotates the refresh token and mints a fresh access token", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
@@ -527,18 +531,15 @@ describe("refresh", () => {
   });
 
   test("reports no session and clears it once the refresh token has expired", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const bundle = await signUp(t, claims());
 
     const successor = expectRotated(await refresh(t, bundle.refreshToken));
 
-    // Force the redeemed token past its expiry.
-    await t.run(async (ctx) => {
-      const [redeemed] = (await ctx.db.query("refreshTokens").collect()).filter(
-        (r) => r.state === "redeemed",
-      );
-      await ctx.db.patch(redeemed._id, { expiresAt: Date.now() - 1000 });
-    });
+    // Past the default 30-day refresh-token TTL.
+    vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
 
     const result = await refresh(t, bundle.refreshToken);
     expect(result.kind).toBe("noSession");
@@ -549,20 +550,56 @@ describe("refresh", () => {
   });
 
   test("reports no session for an expired issued token", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const bundle = await signUp(t, claims());
     const successor = expectRotated(await refresh(t, bundle.refreshToken));
 
-    await t.run(async (ctx) => {
-      const [issued] = (await ctx.db.query("refreshTokens").collect()).filter(
-        (r) => r.state === "issued",
-      );
-      await ctx.db.patch(issued._id, { expiresAt: Date.now() - 1000 });
-    });
+    // Past the default 30-day refresh-token TTL.
+    vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
 
     expect((await refresh(t, successor.refreshToken)).kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
     expect(await issuedHashes(t)).toEqual([]);
+  });
+
+  test("a lowered TTL expires tokens issued under the old one", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    // Issued under the default 30-day TTL.
+    const bundle = await signUp(t, claims());
+    vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+
+    // Two hours old: dead under a one-hour TTL, though the 30-day TTL it was
+    // issued under has days to go.
+    const result = await t.mutation(api.public.refresh, {
+      refreshToken: bundle.refreshToken,
+      issuer: ISSUER,
+      refreshTokenTtlSeconds: 60 * 60,
+    });
+    expect(result.kind).toBe("noSession");
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("a lowered TTL expires the redeemed token a retry would present", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    // Redeems the sign-in token. Suppose the response is lost, so the client
+    // keeps presenting the redeemed token.
+    expectRotated(await refresh(t, bundle.refreshToken));
+    vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+
+    const result = await t.mutation(api.public.refresh, {
+      refreshToken: bundle.refreshToken,
+      issuer: ISSUER,
+      refreshTokenTtlSeconds: 60 * 60,
+    });
+    expect(result.kind).toBe("noSession");
+    expect(await sessionCount(t)).toBe(0);
   });
 
   test("reports no session for an unknown refresh token", async () => {
@@ -895,7 +932,7 @@ describe("listSessions", () => {
     ]);
   });
 
-  test("reports when the session's newest refresh token was issued and when it expires", async () => {
+  test("reports when the session's newest refresh token was issued", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
@@ -912,35 +949,63 @@ describe("listSessions", () => {
         sessionId: sessionIdOf(rotated),
         creationTime: expect.any(Number),
         lastRefreshedAt: refreshedAt,
-        expiresAt: rotated.refreshTokenExpiresAt,
       },
     ]);
-    expect(rotated.refreshTokenExpiresAt).toBeGreaterThan(
-      bundle.refreshTokenExpiresAt,
-    );
   });
 
   test("includes a session whose refresh tokens have all expired", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
-    const bundle = await signUp(t, claims());
-    const shortLived = await t.mutation(api.public.signIn, {
-      claims: claims(),
-      issuer: ISSUER,
-      refreshTokenTtlSeconds: 60 * 60,
-    });
-    vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+    const stale = await signUp(t, claims());
+    // Past the default 30-day refresh-token TTL.
+    vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
+    const fresh = await signIn(t, claims());
 
     const sessions = await t.query(api.public.listSessions, {
+      userId: stale.userId,
+    });
+    expect(sessions.map((s) => s.sessionId)).toEqual(
+      [fresh, stale].map(sessionIdOf),
+    );
+  });
+
+  test("no token outlives one TTL past the session's lastRefreshedAt", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const oneHourSeconds = 60 * 60;
+    const bundle = await signUp(t, claims());
+    // Redeem the sign-in token, then present it again twice, as a client whose
+    // responses were lost would: the session has two issued siblings.
+    expectRotated(await refresh(t, bundle.refreshToken));
+    vi.advanceTimersByTime(60_000);
+    // Issued under the default 30-day TTL.
+    const older = expectRotated(await refresh(t, bundle.refreshToken));
+    vi.advanceTimersByTime(60_000);
+    // Issued after the TTL was lowered to an hour.
+    expectRotated(
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        issuer: ISSUER,
+        refreshTokenTtlSeconds: oneHourSeconds,
+      }),
+    );
+
+    const [listed] = await t.query(api.public.listSessions, {
       userId: bundle.userId,
     });
-    const expired = sessions.find(
-      (s) => s.sessionId === sessionIdOf(shortLived),
-    );
-    expect(expired?.expiresAt).toBe(shortLived.refreshTokenExpiresAt);
-    expect(expired!.expiresAt!).toBeLessThan(Date.now());
-    expect(sessions).toHaveLength(2);
+    expect(Math.floor(listed.lastRefreshedAt)).toBe(Date.now());
+
+    // Once past it, the older sibling, issued under the longer TTL, can't
+    // refresh the session either.
+    vi.setSystemTime(Math.ceil(listed.lastRefreshedAt + oneHourSeconds * 1000));
+    const result = await t.mutation(api.public.refresh, {
+      refreshToken: older.refreshToken,
+      issuer: ISSUER,
+      refreshTokenTtlSeconds: oneHourSeconds,
+    });
+    expect(result.kind).toBe("noSession");
   });
 
   test("leaves out, with a warning, a session with no issued token", async () => {
@@ -1060,7 +1125,6 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
           hash: `extra-${i}`,
           sessionId,
           state: "issued",
-          expiresAt: Date.now() + 60_000,
         });
       }
     });
