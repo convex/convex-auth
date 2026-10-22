@@ -365,9 +365,10 @@ export type BoundAuthHelpers<Profile> = {
   resolveUserId(providerAccountId: string): Promise<string | null>;
   /**
    * Revokes every session of the signed-in user other than the current one
-   * (the JWT's subject). Returns the number of active (non-expired)
-   * sessions revoked; returns 0 when not authenticated. Expired sessions are
-   * deleted as well, but not counted.
+   * (the JWT's subject). Returns the number of sessions revoked; returns 0
+   * when not authenticated. Expired sessions are deleted in the background,
+   * so one that expired moments ago, which the cleanup loop hasn't reached
+   * yet, can be revoked and counted too.
    *
    * NOTE: Callers should only invoke this function after verifying that the
    * logged in user truly owns the session, via confirming an authentication
@@ -379,8 +380,9 @@ export type BoundAuthHelpers<Profile> = {
   revokeOtherSessions(): Promise<number>;
   /**
    * Revokes every session of the given user, including the caller's own if
-   * it belongs to that user. Returns the number of active (non-expired)
-   * sessions revoked. Expired sessions are deleted as well, but not counted.
+   * it belongs to that user. Returns the number of sessions revoked. Expired
+   * sessions are deleted in the background, so one that expired moments ago,
+   * which the cleanup loop hasn't reached yet, can be revoked and counted too.
    *
    * For flows that prove ownership of an account without a trusted current
    * session, such as password recovery. Revoke before minting the new
