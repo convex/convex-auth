@@ -216,6 +216,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    * have already been issued: a token expires this long after it was issued,
    * under the value configured when it is presented. Lowering it thus ends
    * sessions that have gone longer than the new value without refreshing.
+   *
+   * The core also stores the value, for the background loop that deletes
+   * expired sessions. It picks up a changed value at the next sign-in or
+   * refresh after the deploy.
    */
   refreshTokenTtlSeconds?: number;
 }): AuthCore<UsersTable> {

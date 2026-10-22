@@ -168,8 +168,8 @@ export async function pruneRetiredTokens(
   now: number,
 ): Promise<void> {
   // A session that stops refreshing keeps its remaining rows until it is
-  // deleted, since nothing rotates it any more. Sweeping those orphans is what a
-  // background job would add; see KNOWN_ISSUES.md.
+  // deleted, since nothing rotates it any more: by sign-out, or by the cleanup
+  // loop once it expires. See KNOWN_ISSUES.md.
   for (const state of ["spent", "dropped"] as const) {
     const expired = await ctx.db
       .query("refreshTokens")
