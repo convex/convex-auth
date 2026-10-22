@@ -6,7 +6,8 @@
  * the session mutations, the exposed sign-in functions, and the cookie
  * attributes) and returns the WHATWG `(Request) => Response` handlers a
  * framework mounts as routes: refresh, sign-out, and the `convexProxyHandler`
- * that serves every sign-in method.
+ * that serves every sign-in method. It also returns `handler`, which serves
+ * all three from one dynamic route by dispatching on the last path segment.
  *
  * The whole surface shares one {@link AuthCookieOptions}, so `secure` is decided
  * exactly once per integration and reaches every handler, including sign-in.
@@ -16,7 +17,11 @@
 
 import type { RefreshSessionFn, SignOutFn } from "../lib/types.ts";
 import type { AuthCookieOptions } from "./cookies.ts";
-import { refreshHandler, signOutHandler } from "./handlers.ts";
+import {
+  refreshHandler,
+  signOutHandler,
+  type RequestHandler,
+} from "./handlers.ts";
 import { convexProxyHandler, type ExposedSignInFn } from "./signInProxy.ts";
 
 /** Configuration for {@link setupConvexAuthServer}. */
@@ -57,19 +62,27 @@ export interface ConvexAuthServerConfig {
  * });
  * ```
  *
- * Then mount the routes that it returns. For example, the sign-in route
- * serves every method listed in `signIn`:
+ * Then mount the routes that it returns. With a framework that has dynamic
+ * route segments, one file serves all three:
+ *
+ * ```ts
+ * // app/auth/[route]/route.ts
+ * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+ *
+ * export const POST = auth.handler;
+ * ```
+ *
+ * Or mount each handler at its own path, e.g. the sign-in route, which serves
+ * every method listed in `signIn`:
  *
  * ```ts
  * // app/auth/signin/route.ts
- * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
- *
  * export const POST = auth.convexProxyHandler;
  * ```
  */
 export function setupConvexAuthServer(config: ConvexAuthServerConfig) {
   const { convexUrl, cookieOptions, allowedOrigins } = config;
-  return {
+  const handlers = {
     refreshHandler: refreshHandler({
       convexUrl,
       refreshSession: config.refreshSession,
@@ -101,5 +114,37 @@ export function setupConvexAuthServer(config: ConvexAuthServerConfig) {
       cookieOptions,
       allowedOrigins,
     }),
+  };
+  // The client posts to `<base>/signin`, `<base>/refresh` and `<base>/signout`,
+  // so the last segment names the handler wherever the base is mounted.
+  const byRoute: Record<string, RequestHandler> = {
+    signin: handlers.convexProxyHandler,
+    refresh: handlers.refreshHandler,
+    signout: handlers.signOutHandler,
+  };
+  return {
+    ...handlers,
+    /**
+     * All three routes in one handler, for a dynamic route segment. It
+     * dispatches on the last path segment (`signin`, `refresh` or `signout`)
+     * and answers 404 to anything else.
+     *
+     * ```ts
+     * // app/auth/[route]/route.ts
+     * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+     *
+     * export const POST = auth.handler;
+     * ```
+     */
+    handler: (async (request) => {
+      const route = new URL(request.url).pathname
+        .replace(/\/+$/, "")
+        .split("/")
+        .pop();
+      const handler = route === undefined ? undefined : byRoute[route];
+      return handler !== undefined
+        ? handler(request)
+        : new Response(null, { status: 404 });
+    }) satisfies RequestHandler,
   };
 }

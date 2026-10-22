@@ -93,22 +93,22 @@ each provider needs.
   ../../../../../examples/nextjs/src/lib/serverAuth.ts
 </include>
 
-Then mount each handler as a route under `app/auth/`:
+Then mount the handlers as one dynamic route under `app/auth/`. `auth.handler`
+serves sign-in, refresh, and sign-out by the last segment of the path:
 
-<include lang="ts" meta='title="app/auth/signin/route.ts"'>
-  ../../../../../examples/nextjs/app/auth/signin/route.ts
-</include>
-
-<include lang="ts" meta='title="app/auth/refresh/route.ts"'>
-  ../../../../../examples/nextjs/app/auth/refresh/route.ts
-</include>
-
-<include lang="ts" meta='title="app/auth/signout/route.ts"'>
-  ../../../../../examples/nextjs/app/auth/signout/route.ts
+<include lang="ts" meta='title="app/auth/[route]/route.ts"'>
+  ../../../../../examples/nextjs/app/auth/[route]/route.ts
 </include>
 
 The client posts to `/auth/signin`, `/auth/refresh`, and `/auth/signout`, so
-mount the handlers at exactly these paths.
+mount the route at exactly `app/auth/[route]`.
+
+<Callout>
+  To mount each route in its own file instead, export `auth.convexProxyHandler`
+  from `app/auth/signin/route.ts`, `auth.refreshHandler` from
+  `app/auth/refresh/route.ts`, and `auth.signOutHandler` from
+  `app/auth/signout/route.ts`.
+</Callout>
 
 </Step>
 
