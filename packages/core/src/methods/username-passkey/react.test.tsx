@@ -22,6 +22,7 @@ import { toBase64URL } from "./base64url.ts";
 const noopAutofill = {
   pauseAutofillFlow: () => {},
   resumeAutofillFlow: () => {},
+  isAutofillSigningIn: () => false,
 };
 
 // The hook calls several different mutations, so both call paths dispatch on
@@ -598,6 +599,48 @@ describe("useSignInWithUsernamePasskey autofill", () => {
     await act(async () => {});
   });
 
+  test("pending is true while the server verifies an autofill sign-in, and signIn refuses", async () => {
+    mutations.startAutofillSignInWithUsernamePasskey.mockResolvedValue({
+      options: requestOptions,
+    });
+    conditionalGet.mockResolvedValue(conditionalCredential);
+    let resolveFinish!: (value: unknown) => void;
+    mutations.finishSignInWithUsernamePasskey.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFinish = resolve;
+      }),
+    );
+    const { result, unmount } = renderPasskey();
+
+    await waitFor(() =>
+      expect(result.current.passkey.autofill.status).toBe("signingIn"),
+    );
+    expect(result.current.passkey.pending).toBe(true);
+
+    // The verification cannot be paused, thus a modal flow must not start.
+    let returned!: SignInWithUsernamePasskeyResult;
+    await act(async () => {
+      returned = await result.current.passkey.signIn({ username: "alice" });
+    });
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "ALREADY_PENDING" },
+    });
+    expect(mutations.startSignInWithUsernamePasskey).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveFinish({ status: "complete", tokens: bundle, username: "alice" });
+    });
+    await waitFor(() =>
+      expect(result.current.passkey.autofill.status).toBe("signedIn"),
+    );
+    expect(result.current.passkey.pending).toBe(false);
+    expect(result.current.auth.isAuthenticated).toBe(true);
+
+    unmount();
+    await act(async () => {});
+  });
+
   test("signIn pauses the pending autofill request and resumes it after", async () => {
     mutations.startAutofillSignInWithUsernamePasskey.mockResolvedValue({
       options: requestOptions,
@@ -740,6 +783,22 @@ describe("usePasskeyCeremonySlot", () => {
     expect(result.current.pending).toBe(false);
   });
 
+  test("run refuses while the server verifies an autofill sign-in", async () => {
+    const autofill = { ...noopAutofill, isAutofillSigningIn: () => true };
+    const fn = vi.fn(async () => "done");
+    const { result } = renderHook(() => usePasskeyCeremonySlot({ autofill }));
+    let returned: unknown;
+    await act(async () => {
+      returned = await result.current.run(fn);
+    });
+    expect(returned).toEqual({
+      success: false,
+      userError: { error: "ALREADY_PENDING" },
+    });
+    expect(fn).not.toHaveBeenCalled();
+    expect(result.current.pending).toBe(false);
+  });
+
   test("run pauses the autofill gates around the callback, also on a throw", async () => {
     const calls: string[] = [];
     const autofill = {
@@ -749,6 +808,7 @@ describe("usePasskeyCeremonySlot", () => {
       resumeAutofillFlow: () => {
         calls.push("resume");
       },
+      isAutofillSigningIn: () => false,
     };
     const { result } = renderHook(() => usePasskeyCeremonySlot({ autofill }));
     await act(async () => {
