@@ -17,7 +17,7 @@ import {
   REFRESH_GRACE_MS,
   SPENT_TOKEN_HORIZON_MS,
   MAX_SESSIONS_PER_USER,
-} from "./public.ts";
+} from "./sessions.ts";
 
 /**
  * The component's modules, and the test-only `testApp` module. The fixture file
