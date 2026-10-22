@@ -32,6 +32,7 @@ import {
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
   SPENT_TOKEN_HORIZON_MS,
+  MAX_SESSIONS_PER_USER,
 } from "./public.ts";
 
 /**
@@ -977,6 +978,118 @@ describe("listSessions", () => {
     expect(
       await t.query(api.public.listSessions, { userId: "nobody" }),
     ).toEqual([]);
+  });
+});
+
+describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Sign the user in until they have `count` sessions, a second apart. */
+  async function signInUntil(t: ConvexTestApi, count: number) {
+    const bundles = [await signUp(t, claims())];
+    while (bundles.length < count) {
+      vi.advanceTimersByTime(1000);
+      bundles.push(await signIn(t, claims()));
+    }
+    return bundles;
+  }
+
+  test("keeps every session up to the cap", async () => {
+    const t = setup();
+    await signInUntil(t, MAX_SESSIONS_PER_USER);
+    expect(await sessionCount(t)).toBe(MAX_SESSIONS_PER_USER);
+  });
+
+  test("a sign-in at the cap revokes the session that refreshed longest ago", async () => {
+    const t = setup();
+    const [first, second, third] = await signInUntil(t, MAX_SESSIONS_PER_USER);
+    // The oldest session is still in use, so the next oldest goes instead.
+    vi.advanceTimersByTime(1000);
+    expectRotated(await refresh(t, first.refreshToken));
+
+    vi.advanceTimersByTime(1000);
+    const newest = await signIn(t, claims());
+
+    expect(await sessionCount(t)).toBe(MAX_SESSIONS_PER_USER);
+    const listed = (
+      await t.query(api.public.listSessions, { userId: first.userId })
+    ).map((s) => s.sessionId);
+    expect(listed).not.toContain(sessionIdOf(second));
+    expect(listed).toContain(sessionIdOf(first));
+    expect(listed).toContain(sessionIdOf(third));
+    expect(listed).toContain(sessionIdOf(newest));
+    expect((await refresh(t, second.refreshToken)).kind).toBe("noSession");
+  });
+
+  test("erases the revoked session's refresh tokens", async () => {
+    const t = setup();
+    const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
+    await signIn(t, claims());
+    const remaining = await t.run(async (ctx) =>
+      ctx.db
+        .query("refreshTokens")
+        .withIndex("by_session_state", (q) =>
+          q.eq("sessionId", sessionIdOf(first) as Id<"sessions">),
+        )
+        .collect(),
+    );
+    expect(remaining).toEqual([]);
+  });
+
+  test("a user over the cap is brought back to it", async () => {
+    const t = setup();
+    const bundles = await signInUntil(t, MAX_SESSIONS_PER_USER);
+    // Sessions from before the cap existed; not reachable by signing in.
+    await t.run(async (ctx) => {
+      const { accountId } = (await ctx.db.get(
+        "sessions",
+        sessionIdOf(bundles[0]) as Id<"sessions">,
+      ))!;
+      for (let i = 0; i < 2; i++) {
+        const sessionId = await ctx.db.insert("sessions", {
+          userId: bundles[0].userId,
+          accountId,
+        });
+        await ctx.db.insert("refreshTokens", {
+          hash: `extra-${i}`,
+          sessionId,
+          state: "issued",
+          expiresAt: Date.now() + 60_000,
+        });
+      }
+    });
+
+    vi.advanceTimersByTime(1000);
+    const newest = await signIn(t, claims());
+
+    expect(await sessionCount(t)).toBe(MAX_SESSIONS_PER_USER);
+    const listed = (
+      await t.query(api.public.listSessions, { userId: newest.userId })
+    ).map((s) => s.sessionId);
+    expect(listed).not.toContain(sessionIdOf(bundles[0]));
+    expect(listed).not.toContain(sessionIdOf(bundles[1]));
+    expect(listed).not.toContain(sessionIdOf(bundles[2]));
+    expect(listed).toContain(sessionIdOf(newest));
+  });
+
+  test("counts only the user's own sessions", async () => {
+    const t = setup();
+    const bob = await signUp(t, claims({ providerAccountId: "bob" }));
+    const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
+    await signIn(t, claims());
+
+    expect(
+      await t.query(api.public.listSessions, { userId: bob.userId }),
+    ).toHaveLength(1);
+    expect(
+      await t.query(api.public.listSessions, { userId: first.userId }),
+    ).toHaveLength(MAX_SESSIONS_PER_USER);
   });
 });
 
