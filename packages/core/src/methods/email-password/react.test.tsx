@@ -5,7 +5,11 @@ import { anyApi, makeFunctionReference } from "convex/server";
 import { ReactNode, StrictMode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthClient } from "../../browser/sessionManager.ts";
-import { InMemoryStorage, NamespacedStorage } from "../../browser/storage.ts";
+import {
+  InMemoryStorage,
+  NamespacedStorage,
+  type TokenStorage,
+} from "../../browser/storage.ts";
 import type { TokenBundle } from "../../lib/types.ts";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
 import { stubSignInApi } from "../../react/testSignInApi.ts";
@@ -33,8 +37,9 @@ const NAMESPACE = "https://happy-animal-123.convex.cloud";
 const convexClient = new ConvexReactClient(NAMESPACE);
 const stubConvexMutation = () => vi.spyOn(convexClient, "mutation");
 
-// The hooks keep flow secrets in `localStorage` (jsdom supplies one),
-// namespaced like the hooks namespace it.
+// The hooks keep flow secrets in the storage passed to the auth provider,
+// namespaced like the session tokens. Most tests pass `localStorage` (jsdom
+// supplies one), as a browser app would.
 const secretStorage = new NamespacedStorage(window.localStorage, NAMESPACE);
 const SIGN_UP_SECRET_KEY = "__convexAuthEmailPasswordSignUpSecret";
 const CHANGE_EMAIL_SECRET_KEY = "__convexAuthEmailPasswordChangeEmailSecret";
@@ -87,14 +92,17 @@ function stubConvexQuery() {
   };
 }
 
-function renderWithProviders<T>(useHook: () => T) {
+function renderWithProviders<T>(
+  useHook: () => T,
+  storage: TokenStorage = window.localStorage,
+) {
   const authClient = new AuthClient({
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
     },
-    storage: new InMemoryStorage(),
+    storage,
     storageNamespace: NAMESPACE,
   });
   // StrictMode runs effects twice in development. The landing page hooks
@@ -845,5 +853,70 @@ describe("useCompleteChangeEmail", () => {
       }),
     );
     expect(secretStorage.get(CHANGE_EMAIL_SECRET_KEY)).toBe("secret-5");
+  });
+});
+
+describe("without localStorage (React Native)", () => {
+  // React Native has a `window` but no `localStorage`; apps pass an async
+  // store like `expo-secure-store` to the provider instead.
+  function asyncStorage() {
+    const backing = new InMemoryStorage();
+    return {
+      backing,
+      storage: {
+        getItem: async (key: string) => backing.getItem(key),
+        setItem: async (key: string, value: string) =>
+          backing.setItem(key, value),
+        removeItem: async (key: string) => backing.removeItem(key),
+      } satisfies TokenStorage,
+    };
+  }
+
+  test("sign-up keeps its secret in the provider's storage, and a later screen completes it", async () => {
+    vi.spyOn(window, "localStorage", "get").mockReturnValue(undefined as never);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { backing, storage } = asyncStorage();
+    stubConvexMutation().mockResolvedValue({
+      success: true,
+      browserSecret: "secret-1",
+    });
+
+    const signUp = renderWithProviders(
+      () =>
+        useSignUpWithEmailPassword({ signUpWithEmailPassword: convexMutation }),
+      storage,
+    );
+    await waitFor(() =>
+      expect(signUp.result.current.auth.isLoading).toBe(false),
+    );
+    await act(async () => {
+      await signUp.result.current.hook.signUp({
+        email: "alice@example.com",
+        password: "correct horse battery staple",
+      });
+    });
+    const secrets = new NamespacedStorage(backing, NAMESPACE);
+    expect(secrets.get(SIGN_UP_SECRET_KEY)).toBe("secret-1");
+    signUp.unmount();
+
+    // The completion screen mounts under a new provider over the same store,
+    // as after the app is reopened from the email link.
+    runSignInMutation.mockResolvedValue({ status: "complete", tokens: bundle });
+    const { result } = renderWithProviders(
+      () =>
+        useCompleteSignUp(
+          { completeSignUp: signInMutation },
+          { emailCode: "code-1" },
+        ),
+      storage,
+    );
+    await waitFor(() =>
+      expect(result.current.hook).toEqual({ status: "complete" }),
+    );
+    expect(runSignInMutation).toHaveBeenCalledWith({
+      emailCode: "code-1",
+      browserSecret: "secret-1",
+    });
+    expect(secrets.get(SIGN_UP_SECRET_KEY)).toBeNull();
   });
 });
