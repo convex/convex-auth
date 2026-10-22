@@ -9,7 +9,6 @@
  */
 
 import type * as auth from "../auth.js";
-import type * as currentUser from "../currentUser.js";
 import type * as users from "../users.js";
 
 import type {
@@ -20,7 +19,6 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
-  currentUser: typeof currentUser;
   users: typeof users;
 }>;
 
