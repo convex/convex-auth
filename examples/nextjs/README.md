@@ -7,11 +7,12 @@ anonymous: the refresh token is minted straight into an httpOnly cookie and
 ## How it works
 
 - **Sign-in / refresh / sign-out run on the server** as framework-agnostic
-  `(Request) => Response` handlers, mounted under `app/auth/`:
-  - `app/auth/signin/route.ts` → `convexProxyHandler`, the one route serving
-    every sign-in method
-  - `app/auth/refresh/route.ts` → `refreshHandler`
-  - `app/auth/signout/route.ts` → `signOutHandler`
+  `(Request) => Response` handlers. `app/auth/[route]/route.ts` mounts all
+  three through `auth.handler`, which dispatches on the last path segment:
+  - `/auth/signin` → `convexProxyHandler`, the one route serving every
+    sign-in method
+  - `/auth/refresh` → `refreshHandler`
+  - `/auth/signout` → `signOutHandler`
 - **The sign-in route** speaks the same HTTP interface as `ConvexHttpClient` and
   forwards calls to the deployment, intercepting only the minted refresh token
   on the way back to put it in the cookie. Because of that, a provider needs no

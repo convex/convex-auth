@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `setupConvexAuthServer` returns `handler`, which serves sign-in, refresh
+  and sign-out from one dynamic route (`app/auth/[route]/route.ts`) by the
+  last path segment. The three individual handlers remain.
+
 ## 2.0.0-beta.0
 
 Some API and schema breaking changes - see below
