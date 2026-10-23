@@ -17,6 +17,7 @@ import {
   type ConvexAuthCtx,
   type UserCallbacks,
 } from "../lib/types.ts";
+import { DEFAULT_REFRESH_TOKEN_TTL_SECONDS } from "../lib/ttl.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -206,8 +207,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   /**
    * Refresh-token lifetime in seconds. Defaults to 30 days.
    *
-   * Changes to this value impact newly minted tokens, not ones that have
-   * already been issued.
+   * Changes to this value apply to every refresh token, including ones that
+   * have already been issued: a token expires this long after it was issued,
+   * under the value configured when it is presented. Lowering it thus ends
+   * sessions that have gone longer than the new value without refreshing.
    */
   refreshTokenTtlSeconds?: number;
 }): AuthCore<UsersTable> {
@@ -371,11 +374,14 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             sessionIds: others.map(({ sessionId }) => sessionId),
           }),
         );
-        // Expired sessions are deleted too, but only the active ones count.
+        // Expired sessions are deleted too, but only the active ones count. A
+        // session expires one refresh-token TTL after it last refreshed.
+        const ttlMs =
+          (refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS) * 1000;
         const now = Date.now();
         return others.filter(
-          ({ sessionId, expiresAt }) =>
-            revoked.has(sessionId) && expiresAt > now,
+          ({ sessionId, lastRefreshedAt }) =>
+            revoked.has(sessionId) && lastRefreshedAt + ttlMs > now,
         ).length;
       },
     });
