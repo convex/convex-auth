@@ -120,6 +120,7 @@ export function setupGoogle<UsersTable extends string>(
       });
 
       const startSignIn = buildStartSignIn({
+        providerName: PROVIDER_NAME,
         allowedOrigins,
         authorizationEndpoint: AUTHORIZATION_ENDPOINT,
         scopes: SCOPES,
