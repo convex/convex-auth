@@ -108,7 +108,9 @@ Then mount each handler as a route under `app/auth/`:
 </include>
 
 The client posts to `/auth/signin`, `/auth/refresh`, and `/auth/signout`, so
-mount the handlers at exactly these paths.
+mount the handlers at exactly these paths. To mount them elsewhere, pass the
+paths as `routes` to `setupConvexAuthNextjs` (next step) and the client will
+post there instead.
 
 </Step>
 

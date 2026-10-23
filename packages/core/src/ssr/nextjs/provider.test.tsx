@@ -81,10 +81,12 @@ describe("ConvexAuthNextjsProvider under ConvexAuthNextjsServerStateProvider", (
     expect(token).toBeNull();
   });
 
-  test("starts signed out without a server provider", () => {
+  test("starts signed out without a server provider", async () => {
     let token: string | null | undefined;
+    let isLoading = true;
     function Probe() {
       token = useAuthToken();
+      ({ isLoading } = useConvexAuth());
       return null;
     }
     render(
@@ -95,6 +97,7 @@ describe("ConvexAuthNextjsProvider under ConvexAuthNextjsServerStateProvider", (
         <Probe />
       </ConvexAuthNextjsProvider>,
     );
+    await waitFor(() => expect(isLoading).toBe(false));
     expect(token).toBeNull();
   });
 
