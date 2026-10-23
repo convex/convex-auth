@@ -347,6 +347,37 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           providerAccountId,
         });
       },
+      revokeOtherSessions: async (): Promise<number> => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+          return 0;
+        }
+        const currentSessionId = identity.subject;
+        const session = await ctx.runQuery(component.public.getSession, {
+          sessionId: currentSessionId,
+        });
+        // A revoked current session can't sign out other sessions.
+        if (session === null) {
+          return 0;
+        }
+        const sessions = await ctx.runQuery(component.public.listSessions, {
+          userId: session.userId,
+        });
+        const others = sessions.filter(
+          ({ sessionId }) => sessionId !== currentSessionId,
+        );
+        const revoked = new Set(
+          await ctx.runMutation(component.public.revokeSessions, {
+            sessionIds: others.map(({ sessionId }) => sessionId),
+          }),
+        );
+        // Expired sessions are deleted too, but only the active ones count.
+        const now = Date.now();
+        return others.filter(
+          ({ sessionId, expiresAt }) =>
+            revoked.has(sessionId) && expiresAt > now,
+        ).length;
+      },
     });
 
     const authMutation: AuthMutationBuilder<Profile> = (fn) =>

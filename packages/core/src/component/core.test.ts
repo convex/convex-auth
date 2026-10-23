@@ -18,7 +18,7 @@ import {
   type JWK,
 } from "jose";
 import { api } from "./_generated/api.ts";
-import type { Doc } from "./_generated/dataModel.ts";
+import type { Doc, Id } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
 import * as testApp from "./testApp.fixture.ts";
 import {
@@ -841,6 +841,235 @@ describe("signOut", () => {
     await expect(
       t.mutation(api.public.signOut, { refreshToken: bundle.refreshToken }),
     ).resolves.toBeNull();
+  });
+});
+
+/** The session id carried in the bundle's access token (`sub` claim). */
+function sessionIdOf(bundle: TokenBundle): string {
+  return decodeJwt(bundle.accessToken).sub!;
+}
+
+describe("listSessions", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test("lists every session of the user", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const otherBundle = await signIn(t, claims());
+
+    const sessions = await t.query(api.public.listSessions, {
+      userId: bundle.userId,
+    });
+    expect(sessions.map((s) => s.sessionId).sort()).toEqual(
+      [sessionIdOf(bundle), sessionIdOf(otherBundle)].sort(),
+    );
+  });
+
+  test("lists the newest session first", async () => {
+    const t = setup();
+    const first = await signUp(t, claims());
+    const second = await signIn(t, claims());
+    const third = await signIn(t, claims());
+
+    const sessions = await t.query(api.public.listSessions, {
+      userId: first.userId,
+    });
+    expect(sessions.map((s) => s.sessionId)).toEqual(
+      [third, second, first].map(sessionIdOf),
+    );
+  });
+
+  test("lists only the sessions of the given user", async () => {
+    const t = setup();
+    const aliceBundle = await signUp(t, claims());
+    await signUp(t, claims({ providerAccountId: "bob" }));
+
+    const sessions = await t.query(api.public.listSessions, {
+      userId: aliceBundle.userId,
+    });
+    expect(sessions.map((s) => s.sessionId)).toEqual([
+      sessionIdOf(aliceBundle),
+    ]);
+  });
+
+  test("reports when the session's newest refresh token was issued and when it expires", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    vi.advanceTimersByTime(60_000);
+    const refreshedAt = Date.now();
+    const rotated = expectRotated(await refresh(t, bundle.refreshToken));
+
+    const sessions = await t.query(api.public.listSessions, {
+      userId: bundle.userId,
+    });
+    expect(sessions).toEqual([
+      {
+        sessionId: sessionIdOf(rotated),
+        creationTime: expect.any(Number),
+        lastRefreshedAt: refreshedAt,
+        expiresAt: rotated.refreshTokenExpiresAt,
+      },
+    ]);
+    expect(rotated.refreshTokenExpiresAt).toBeGreaterThan(
+      bundle.refreshTokenExpiresAt,
+    );
+  });
+
+  test("includes a session whose refresh tokens have all expired", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const shortLived = await t.mutation(api.public.signIn, {
+      claims: claims(),
+      issuer: ISSUER,
+      refreshTokenTtlSeconds: 60 * 60,
+    });
+    vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+
+    const sessions = await t.query(api.public.listSessions, {
+      userId: bundle.userId,
+    });
+    const expired = sessions.find(
+      (s) => s.sessionId === sessionIdOf(shortLived),
+    );
+    expect(expired?.expiresAt).toBe(shortLived.refreshTokenExpiresAt);
+    expect(expired!.expiresAt!).toBeLessThan(Date.now());
+    expect(sessions).toHaveLength(2);
+  });
+
+  test("leaves out, with a warning, a session with no issued token", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const otherBundle = await signIn(t, claims());
+    // Not a state the token lifecycle reaches; forced here to cover the guard.
+    await t.run(async (ctx) => {
+      const tokens = await ctx.db
+        .query("refreshTokens")
+        .withIndex("by_session_state", (q) =>
+          q.eq("sessionId", sessionIdOf(otherBundle) as Id<"sessions">),
+        )
+        .collect();
+      for (const row of tokens) {
+        await ctx.db.delete("refreshTokens", row._id);
+      }
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const sessions = await t.query(api.public.listSessions, {
+        userId: bundle.userId,
+      });
+      expect(sessions.map((s) => s.sessionId)).toEqual([sessionIdOf(bundle)]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("has no issued refresh token"),
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("returns nothing for a user with no sessions", async () => {
+    const t = setup();
+    expect(
+      await t.query(api.public.listSessions, { userId: "nobody" }),
+    ).toEqual([]);
+  });
+});
+
+describe("revokeSessions", () => {
+  test("revokes the sessions so they can no longer be refreshed", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const second = await signIn(t, claims());
+    const third = await signIn(t, claims());
+
+    const revoked = await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(second), sessionIdOf(third)],
+    });
+    expect(revoked.sort()).toEqual(
+      [sessionIdOf(second), sessionIdOf(third)].sort(),
+    );
+    expect(await sessionCount(t)).toBe(1);
+    expect((await refresh(t, second.refreshToken)).kind).toBe("noSession");
+    expect((await refresh(t, third.refreshToken)).kind).toBe("noSession");
+    expect((await refresh(t, bundle.refreshToken)).kind).toBe("rotated");
+  });
+
+  test("revokes the sessions of any user", async () => {
+    const t = setup();
+    const alice = await signUp(t, claims());
+    const bob = await signUp(t, claims({ providerAccountId: "bob" }));
+
+    const revoked = await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(alice), sessionIdOf(bob)],
+    });
+    expect(revoked).toHaveLength(2);
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("erases the sessions' refresh tokens", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    expectRotated(await refresh(t, bundle.refreshToken));
+
+    await t.mutation(api.public.revokeSessions, {
+      sessionIds: [sessionIdOf(bundle)],
+    });
+    const tokens = await t.run(
+      async (ctx) => await ctx.db.query("refreshTokens").collect(),
+    );
+    expect(tokens).toEqual([]);
+  });
+
+  test("skips an already-revoked session id", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const otherBundle = await signIn(t, claims());
+    await t.mutation(api.public.signOut, { refreshToken: bundle.refreshToken });
+
+    expect(
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: [sessionIdOf(bundle), sessionIdOf(otherBundle)],
+      }),
+    ).toEqual([sessionIdOf(otherBundle)]);
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("reports a repeated session id once", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+
+    expect(
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: [sessionIdOf(bundle), sessionIdOf(bundle)],
+      }),
+    ).toEqual([sessionIdOf(bundle)]);
+  });
+
+  test("skips a malformed session id", async () => {
+    const t = setup();
+    await signUp(t, claims());
+
+    expect(
+      await t.mutation(api.public.revokeSessions, {
+        sessionIds: ["not a session id"],
+      }),
+    ).toEqual([]);
+    expect(await sessionCount(t)).toBe(1);
+  });
+
+  test("revokes nothing for no ids", async () => {
+    const t = setup();
+    await signUp(t, claims());
+
+    expect(
+      await t.mutation(api.public.revokeSessions, { sessionIds: [] }),
+    ).toEqual([]);
+    expect(await sessionCount(t)).toBe(1);
   });
 });
 
