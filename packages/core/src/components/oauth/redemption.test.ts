@@ -110,6 +110,9 @@ const fakeCore = {
       revokeOtherSessions: async () => {
         throw new Error("revokeOtherSessions is not used by redemption");
       },
+      revokeAllSessions: async () => {
+        throw new Error("revokeAllSessions is not used by redemption");
+      },
     };
     const authMutation: AuthMutationBuilder<Profile> = (fn) =>
       mutationGeneric({

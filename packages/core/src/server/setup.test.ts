@@ -82,11 +82,23 @@ const revokeOtherSessions = authMutation({
   handler: async (ctx) => await ctx.convexAuth.revokeOtherSessions(),
 });
 
+// For testing only: never expose a function like this publicly. It lets any
+// caller sign out any user, since `revokeAllSessions` does no authorization.
+// A real flow proves ownership of the account first (see
+// `completePasswordRecovery`).
+const revokeAllSessions = authMutation({
+  args: { userId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { userId }) =>
+    await ctx.convexAuth.revokeAllSessions(userId),
+});
+
 const testApp = {
   createUser,
   signUp,
   signIn,
   revokeOtherSessions,
+  revokeAllSessions,
 };
 
 /**
@@ -138,6 +150,21 @@ const revokeOtherSessionsRef = makeFunctionReference<
   Record<string, never>,
   number
 >("testApp:revokeOtherSessions");
+
+const revokeAllSessionsRef = makeFunctionReference<
+  "mutation",
+  { userId: string },
+  number
+>("testApp:revokeAllSessions");
+
+/** The ids of the user's sessions, as the core lists them. */
+async function sessionIdsOf(t: ReturnType<typeof setup>, userId: string) {
+  const sessions = await t.run(
+    async (ctx) =>
+      await ctx.runQuery(components.auth.public.listSessions, { userId }),
+  );
+  return sessions.map((s) => s.sessionId);
+}
 
 describe("ctx.convexAuth.revokeOtherSessions", () => {
   test("revokes every session of the user but the caller's", async () => {
@@ -213,5 +240,68 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
       .withIdentity({ subject: bundle.userId })
       .mutation(revokeOtherSessionsRef, {});
     expect(revoked).toBe(0);
+  });
+});
+
+describe("ctx.convexAuth.revokeAllSessions", () => {
+  test("revokes every session of the user, the caller's included", async () => {
+    const t = setup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    await t.mutation(signInRef, { accountId: "alice" });
+
+    const revoked = await t
+      .withIdentity(sessionIdentity(bundle))
+      .mutation(revokeAllSessionsRef, { userId: bundle.userId });
+    expect(revoked).toBe(2);
+    expect(await sessionIdsOf(t, bundle.userId)).toEqual([]);
+  });
+
+  test("needs no signed-in caller", async () => {
+    const t = setup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+
+    expect(
+      await t.mutation(revokeAllSessionsRef, { userId: bundle.userId }),
+    ).toBe(1);
+    expect(await sessionIdsOf(t, bundle.userId)).toEqual([]);
+  });
+
+  test("leaves the sessions of other users alone", async () => {
+    const t = setup();
+    const alice = await t.mutation(signUpRef, { accountId: "alice" });
+    const bob = await t.mutation(signUpRef, { accountId: "bob" });
+
+    expect(
+      await t.mutation(revokeAllSessionsRef, { userId: alice.userId }),
+    ).toBe(1);
+    expect(await sessionIdsOf(t, bob.userId)).toEqual([
+      sessionIdentity(bob).subject,
+    ]);
+  });
+
+  test("deletes expired sessions without counting them", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+      const t = setup();
+      const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+      // Past the default 30-day refresh-token TTL.
+      vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
+      await t.mutation(signInRef, { accountId: "alice" });
+
+      expect(
+        await t.mutation(revokeAllSessionsRef, { userId: bundle.userId }),
+      ).toBe(1);
+      expect(await sessionIdsOf(t, bundle.userId)).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("returns 0 for a user with no sessions", async () => {
+    const t = setup();
+    expect(await t.mutation(revokeAllSessionsRef, { userId: "nobody" })).toBe(
+      0,
+    );
   });
 });
