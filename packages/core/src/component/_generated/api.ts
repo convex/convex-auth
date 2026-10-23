@@ -9,8 +9,10 @@
  */
 
 import type * as crypto from "../crypto.js";
+import type * as expiry from "../expiry.js";
 import type * as http from "../http.js";
 import type * as public_ from "../public.js";
+import type * as sessions from "../sessions.js";
 
 import type {
   ApiFromModules,
@@ -21,8 +23,10 @@ import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
   crypto: typeof crypto;
+  expiry: typeof expiry;
   http: typeof http;
   public: typeof public_;
+  sessions: typeof sessions;
 }> = anyApi as any;
 
 /**
