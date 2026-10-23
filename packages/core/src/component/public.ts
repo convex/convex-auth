@@ -50,6 +50,13 @@ export const REFRESH_GRACE_MS = 5 * 1000; // 5 seconds
 // reuse-detection horizon: past it the row is gone and a replayed token reads
 // as unknown, which revokes nothing but also grants nothing.
 export const SPENT_TOKEN_HORIZON_MS = 60 * 60 * 1000; // 1 hour
+// An absolute cap on how many sessions a user may have. A sign-in that would
+// exceed it first revokes the sessions that refreshed longest ago. This bounds
+// everything that reads all of a user's sessions (`listSessions`, and revoking
+// a user's other sessions), which a user whose sessions pile up (e.g. a script
+// signing in over and over and not refreshing a prior session) could otherwise
+// push past the transaction's limits.
+export const MAX_SESSIONS_PER_USER = 100;
 
 // The issuer (CONVEX_SITE_URL) is passed in by the app rather than read here:
 // inside a component the system var arrives prefixed with the mount's
@@ -95,6 +102,72 @@ function sessionTokensInState(
       q.eq("sessionId", sessionId).eq("state", state),
     )
     .collect();
+}
+
+/**
+ * The session's newest issued refresh token: the one from its sign-in or its
+ * latest refresh.
+ *
+ * `null` only for a session with no issued token, which the token lifecycle
+ * never leaves (sign-in and each refresh issue one).
+ */
+async function newestIssuedToken(
+  ctx: QueryCtx,
+  sessionId: Id<"sessions">,
+): Promise<Doc<"refreshTokens"> | null> {
+  // Issued rows have no `retiredAt`, so the index orders them by
+  // `_creationTime`: the last one is the newest.
+  return await ctx.db
+    .query("refreshTokens")
+    .withIndex("by_session_state", (q) =>
+      q.eq("sessionId", sessionId).eq("state", "issued"),
+    )
+    .order("desc")
+    .first();
+}
+
+/**
+ * Make room for one more session of the user: while the user has
+ * `MAX_SESSIONS_PER_USER` sessions or more, erase the one that refreshed
+ * longest ago.
+ *
+ * A session's last refresh is when its newest issued token was issued (see
+ * `listSessions`), so an expired or abandoned session goes before one that a
+ * client still keeps fresh, however old that one is.
+ */
+async function evictLeastRecentlyRefreshedSessions(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<void> {
+  // Reads every session of the user, which the cap keeps to
+  // `MAX_SESSIONS_PER_USER`.
+  const sessions = await ctx.db
+    .query("sessions")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  const excess = sessions.length - MAX_SESSIONS_PER_USER + 1;
+  if (excess <= 0) {
+    return;
+  }
+  const byLastRefresh = [];
+  for (const session of sessions) {
+    const newestIssued = await newestIssuedToken(ctx, session._id);
+    byLastRefresh.push({
+      sessionId: session._id,
+      // A session with no issued token can't refresh, so it goes first.
+      lastRefreshedAt: newestIssued?._creationTime ?? -Infinity,
+    });
+  }
+  // `sessions` is in creation order and the sort is stable, so of the
+  // sessions that last refreshed at the same time, the oldest goes first.
+  byLastRefresh.sort((a, b) => a.lastRefreshedAt - b.lastRefreshedAt);
+  for (const { sessionId } of byLastRefresh.slice(0, excess)) {
+    await deleteSession(ctx, sessionId);
+  }
+  console.warn(
+    `Evicted ${excess} session${excess > 1 ? "s" : ""} past the ` +
+      `${MAX_SESSIONS_PER_USER} session limit for a single user`,
+  );
 }
 
 /**
@@ -245,10 +318,7 @@ async function issueSession(
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
-  // TODO: cap the sessions a user may have (e.g. 100), deleting the oldest
-  // when a new one would exceed it. That bounds `listSessions`, which reads
-  // every session of the user, for a user whose sessions pile up (e.g. a
-  // script signing in over and over).
+  await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
     accountId,
@@ -805,15 +875,7 @@ export const listSessions = query({
       .collect();
     const result = [];
     for (const session of sessions) {
-      // Issued rows have no `retiredAt`, so the index orders them by
-      // `_creationTime`: the last one is the newest.
-      const newestIssued = await ctx.db
-        .query("refreshTokens")
-        .withIndex("by_session_state", (q) =>
-          q.eq("sessionId", session._id).eq("state", "issued"),
-        )
-        .order("desc")
-        .first();
+      const newestIssued = await newestIssuedToken(ctx, session._id);
       if (newestIssued === null) {
         console.warn(
           `Session ${session._id} has no issued refresh token, which should ` +
