@@ -17,7 +17,6 @@ import {
   type ConvexAuthCtx,
   type UserCallbacks,
 } from "../lib/types.ts";
-import { DEFAULT_REFRESH_TOKEN_TTL_SECONDS } from "../lib/ttl.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -373,20 +372,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         const others = sessions.filter(
           ({ sessionId }) => sessionId !== currentSessionId,
         );
-        const revoked = new Set(
-          await ctx.runMutation(component.public.revokeSessions, {
-            sessionIds: others.map(({ sessionId }) => sessionId),
-          }),
-        );
-        // Expired sessions are deleted too, but only the active ones count. A
-        // session expires one refresh-token TTL after it last refreshed.
-        const ttlMs =
-          (refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS) * 1000;
-        const now = Date.now();
-        return others.filter(
-          ({ sessionId, lastRefreshedAt }) =>
-            revoked.has(sessionId) && lastRefreshedAt + ttlMs > now,
-        ).length;
+        const revoked = await ctx.runMutation(component.public.revokeSessions, {
+          sessionIds: others.map(({ sessionId }) => sessionId),
+        });
+        return revoked.length;
       },
     });
 
