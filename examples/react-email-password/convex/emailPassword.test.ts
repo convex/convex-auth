@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import type { AnyDataModel, GenericMutationCtx } from "convex/server";
 import { api, components } from "./_generated/api";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
 import {
   registerEmail,
@@ -624,6 +624,75 @@ describe("changePassword", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toEqual([EMAIL]);
     expect(sent[0].subject).toMatch(/password/i);
+  });
+
+  test("signs out the user's other sessions", async () => {
+    const t = await setup();
+    await seedSignedUpUser(t);
+    const signIn = () =>
+      t
+        .withRequestMetadata({ ip: IP })
+        .mutation(api.auth.signInWithEmailPassword, {
+          email: EMAIL,
+          password: PASSWORD,
+        });
+    const current = await signIn();
+    const other = await signIn();
+    if (current.status !== "complete" || other.status !== "complete") {
+      throw new Error("Sign-in failed");
+    }
+
+    const result = await t
+      .withIdentity(sessionIdentity(current.tokens))
+      .mutation(api.auth.changePassword, {
+        currentPassword: PASSWORD,
+        newPassword: "brand new horse staple",
+      });
+    expect(result).toEqual({ success: true });
+
+    // The other session can no longer refresh; the current one can.
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: other.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "noSession" });
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: current.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "rotated" });
+  });
+
+  test("keeps the user's other sessions when asked to", async () => {
+    const t = await setup();
+    await seedSignedUpUser(t);
+    const signIn = () =>
+      t
+        .withRequestMetadata({ ip: IP })
+        .mutation(api.auth.signInWithEmailPassword, {
+          email: EMAIL,
+          password: PASSWORD,
+        });
+    const current = await signIn();
+    const other = await signIn();
+    if (current.status !== "complete" || other.status !== "complete") {
+      throw new Error("Sign-in failed");
+    }
+
+    const result = await t
+      .withIdentity(sessionIdentity(current.tokens))
+      .mutation(api.auth.changePassword, {
+        currentPassword: PASSWORD,
+        newPassword: "brand new horse staple",
+        signOutOtherSessions: false,
+      });
+    expect(result).toEqual({ success: true });
+
+    expect(
+      await t.mutation(api.auth.refreshSession, {
+        refreshToken: other.tokens.refreshToken,
+      }),
+    ).toMatchObject({ kind: "rotated" });
   });
 });
 
