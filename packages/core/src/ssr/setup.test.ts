@@ -57,14 +57,15 @@ describe("setupConvexAuthServer().handler", () => {
   });
 
   test("routes /signin to the sign-in proxy", async () => {
-    // Nothing is exposed, so the proxy refuses the call; reaching that
-    // refusal shows the dispatch landed on the proxy.
+    // The proxy's own 400 for a request with no function call, which neither
+    // of the other handlers would answer.
     const res = await auth.handler(
       post("/auth/signin?path=/api/mutation", {
         "content-type": "application/json",
       }),
     );
-    expect(res.status).not.toBe(404);
+    expect(res.status).toBe(400);
+    expect(await res.text()).toMatch(/Malformed Convex function call/);
     expect(mutationMock).not.toHaveBeenCalled();
   });
 
