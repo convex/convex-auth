@@ -43,7 +43,9 @@ function stubProxy(value: unknown) {
 
 /**
  * A real Convex client with mocked calls, so it never opens a socket. Calls
- * reject unless the test sets a result.
+ * reject unless the test sets a result. `watchQuery` (used by the provider's
+ * `SessionWatcher` subscription once a sign-in completes) is inert: it
+ * reports no result and never updates.
  */
 function makeConvexClient() {
   const client = new ConvexReactClient(NAMESPACE);
@@ -52,6 +54,12 @@ function makeConvexClient() {
   vi.spyOn(client, "action").mockRejectedValue(unexpected);
   vi.spyOn(client, "setAuth").mockImplementation(() => {});
   vi.spyOn(client, "clearAuth").mockImplementation(() => {});
+  vi.spyOn(client, "watchQuery").mockReturnValue({
+    onUpdate: () => () => {},
+    localQueryResult: () => undefined,
+    localQueryLogs: () => undefined,
+    journal: () => undefined,
+  } as unknown as ReturnType<ConvexReactClient["watchQuery"]>);
   return { client, mutation };
 }
 
@@ -78,7 +86,11 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
       return null;
     }
     render(
-      <ConvexAuthNextjsProvider client={client} storage={new InMemoryStorage()}>
+      <ConvexAuthNextjsProvider
+        client={client}
+        storage={new InMemoryStorage()}
+        isAuthenticatedFunctionName="auth:isAuthenticated"
+      >
         <Probe />
       </ConvexAuthNextjsProvider>,
     );
@@ -109,7 +121,11 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
       return null;
     }
     render(
-      <ConvexAuthNextjsProvider client={client} storage={storage}>
+      <ConvexAuthNextjsProvider
+        client={client}
+        storage={storage}
+        isAuthenticatedFunctionName="auth:isAuthenticated"
+      >
         <Probe />
       </ConvexAuthNextjsProvider>,
     );
@@ -145,7 +161,11 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
     const { client } = makeConvexClient();
     const replaceState = vi.spyOn(window.history, "replaceState");
     render(
-      <ConvexAuthNextjsProvider client={client} storage={storage}>
+      <ConvexAuthNextjsProvider
+        client={client}
+        storage={storage}
+        isAuthenticatedFunctionName="auth:isAuthenticated"
+      >
         {null}
       </ConvexAuthNextjsProvider>,
     );
