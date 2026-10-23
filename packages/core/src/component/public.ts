@@ -1,10 +1,4 @@
-import {
-  mutation,
-  query,
-  MutationCtx,
-  QueryCtx,
-  env,
-} from "./_generated/server.ts";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.ts";
 import { Doc, Id } from "./_generated/dataModel.ts";
 import { GenericId, v } from "convex/values";
 import {
@@ -23,7 +17,7 @@ import {
   type CreateUserFn,
   type OnSignInFn,
 } from "../lib/types.ts";
-import { signJwt, generateRefreshToken } from "./crypto.ts";
+import { generateRefreshToken } from "./crypto.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 
 // --- Configuration ---------------------------------------------------------
@@ -35,6 +29,9 @@ const AUDIENCE = "convex";
 // when it passes nothing, these apply.
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60; // 1 minute
 const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// `ctx.auth.signJwt` refuses to mint a token that lives longer than an hour,
+// so an access-token TTL past that is a misconfiguration.
+const MAX_ACCESS_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 // How many issued, never-presented refresh tokens a session may have. Each
 // refresh presenting the redeemed token adds one, and the first issued token
 // presented clears them all, so the count only climbs when responses are lost
@@ -51,10 +48,9 @@ export const REFRESH_GRACE_MS = 5 * 1000; // 5 seconds
 // as unknown, which revokes nothing but also grants nothing.
 export const SPENT_TOKEN_HORIZON_MS = 60 * 60 * 1000; // 1 hour
 
-// The issuer (CONVEX_SITE_URL) is passed in by the app rather than read here:
-// inside a component the system var arrives prefixed with the mount's
-// httpPrefix, so this mount would see `<site-url>/auth`, not the bare site URL
-// that auth.config.ts names as the issuer.
+// The `iss` claim is set by the deployment when this component calls
+// `ctx.auth.signJwt`: `${CONVEX_CLOUD_URL}/components/auth`, which is what the
+// app's auth.config.ts must name as the issuer.
 
 // --- Internal helpers ------------------------------------------------------
 
@@ -204,6 +200,12 @@ function resolveTtlConfig(args: {
   if (accessTokenTtlSeconds <= 0 || refreshTokenTtlSeconds <= 0) {
     throw new Error("Token TTLs must be positive.");
   }
+  if (accessTokenTtlSeconds > MAX_ACCESS_TOKEN_TTL_SECONDS) {
+    throw new Error(
+      "Access-token TTL must be at most one hour (the deployment refuses " +
+        "to sign a longer-lived JWT).",
+    );
+  }
   if (accessTokenTtlSeconds >= refreshTokenTtlSeconds) {
     throw new Error(
       "Access-token TTL must be shorter than the refresh-token TTL.",
@@ -212,20 +214,18 @@ function resolveTtlConfig(args: {
   return { accessTokenTtlSeconds, refreshTokenTtlSeconds };
 }
 
+/**
+ * Mint the access token with the deployment's signing key. The deployment
+ * populates `iss` (`${CONVEX_CLOUD_URL}/components/auth`), `iat` and `exp`;
+ * this sets the claims the core owns: the subject and the audience.
+ */
 async function mintAccessToken(
+  ctx: MutationCtx,
   userId: string,
-  issuer: string,
   ttlSeconds: number,
-) {
-  const privateKeyPkcs8 = atob(env.AUTH_PRIVATE_KEY);
-  const { keys } = JSON.parse(env.AUTH_JWKS) as { keys: { kid: string }[] };
-  const kid = keys[0].kid;
-  return await signJwt({
-    privateKeyPkcs8,
-    kid,
-    subject: userId,
-    issuer,
-    audience: AUDIENCE,
+): Promise<string> {
+  return await ctx.auth.signJwt({
+    claims: { sub: userId, aud: AUDIENCE },
     expiresInSeconds: ttlSeconds,
   });
 }
@@ -234,7 +234,6 @@ async function issueSession(
   ctx: MutationCtx,
   accountId: Id<"accounts">,
   userId: string,
-  issuer: string,
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
@@ -251,8 +250,8 @@ async function issueSession(
     ttl,
   );
   const accessToken = await mintAccessToken(
+    ctx,
     userId,
-    issuer,
     ttl.accessTokenTtlSeconds,
   );
   return {
@@ -399,8 +398,9 @@ async function notifySignIn(
  * other sign-in. An `onSignIn` that throws therefore rolls back the user
  * `createUser` just made, since both are subtransactions of this one.
  *
- * The JWT accessToken in the return value is issued with `issuer` as its
- * `iss`. Token lifetimes default to 1m (access) and 30d (refresh) unless
+ * The JWT accessToken in the return value is signed by the deployment, with
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. Token lifetimes default to
+ * 1m (access) and 30d (refresh) unless
  * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
  * sets these once via `setupConvexAuth`).
  *
@@ -412,7 +412,6 @@ export const signUp = mutation({
     claims: vAuthClaims,
     createUserHandle: v.string(),
     onSignInHandle: v.optional(v.string()),
-    issuer: v.string(),
     accessTokenTtlSeconds: v.optional(v.number()),
     refreshTokenTtlSeconds: v.optional(v.number()),
   },
@@ -425,7 +424,7 @@ export const signUp = mutation({
       args.createUserHandle as CreateUserFunctionHandle,
     );
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
-    return await issueSession(ctx, accountId, userId, args.issuer, ttl);
+    return await issueSession(ctx, accountId, userId, ttl);
   },
 });
 
@@ -438,8 +437,9 @@ export const signUp = mutation({
  * framework's `completeSignIn` helper. That function takes care of passing the
  * `onSignInHandle` app callback.
  *
- * The JWT accessToken in the return value is issued with `issuer` as its
- * `iss`. Token lifetimes default to 1m (access) and 30d (refresh) unless
+ * The JWT accessToken in the return value is signed by the deployment, with
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. Token lifetimes default to
+ * 1m (access) and 30d (refresh) unless
  * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
  * sets these once via `setupConvexAuth`).
  *
@@ -449,7 +449,6 @@ export const signIn = mutation({
   args: {
     claims: vAuthClaims,
     onSignInHandle: v.optional(v.string()),
-    issuer: v.string(),
     accessTokenTtlSeconds: v.optional(v.number()),
     refreshTokenTtlSeconds: v.optional(v.number()),
   },
@@ -470,13 +469,7 @@ export const signIn = mutation({
       );
     }
     await notifySignIn(ctx, claims, account.userId, args.onSignInHandle);
-    return await issueSession(
-      ctx,
-      account._id,
-      account.userId,
-      args.issuer,
-      ttl,
-    );
+    return await issueSession(ctx, account._id, account.userId, ttl);
   },
 });
 
@@ -606,7 +599,6 @@ async function redeem(
 export const refresh = mutation({
   args: {
     refreshToken: v.string(),
-    issuer: v.string(),
     accessTokenTtlSeconds: v.optional(v.number()),
     refreshTokenTtlSeconds: v.optional(v.number()),
   },
@@ -689,8 +681,8 @@ export const refresh = mutation({
       ttl,
     );
     const accessToken = await mintAccessToken(
+      ctx,
       session.userId,
-      args.issuer,
       ttl.accessTokenTtlSeconds,
     );
     return {

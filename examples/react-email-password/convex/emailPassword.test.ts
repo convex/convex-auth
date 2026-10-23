@@ -1,6 +1,5 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { exportJWK, exportPKCS8, generateKeyPair } from "jose";
 import type { AnyDataModel, GenericMutationCtx } from "convex/server";
 import { api, components } from "./_generated/api";
 import { registerCore } from "@convex-dev/auth/test";
@@ -17,22 +16,6 @@ const PASSWORD = "correct horse battery staple"; // 28 chars, valid
 const EMAIL = "alice@example.com";
 
 async function setup() {
-  // The core signs JWTs from these env vars (see the core component, `src/component/public.ts`). Mint a real
-  // RS256 key pair for each test and stub the env so Vitest can reset it.
-  const { publicKey, privateKey } = await generateKeyPair("RS256", {
-    extractable: true,
-  });
-  const pkcs8 = await exportPKCS8(privateKey);
-  const publicJwk = await exportJWK(publicKey);
-
-  vi.stubEnv("CONVEX_SITE_URL", "https://example.convex.site");
-  vi.stubEnv("AUTH_PRIVATE_KEY", btoa(pkcs8));
-  vi.stubEnv(
-    "AUTH_JWKS",
-    JSON.stringify({
-      keys: [{ ...publicJwk, kid: "test-key", alg: "RS256", use: "sig" }],
-    }),
-  );
   // auth.ts reads the Resend settings from the environment; the stub records
   // them without using them.
   vi.stubEnv("RESEND_API_KEY", "re_test_key");

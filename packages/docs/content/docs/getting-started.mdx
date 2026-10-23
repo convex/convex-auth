@@ -64,8 +64,10 @@ npx @convex-dev/auth
 This command:
 
 - Verifies you have `@convex-dev/auth` installed.
-- Generates a key pair for your dev deployment (`AUTH_PRIVATE_KEY` and `AUTH_JWKS` environment variables).
 - Initializes the following files in `convex/`: `auth.config.ts`, `convex.config.ts`, `auth.ts`.
+
+Access tokens are signed with your deployment's own key, so there are no
+secrets to configure.
 
 </Step>
 

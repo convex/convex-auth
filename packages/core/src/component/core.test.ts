@@ -1,22 +1,6 @@
 import { convexTest } from "convex-test";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  test,
-  vi,
-} from "vitest";
-import {
-  decodeJwt,
-  exportJWK,
-  exportPKCS8,
-  generateKeyPair,
-  importJWK,
-  jwtVerify,
-  type JWK,
-} from "jose";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { createLocalJWKSet, decodeJwt, jwtVerify } from "jose";
 import { api } from "./_generated/api.ts";
 import type { Doc } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
@@ -45,28 +29,25 @@ const modules = {
   "./testApp.ts": async () => testApp,
 };
 
-// The core reads its signing material from `AUTH_PRIVATE_KEY` / `AUTH_JWKS`
-// (env vars in production). We mint a real RS256 key pair once and set those
-// vars so the suite exercises genuine JWT signing/verification.
-const ISSUER = "https://example.convex.site";
+// The core mints access tokens with the deployment's key via
+// `ctx.auth.signJwt`. convex-test signs them with a key of its own per
+// `convexTest` instance, and `t.jwks()` returns the matching JWKS, which is what
+// the deployment serves at `.well-known/jwks.json` in production. The suite
+// runs the component as the root app, so `iss` is the bare deployment origin
+// (a real deployment would use `.../components/auth`); with no
+// `CONVEX_CLOUD_URL` set, convex-test uses its default origin.
+const ISSUER =
+  process.env.CONVEX_CLOUD_URL ?? "https://some-deployment.convex.cloud";
 const AUDIENCE = "convex";
 const CREATE_USER_HANDLE = "testApp:createUser";
 const ON_SIGN_IN_HANDLE = "testApp:onSignIn";
 const THROWING_ON_SIGN_IN_HANDLE = "testApp:onSignInThatThrows";
-let publicJwk: JWK;
 
-beforeAll(async () => {
-  const { publicKey, privateKey } = await generateKeyPair("RS256", {
-    extractable: true,
-  });
-  const pkcs8 = await exportPKCS8(privateKey);
-  publicJwk = await exportJWK(publicKey);
-  const kid = "test-key";
-  process.env.AUTH_PRIVATE_KEY = btoa(pkcs8);
-  process.env.AUTH_JWKS = JSON.stringify({
-    keys: [{ ...publicJwk, kid, alg: "RS256", use: "sig" }],
-  });
-});
+/** Verify an access token against the test deployment's JWKS. */
+async function verifyAccessToken(t: ConvexTestApi, token: string) {
+  const jwks = createLocalJWKSet(await t.jwks());
+  return await jwtVerify(token, jwks, { issuer: ISSUER, audience: AUDIENCE });
+}
 
 function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   return {
@@ -89,7 +70,6 @@ async function signUp(t: ConvexTestApi, c: AuthClaims) {
     claims: c,
     createUserHandle: CREATE_USER_HANDLE,
     onSignInHandle: ON_SIGN_IN_HANDLE,
-    issuer: ISSUER,
   });
 }
 
@@ -98,7 +78,6 @@ async function signIn(t: ConvexTestApi, c: AuthClaims) {
   return await t.mutation(api.public.signIn, {
     claims: c,
     onSignInHandle: ON_SIGN_IN_HANDLE,
-    issuer: ISSUER,
   });
 }
 
@@ -110,7 +89,7 @@ function expectRotated(result: RefreshResult): TokenBundle {
 
 /** Exchange a refresh token, as a client rotating its session does. */
 async function refresh(t: ConvexTestApi, refreshToken: string) {
-  return await t.mutation(api.public.refresh, { refreshToken, issuer: ISSUER });
+  return await t.mutation(api.public.refresh, { refreshToken });
 }
 
 /** How many sessions currently exist. */
@@ -162,17 +141,13 @@ describe("signUp", () => {
     const t = setup();
     const bundle = await signUp(t, claims());
 
-    // The app's createUser echoes the providerAccountId as the user id.
-    expect(bundle.userId).toBe("alice");
+    expect(bundle.userId).toBeTruthy();
     expect(bundle.refreshToken).toBeTruthy();
 
-    // The access token verifies against the served JWKS with the right claims.
-    const key = await importJWK(publicJwk, "RS256");
-    const { payload } = await jwtVerify(bundle.accessToken, key, {
-      issuer: ISSUER,
-      audience: AUDIENCE,
-    });
-    expect(payload.sub).toBe("alice");
+    // The access token verifies against the deployment JWKS with the right
+    // claims.
+    const { payload } = await verifyAccessToken(t, bundle.accessToken);
+    expect(payload.sub).toBe(bundle.userId);
     expect(payload.exp! * 1000).toBeGreaterThan(Date.now());
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(payload.exp! * 1000);
 
@@ -188,7 +163,7 @@ describe("signUp", () => {
     const t = setup();
     testApp.resetUserCallbackCalls();
 
-    await signUp(t, claims({ profile: { name: "Alice" } }));
+    const bundle = await signUp(t, claims({ profile: { name: "Alice" } }));
 
     expect(testApp.getCreateUserCalls()).toEqual([
       {
@@ -208,7 +183,7 @@ describe("signUp", () => {
           accountId: "alice",
           profile: { name: "Alice" },
         },
-        userId: "alice",
+        userId: bundle.userId,
       },
     ]);
   });
@@ -220,10 +195,11 @@ describe("signUp", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
-      issuer: ISSUER,
     });
 
-    expect(bundle.userId).toBe("alice");
+    // The account is keyed to the id the app's createUser returned.
+    const account = await t.run((ctx) => ctx.db.query("accounts").unique());
+    expect(account?.userId).toBe(bundle.userId);
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
   });
@@ -236,7 +212,6 @@ describe("signUp", () => {
         claims: claims(),
         createUserHandle: CREATE_USER_HANDLE,
         onSignInHandle: THROWING_ON_SIGN_IN_HANDLE,
-        issuer: ISSUER,
       }),
     ).rejects.toThrow(/no sign-ins for you/);
 
@@ -290,7 +265,7 @@ describe("signIn", () => {
     const t = setup();
     testApp.resetUserCallbackCalls();
 
-    await signUp(t, claims({ profile: { name: "Alice" } }));
+    const first = await signUp(t, claims({ profile: { name: "Alice" } }));
     await signIn(t, claims({ profile: { name: "Alice 2.0" } }));
 
     // The app gets the known id and the fresh profile to sync from. createUser
@@ -303,22 +278,21 @@ describe("signIn", () => {
         accountId: "alice",
         profile: { name: "Alice 2.0" },
       },
-      userId: "alice",
+      userId: first.userId,
     });
   });
 
   test("mints the session without notifying an app that attached no onSignIn", async () => {
     const t = setup();
-    await signUp(t, claims());
+    const first = await signUp(t, claims());
     testApp.resetUserCallbackCalls();
 
     // No `onSignInHandle` is what an app that left `onSignIn` out sends.
     const bundle = await t.mutation(api.public.signIn, {
       claims: claims(),
-      issuer: ISSUER,
     });
 
-    expect(bundle.userId).toBe("alice");
+    expect(bundle.userId).toBe(first.userId);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
   });
 
@@ -348,8 +322,9 @@ describe("signUpWithoutSession", () => {
       createUserHandle: CREATE_USER_HANDLE,
     });
 
-    // The app's createUser echoes the providerAccountId as the user id.
-    expect(userId).toBe("alice");
+    // The account is keyed to the id the app's createUser returned.
+    const account = await t.run((ctx) => ctx.db.query("accounts").unique());
+    expect(account?.userId).toBe(userId);
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     // No sign-in happened, so onSignIn does not run.
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
@@ -845,7 +820,6 @@ describe("token lifetime configuration", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
-      issuer: ISSUER,
       accessTokenTtlSeconds: 300, // 5 minutes
     });
     // The JWT `exp` is floored to the second, so allow a small window.
@@ -863,7 +837,6 @@ describe("token lifetime configuration", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
-      issuer: ISSUER,
       refreshTokenTtlSeconds: oneHourSeconds,
     });
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThanOrEqual(
@@ -877,7 +850,6 @@ describe("token lifetime configuration", () => {
     const rotated = expectRotated(
       await t.mutation(api.public.refresh, {
         refreshToken: bundle.refreshToken,
-        issuer: ISSUER,
         refreshTokenTtlSeconds: oneHourSeconds,
       }),
     );
@@ -892,7 +864,6 @@ describe("token lifetime configuration", () => {
       t.mutation(api.public.signUp, {
         claims: claims(),
         createUserHandle: CREATE_USER_HANDLE,
-        issuer: ISSUER,
         accessTokenTtlSeconds: 100,
         refreshTokenTtlSeconds: 1, // 1s — shorter than the 100s access token
       }),

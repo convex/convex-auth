@@ -4,6 +4,11 @@ import { WORKER_NAME } from "./cleanup.ts";
 import { seedChallenge, setup } from "../emailTestSetup.ts";
 
 const START = new Date("2026-01-01T00:00:00Z").getTime();
+// When the scans run. The clock of a transaction never goes back before the
+// last commit, and each commit moves that clock forward, thus a scan right after
+// seeding at a frozen `START` would read `Date.now()` as `START + 1`. The scans
+// run at a later `NOW` instead, so that their `Date.now()` is exact.
+const NOW = START + 60_000;
 
 /** Seed a challenge that expires at `expiresAt`, and return its ID. */
 async function insertChallenge(
@@ -26,6 +31,18 @@ async function insertChallenge(
   return row!._id;
 }
 
+/** Run the scan at `NOW`. */
+async function getExpiredChallengesAtNow(
+  t: ReturnType<typeof setup>,
+  args: { cursor?: number } = {},
+) {
+  vi.setSystemTime(NOW);
+  return await t.query(internal.cleanup.getExpiredChallenges, {
+    name: WORKER_NAME,
+    ...args,
+  });
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(START);
@@ -38,9 +55,7 @@ afterEach(() => {
 describe("getExpiredChallenges", () => {
   test("goes idle with no timeout when the table is empty", async () => {
     const t = setup();
-    const result = await t.query(internal.cleanup.getExpiredChallenges, {
-      name: WORKER_NAME,
-    });
+    const result = await getExpiredChallengesAtNow(t);
     expect(result).toEqual({ kind: "idle" });
   });
 
@@ -48,28 +63,24 @@ describe("getExpiredChallenges", () => {
     const t = setup();
     // The rows are created in another order than they expire: a custom
     // challenge with a long TTL can be older than a short one.
-    const laterId = await insertChallenge(t, "later", START - 5);
-    await insertChallenge(t, "fresh", START + 1);
-    const earlierId = await insertChallenge(t, "earlier", START - 10);
+    const laterId = await insertChallenge(t, "later", NOW - 5);
+    await insertChallenge(t, "fresh", NOW + 1);
+    const earlierId = await insertChallenge(t, "earlier", NOW - 10);
 
-    const result = await t.query(internal.cleanup.getExpiredChallenges, {
-      name: WORKER_NAME,
-    });
+    const result = await getExpiredChallengesAtNow(t);
     expect(result).toEqual({
       kind: "work",
       batch: { events: [{ id: earlierId }, { id: laterId }] },
-      cursor: START - 5,
+      cursor: NOW - 5,
     });
   });
 
   test("goes idle until the next challenge expires", async () => {
     const t = setup();
-    await insertChallenge(t, "soon", START + 1000);
-    await insertChallenge(t, "late", START + 60_000);
+    await insertChallenge(t, "soon", NOW + 1000);
+    await insertChallenge(t, "late", NOW + 60_000);
 
-    const result = await t.query(internal.cleanup.getExpiredChallenges, {
-      name: WORKER_NAME,
-    });
+    const result = await getExpiredChallengesAtNow(t);
     expect(result).toEqual({ kind: "idle", timeoutMs: 1000 });
   });
 
@@ -77,17 +88,14 @@ describe("getExpiredChallenges", () => {
     const t = setup();
     // A row that stays below the cursor is a stale read for the loop: only a
     // tombstone can be below the cursor in production.
-    await insertChallenge(t, "gone", START - 10);
-    const laterId = await insertChallenge(t, "later", START - 5);
+    await insertChallenge(t, "gone", NOW - 10);
+    const laterId = await insertChallenge(t, "later", NOW - 5);
 
-    const result = await t.query(internal.cleanup.getExpiredChallenges, {
-      name: WORKER_NAME,
-      cursor: START - 5,
-    });
+    const result = await getExpiredChallengesAtNow(t, { cursor: NOW - 5 });
     expect(result).toEqual({
       kind: "work",
       batch: { events: [{ id: laterId }] },
-      cursor: START - 5,
+      cursor: NOW - 5,
     });
   });
 
@@ -96,15 +104,13 @@ describe("getExpiredChallenges", () => {
     // At exactly `expiresAt` the challenge is expired. A wake-up at the
     // deadline must find the row, or the loop would go idle with
     // `timeoutMs: 0` forever.
-    const id = await insertChallenge(t, "now", START);
+    const id = await insertChallenge(t, "now", NOW);
 
-    const result = await t.query(internal.cleanup.getExpiredChallenges, {
-      name: WORKER_NAME,
-    });
+    const result = await getExpiredChallengesAtNow(t);
     expect(result).toEqual({
       kind: "work",
       batch: { events: [{ id }] },
-      cursor: START,
+      cursor: NOW,
     });
   });
 });

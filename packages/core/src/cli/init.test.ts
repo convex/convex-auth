@@ -1,6 +1,6 @@
 // @vitest-environment node
 import chalk from "chalk";
-import { beforeAll, describe, expect, test, vi } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 import {
   createProgram,
   detectPackageManager,
@@ -40,8 +40,6 @@ function makeFs(initialFiles: Record<string, string> = {}) {
 
 type Overrides = {
   files?: Record<string, string>;
-  getEnv?: (key: string) => string | null;
-  generateKeys?: () => Promise<{ authPrivateKey: string; authJwks: string }>;
   detectPackageManager?: (dir: string) => string;
 };
 
@@ -49,24 +47,14 @@ function makeDeps(overrides: Overrides = {}) {
   const fs = makeFs(overrides.files);
   const logs: string[] = [];
   const warns: string[] = [];
-  const setEnvCalls: Array<[string, string]> = [];
-  const generateKeys = vi.fn(
-    overrides.generateKeys ??
-      (async () => ({ authPrivateKey: "PRIV", authJwks: "JWKS" })),
-  );
   const deps = {
     cwd: () => PROJECT,
     fs,
     log: (m: string) => logs.push(m),
     warn: (m: string) => warns.push(m),
-    // A spinner writes to the terminal, which a test has none of.
-    spinner: () => ({ stop: () => {} }),
-    getEnv: overrides.getEnv ?? (() => null),
-    setEnv: (k: string, v: string) => setEnvCalls.push([k, v]),
-    generateKeys,
     detectPackageManager: overrides.detectPackageManager ?? (() => "npm"),
   };
-  return { deps, fs, logs, warns, setEnvCalls, generateKeys };
+  return { deps, fs, logs, warns };
 }
 
 /** Drive the CLI exactly as a user would, but capture output/exit. */
@@ -95,7 +83,7 @@ const pkgWithAuth = JSON.stringify({
 
 describe("convex-auth init CLI", () => {
   test("crashes with the install command when @convex-dev/auth is missing", async () => {
-    const { deps, fs, setEnvCalls } = makeDeps({
+    const { deps, fs } = makeDeps({
       files: { "/project/package.json": JSON.stringify({ dependencies: {} }) },
       detectPackageManager: () => "pnpm",
     });
@@ -105,8 +93,7 @@ describe("convex-auth init CLI", () => {
     expect(error).toBeDefined();
     expect(error!.message).toContain("is not a dependency");
     expect(error!.message).toContain("pnpm add @convex-dev/auth@beta");
-    // It must not touch env vars or write any files on this path.
-    expect(setEnvCalls).toEqual([]);
+    // It must not write any files on this path.
     expect(fs.files.has("/project/convex/auth.ts")).toBe(false);
   });
 
@@ -126,19 +113,14 @@ describe("convex-auth init CLI", () => {
     expect(error!.message).toContain("Could not parse");
   });
 
-  test("sets env vars and scaffolds all files on the happy path", async () => {
-    const { deps, fs, logs, setEnvCalls, generateKeys } = makeDeps({
+  test("scaffolds all files on the happy path", async () => {
+    const { deps, fs, logs } = makeDeps({
       files: { "/project/package.json": pkgWithAuth },
     });
 
     const { error } = await runCli(deps);
 
     expect(error).toBeUndefined();
-    expect(generateKeys).toHaveBeenCalledTimes(1);
-    expect(setEnvCalls).toEqual([
-      ["AUTH_PRIVATE_KEY", "PRIV"],
-      ["AUTH_JWKS", "JWKS"],
-    ]);
 
     // The convex/ directory is created and every template is written verbatim.
     expect(fs.dirs.has("/project/convex")).toBe(true);
@@ -160,10 +142,6 @@ describe("convex-auth init CLI", () => {
     expect(error).toBeUndefined();
     expect(logs.join("\n")).toMatchInlineSnapshot(`
       "Convex Auth setup in /project
-
-      Signing keys
-        ✔ Generated an RS256 key pair for the auth JWT tokens
-        ✔ Set AUTH_PRIVATE_KEY and AUTH_JWKS on the Convex deployment
 
       Files
         ✔ convex/auth.config.ts    created
@@ -190,36 +168,6 @@ describe("convex-auth init CLI", () => {
     const { error } = await runCli(deps);
     expect(error).toBeUndefined();
     expect(fs.files.has("/project/convex/auth.ts")).toBe(true);
-  });
-
-  test("leaves the keys untouched when both are already set", async () => {
-    const { deps, logs, setEnvCalls, generateKeys } = makeDeps({
-      files: { "/project/package.json": pkgWithAuth },
-      getEnv: () => "already-set",
-    });
-
-    const { error } = await runCli(deps);
-
-    expect(error).toBeUndefined();
-    expect(generateKeys).not.toHaveBeenCalled();
-    expect(setEnvCalls).toEqual([]);
-    expect(logs.join("\n")).toContain("already set");
-  });
-
-  test("--force rotates the keys even when both are already set", async () => {
-    const { deps, setEnvCalls, generateKeys } = makeDeps({
-      files: { "/project/package.json": pkgWithAuth },
-      getEnv: () => "already-set",
-    });
-
-    const { error } = await runCli(deps, ["--force"]);
-
-    expect(error).toBeUndefined();
-    expect(generateKeys).toHaveBeenCalledTimes(1);
-    expect(setEnvCalls).toEqual([
-      ["AUTH_PRIVATE_KEY", "PRIV"],
-      ["AUTH_JWKS", "JWKS"],
-    ]);
   });
 
   test("does not overwrite an existing file, but warns with its content", async () => {

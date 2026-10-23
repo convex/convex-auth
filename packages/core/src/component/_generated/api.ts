@@ -9,7 +9,6 @@
  */
 
 import type * as crypto from "../crypto.js";
-import type * as http from "../http.js";
 import type * as public_ from "../public.js";
 
 import type {
@@ -21,7 +20,6 @@ import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
   crypto: typeof crypto;
-  http: typeof http;
   public: typeof public_;
 }> = anyApi as any;
 

@@ -22,7 +22,7 @@
     "@convex-dev/eslint-plugin": "^2.0.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
-    "convex": "^1.46.0",
+    "convex": "1.48.0",
     "eslint": "^10.6.0",
     "listr2": "^11.0.0",
     "prettier": "^3.9.4",

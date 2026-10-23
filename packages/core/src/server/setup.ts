@@ -207,19 +207,12 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   // table), but keep the value in sync with the `= "users"` default above.
   const usersTable = options.usersTable ?? ("users" as UsersTable);
 
-  const issuer = (): string => {
-    const url = process.env.CONVEX_SITE_URL;
-    if (!url) throw new Error("CONVEX_SITE_URL is not available");
-    return url;
-  };
-
   const refreshSession = mutationGeneric({
     args: { refreshToken: v.string() },
     returns: vRefreshResult,
     handler: async (ctx, args): Promise<RefreshResult> => {
       return await ctx.runMutation(component.public.refresh, {
         refreshToken: args.refreshToken,
-        issuer: issuer(),
         accessTokenTtlSeconds,
         refreshTokenTtlSeconds,
       });
@@ -293,7 +286,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           },
           createUserHandle: await createFunctionHandle(createUser),
           onSignInHandle: await onSignInHandle(),
-          issuer: issuer(),
           accessTokenTtlSeconds,
           refreshTokenTtlSeconds,
         });
@@ -309,7 +301,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             profile: args.profile,
           },
           onSignInHandle: await onSignInHandle(),
-          issuer: issuer(),
           accessTokenTtlSeconds,
           refreshTokenTtlSeconds,
         });

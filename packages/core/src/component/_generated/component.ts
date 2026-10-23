@@ -36,7 +36,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds?: number;
-          issuer: string;
           refreshToken: string;
           refreshTokenTtlSeconds?: number;
         },
@@ -62,7 +61,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             providerAccountId: string;
             providerName: string;
           };
-          issuer: string;
           onSignInHandle?: string;
           refreshTokenTtlSeconds?: number;
         },
@@ -92,7 +90,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             providerName: string;
           };
           createUserHandle: string;
-          issuer: string;
           onSignInHandle?: string;
           refreshTokenTtlSeconds?: number;
         },

@@ -47,15 +47,14 @@ export function resetUserCallbackCalls(): void {
 
 /**
  * Stand-in for the app's user-creating callback, used only by the core's
- * isolated test suite. Like a minimal real app it owns no users table, and just
- * echoes the provider-scoped account id back as the app user id.
+ * isolated test suite. Mints a fresh fake app user id per call.
  */
 export const createUser = internalMutation({
   args: vCreateUser,
   returns: v.string(),
   handler: async (_ctx, args) => {
     createUserCalls.push({ ...args });
-    return args.provider.accountId;
+    return `user${createUserCalls.length}`;
   },
 });
 
