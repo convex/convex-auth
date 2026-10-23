@@ -108,7 +108,9 @@ Then mount each handler as a route under `app/auth/`:
 </include>
 
 The client posts to `/auth/signin`, `/auth/refresh`, and `/auth/signout`, so
-mount the handlers at exactly these paths.
+mount the handlers at exactly these paths. To mount them elsewhere, pass the
+paths as `routes` to `setupConvexAuthNextjs` (next step) and the client will
+post there instead.
 
 </Step>
 
@@ -123,7 +125,8 @@ the parts of the integration that are specific to Next.js:
 - `nextjsProxyRedirect` redirects a request from inside the proxy.
 - `convexAuthNextjsAccessToken` reads the access token in a Server Component.
 - `isAuthenticatedNextjs` checks whether the current request is signed in.
-- `ConvexAuthNextjsServerProvider` replaces `ConvexAuthProvider`.
+- `ConvexAuthNextjsServerProvider`, with `ConvexAuthNextjsProvider`, replaces
+  `ConvexAuthProvider`.
 
 <include lang="tsx" meta='title="src/lib/convexAuth.tsx"'>
   ../../../../../examples/nextjs/src/lib/convexAuth.tsx
@@ -153,17 +156,33 @@ requests based on whether the user is signed in.
 
 <Step>
 
-### Set up the provider
+### Set up the providers
 
-Wrap your app in `ConvexAuthNextjsServerProvider` in the root layout. It is a
-Server Component that reads the access token from the cookie and renders the
-client-side `ConvexAuthNextjsProvider`, so the Convex client is ready to
-authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
-`ConvexProvider`.
+Under SSR, `ConvexAuthProvider` is replaced by a pair:
+
+- `ConvexAuthNextjsServerProvider` (from `src/lib/convexAuth.tsx`) is a Server
+  Component that reads the access token from the cookie.
+- `ConvexAuthNextjsProvider` (from `@convex-dev/auth/ssr/nextjs/client`) is a
+  Client Component that takes your `ConvexReactClient` and configures it for
+  SSR, so it is ready to authenticate when the page loads. It also replaces
+  `ConvexProvider`.
+
+Create `app/ConvexClientProvider.tsx` with your Convex client. If you already
+have one from the Convex quickstart, swap `ConvexProvider` for
+`ConvexAuthNextjsProvider`:
 
 <include
   lang="tsx"
-  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"'
+  meta='title="app/ConvexClientProvider.tsx" highlight="import { ConvexAuthNextjsProvider }" highlight="<ConvexAuthNextjsProvider client={convex}>"'
+>
+  ../../../../../examples/nextjs/app/ConvexClientProvider.tsx
+</include>
+
+Then nest it inside `ConvexAuthNextjsServerProvider` in the root layout:
+
+<include
+  lang="tsx"
+  meta='title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="import { ConvexClientProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"'
 >
   ../../../../../examples/nextjs/app/layout.tsx
 </include>
