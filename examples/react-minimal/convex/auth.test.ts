@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test, vi, afterEach } from "vitest";
 import { api } from "./_generated/api.js";
 import { registerAnonymousProvider } from "@convex-dev/auth/components/anonymous/test";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import schema from "./schema.js";
 import { generateKeyPair, exportPKCS8, exportJWK, decodeJwt } from "jose";
 import { randomUUID } from "crypto";
@@ -54,6 +54,21 @@ describe("anonymous sign in", () => {
     const t = await setup();
     const { tokens } = await t.mutation(api.auth.signInAnonymously, {});
     const jwt = decodeJwt(tokens.accessToken);
-    expect(jwt.sub).toBe(tokens.userId);
+    // The subject is the session, not the user.
+    expect(jwt.sub).toEqual(expect.any(String));
+    expect(jwt.sub).not.toBe(tokens.userId);
+  });
+
+  test("resolves the signed-in user through the session", async () => {
+    const t = await setup();
+    const { tokens } = await t.mutation(api.auth.signInAnonymously, {});
+    const caller = t.withIdentity(sessionIdentity(tokens));
+    expect(await caller.query(api.currentUser.loggedInUser, {})).toEqual({
+      id: tokens.userId,
+    });
+
+    // The access token is still valid, but its session is gone.
+    await t.mutation(api.auth.signOut, { refreshToken: tokens.refreshToken });
+    expect(await caller.query(api.currentUser.loggedInUser, {})).toBeNull();
   });
 });
