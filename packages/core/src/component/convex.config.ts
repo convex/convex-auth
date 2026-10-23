@@ -1,5 +1,6 @@
 import { defineComponent } from "convex/server";
 import { v } from "convex/values";
+import batchWorker from "@convex-dev/batch-worker/convex.config.js";
 
 /**
  * The core auth component.
@@ -9,6 +10,9 @@ import { v } from "convex/values";
  *    `npx @convex-dev/auth`)
  *  - the provider-account <-> app-user mapping (`accounts`)
  *  - session lifetimes (`sessions`: refresh tokens, rotation, expiry)
+ *
+ * Mounts the batch worker component, which runs the background loop that
+ * erases expired sessions (see cleanup.ts).
  *
  * It does NOT know about any specific provider. Providers hand it identity
  * claims (see ../lib/types) and the core turns that into a session + JWT.
@@ -21,5 +25,6 @@ const component = defineComponent("auth", {
     AUTH_JWKS: v.string(),
   },
 });
+component.use(batchWorker);
 
 export default component;

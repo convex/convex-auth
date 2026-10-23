@@ -17,7 +17,8 @@ import {
   jwtVerify,
   type JWK,
 } from "jose";
-import { api } from "./_generated/api.ts";
+import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
+import { api, internal } from "./_generated/api.ts";
 import type { Doc, Id } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
 import * as testApp from "./testApp.fixture.ts";
@@ -34,6 +35,7 @@ import {
   SPENT_TOKEN_HORIZON_MS,
   MAX_SESSIONS_PER_USER,
 } from "./sessions.ts";
+import { WORKER_NAME } from "./cleanup.ts";
 
 /**
  * The component's modules, and the test-only `testApp` module. The fixture file
@@ -78,8 +80,15 @@ function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   };
 }
 
+/**
+ * Make a test instance of the component. The component mounts the batch
+ * worker (the session cleanup loop), so register it with the test instance
+ * too.
+ */
 function setup() {
-  return convexTest(schema, modules);
+  const t = convexTest(schema, modules);
+  registerBatchWorker(t);
+  return t;
 }
 
 type ConvexTestApi = ReturnType<typeof setup>;
@@ -112,6 +121,34 @@ function expectRotated(result: RefreshResult): TokenBundle {
 /** Exchange a refresh token, as a client rotating its session does. */
 async function refresh(t: ConvexTestApi, refreshToken: string) {
   return await t.mutation(api.public.refresh, { refreshToken, issuer: ISSUER });
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Let the scheduled functions that are due run to completion: the runs of the
+ * cleanup loop, and the polls of its cooldown. Moves the clock by a few
+ * seconds, which is past the cooldown of the batch worker (2s).
+ */
+async function settleScheduledFunctions(t: ConvexTestApi) {
+  for (let i = 0; i < 20; i++) {
+    await t.finishInProgressScheduledFunctions();
+    vi.advanceTimersByTime(250);
+  }
+  await t.finishInProgressScheduledFunctions();
+}
+
+/**
+ * Move the clock by `ms` in steps of at most a day, the longest the cleanup
+ * loop sleeps, and let the loop's runs that come due on the way complete.
+ */
+async function advanceWithCleanup(t: ConvexTestApi, ms: number) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    vi.advanceTimersByTime(Math.min(DAY_MS, end - Date.now()));
+    await settleScheduledFunctions(t);
+  }
 }
 
 /** How many sessions currently exist. */
@@ -953,21 +990,19 @@ describe("listSessions", () => {
     ]);
   });
 
-  test("includes a session whose refresh tokens have all expired", async () => {
+  test("leaves out a session once the cleanup loop erases it", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
-    const stale = await signUp(t, claims());
+    await signUp(t, claims());
     // Past the default 30-day refresh-token TTL.
-    vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
+    await advanceWithCleanup(t, 31 * DAY_MS);
     const fresh = await signIn(t, claims());
 
     const sessions = await t.query(api.public.listSessions, {
-      userId: stale.userId,
+      userId: fresh.userId,
     });
-    expect(sessions.map((s) => s.sessionId)).toEqual(
-      [fresh, stale].map(sessionIdOf),
-    );
+    expect(sessions.map((s) => s.sessionId)).toEqual([sessionIdOf(fresh)]);
   });
 
   test("no token outlives one TTL past the session's lastRefreshedAt", async () => {
@@ -1402,5 +1437,243 @@ describe("getSession", () => {
     expect(
       await t.query(api.public.getSession, { sessionId: accountId }),
     ).toBeNull();
+  });
+});
+
+describe("session cleanup", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Sign up with a given refresh-token TTL. */
+  async function signUpWithTtl(
+    t: ConvexTestApi,
+    c: AuthClaims,
+    refreshTokenTtlSeconds: number,
+  ) {
+    return await t.mutation(api.public.signUp, {
+      claims: c,
+      createUserHandle: CREATE_USER_HANDLE,
+      issuer: ISSUER,
+      refreshTokenTtlSeconds,
+    });
+  }
+
+  async function storedTtl(t: ConvexTestApi) {
+    return await t.run(async (ctx) =>
+      (await ctx.db.query("ttlConfig").collect()).map(
+        (row) => row.refreshTokenTtlSeconds,
+      ),
+    );
+  }
+
+  test("sign-in stores the refresh-token TTL for the loop", async () => {
+    const t = setup();
+    await signUpWithTtl(t, claims(), 60 * 60);
+    expect(await storedTtl(t)).toEqual([60 * 60]);
+  });
+
+  test("a refresh with another TTL replaces the stored one", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await t.mutation(api.public.refresh, {
+      refreshToken: bundle.refreshToken,
+      issuer: ISSUER,
+      refreshTokenTtlSeconds: 2 * 60 * 60,
+    });
+    expect(await storedTtl(t)).toEqual([2 * 60 * 60]);
+  });
+
+  test("erases a session once it expires", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await settleScheduledFunctions(t);
+
+    await advanceWithCleanup(t, 29 * DAY_MS);
+    expect(await sessionCount(t)).toBe(1);
+
+    // Past the default 30-day refresh-token TTL.
+    await advanceWithCleanup(t, 2 * DAY_MS);
+    expect(await sessionCount(t)).toBe(0);
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(bundle) }),
+    ).toBeNull();
+    // The session's tokens went with it.
+    expect(
+      await t.run(async (ctx) => ctx.db.query("refreshTokens").collect()),
+    ).toEqual([]);
+  });
+
+  test("keeps a session that keeps refreshing", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await advanceWithCleanup(t, 20 * DAY_MS);
+    const rotated = expectRotated(await refresh(t, bundle.refreshToken));
+    // 40 days after the sign-in, 20 after the refresh.
+    await advanceWithCleanup(t, 20 * DAY_MS);
+
+    expect(await sessionCount(t)).toBe(1);
+    expectRotated(await refresh(t, rotated.refreshToken));
+  });
+
+  test("a lowered TTL erases the sessions it expires", async () => {
+    const t = setup();
+    // Signed in under the default 30-day TTL.
+    const stale = await signUp(t, claims());
+    await advanceWithCleanup(t, 2 * HOUR_MS);
+    expect(await sessionCount(t)).toBe(1);
+
+    // The app is redeployed with a one-hour TTL, and someone signs in.
+    const fresh = await signUpWithTtl(
+      t,
+      claims({ providerAccountId: "bob" }),
+      60 * 60,
+    );
+    await settleScheduledFunctions(t);
+
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(stale) }),
+    ).toBeNull();
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(fresh) }),
+    ).toEqual({ userId: fresh.userId });
+  });
+
+  test("a raised TTL keeps the sessions the old one would have expired", async () => {
+    const t = setup();
+    const alice = await signUpWithTtl(t, claims(), 60 * 60);
+    await advanceWithCleanup(t, 30 * 60 * 1000);
+
+    // The app is redeployed with the default 30-day TTL.
+    await signUp(t, claims({ providerAccountId: "bob" }));
+    // Past the old one-hour TTL of Alice's session.
+    await advanceWithCleanup(t, 2 * HOUR_MS);
+
+    expect(await sessionCount(t)).toBe(2);
+    expectRotated(await refresh(t, alice.refreshToken));
+  });
+
+  test("erases an expired sibling token, but keeps its session", async () => {
+    const t = setup();
+    const ttlSeconds = 60 * 60;
+    const refreshWithTtl = async (refreshToken: string) =>
+      await t.mutation(api.public.refresh, {
+        refreshToken,
+        issuer: ISSUER,
+        refreshTokenTtlSeconds: ttlSeconds,
+      });
+    const bundle = await signUpWithTtl(t, claims(), ttlSeconds);
+    // Redeem the sign-in token; suppose the response is lost, so the client
+    // presents the redeemed token again just before it expires. The session
+    // now has two issued siblings, one of them almost an hour older.
+    const older = expectRotated(await refreshWithTtl(bundle.refreshToken));
+    await advanceWithCleanup(t, 50 * 60 * 1000);
+    const newer = expectRotated(await refreshWithTtl(bundle.refreshToken));
+
+    // Past the TTL of the older sibling, not of the newer one.
+    await advanceWithCleanup(t, 20 * 60 * 1000);
+
+    expect(await sessionCount(t)).toBe(1);
+    expect(await issuedHashes(t)).toEqual([
+      await sha256Hex(newer.refreshToken),
+    ]);
+    // Unknown now, so it reports no session without revoking anything.
+    expect((await refreshWithTtl(older.refreshToken)).kind).toBe("noSession");
+    expectRotated(await refreshWithTtl(newer.refreshToken));
+  });
+
+  describe("getExpiredTokens", () => {
+    test("goes idle with no timeout before any TTL is stored", async () => {
+      const t = setup();
+      expect(
+        await t.query(internal.cleanup.getExpiredTokens, { name: WORKER_NAME }),
+      ).toEqual({ kind: "idle" });
+    });
+
+    test("sleeps until the oldest issued token expires", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: WORKER_NAME,
+      });
+      const [issued] = await tokensInState(t, "issued");
+      expect(result).toEqual({
+        kind: "idle",
+        timeoutMs: issued._creationTime + 60 * 60 * 1000 - Date.now(),
+      });
+    });
+
+    test("sleeps at most a day", async () => {
+      const t = setup();
+      await signUp(t, claims());
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: WORKER_NAME,
+      });
+      expect(result).toEqual({ kind: "idle", timeoutMs: DAY_MS });
+    });
+
+    test("returns the issued tokens at or past the TTL", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      const [issued] = await tokensInState(t, "issued");
+      // convex-test gives `_creationTime` a fraction of a millisecond, thus
+      // the clock goes to the first whole millisecond at or past the TTL.
+      vi.setSystemTime(Math.ceil(issued._creationTime + 60 * 60 * 1000));
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: WORKER_NAME,
+      });
+      expect(result).toEqual({
+        kind: "work",
+        batch: { events: [{ id: issued._id }] },
+        cursor: issued._creationTime,
+      });
+    });
+  });
+
+  describe("deleteExpiredTokens", () => {
+    test("keeps a token that a raised TTL no longer expires, and moves the cursor back to it", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [issued] = await tokensInState(t, "issued");
+      // The TTL was raised between the query and the mutation.
+      await t.run(async (ctx) => {
+        const row = (await ctx.db.query("ttlConfig").first())!;
+        await ctx.db.patch("ttlConfig", row._id, {
+          refreshTokenTtlSeconds: 30 * 24 * 60 * 60,
+        });
+      });
+
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: [{ id: issued._id }],
+      });
+      expect(result).toEqual({ cursor: issued._creationTime });
+      expect(await sessionCount(t)).toBe(1);
+    });
+
+    test("skips a token that was redeemed since the query", async () => {
+      const t = setup();
+      const bundle = await signUpWithTtl(t, claims(), 60 * 60);
+      const [issued] = await tokensInState(t, "issued");
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        issuer: ISSUER,
+        refreshTokenTtlSeconds: 60 * 60,
+      });
+      vi.advanceTimersByTime(2 * HOUR_MS);
+
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: [{ id: issued._id }],
+      });
+      expect(result).toBeNull();
+      // The redeemed token is not the loop's to erase; the session goes once
+      // its newest issued token expires.
+      expect(await redeemedHash(t)).toBe(await sha256Hex(bundle.refreshToken));
+    });
   });
 });
