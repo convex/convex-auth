@@ -1,0 +1,299 @@
+---
+title: Authorization
+description: Decide what each signed-in user is allowed to do.
+---
+
+Convex Auth tells your functions **who** is calling them. Deciding **what**
+that user may do is up to your code. Any client can call your public queries,
+mutations, and actions with any arguments, so each one that reads or changes
+private data must check the caller on the server.
+
+This page shows common patterns: ownership checks, reusable function wrappers,
+roles, and organization membership.
+
+## Where the user is available
+
+`getAuthUserId(ctx)` returns the signed-in user's id, or `null`. What it
+returns depends on how the function was called:
+
+| Function                                         | `getAuthUserId(ctx)`                                                                                                                                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Query, mutation, or action from a client         | The signed-in user, or `null`.                                                                                                                                                        |
+| `ctx.runQuery`/`ctx.runMutation`/`ctx.runAction` | The same user as the calling function. This includes internal functions.                                                                                                              |
+| HTTP action                                      | The user whose access token is in the `Authorization: Bearer <token>` header, or `null` without one. On the client, `useAuthToken()` from `@convex-dev/auth/react` returns the token. |
+| Scheduled function or cron job                   | Always `null`. Pass the user id as an argument instead.                                                                                                                               |
+
+For example, to schedule work on behalf of the user, read the id when you
+schedule it and hand it to an internal function:
+
+```ts title="convex/reports.ts"
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation } from "./_generated/server";
+
+export const requestReport = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not signed in");
+    }
+    await ctx.scheduler.runAfter(0, internal.reports.generateReport, {
+      userId,
+    });
+  },
+});
+
+export const generateReport = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    // `getAuthUserId(ctx)` is null here: use `userId` instead.
+  },
+});
+```
+
+Internal functions can't be called from clients, so it's safe for them to
+take the user id as an argument. Public functions must never trust a user id
+passed as an argument.
+
+## Check ownership
+
+When a function receives the id of a document, check that the document
+belongs to the caller. Otherwise any signed-in user can read or change another
+user's data by guessing ids:
+
+```ts title="convex/todos.ts"
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+import { mutation } from "./_generated/server";
+
+export const remove = mutation({
+  args: { todoId: v.id("todos") },
+  handler: async (ctx, { todoId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not signed in");
+    }
+    const todo = await ctx.db.get("todos", todoId);
+    if (todo === null || todo.userId !== userId) {
+      // Same error in both cases, so callers can't probe for ids.
+      throw new Error("Todo not found");
+    }
+    await ctx.db.delete("todos", todoId);
+  },
+});
+```
+
+## Reusable wrappers
+
+Repeating these checks in every function is error-prone. The
+[custom functions](https://stack.convex.dev/custom-functions) from
+[`convex-helpers`](https://www.npmjs.com/package/convex-helpers) let you
+define your own `query` and `mutation` builders that check the user first and
+add it to `ctx`:
+
+```sh
+npm install convex-helpers
+```
+
+```ts title="convex/functions.ts"
+import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  customCtx,
+  customMutation,
+  customQuery,
+} from "convex-helpers/server/customFunctions";
+import { ConvexError } from "convex/values";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+
+async function requireUser(ctx: QueryCtx) {
+  const userId = await getAuthUserId(ctx);
+  if (userId === null) {
+    throw new ConvexError("Not signed in");
+  }
+  const user = await ctx.db.get("users", userId);
+  if (user === null) {
+    // The access token is still valid, but the user was deleted.
+    throw new ConvexError("Not signed in");
+  }
+  return user;
+}
+
+/** A query that only signed-in users can call. Adds `ctx.user`. */
+export const authedQuery = customQuery(
+  query,
+  customCtx(async (ctx) => ({ user: await requireUser(ctx) })),
+);
+
+/** A mutation that only signed-in users can call. Adds `ctx.user`. */
+export const authedMutation = customMutation(
+  mutation,
+  customCtx(async (ctx) => ({ user: await requireUser(ctx) })),
+);
+```
+
+Then use them in place of `query` and `mutation`:
+
+```ts title="convex/todos.ts"
+import { authedQuery } from "./functions";
+
+export const list = authedQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("todos")
+      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
+      .collect();
+  },
+});
+```
+
+<Callout type="info">
+  Convex Auth doesn't end a user's sessions when you delete their row or mark
+  them as disabled in your `users` table. Load the row in your wrapper, as
+  `requireUser` does, and reject users that are gone or disabled.
+</Callout>
+
+To make sure that no function uses the plain builders by mistake, you can
+forbid importing `query` and `mutation` from `./_generated/server` with an
+ESLint
+[`no-restricted-imports`](https://eslint.org/docs/latest/rules/no-restricted-imports)
+rule outside of `convex/functions.ts`.
+
+## Roles
+
+Store the role on the user row and check it in a wrapper:
+
+```ts title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
+  }),
+});
+```
+
+```ts title="convex/functions.ts"
+export const adminMutation = customMutation(
+  mutation,
+  customCtx(async (ctx) => {
+    const user = await requireUser(ctx);
+    if (user.role !== "admin") {
+      throw new ConvexError("Forbidden");
+    }
+    return { user };
+  }),
+);
+```
+
+Set the role from your own code, for example in your `createUser` callback or
+in an internal mutation that you run from the dashboard. Never accept it from
+a public function's arguments.
+
+## Organizations and teams
+
+In a multi-tenant app, a user's permissions depend on the organization they
+act in. Store memberships in their own table:
+
+```ts title="convex/schema.ts"
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({}),
+  orgs: defineTable({ name: v.string() }),
+  memberships: defineTable({
+    orgId: v.id("orgs"),
+    userId: v.id("users"),
+    role: v.union(v.literal("owner"), v.literal("admin"), v.literal("member")),
+  }).index("by_orgId_userId", ["orgId", "userId"]),
+  projects: defineTable({ orgId: v.id("orgs"), name: v.string() }).index(
+    "by_orgId",
+    ["orgId"],
+  ),
+});
+```
+
+A custom function can also take arguments. These wrappers take an `orgId`
+argument, check that the caller is a member with at least the given role, and
+add the membership to `ctx`:
+
+```ts title="convex/functions.ts"
+import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
+
+type Role = Doc<"memberships">["role"];
+const ROLE_RANK: Record<Role, number> = { member: 0, admin: 1, owner: 2 };
+
+function inOrg(minRole: Role) {
+  return {
+    args: { orgId: v.id("orgs") },
+    input: async (ctx: QueryCtx, { orgId }: { orgId: Id<"orgs"> }) => {
+      const user = await requireUser(ctx);
+      const membership = await ctx.db
+        .query("memberships")
+        .withIndex("by_orgId_userId", (q) =>
+          q.eq("orgId", orgId).eq("userId", user._id),
+        )
+        .unique();
+      if (
+        membership === null ||
+        ROLE_RANK[membership.role] < ROLE_RANK[minRole]
+      ) {
+        throw new ConvexError("Forbidden");
+      }
+      return { ctx: { user, membership }, args: { orgId } };
+    },
+  };
+}
+
+export const orgQuery = (minRole: Role = "member") =>
+  customQuery(query, inOrg(minRole));
+export const orgMutation = (minRole: Role = "member") =>
+  customMutation(mutation, inOrg(minRole));
+```
+
+Each function picks the role it needs:
+
+```ts title="convex/projects.ts"
+import { ConvexError, v } from "convex/values";
+import { orgMutation, orgQuery } from "./functions";
+
+export const list = orgQuery()({
+  args: {},
+  handler: async (ctx, { orgId }) => {
+    return await ctx.db
+      .query("projects")
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+      .collect();
+  },
+});
+
+export const rename = orgMutation("admin")({
+  args: { projectId: v.id("projects"), name: v.string() },
+  handler: async (ctx, { orgId, projectId, name }) => {
+    const project = await ctx.db.get("projects", projectId);
+    // Check that the project belongs to the organization the membership was
+    // checked for, not just that it exists.
+    if (project === null || project.orgId !== orgId) {
+      throw new ConvexError("Project not found");
+    }
+    await ctx.db.patch("projects", projectId, { name });
+  },
+});
+```
+
+The last check matters: the membership check only proves that the caller
+belongs to `orgId`. Every document id in the arguments must also be checked
+against that organization, or a member of one organization can change the
+data of another.
+
+## Learn more
+
+- [Authorization in Convex functions](https://docs.convex.dev/auth/functions-auth)
+- [Customizing Convex functions](https://stack.convex.dev/custom-functions)
+- [Row-level security](https://stack.convex.dev/row-level-security), to
+  enforce rules on every read and write of a table.
