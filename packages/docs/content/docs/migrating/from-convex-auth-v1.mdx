@@ -12,3 +12,60 @@ description: Migrating from Convex Auth v1.
 ## How to migrate?
 
 <Callout type="warn">WIP</Callout>
+
+## OAuth
+
+If your v1 app signs users in with GitHub, Google, Apple, or another OAuth
+provider, these changes need action before you deploy v2. See the
+[OAuth guide](/login-providers/oauth) for the full v2 setup.
+
+### Callback URLs
+
+The provider's callback moved from your `http.ts` routes to the OAuth
+component of each provider:
+
+| v1                                           | v2                                        |
+| -------------------------------------------- | ----------------------------------------- |
+| `<CONVEX_SITE_URL>/api/auth/callback/github` | `<CONVEX_SITE_URL>/oauth/github/callback` |
+
+The v2 path is the component's `httpPrefix` followed by `/callback`, and the
+old path returns 404. Update the callback URL (or redirect URI) registered with
+each provider, for each deployment, or sign-in breaks. Since a GitHub OAuth app
+has a single callback URL, you can't register both: switch it when you deploy
+v2.
+
+### Environment variables
+
+v1 read the credentials from environment variables with fixed names. In v2,
+you declare them in `defineApp({ env })` in `convex/convex.config.ts` and pass
+them to each component, and the guides use new names:
+
+| v1                   | v2                                                                      |
+| -------------------- | ----------------------------------------------------------------------- |
+| `AUTH_GITHUB_ID`     | `AUTH_GITHUB_CLIENT_ID`                                                 |
+| `AUTH_GITHUB_SECRET` | `AUTH_GITHUB_CLIENT_SECRET`                                             |
+| `AUTH_GOOGLE_ID`     | `AUTH_GOOGLE_CLIENT_ID`                                                 |
+| `AUTH_GOOGLE_SECRET` | `AUTH_GOOGLE_CLIENT_SECRET`                                             |
+| `AUTH_APPLE_ID`      | `AUTH_APPLE_CLIENT_ID`                                                  |
+| `AUTH_APPLE_SECRET`  | `AUTH_APPLE_TEAM_ID`, `AUTH_APPLE_KEY_ID`, and `AUTH_APPLE_PRIVATE_KEY` |
+
+Apple no longer takes a client secret that you generate yourself: the
+component signs one from your team ID, key ID, and private key (see the Apple
+tab of the [OAuth guide](/login-providers/oauth)).
+
+Set the new variables on each deployment, including production, then remove
+the old ones. `SITE_URL` no longer sets where OAuth sends users back to.
+Instead, list your frontend's origins in the `allowedRedirectOrigins` option of
+each provider (see [Deploying](/login-providers/oauth#deploying)).
+
+### Existing OAuth accounts
+
+v2 doesn't read v1's `authAccounts` table. When a user who signed in with
+OAuth in v1 signs in again, v2 sees a new account: it calls your `createUser`
+callback and the user gets a new, empty user.
+
+To keep the user's data, `createUser` can find the user's v1 row and return
+its id instead of creating a new one. v2 then links the account to that user,
+and doesn't call `createUser` for it again. The `accountId` that `createUser`
+receives is the same as the `providerAccountId` of the v1 account: the
+numeric user id for GitHub, and the `sub` claim for Google and Apple.
