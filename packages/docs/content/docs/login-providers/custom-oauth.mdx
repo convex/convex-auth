@@ -1,0 +1,320 @@
+---
+title: Other OAuth providers
+description: Sign users in with any OAuth 2.0 or OpenID Connect identity provider.
+---
+
+import { Step, Steps } from "fumadocs-ui/components/steps";
+
+Apple, Google, and GitHub have their own components (see
+[OAuth](/login-providers/oauth)). For any other identity provider, use the
+generic `oauth` component with `setupOauth`. It works with:
+
+- **OpenID Connect providers**, such as Auth0, Okta, Keycloak, or Microsoft
+  Entra ID. The user's identity comes from the provider's id_token.
+- **Plain OAuth 2.0 providers**, such as Discord. The user's identity comes
+  from a userinfo endpoint that the component calls with the access token.
+
+The provider must authenticate your app with a client ID and a static client
+secret.
+
+This guide sets up an OpenID Connect provider called “Acme”. [Plain OAuth 2.0
+providers](#plain-oauth-20-providers) only need a different catalog.
+
+## Setup
+
+<Steps>
+
+<Step>
+
+### Follow the common OAuth setup
+
+Follow the [common setup](/login-providers/oauth#common-setup) of the OAuth
+guide: the Getting Started guide, the `users` table, and the
+`ConvexAuthProvider`.
+
+</Step>
+
+<Step>
+
+### Register your app with the provider
+
+Create an OAuth or OpenID Connect application in the provider's dashboard. It
+asks for a redirect URI (also called a callback URL). It is your
+deployment's `CONVEX_SITE_URL` followed by the `httpPrefix` you choose in the
+next step and `/callback`, for example
+`https://happy-animal-123.convex.site/oauth/acme/callback`. You can get your
+`CONVEX_SITE_URL` with:
+
+```sh
+npx convex env get CONVEX_SITE_URL
+```
+
+Store the client ID and the client secret that the provider gives you as
+environment variables on your deployment:
+
+```sh
+npx convex env set AUTH_ACME_CLIENT_ID YOUR_CLIENT_ID
+npx convex env set AUTH_ACME_CLIENT_SECRET YOUR_CLIENT_SECRET
+```
+
+</Step>
+
+<Step>
+
+### Install the component
+
+Install the generic `oauth` component in `convex/convex.config.ts`. Give it a
+`name` and an `httpPrefix` of its own: you can install it several times, once
+for each provider.
+
+```ts title="convex/convex.config.ts"
+import { defineApp } from "convex/server";
+import { v } from "convex/values";
+import auth from "@convex-dev/auth/convex.config.js";
+import oauth from "@convex-dev/auth/components/oauth/convex.config.js";
+
+const app = defineApp({
+  env: {
+    AUTH_PRIVATE_KEY: v.string(),
+    AUTH_JWKS: v.string(),
+    AUTH_ACME_CLIENT_ID: v.string(),
+    AUTH_ACME_CLIENT_SECRET: v.string(),
+  },
+});
+
+app.use(auth, {
+  httpPrefix: "/auth",
+  env: {
+    AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
+    AUTH_JWKS: app.env.AUTH_JWKS,
+  },
+});
+
+app.use(oauth, {
+  name: "authAcme",
+  httpPrefix: "/oauth/acme",
+  env: {
+    CLIENT_ID: app.env.AUTH_ACME_CLIENT_ID,
+    CLIENT_SECRET: app.env.AUTH_ACME_CLIENT_SECRET,
+  },
+});
+
+export default app;
+```
+
+<Callout type="warn">
+  Make sure that `httpPrefix` is set and different for each OAuth component.
+  Otherwise, the redirect URI that the component sends to the provider is wrong,
+  and the provider rejects the sign-in.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Set up user creation
+
+Write a `createUser` mutation that creates a row in your `users` table and
+returns its id. Its `profile` validator must match what the `profile` function
+of the next step returns.
+
+```ts title="convex/users.ts"
+import { v } from "convex/values";
+import { internalMutation } from "./_generated/server";
+
+export const createUser = internalMutation({
+  args: {
+    provider: v.object({
+      name: v.literal("acme"),
+      accountId: v.string(),
+      profile: v.object({
+        id: v.string(),
+        email: v.optional(v.string()),
+        emailVerified: v.boolean(),
+        name: v.optional(v.string()),
+      }),
+    }),
+  },
+  returns: v.id("users"),
+  handler: async (ctx) => {
+    return await ctx.db.insert("users", {});
+  },
+});
+```
+
+</Step>
+
+<Step>
+
+### Set up the public backend functions
+
+Call `setupOauth` in `convex/auth.ts`. Its arguments are:
+
+1. The object that `setupConvexAuth` returns.
+2. The provider name. Convex Auth identifies each account by this name and the
+   `id` that `profile` returns, so don't change it once users have signed in.
+3. The catalog, which describes the provider (see below).
+4. Your user callbacks: `createUser`, and optionally `onSignIn`.
+5. The component and the origins that your app may redirect back to.
+
+```ts title="convex/auth.ts"
+import { components, internal } from "./_generated/api";
+import { setupConvexAuth } from "@convex-dev/auth/server";
+import { setupOauth } from "@convex-dev/auth/methods/oauth/server";
+
+const auth = setupConvexAuth({ component: components.auth });
+export const { signOut, refreshSession, isAuthenticated } = auth;
+
+const acme: ReturnType<typeof setupOauth> = setupOauth(
+  auth,
+  "acme",
+  {
+    authorizationEndpoint: "https://id.example.com/authorize",
+    tokenEndpoint: "https://id.example.com/oauth/token",
+    issuer: "https://id.example.com/",
+    scopes: ["openid", "email", "profile"],
+    profile: (claims) => {
+      if (claims === undefined) {
+        throw new Error("Acme returned no id_token");
+      }
+      return {
+        id: claims.sub,
+        email: claims.email,
+        emailVerified: claims.email_verified === true,
+        name: claims.name,
+      };
+    },
+  },
+  { createUser: internal.users.createUser },
+  {
+    component: components.authAcme,
+    allowedRedirectOrigins: ["http://localhost:5173"],
+  },
+);
+export const startSignInWithAcme = acme.startSignIn;
+export const completeSignInWithAcme = acme.completeSignIn;
+```
+
+The catalog fields for an OpenID Connect provider are:
+
+- `authorizationEndpoint`, `tokenEndpoint`, and `issuer`: you can find them in
+  the provider's discovery document, at
+  `<issuer>/.well-known/openid-configuration`. `issuer` must match the `iss`
+  claim of the id_tokens exactly, including any trailing slash.
+- `scopes`: the scopes to request. Include `"openid"`.
+- `profile`: a function that maps the claims of the validated id_token to the
+  profile that your callbacks receive. Its `id` is the account id, so use the
+  `sub` claim.
+- `callbackMethod` (optional): set it to `"POST"` if the provider must send
+  the callback as a form submission.
+
+<Callout type="info">
+  The `ReturnType<typeof setupOauth>` annotation avoids a TypeScript error:
+  without it, `auth.ts` refers to its own type through `internal`, and
+  TypeScript reports `TS7022: 'acme' implicitly has type 'any'`. Your
+  callbacks are still type-checked against the catalog.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Set up the authentication UI
+
+Use the `useOauthSignIn` hook from `@convex-dev/auth/methods/oauth/react`
+with your functions. It works like the hooks of the built-in providers. Read
+errors that happen after the redirect back from `useOauth`:
+
+```tsx title="src/SignInWithAcme.tsx"
+import { useOauth, useOauthSignIn } from "@convex-dev/auth/methods/oauth/react";
+import { api } from "../convex/_generated/api";
+
+export function SignInWithAcme() {
+  const { signIn } = useOauthSignIn({
+    providerName: "acme",
+    startSignIn: api.auth.startSignInWithAcme,
+    completeSignIn: api.auth.completeSignInWithAcme,
+  });
+  const { flowError } = useOauth();
+  return (
+    <>
+      {flowError !== null && (
+        <p role="alert">Sign-in failed. Please try again.</p>
+      )}
+      <button type="button" onClick={() => void signIn()}>
+        Continue with Acme
+      </button>
+    </>
+  );
+}
+```
+
+The [GitHub example
+app](https://github.com/get-convex/convex-auth/tree/reboot/examples/react-github/src/App.tsx)
+shows how to handle each error code of the start result and of `flowError`.
+
+With Next.js, add `completeSignInWithAcme` to the `signIn` allowlist of the
+auth proxy (see [Login providers with Next.js](/ssr-nextjs/login-providers)).
+
+</Step>
+
+</Steps>
+
+## Plain OAuth 2.0 providers
+
+A provider without OpenID Connect sends no id_token. Instead, set
+`userInfoEndpoints` and leave out `issuer`. After the token exchange, the
+component calls each endpoint with the access token and passes the responses
+to `profile`, under the same keys. Type the responses yourself: the component
+doesn't validate them. If the provider returns an id_token anyway, set `issuer`
+so that the component can validate it.
+
+For example, for Discord:
+
+```ts title="convex/auth.ts"
+type DiscordUser = {
+  id: string;
+  username: string;
+  email?: string | null;
+  verified?: boolean;
+};
+
+const discord: ReturnType<typeof setupOauth> = setupOauth(
+  auth,
+  "discord",
+  {
+    authorizationEndpoint: "https://discord.com/oauth2/authorize",
+    tokenEndpoint: "https://discord.com/api/oauth2/token",
+    userInfoEndpoints: { user: "https://discord.com/api/users/@me" },
+    scopes: ["identify", "email"],
+    profile: (_claims, userInfo: { user: DiscordUser } | undefined) => {
+      if (userInfo === undefined) {
+        throw new Error("Discord returned no user info");
+      }
+      const { user } = userInfo;
+      return {
+        id: user.id,
+        username: user.username,
+        email: user.email ?? undefined,
+        emailVerified: user.verified === true,
+      };
+    },
+  },
+  { createUser: internal.users.createDiscordUser },
+  {
+    component: components.authDiscord,
+    allowedRedirectOrigins: ["http://localhost:5173"],
+  },
+);
+export const startSignInWithDiscord = discord.startSignIn;
+export const completeSignInWithDiscord = discord.completeSignIn;
+```
+
+`createDiscordUser` takes a provider named `"discord"` with a profile of
+`id`, `username`, `email`, and `emailVerified`. Install a second `oauth`
+component for it, named `authDiscord` with the `httpPrefix` `/oauth/discord`.
+
+<Callout type="info">
+  The endpoints must use HTTPS. Plain HTTP is only allowed on `localhost` and
+  `127.0.0.1`, for example to test against a local Keycloak.
+</Callout>
