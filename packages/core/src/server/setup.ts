@@ -103,6 +103,13 @@ export type AuthCore<UsersTable extends string = string> = {
    * verdict. SSR hosts call it with the token from the auth cookie to decide
    * authentication state, rather than trusting the (client-controlled) cookie
    * by merely decoding it.
+   *
+   * Because that check happens before the query runs, a call with an expired
+   * or invalid token throws (e.g. `InvalidAuthHeader`) rather than returning
+   * `false`. Rather than calling this query directly, SSR hosts should use
+   * `createServerAuthChecker` from `@convex-dev/auth/ssr` (or the bindings of
+   * their framework, like `isAuthenticatedNextjs`), which skips the call for
+   * an expired token and turns any error into `false`.
    */
   isAuthenticated: RegisteredQuery<
     "public",

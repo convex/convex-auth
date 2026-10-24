@@ -175,6 +175,10 @@ export type SignOutFn = FunctionReference<
 /**
  * The app's `isAuthenticated` query reference: reports whether the access token
  * the query is called with identifies a signed-in user.
+ *
+ * Calling it with an expired or invalid token throws, since Convex rejects the
+ * token before the query runs. `createServerAuthChecker` handles that and
+ * returns `false`.
  */
 export type IsAuthenticatedFn = FunctionReference<
   "query",
