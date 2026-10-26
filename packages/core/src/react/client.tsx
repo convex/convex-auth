@@ -134,11 +134,7 @@ export function AuthProvider({
     return () => authClient.dispose();
   }, [authClient]);
 
-  // Convex re-runs its auth handshake only when `fetchAccessToken`'s identity
-  // (or `isLoading`/`isAuthenticated`) changes. Signing in as another user
-  // while signed in changes neither flag, so the callback is keyed on the
-  // token's subject: a new user gets a new callback, while a routine refresh
-  // keeps the subject and so keeps the callback.
+  // A new callback makes Convex re-auth, so make one when the user changes.
   const subject = tokenSubject(state.token);
   const fetchAccessToken = useCallback(
     (args: { forceRefreshToken: boolean }) => authClient.fetchAccessToken(args),
@@ -177,11 +173,7 @@ export function AuthProvider({
   );
 }
 
-/**
- * The subject (user id) of an access token, for keying the Convex handshake.
- * The token is decoded, not verified. A token that doesn't decode is its own
- * key, so any change to it still re-runs the handshake.
- */
+/** The token's user id (decoded, not verified), or the token if it doesn't decode. */
 function tokenSubject(token: string | null): string | null {
   if (token === null) return null;
   try {
