@@ -14,7 +14,6 @@ const signIn = makeFunctionReference<"action">(
 function bundle(): TokenBundle {
   return {
     accessToken: "access-1",
-    accessTokenExpiresAt: 1_000,
     refreshToken: "refresh-1",
     refreshTokenExpiresAt: 2_000,
     userId: "user-1",
@@ -88,7 +87,6 @@ describe("token interception", () => {
     expect(body.value.status).toBe("complete");
     expect(body.value.tokens).toEqual({
       accessToken: "access-1",
-      accessTokenExpiresAt: 1_000,
       userId: "user-1",
     });
     expect(JSON.stringify(body)).not.toContain("refresh-1");
@@ -375,7 +373,6 @@ describe("ConvexHttpClient wire contract", () => {
       status: "complete",
       tokens: {
         accessToken: "access-1",
-        accessTokenExpiresAt: 1_000,
         userId: "user-1",
       },
     });

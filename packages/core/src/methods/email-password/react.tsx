@@ -565,11 +565,13 @@ export function useSignUpWithEmailPassword(api: {
  * {@link useSignUpWithEmailPassword}, and adopt the minted session.
  *
  * ```tsx
- * const state = useCompleteSignUp(api.auth, { emailCode });
- * switch (state.status) {
- *   case "loading": // validating…
- *   case "complete": // signed in
- *   case "error": // map state.userError to a message
+ * function ValidateEmail({ emailCode }: { emailCode: string }) {
+ *   const state = useCompleteSignUp(api.auth, { emailCode });
+ *   switch (state.status) {
+ *     case "loading": // validating…
+ *     case "complete": // signed in
+ *     case "error": // map state.userError to a message
+ *   }
  * }
  * ```
  *

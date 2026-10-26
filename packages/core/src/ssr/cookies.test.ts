@@ -13,7 +13,6 @@ import {
 
 const bundle: TokenBundle = {
   accessToken: "access-1",
-  accessTokenExpiresAt: 1_000_000,
   refreshToken: "refresh-1",
   refreshTokenExpiresAt: 2_000_000,
   userId: "user-1",

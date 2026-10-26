@@ -266,7 +266,7 @@ export type EmailPasswordProfile = Record<string, never>;
  *   `convex/auth.ts`:
  *
  * ```ts
- * import { env } from "../../components/email/_generated/server";
+ * import { env } from "./_generated/server";
  *
  * const auth = setupConvexAuth({ component: components.auth });
  * export const { signOut, refreshSession, isAuthenticated } = auth;
@@ -295,7 +295,9 @@ export type EmailPasswordProfile = Record<string, never>;
  *     changeEmail: `${env.SITE_URL}/confirm-email-change`,
  *     recovery: `${env.SITE_URL}/reset-password`,
  *   },
- * }).attachUserCallbacks({ createUser: internal.users.createUser });
+ * }).attachUserCallbacks({
+ *   createUser: internal.users.createUserEmailPassword,
+ * });
  * ```
  *
  * - Sign-in accepts any verified email of the account.

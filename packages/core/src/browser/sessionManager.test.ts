@@ -43,7 +43,6 @@ function restoreWindow(): void {
 function bundle(n: number): TokenBundle {
   return {
     accessToken: `access-${n}`,
-    accessTokenExpiresAt: 0,
     refreshToken: `refresh-${n}`,
     refreshTokenExpiresAt: 0,
     userId: "user-1",
@@ -610,7 +609,6 @@ describe("AuthClient ambient sign-ins", () => {
 function ssrAuthResult(n: number): SlimTokenBundle {
   return {
     accessToken: `access-${n}`,
-    accessTokenExpiresAt: 0,
     userId: "user-1",
   };
 }

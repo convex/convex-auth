@@ -30,7 +30,6 @@ export const NAMESPACE = "https://happy-animal-123.convex.cloud";
 /** A session for the sign-in mutations to resolve with. */
 export const bundle: TokenBundle = {
   accessToken: "access-1",
-  accessTokenExpiresAt: 0,
   refreshToken: "refresh-1",
   refreshTokenExpiresAt: 0,
   userId: "user-1",

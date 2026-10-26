@@ -44,7 +44,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             kind: "rotated";
             tokens: {
               accessToken: string;
-              accessTokenExpiresAt: number;
               refreshToken: string;
               refreshTokenExpiresAt: number;
               userId: string;
@@ -69,7 +68,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         },
         {
           accessToken: string;
-          accessTokenExpiresAt: number;
           refreshToken: string;
           refreshTokenExpiresAt: number;
           userId: string;
@@ -100,7 +98,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         },
         {
           accessToken: string;
-          accessTokenExpiresAt: number;
           refreshToken: string;
           refreshTokenExpiresAt: number;
           userId: string;

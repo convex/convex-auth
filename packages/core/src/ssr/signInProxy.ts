@@ -125,7 +125,6 @@ function isEncodedTokenBundle(value: unknown): value is TokenBundle {
   const bundle = value as Record<string, unknown>;
   return (
     typeof bundle.accessToken === "string" &&
-    typeof bundle.accessTokenExpiresAt === "number" &&
     typeof bundle.refreshToken === "string" &&
     typeof bundle.refreshTokenExpiresAt === "number" &&
     typeof bundle.userId === "string"
@@ -178,6 +177,8 @@ function textError(status: number, message: string): Response {
  *
  * ```ts
  * // app/auth/signin/route.ts
+ * import { auth } from "@/auth"; // the result of `setupConvexAuthServer`
+ *
  * export const POST = auth.convexProxyHandler;
  * ```
  */

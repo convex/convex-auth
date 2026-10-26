@@ -1,3 +1,9 @@
+/**
+ * The TOTP component.
+ *
+ * @internal Not public until the API of the TOTP component is stable.
+ * @module
+ */
 import { defineComponent } from "convex/server";
 
 /**

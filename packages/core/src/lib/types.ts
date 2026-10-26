@@ -17,12 +17,12 @@ import { GenericId, Infer, v, type Validator } from "convex/values";
 
 /**
  * The session a successful sign-in (or refresh) mints: a short-lived access
- * token plus the rotating refresh token, with their expiries and the app user
- * id the access token is minted for.
+ * token plus the rotating refresh token with its expiry, and the app user id
+ * the access token is minted for. The access token's expiry is its JWT `exp`
+ * claim.
  */
 export const vTokenBundle = v.object({
   accessToken: v.string(),
-  accessTokenExpiresAt: v.number(),
   refreshToken: v.string(),
   refreshTokenExpiresAt: v.number(),
   userId: v.string(),
@@ -92,7 +92,6 @@ export type SignInStatus = SignInEnvelope["status"];
  */
 export type SlimTokenBundle = {
   accessToken: string;
-  accessTokenExpiresAt: number;
   userId: string;
 };
 
@@ -103,7 +102,6 @@ export type SlimTokenBundle = {
 export function makeSlimBundle(bundle: TokenBundle): SlimTokenBundle {
   return {
     accessToken: bundle.accessToken,
-    accessTokenExpiresAt: bundle.accessTokenExpiresAt,
     userId: bundle.userId,
   };
 }
@@ -307,7 +305,7 @@ export type UserCallbacks<
 };
 
 /**
- * The helpers that `authMutation`/`authAction` inject onto `ctx` for a
+ * The helpers that `authMutation` injects onto `ctx` for a
  * provider's handlers.
  *
  * This API is used for building auth providers.
@@ -368,7 +366,7 @@ export type BoundAuthHelpers<Profile> = {
 };
 
 /**
- * The ctx additions that `authMutation`/`authAction` provide to provider
+ * The ctx additions that `authMutation` provides to provider
  * handlers.
  *
  * The {@link BoundAuthHelpers} are available under `ctx.convexAuth`.

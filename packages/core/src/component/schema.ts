@@ -13,10 +13,12 @@ export default defineSchema({
     .index("by_user", ["userId"]),
 
   // One row per active session. Its refresh tokens live in `refreshTokens`.
+  // The row is only written when the session is created or deleted, so a query
+  // reading it (e.g. to check session liveness) is not invalidated by token
+  // refreshes.
   sessions: defineTable({
     userId: v.string(),
     accountId: v.id("accounts"),
-    lastRefreshedAt: v.number(),
   }).index("by_user", ["userId"]),
 
   // Every refresh token a session has handed out and still remembers, by its
@@ -41,6 +43,10 @@ export default defineSchema({
   // descends from it. Presenting a spent or dropped token means the session's
   // holders have diverged, which revokes the session. Spent and dropped rows
   // are kept for `SPENT_TOKEN_HORIZON_MS` after `retiredAt`, then pruned.
+  //
+  // Each refresh inserts a row, so a session's freshness (when it last
+  // refreshed) can be derived from the `_creationTime` of its newest row via
+  // the `by_session_state` index; the session row itself stores no timestamp.
   refreshTokens: defineTable({
     hash: v.string(),
     sessionId: v.id("sessions"),
