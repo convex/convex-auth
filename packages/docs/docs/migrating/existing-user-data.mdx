@@ -1,0 +1,60 @@
+---
+sidebar_position: 2
+title: Existing user data
+description: Using Convex Auth with users stored in a table not named `users`.
+---
+
+With Convex Auth, you app remains in control of user data. Each provider calls
+your `createUser` mutation to create a user, and Convex Auth stores the id that
+mutation returns. The login provider guides call this table `users`, but if
+your app already keeps its users in a table with another name or you just want
+to use a different name, you can use that table instead.
+
+## Using a table with a different name
+
+Pass the table name to `setupConvexAuth`:
+
+```ts title="convex/auth.ts"
+const auth = setupConvexAuth({
+  component: components.auth,
+  usersTable: "members",
+});
+```
+
+Every provider set up with this `auth` then requires user callbacks that work
+with ids from that table: `createUser` must return an `Id<"members">`, and
+`onSignIn` receives one.
+
+```ts title="convex/users.ts"
+export const createUser = internalMutation({
+  args: {
+    provider: v.object({
+      name: v.literal("anonymous"),
+      accountId: v.string(),
+      profile: v.object({}),
+    }),
+  },
+  returns: v.id("members"),
+  handler: async (ctx) => {
+    return await ctx.db.insert("members", {});
+  },
+});
+```
+
+When you read the signed-in user, pass the table name to `getAuthUserId` too,
+so that it returns an id in that table:
+
+```ts title="convex/currentUser.ts"
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+export const loggedInUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId<"members">(ctx);
+    if (userId === null) {
+      return null;
+    }
+    return await ctx.db.get("members", userId);
+  },
+});
+```

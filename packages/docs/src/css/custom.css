@@ -1,0 +1,33 @@
+/* Docusaurus theme overrides. See https://docusaurus.io/docs/styling-layout */
+
+:root {
+  --ifm-color-primary: #8d2676;
+  --ifm-color-primary-dark: #7f226a;
+  --ifm-color-primary-darker: #782064;
+  --ifm-color-primary-darkest: #631b53;
+  --ifm-color-primary-light: #9b2a82;
+  --ifm-color-primary-lighter: #a22c88;
+  --ifm-color-primary-lightest: #b73199;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #e597d4;
+  --ifm-color-primary-dark: #de7dc9;
+  --ifm-color-primary-darker: #da70c3;
+  --ifm-color-primary-darkest: #cf47b2;
+  --ifm-color-primary-light: #ecb1df;
+  --ifm-color-primary-lighter: #f0bee5;
+  --ifm-color-primary-lightest: #f8e0f3;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] div[class^="announcementBar_"] {
+  background-color: #7c2d12 !important;
+  color: #ffedd5 !important;
+}
+
+div[class^="announcementBar_"] a {
+  text-decoration: underline;
+}

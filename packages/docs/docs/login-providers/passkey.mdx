@@ -1,0 +1,200 @@
+---
+sidebar_position: 2
+title: Passkey
+description: Sign users in with a username and a passkey.
+---
+
+import { Step, Steps } from "@site/src/components/Steps";
+import { Cards } from "@site/src/components/Cards";
+
+The passkey component lets you implement passkey-based login.
+
+A passkey replaces the password with a key pair that stays on the user's device:
+users can store the passkey on their device (protected by a fingerprint,
+a face scan, or PIN), or use an external hardware security key.
+Your app never handles a secret that can be phished or reused.
+
+The `setupUsernamePasskey` provider implements an _identifier-first_ flow:
+your login page has a single username field. A free username creates a new
+account with a new passkey; an existing username asks for a passkey of that
+account.
+
+## Setting up username + passkey login in your app
+
+<Steps>
+
+<Step>
+
+### Follow the “Getting Started” guide
+
+First, follow the [Getting Started](../getting-started.mdx) guide:
+
+<Cards>
+
+- [Getting Started](../getting-started.mdx)
+
+  Installing dependencies + initial set up.
+
+</Cards>
+
+</Step>
+
+<Step>
+
+### Install the components
+
+Register the passkey component and the username component alongside the core
+in `convex/convex.config.ts`. The username component stores which user each
+username identifies:
+
+```ts file="examples/react-passkey-basic/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import passkey from" highlight="import username from" highlight="app.use(passkey)" highlight="app.use(username)"
+
+```
+
+</Step>
+
+<Step>
+
+### Add a `users` table to the schema
+
+Add an empty `users` table to your schema in `convex/schema.ts`. The username
+component keeps the username, so the table does not need a field for it.
+
+Convex Auth will create a row for each account. You can also add application-specific fields to this table if necessary.
+
+```ts file="examples/react-passkey-basic/convex/schema.ts" title="convex/schema.ts" highlight="users: defineTable({}),"
+
+```
+
+</Step>
+
+<Step>
+
+### Set up user creation
+
+Write a `createUser` mutation that creates a row in your `users` table and
+returns its id. The provider calls it the first time it sees an account.
+
+You can also attach an optional `onSignIn` mutation, called with the resolved
+`userId` on every sign-in, the first one included. Anything you want to happen
+each time someone signs in belongs there, so `createUser` only has to handle
+what is true at creation time. Leave it out if there is nothing to do.
+
+```ts file="examples/react-passkey-basic/convex/users.ts" title="convex/users.ts"
+
+```
+
+</Step>
+
+<Step>
+
+### Set up the public backend functions
+
+Set up the passkey provider with `setupUsernamePasskey` and export the
+mutations it hands back once you attach the callback that creates your user
+rows, in `convex/auth.ts`:
+
+```ts file="examples/react-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });"
+
+```
+
+`rpId` and `origin` bind the passkeys to your app:
+
+- `rpId` is the _relying party ID_: the domain the passkeys belong to, without
+  a scheme or a port (`localhost` in development, `example.com` in
+  production). Browsers only offer a passkey to a page whose domain is the
+  `rpId` or a subdomain of it.
+- `origin` is the full origin the login page is served from, including the
+  scheme and the port (`http://localhost:5173` for the Vite dev server). The
+  component rejects a passkey sign-in that comes from any other origin.
+
+:::warning
+
+Passkeys are permanently bound to their `rpId`: a passkey created with `rpId:
+"localhost"` can never be used on your production domain. Set both values to
+the production domain before you deploy.
+
+:::
+
+</Step>
+
+<Step>
+
+### Set up the provider on the client
+
+Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
+`signOut` mutations in `src/main.tsx`:
+
+```tsx file="examples/react-passkey-basic/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
+
+```
+
+</Step>
+
+<Step>
+
+### Set up the authentication UI
+
+In your front-end, set up a route for logging in. Because the flow is
+identifier-first, the same page and the same field serve account creation and
+login.
+
+While the hook is mounted, it also lets the browser offer the passkeys it has
+stored in the autocompletion list of the username field. The field must carry
+`autoComplete="username webauthn"` for the browser to do that.
+
+:::warning
+
+The browser allows only one of these autofill requests at a time, so you
+should not mount the `useSignInWithUsernamePasskey` hook multiple times
+simultaneously.
+
+:::
+
+Copy the following code block inside of your app:
+
+```tsx file="examples/react-passkey-basic/src/routes/logIn.tsx" title="src/routes/logIn.tsx"
+
+```
+
+</Step>
+
+</Steps>
+
+## Going further
+
+### Allowing users to manage their passkeys
+
+When your app supports passkeys, it is highly recommended to allow users to add multiple passkeys. This is especially useful for users who use multiple devices, or hardware authenticators.
+
+<Steps>
+
+<Step>
+
+#### Make sure the Convex functions for passkey managements are exposed
+
+In `convex/auth.ts`, make sure the following functions are exported:
+`listPasskeys`, `renamePasskey`, `startAddPasskey`, `verifyAddPasskey`,
+`finishAddPasskey`, `startRemovePasskey`, and `finishRemovePasskey`.
+
+```ts file="examples/react-passkey/convex/auth.ts" title="convex/auth.ts" highlight="  listPasskeys,...  finishRemovePasskey,"
+
+```
+
+</Step>
+
+<Step>
+
+#### Build the passkey management page
+
+In your app’s settings page, add the UI code for adding, renaming, and removing passkeys. This code uses the `useAddPasskey` and `useRemovePasskey` hooks provided by Convex Auth, and the `renamePasskey` mutation.
+
+We recommend copying the following component into your app, adapting it to your app’s design system, and rendering it on your settings page:
+
+```tsx file="examples/react-passkey/src/PasskeySettings.tsx" title="src/PasskeySettings.tsx"
+
+```
+
+</Step>
+
+</Steps>
