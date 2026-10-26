@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api, components } from "./_generated/api.js";
-import { registerCore } from "@convex-dev/auth/test";
+import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
 import { registerUsername } from "@convex-dev/auth/components/username/test";
 import schema from "./schema.js";
@@ -34,8 +34,10 @@ const signIn = (
   password: string,
 ) => t.mutation(api.auth.signInWithUsernamePassword, { username, password });
 
-const asUser = (t: Awaited<ReturnType<typeof setup>>, userId: string) =>
-  t.withIdentity({ subject: userId });
+const asUser = (
+  t: Awaited<ReturnType<typeof setup>>,
+  tokens: { accessToken: string },
+) => t.withIdentity(sessionIdentity(tokens));
 
 type PasswordResult =
   Awaited<ReturnType<typeof signUp>> | Awaited<ReturnType<typeof signIn>>;
@@ -218,8 +220,8 @@ describe("changePassword", () => {
   async function signedUpUser() {
     const t = await setup();
     const up = await signUp(t, "alice", PASSWORD);
-    const userId = (up as PasswordSuccess).tokens.userId;
-    return { t, userId, alice: asUser(t, userId) };
+    const { tokens } = up as PasswordSuccess;
+    return { t, userId: tokens.userId, alice: asUser(t, tokens) };
   }
 
   test("replaces the password when the current one is correct", async () => {

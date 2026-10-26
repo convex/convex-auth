@@ -36,7 +36,7 @@ export function renamePasskey(config: UsernamePasskeyConfig) {
     },
     returns: renamePasskeyResult,
     handler: async (ctx, args): Promise<RenamePasskeyResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }

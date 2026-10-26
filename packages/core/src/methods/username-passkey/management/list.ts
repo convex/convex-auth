@@ -32,7 +32,7 @@ export function listPasskeys(config: UsernamePasskeyConfig) {
     args: {},
     returns: listPasskeysResult,
     handler: async (ctx): Promise<ListPasskeysResult> => {
-      const userId = await getAuthUserId(ctx);
+      const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_SIGNED_IN" } };
       }

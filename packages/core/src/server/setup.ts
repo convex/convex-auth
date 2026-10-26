@@ -73,6 +73,15 @@ export type AuthCore<UsersTable extends string = string> = {
    */
   usersTable: UsersTable;
   /**
+   * The core component, as passed to {@link setupConvexAuth}.
+   *
+   * The sign-in methods pass it to `getAuthUserId`, so they work when the app
+   * mounts the core under a name other than `auth`.
+   *
+   * @internal
+   */
+  component: ComponentApi;
+  /**
    * Signs out of the current session.
    *
    * After this the refresh token is no longer valid.
@@ -345,5 +354,12 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     return { authMutation };
   };
 
-  return { usersTable, signOut, refreshSession, isAuthenticated, bindProvider };
+  return {
+    usersTable,
+    component,
+    signOut,
+    refreshSession,
+    isAuthenticated,
+    bindProvider,
+  };
 }

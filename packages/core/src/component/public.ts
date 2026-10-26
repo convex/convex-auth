@@ -218,14 +218,18 @@ function resolveTtlConfig(args: {
  * Mint the access token with the deployment's signing key. The deployment
  * populates `iss` (`${CONVEX_CLOUD_URL}/components/auth`), `iat` and `exp`;
  * this sets the claims the core owns: the subject and the audience.
+ *
+ * The subject is the session id, not the user id: the app resolves the user
+ * through the session (see `getSession`), so a revoked session stops
+ * resolving to a user before its tokens expire.
  */
 async function mintAccessToken(
   ctx: MutationCtx,
-  userId: string,
+  sessionId: Id<"sessions">,
   ttlSeconds: number,
 ): Promise<string> {
   return await ctx.auth.signJwt({
-    claims: { sub: userId, aud: AUDIENCE },
+    claims: { sub: sessionId, aud: AUDIENCE },
     expiresInSeconds: ttlSeconds,
   });
 }
@@ -251,7 +255,7 @@ async function issueSession(
   );
   const accessToken = await mintAccessToken(
     ctx,
-    userId,
+    sessionId,
     ttl.accessTokenTtlSeconds,
   );
   return {
@@ -511,8 +515,8 @@ export const signUpWithoutSession = mutation({
  * — e.g. a password provider needs the user id to verify a stored password *before*
  * a session is issued. Returns `null` when no account exists for the identity.
  *
- * This is a component-internal function (callable by the app, not by end-user
- * clients), so it does not expose account existence to the outside world; the
+ * This is a component function; it is callable by the app, not by end-user
+ * clients, so it does not expose account existence to the outside world. The
  * provider's own public API decides what, if anything, to reveal.
  */
 export const getUserIdByAccount = query({
@@ -524,6 +528,29 @@ export const getUserIdByAccount = query({
   ): Promise<string | null> => {
     const account = await accountByIdentity(ctx, provider, providerAccountId);
     return account?.userId ?? null;
+  },
+});
+
+/**
+ * Look up a live session by its id.
+ *
+ * Returns an object with the session's `userId` when the session row exists.
+ * If there is no row for the session id, it returns `null`.
+ *
+ * A session is live exactly as long as its row exists: sign-out, refresh-token
+ * reuse detection, and expired-token cleanup all delete the row.
+ *
+ * This is a component function; it is callable by the app, not by end-user
+ * clients, so it does not expose session existence to the outside world.
+ */
+export const getSession = query({
+  args: { sessionId: v.string() },
+  returns: v.union(v.object({ userId: v.string() }), v.null()),
+  handler: async (ctx, { sessionId }): Promise<{ userId: string } | null> => {
+    const id = ctx.db.normalizeId("sessions", sessionId);
+    if (id === null) return null;
+    const session = await ctx.db.get("sessions", id);
+    return session === null ? null : { userId: session.userId };
   },
 });
 
@@ -682,7 +709,7 @@ export const refresh = mutation({
     );
     const accessToken = await mintAccessToken(
       ctx,
-      session.userId,
+      session._id,
       ttl.accessTokenTtlSeconds,
     );
     return {

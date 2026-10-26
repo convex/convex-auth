@@ -92,6 +92,27 @@ async function seedSignedUpUser(
 }
 
 /**
+ * Configure the passed in `T` with a session for `userId`.
+ *
+ * The access token's subject is a session id, and the core looks the user up
+ * through the session, so this seeds a session for the account
+ * `seedSignedUpUser` created.
+ */
+async function asUser(t: T, userId: string) {
+  const sessionId = await runInComponent(t, "auth", async (ctx) => {
+    const account = await ctx.db
+      .query("accounts")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .unique();
+    return await ctx.db.insert("sessions", {
+      userId,
+      accountId: account!._id,
+    });
+  });
+  return t.withIdentity({ subject: sessionId });
+}
+
+/**
  * Mirror of the component's `normalizeEmail`, for rows the tests seed
  * directly. The tests do not import component internals.
  */
@@ -516,12 +537,12 @@ describe("changePassword", () => {
   test("requires the current password", async () => {
     const t = await setup();
     const userId = await seedSignedUpUser(t);
-    const result = await t
-      .withIdentity({ subject: userId })
-      .mutation(api.auth.changePassword, {
-        currentPassword: "wrong horse battery staple",
-        newPassword: "brand new horse staple",
-      });
+    const result = await (
+      await asUser(t, userId)
+    ).mutation(api.auth.changePassword, {
+      currentPassword: "wrong horse battery staple",
+      newPassword: "brand new horse staple",
+    });
     expect(result).toEqual({
       success: false,
       userError: { error: "INVALID_CREDENTIALS" },
@@ -531,12 +552,12 @@ describe("changePassword", () => {
   test("reports a malformed current password as INVALID_CREDENTIALS", async () => {
     const t = await setup();
     const userId = await seedSignedUpUser(t);
-    const result = await t
-      .withIdentity({ subject: userId })
-      .mutation(api.auth.changePassword, {
-        currentPassword: "short",
-        newPassword: "brand new horse staple",
-      });
+    const result = await (
+      await asUser(t, userId)
+    ).mutation(api.auth.changePassword, {
+      currentPassword: "short",
+      newPassword: "brand new horse staple",
+    });
     // A format error about the current password must not look like an error
     // about the new password.
     expect(result).toEqual({
@@ -557,12 +578,12 @@ describe("changePassword", () => {
   test("changes the password and notifies the primary email", async () => {
     const t = await setup();
     const userId = await seedSignedUpUser(t);
-    const result = await t
-      .withIdentity({ subject: userId })
-      .mutation(api.auth.changePassword, {
-        currentPassword: PASSWORD,
-        newPassword: "brand new horse staple",
-      });
+    const result = await (
+      await asUser(t, userId)
+    ).mutation(api.auth.changePassword, {
+      currentPassword: PASSWORD,
+      newPassword: "brand new horse staple",
+    });
     expect(result).toEqual({ success: true });
 
     // The old password no longer works; the new one does.
@@ -605,9 +626,9 @@ describe("startChangeEmail", () => {
   test("sends a confirmation link to the new address", async () => {
     const t = await setup();
     const userId = await seedSignedUpUser(t);
+    const alice = await asUser(t, userId);
     const start = (newEmail: string, currentPassword: string) =>
-      t
-        .withIdentity({ subject: userId })
+      alice
         .withRequestMetadata({ ip: IP })
         .mutation(api.auth.startChangeEmail, { newEmail, currentPassword });
 
@@ -652,12 +673,12 @@ describe("completeChangeEmail", () => {
       userError: { error: "NOT_LOGGED_IN" },
     });
 
-    const result = await t
-      .withIdentity({ subject: userId })
-      .mutation(api.auth.completeChangeEmail, {
-        emailCode: "code1",
-        browserSecret: "secret1",
-      });
+    const result = await (
+      await asUser(t, userId)
+    ).mutation(api.auth.completeChangeEmail, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
     expect(result).toEqual({ success: true });
 
     // Sign-in works with the new address, and no longer with the old one.
@@ -690,12 +711,12 @@ describe("completeChangeEmail", () => {
   test("rejects an unknown secret with INVALID_CHALLENGE", async () => {
     const t = await setup();
     const userId = await seedSignedUpUser(t);
-    const result = await t
-      .withIdentity({ subject: userId })
-      .mutation(api.auth.completeChangeEmail, {
-        emailCode: "unknown",
-        browserSecret: "whatever",
-      });
+    const result = await (
+      await asUser(t, userId)
+    ).mutation(api.auth.completeChangeEmail, {
+      emailCode: "unknown",
+      browserSecret: "whatever",
+    });
     expect(result).toEqual({
       success: false,
       userError: { error: "INVALID_CHALLENGE" },
