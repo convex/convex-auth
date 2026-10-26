@@ -1,5 +1,6 @@
 "use client";
 
+import { decodeJwt } from "jose";
 import {
   ReactNode,
   createContext,
@@ -133,9 +134,11 @@ export function AuthProvider({
     return () => authClient.dispose();
   }, [authClient]);
 
+  // A new callback makes Convex re-auth, so make one when the user changes.
+  const subject = tokenSubject(state.token);
   const fetchAccessToken = useCallback(
     (args: { forceRefreshToken: boolean }) => authClient.fetchAccessToken(args),
-    [authClient],
+    [authClient, subject],
   );
 
   const authState = useMemo(
@@ -168,4 +171,15 @@ export function AuthProvider({
       </ConvexAuthInternalContext.Provider>
     </AuthClientContext.Provider>
   );
+}
+
+/** The token's user id (decoded, not verified), or the token if it doesn't decode. */
+function tokenSubject(token: string | null): string | null {
+  if (token === null) return null;
+  try {
+    const { sub } = decodeJwt(token);
+    return typeof sub === "string" ? sub : token;
+  } catch {
+    return token;
+  }
 }
