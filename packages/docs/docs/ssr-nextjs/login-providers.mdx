@@ -1,0 +1,102 @@
+---
+sidebar_position: 2
+title: Login providers with Next.js
+description: How the login provider guides apply to a Next.js app.
+---
+
+Most of each [login provider guide](../login-providers/password.mdx) applies to a
+Next.js app without changes. This page lists what is different. It assumes you
+have already followed [Setting up Next.js](./setup.mdx).
+
+## What stays the same
+
+- **The backend.** Installing the components, the `users` table, the user
+  creation callbacks, and the functions you export from `convex/auth.ts` are
+  the same. Also export `isAuthenticated` from the core (see
+  [Set up the backend](./setup.mdx#set-up-the-backend-for-your-login-providers)).
+- **The provider hooks.** Your sign-in and sign-up pages call the same hooks
+  as in a single-page app, like `useSignInWithUsernamePassword` from
+  `@convex-dev/auth/methods/username-password/react` or `useSignInAnonymously` from
+  `@convex-dev/auth/methods/anonymous/react`. There are no Next.js versions of
+  these hooks. Inside `ConvexAuthNextjsProvider`, the hooks send their sign-in
+  calls to your `/auth/signin` route. The route calls your deployment and moves
+  the refresh token into the `httpOnly` cookie before it returns the result.
+- **Errors.** The hooks return the same typed `userError` values, so you can
+  handle errors the same way as in the provider guides.
+
+## What is different
+
+### Skip “Set up the provider on the client”
+
+Don't wrap your app in `ConvexAuthProvider`. Use
+`ConvexAuthNextjsServerProvider` in your root layout instead (see
+[Set up the provider](./setup.mdx#set-up-the-provider)).
+
+### Add the sign-in functions to the `signIn` list
+
+The `/auth/signin` route only forwards the functions listed in `signIn` in
+`setupConvexAuthServer`. If a function the hooks need isn't listed, the
+route refuses the call with a `403` error. Add these functions for each
+provider:
+
+| Provider         | Functions to list in `signIn`                                           |
+| ---------------- | ----------------------------------------------------------------------- |
+| Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`              |
+| Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`    |
+| Anonymous        | `signInAnonymously`                                                     |
+| Email + password | `signInWithEmailPassword`, `completeSignUp`, `completePasswordRecovery` |
+| OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`         |
+
+Only list functions that create a session. The other functions a provider
+exports, like `changePassword`, passkey `startSignInWithUsernamePasskey`, OAuth
+`startSignInWithGithub`, or `startChangeEmail`,
+are called through the Convex client as usual and don't need to be listed.
+
+### Adapt the authentication UI to Next.js
+
+The UI code in the provider guides comes from Vite single-page apps. To use it
+in a Next.js app:
+
+- Add `"use client"` to the components that call a provider hook. Only the
+  form needs it: the page around it can stay a Server Component that renders
+  the form. (The example below marks the whole page for brevity.)
+- Put the pages in `app/` (for example, `app/signin/page.tsx`), and navigate with
+  `useRouter` from `next/navigation` and `Link` from `next/link`.
+- Import `useAuthActions` from `@convex-dev/auth/react`. Import
+  `useConvexAuth`, `Authenticated`, and `Unauthenticated` from `convex/react`.
+
+For example, this sign-in page from the Next.js example uses the password and
+anonymous hooks unchanged:
+
+```tsx file="examples/nextjs/app/signin/page.tsx" title="app/signin/page.tsx"
+
+```
+
+### Let signed-out users reach your auth pages
+
+Your proxy decides which pages need a signed-in user. Make sure it lets
+signed-out users reach every page they need to sign in. That includes the sign-in
+and sign-up pages, and also the pages that emailed links open, like
+`/validate-email` and `/reset-password` in the email + password guide. For
+OAuth, that includes the page the provider redirects back to: the hook redeems
+the callback code there, and a redirect away from it drops the code.
+
+### Use your Next.js origin in the provider config
+
+Some providers need the URL of your frontend. The provider guides use the Vite
+dev server (`http://localhost:5173`). `next dev` serves on
+`http://localhost:3000` by default:
+
+- **Passkey:** set `origin` in `setupUsernamePasskey` to your Next.js origin
+  (`http://localhost:3000` in development). `rpId` stays `localhost`.
+- **Email + password:** set the `SITE_URL` environment variable on your
+  deployment to your Next.js origin, so the emailed links open your Next.js
+  app:
+
+  ```sh
+  npx convex env set SITE_URL http://localhost:3000
+  ```
+
+- **OAuth:** set `allowedRedirectOrigins` in `setupApple`, `setupGoogle`, or
+  `setupGithub` to your Next.js origin (`http://localhost:3000` in
+  development).

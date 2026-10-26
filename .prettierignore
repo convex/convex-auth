@@ -10,11 +10,14 @@ pnpm-lock.yaml
 packages/argon2id-wasm/rust/pkg/
 packages/argon2id-wasm/rust/target/
 
-# Fumadocs generated output (packages/docs)
+# Next.js output (examples)
 **/.next/
-**/.source/
 next-env.d.ts
 
+# Docusaurus generated files and build output (packages/docs)
+packages/docs/.docusaurus
+packages/docs/build
+
 # Generated API reference (packages/docs) and its shims (packages/core)
-packages/docs/content/docs/api
+packages/docs/docs/api
 packages/core/.api-entrypoints

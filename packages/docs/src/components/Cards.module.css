@@ -1,0 +1,49 @@
+/* Infima styles Markdown lists with boosted specificity (`:not(#\#)`), thus
+   the list spacing below needs `!important`. */
+.cards > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 0 0 var(--ifm-leading) !important;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.cards > ul > li {
+  position: relative;
+  margin: 0 !important;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: var(--ifm-card-border-radius);
+  transition: background-color var(--ifm-transition-fast);
+}
+
+.cards > ul > li:hover {
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.cards > ul > li > p {
+  margin: 0 !important;
+}
+
+.cards > ul > li > p:first-child {
+  margin-bottom: 0.25rem !important;
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+.cards > ul > li > p:not(:first-child) {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.875rem;
+}
+
+.cards > ul > li a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The whole card is the link. */
+.cards > ul > li a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}

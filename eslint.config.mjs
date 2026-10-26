@@ -19,9 +19,9 @@ export default defineConfig([
       "packages/argon2id-wasm/rust/pkg/**",
       // Generated wasm-bindgen output.
       "packages/argon2id/src/argon2-wasm/pkg/**",
-      // Generated output in the docs package (Next.js build + Fumadocs MDX).
-      "packages/docs/.next/**",
-      "packages/docs/.source/**",
+      // Generated output in the docs package (Docusaurus).
+      "packages/docs/.docusaurus/**",
+      "packages/docs/build/**",
       // Re-export shims written by packages/docs/scripts/generate-api-reference.mjs.
       "packages/core/.api-entrypoints/**",
       // Generated Next.js output in the examples.

@@ -1,4 +1,0 @@
-{
-  "title": "Login providers",
-  "pages": ["password", "passkey", "email-password", "oauth", "anonymous"]
-}

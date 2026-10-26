@@ -13,7 +13,6 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -29,7 +28,7 @@ const coreDir = path.resolve(docsDir, "../core");
 // The shims live inside the core package. When they lived outside it,
 // TypeDoc reported no unexported types.
 const shimDir = path.join(coreDir, ".api-entrypoints");
-const outDir = path.join(docsDir, "content/docs/api");
+const outDir = path.join(docsDir, "docs/api");
 
 const pkg = JSON.parse(
   readFileSync(path.join(coreDir, "package.json"), "utf8"),
@@ -118,46 +117,30 @@ function writeShims(entries) {
 }
 
 /**
- * Fumadocs shows every folder with an index page as a collapsible entry, even
- * when nothing else is inside. A module without class or interface pages
- * becomes a plain page instead. Its URL stays the same, because `x/index.md`
- * and `x.md` both map to `/x`.
+ * Docusaurus labels a folder of the sidebar after its name, capitalized. Each
+ * folder gets a `_category_.json` so the label matches the import path, for
+ * example `providers` or `password`, and kind folders read `Classes` and
+ * `Interfaces`. A folder with an `index.md` links to it. Docusaurus shows a
+ * folder that holds nothing else as a plain link.
  */
-function flattenLeafModules(dir) {
+function writeFolderCategories(dir) {
+  const kindTitles = {
+    classes: "Classes",
+    interfaces: "Interfaces",
+    enums: "Enums",
+  };
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const child = path.join(dir, entry.name);
-    flattenLeafModules(child);
-    const contents = readdirSync(child);
-    if (contents.length === 1 && contents[0] === "index.md") {
-      renameSync(path.join(child, "index.md"), `${child}.md`);
-      rmSync(child, { recursive: true });
-    }
-  }
-}
-
-/**
- * Fumadocs titles a folder after its index page. Folders without one, like
- * `providers` or `classes`, get a `meta.json` so the sidebar label matches the
- * import path instead of a capitalized folder name.
- */
-function writeFolderMeta(dir) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const child = path.join(dir, entry.name);
-    if (!existsSync(path.join(child, "index.md"))) {
-      const kindTitles = {
-        classes: "Classes",
-        interfaces: "Interfaces",
-        enums: "Enums",
-      };
-      const title = kindTitles[entry.name] ?? entry.name;
-      writeFileSync(
-        path.join(child, "meta.json"),
-        JSON.stringify({ title }, null, 2) + "\n",
-      );
-    }
-    writeFolderMeta(child);
+    writeFileSync(
+      path.join(child, "_category_.json"),
+      JSON.stringify(
+        { label: kindTitles[entry.name] ?? entry.name, collapsed: true },
+        null,
+        2,
+      ) + "\n",
+    );
+    writeFolderCategories(child);
   }
 }
 
@@ -171,7 +154,7 @@ const app = await Application.bootstrapWithPlugins({
   plugin: [
     "typedoc-plugin-markdown",
     "typedoc-plugin-frontmatter",
-    path.join(docsDir, "scripts/typedoc-fumadocs-plugin.mjs"),
+    path.join(docsDir, "scripts/typedoc-docusaurus-plugin.mjs"),
   ],
   out: outDir,
   cleanOutputDir: true,
@@ -187,6 +170,8 @@ const app = await Application.bootstrapWithPlugins({
   hideBreadcrumbs: true,
   hidePageTitle: true,
   useCodeBlocks: true,
+  // Docusaurus parses `.md` as MDX, thus `<` and `{` in comments must be escaped.
+  sanitizeComments: true,
   parametersFormat: "table",
   interfacePropertiesFormat: "table",
   classPropertiesFormat: "table",
@@ -206,9 +191,12 @@ if (!project) {
 app.validate(project);
 await app.generateOutputs(project);
 writeFileSync(
-  path.join(outDir, "meta.json"),
-  JSON.stringify({ title: "API reference", root: false }, null, 2) + "\n",
+  path.join(outDir, "_category_.json"),
+  JSON.stringify(
+    { label: "API reference", position: 6, collapsed: true },
+    null,
+    2,
+  ) + "\n",
 );
-flattenLeafModules(outDir);
-writeFolderMeta(outDir);
+writeFolderCategories(outDir);
 console.log(`Wrote ${outDir}`);
