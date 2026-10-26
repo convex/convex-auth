@@ -88,6 +88,13 @@
       "types": "./dist/ssr/nextjs/index.d.ts",
       "default": "./dist/ssr/nextjs/index.js"
     },
+    "./ssr/nextjs/client": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/ssr/nextjs/client.d.ts"
+      },
+      "types": "./dist/ssr/nextjs/client.d.ts",
+      "default": "./dist/ssr/nextjs/client.js"
+    },
     "./convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/component/convex.config.d.ts"

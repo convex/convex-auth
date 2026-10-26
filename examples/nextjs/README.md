@@ -25,7 +25,10 @@ anonymous: the refresh token is minted straight into an httpOnly cookie and
   `setupConvexAuthNextjs`: the proxy (up-front refresh + redirects, mounted in
   `proxy.ts`), the Server-Component token accessor
   `convexAuthNextjsAccessToken`, and `ConvexAuthNextjsServerProvider`
-  (hydrates the client from the cookie).
+  (reads the access token from the cookie for the client provider).
+- **`app/ConvexClientProvider.tsx`** owns the `ConvexReactClient` and wraps it
+  in `ConvexAuthNextjsProvider` from `@convex-dev/auth/ssr/nextjs/client`,
+  nested inside `ConvexAuthNextjsServerProvider` in `app/layout.tsx`.
 - **`app/signin/page.tsx` / `app/signup/page.tsx`** use the password provider's
   own `useSignInWithPassword` / `useSignUpWithPassword` from
   `@convex-dev/auth/methods/username-password/react`, the same hooks a SPA uses. The
