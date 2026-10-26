@@ -5,8 +5,7 @@ exists as an example of wiring the auth system to an application and for unit
 testing the auth system.
 
 The auth system owns sessions, providers, accounts, and JWT minting;
-`convex/users.ts` owns the app side (the `upsertFromAuth` callback and a
-`loggedInUser` query). Providers from the auth system expose sign in methods.
+`convex/users.ts` owns the app side (the `createUser` callback). Providers from the auth system expose sign in methods.
 
 ## Generate code / run
 
