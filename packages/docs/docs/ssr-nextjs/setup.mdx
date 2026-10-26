@@ -4,8 +4,8 @@ title: Setting up Next.js
 description: Use Convex Auth with server-side rendering in a Next.js App Router app.
 ---
 
-import { Step, Steps } from "@site/src/components/Steps";
-import { Cards } from "@site/src/components/Cards";
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 Convex Auth supports server-side rendering (SSR) with the Next.js App Router.
 In an SSR app, sign-in, refresh, and sign-out run on your Next.js server rather
@@ -29,28 +29,21 @@ which supports username + password, anonymous, and GitHub sign-in.
 
 ## Setting up Convex Auth in a Next.js app
 
-<Steps>
+<StepByStep>
 
-<Step>
-
-### Follow the “Getting Started” guide
+<Step title="Follow the “Getting Started” guide">
 
 Start from a Next.js App Router project. Then install Convex Auth and run its
-setup command as described in the [Getting Started](../getting-started.mdx) guide:
+setup command as described in the [Getting Started](../getting-started.mdx) guide.
 
-<Cards>
-
-- [Getting Started](../getting-started.mdx)
-
-  Installing dependencies + initial set up.
-
-</Cards>
+```sh
+npm i @convex-dev/auth@beta
+npx @convex-dev/auth
+```
 
 </Step>
 
-<Step>
-
-### Set up the backend for your login providers
+<Step title="Set up the backend for your login providers">
 
 Follow the backend steps of the guide for each login provider you want to use:
 install the components, add the `users` table, set up user creation, and export
@@ -58,8 +51,9 @@ the public functions from `convex/auth.ts`.
 
 :::info
 
-Don't follow the frontend steps (“Set up the provider on the client” and “Set
-up the authentication UI”). The rest of this guide replaces them.
+Don't follow the frontend steps (“Set up the provider on the client” and the
+steps that set up the authentication UI). The rest of this guide replaces
+them.
 
 :::
 
@@ -74,9 +68,7 @@ a cookie only because it can decode it.
 
 </Step>
 
-<Step>
-
-### Set up the auth route handlers
+<Step title="Set up the auth route handlers">
 
 Create `src/lib/serverAuth.ts` and call `setupConvexAuthServer`. It returns the
 handlers that sign users in, refresh the session, and sign them out.
@@ -91,28 +83,39 @@ each provider needs.
 
 ```
 
-Then mount each handler as a route under `app/auth/`:
+</Step>
 
-```ts file="examples/nextjs/app/auth/signin/route.ts" title="app/auth/signin/route.ts"
+<Step title="Mount the auth routes">
 
-```
+Mount each handler as a route under `app/auth/`. The client posts to
+`/auth/signin`, `/auth/refresh`, and `/auth/signout`, so mount the handlers at
+exactly these paths.
 
-```ts file="examples/nextjs/app/auth/refresh/route.ts" title="app/auth/refresh/route.ts"
+{/* prettier-ignore-start */}
 
-```
+<Tabs>
+  <TabItem value="signin" label="signin">
+    ```ts file="examples/nextjs/app/auth/signin/route.ts" title="app/auth/signin/route.ts"
 
-```ts file="examples/nextjs/app/auth/signout/route.ts" title="app/auth/signout/route.ts"
+    ```
+  </TabItem>
+  <TabItem value="refresh" label="refresh">
+    ```ts file="examples/nextjs/app/auth/refresh/route.ts" title="app/auth/refresh/route.ts"
 
-```
+    ```
+  </TabItem>
+  <TabItem value="signout" label="signout">
+    ```ts file="examples/nextjs/app/auth/signout/route.ts" title="app/auth/signout/route.ts"
 
-The client posts to `/auth/signin`, `/auth/refresh`, and `/auth/signout`, so
-mount the handlers at exactly these paths.
+    ```
+  </TabItem>
+</Tabs>
+
+{/* prettier-ignore-end */}
 
 </Step>
 
-<Step>
-
-### Set up the Next.js helpers
+<Step title="Set up the Next.js helpers">
 
 Create `src/lib/convexAuth.tsx` and call `setupConvexAuthNextjs`. It returns
 the parts of the integration that are specific to Next.js:
@@ -129,18 +132,12 @@ the parts of the integration that are specific to Next.js:
 
 </Step>
 
-<Step>
-
-### Set up the proxy
+<Step title="Set up the proxy">
 
 Create `proxy.ts` at the root of your app. The proxy runs before each page
 request. It refreshes the session if the access token is about to expire, so
 Server Components always see a current token. It also lets you redirect
 requests based on whether the user is signed in.
-
-```ts file="examples/nextjs/proxy.ts" title="proxy.ts"
-
-```
 
 :::warning
 
@@ -149,11 +146,13 @@ cookies.
 
 :::
 
+```ts file="examples/nextjs/proxy.ts" title="proxy.ts"
+
+```
+
 </Step>
 
-<Step>
-
-### Set up the provider
+<Step title="Set up the provider">
 
 Wrap your app in `ConvexAuthNextjsServerProvider` in the root layout. It is a
 Server Component that reads the access token from the cookie and renders the
@@ -167,45 +166,41 @@ authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
 
 </Step>
 
-<Step>
-
-### Render authenticated data on the server
+<Step title="Render authenticated data on the server">
 
 In a Server Component, get the access token with `convexAuthNextjsAccessToken`
 and pass it to `preloadQuery` from `convex/nextjs`. The page renders with the
 signed-in user's data, and the client continues the query live with
-`usePreloadedQuery`:
-
-```tsx file="examples/nextjs/app/page.tsx" title="app/page.tsx" highlight="const token = await convexAuthNextjsAccessToken();" highlight="{ token: token ?? undefined },"
-
-```
+`usePreloadedQuery`.
 
 To decide on the server whether the user is signed in, use
 `isAuthenticatedNextjs()` and not the presence of a token.
 `convexAuthNextjsAccessToken` only checks that the token hasn't expired.
 `isAuthenticatedNextjs` checks the token's signature with your deployment.
 
+```tsx file="examples/nextjs/app/page.tsx" title="app/page.tsx" highlight="const token = await convexAuthNextjsAccessToken();" highlight="{ token: token ?? undefined },"
+
+```
+
 </Step>
 
-<Step>
-
-### Use Convex Auth in Client Components
+<Step title="Use Convex Auth in Client Components">
 
 Import `useAuthActions` and `useAuthToken` from `@convex-dev/auth/react`, the
 same as in a single-page app. Import `useConvexAuth` and the `Authenticated`,
 `Unauthenticated`, and `AuthLoading` components from `convex/react`. After you call `signOut`, navigate away from the page so the
-proxy can apply your redirects:
+proxy can apply your redirects.
+
+For your sign-in and sign-up pages, use the login provider's own hooks. See
+[Login providers with Next.js](./login-providers.mdx).
 
 ```tsx file="examples/nextjs/app/Dashboard.tsx" title="app/Dashboard.tsx" highlight="import { useAuthActions, useAuthToken }" highlight="await signOut();"
 
 ```
 
-For your sign-in and sign-up pages, use the login provider's own hooks. See
-[Login providers with Next.js](./login-providers.mdx).
-
 </Step>
 
-</Steps>
+</StepByStep>
 
 ## Deploying
 

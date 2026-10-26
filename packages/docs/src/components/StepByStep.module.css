@@ -1,0 +1,66 @@
+/* Infima styles Markdown lists with boosted specificity (`:not(#\#)`), thus
+   the list spacing below needs `!important`. */
+.steps {
+  counter-reset: step;
+  margin: 0 0 2rem 1rem !important;
+  padding-left: 1.75rem !important;
+  border-left: 1px solid var(--ifm-color-emphasis-300);
+  list-style: none;
+}
+
+.step {
+  counter-increment: step;
+  position: relative;
+  margin: 0 0 2rem !important;
+}
+
+.step::before {
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: calc(-1.75rem - 1rem);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: var(--ifm-font-weight-semibold);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.title {
+  margin-bottom: 0.75rem;
+  font-weight: var(--ifm-font-weight-bold);
+  line-height: 2rem;
+}
+
+.columns code {
+  overflow-x: auto;
+}
+
+/* The layout of docs.convex.dev: the list widens over the table of contents,
+   and each step shows its last child on the right of the others. */
+@media (min-width: 997px) {
+  .steps {
+    width: calc(
+      min(var(--ifm-container-width-xl), 100vw - var(--doc-sidebar-width)) - 4 *
+        1rem - 1rem
+    );
+    z-index: 100;
+    position: relative;
+    background: var(--ifm-background-color);
+    box-shadow: var(--ifm-background-color) 0 0 10px 10px;
+    /* Keeps the table of contents from showing on top while scrolling in
+       Safari. */
+    transform: translate3d(0, 0, 0);
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 20px;
+  }
+}

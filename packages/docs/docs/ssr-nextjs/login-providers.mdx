@@ -12,8 +12,9 @@ have already followed [Setting up Next.js](./setup.mdx).
 
 - **The backend.** Installing the components, the `users` table, the user
   creation callbacks, and the functions you export from `convex/auth.ts` are
-  the same. Also export `isAuthenticated` from the core (see
-  [Set up the backend](./setup.mdx#set-up-the-backend-for-your-login-providers)).
+  the same. Also export `isAuthenticated` from the core (see the
+  “Set up the backend for your login providers” step of
+  [Setting up Next.js](./setup.mdx)).
 - **The provider hooks.** Your sign-in and sign-up pages call the same hooks
   as in a single-page app, like `useSignInWithUsernamePassword` from
   `@convex-dev/auth/methods/username-password/react` or `useSignInAnonymously` from
@@ -29,8 +30,8 @@ have already followed [Setting up Next.js](./setup.mdx).
 ### Skip “Set up the provider on the client”
 
 Don't wrap your app in `ConvexAuthProvider`. Use
-`ConvexAuthNextjsServerProvider` in your root layout instead (see
-[Set up the provider](./setup.mdx#set-up-the-provider)).
+`ConvexAuthNextjsServerProvider` in your root layout instead (see the
+“Set up the provider” step of [Setting up Next.js](./setup.mdx)).
 
 ### Add the sign-in functions to the `signIn` list
 

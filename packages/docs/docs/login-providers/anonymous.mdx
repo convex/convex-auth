@@ -4,36 +4,27 @@ title: Anonymous
 description: Sign users in without any credentials.
 ---
 
-import { Step, Steps } from "@site/src/components/Steps";
-import { Cards } from "@site/src/components/Cards";
-
 The anonymous provider signs a user in without asking for any credentials. It's
 useful for letting people try your app before they commit to creating an
 account.
 
 ## Setting up anonymous login in your app
 
-<Steps>
+<StepByStep>
 
-<Step>
+<Step title="Follow the “Getting Started” guide">
 
-### Follow the “Getting Started” guide
+First, install Convex Auth and run its setup command as described in the
+[Getting Started](../getting-started.mdx) guide.
 
-First, follow the [Getting Started](../getting-started.mdx) guide:
-
-<Cards>
-
-- [Getting Started](../getting-started.mdx)
-
-  Installing dependencies + initial set up.
-
-</Cards>
+```sh
+npm i @convex-dev/auth@beta
+npx @convex-dev/auth
+```
 
 </Step>
 
-<Step>
-
-### Install the component
+<Step title="Install the component">
 
 Register the anonymous component alongside the core in `convex/convex.config.ts`:
 
@@ -43,9 +34,7 @@ Register the anonymous component alongside the core in `convex/convex.config.ts`
 
 </Step>
 
-<Step>
-
-### Add a `users` table to the schema
+<Step title={<>Add a <code>users</code> table to the schema</>}>
 
 Add an empty `users` table to your schema in `convex/schema.ts`.
 
@@ -57,9 +46,7 @@ Convex Auth will create a row for each account. You can also add application-spe
 
 </Step>
 
-<Step>
-
-### Set up user creation
+<Step title="Set up user creation">
 
 Write a `createUser` mutation that creates a row in your `users` table and
 returns its id. The provider calls it for every anonymous sign-in, since each
@@ -71,9 +58,7 @@ one establishes a new account.
 
 </Step>
 
-<Step>
-
-### Set up the public backend functions
+<Step title="Set up the public backend functions">
 
 Set up the anonymous provider with `setupAnonymous` and export the sign-in
 mutation it hands back once you attach the callback that creates your user
@@ -85,9 +70,7 @@ rows, in `convex/auth.ts`:
 
 </Step>
 
-<Step>
-
-### Set up the provider on the client
+<Step title="Set up the provider on the client">
 
 Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
 `signOut` actions in `src/main.tsx`:
@@ -98,9 +81,7 @@ Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
 
 </Step>
 
-<Step>
-
-### Set up the authentication UI
+<Step title="Set up the authentication UI">
 
 Call `useSignInAnonymously` with `api.auth` and invoke the `signIn` function it returns:
 
@@ -112,4 +93,4 @@ Call `useSignInAnonymously` with `api.auth` and invoke the `signIn` function it 
 
 </Step>
 
-</Steps>
+</StepByStep>
