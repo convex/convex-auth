@@ -3,14 +3,12 @@
  *
  * They give each message the same shape: a bold section title, then indented
  * lines that start with a status symbol. The libraries are the ones the other
- * Convex command-line tools use: `chalk` for color, `ora` for the spinner shown
- * while a slow step runs, and `@babel/code-frame` to print TypeScript with line
- * numbers and syntax colors.
+ * Convex command-line tools use: `chalk` for color and `@babel/code-frame` to
+ * print TypeScript with line numbers and syntax colors.
  */
 
 import { codeFrameColumns, highlight } from "@babel/code-frame";
 import chalk from "chalk";
-import ora from "ora";
 
 /**
  * True if the output can show colors. `chalk` decides this from the terminal and
@@ -135,17 +133,4 @@ export function errorFrame(source: string, offset: number, message: string) {
       { highlightCode: colorEnabled(), message },
     ),
   );
-}
-
-/** A step in progress. `stop()` erases it; the caller then prints the result. */
-export type Spinner = { stop: () => void };
-
-/**
- * Show a spinner on stderr while a slow step runs, which keeps the report on
- * stdout clean. On a stream that is not a terminal, `ora` prints the text once
- * and animates nothing.
- */
-export function startSpinner(text: string): Spinner {
-  const spinner = ora({ text, stream: process.stderr }).start();
-  return { stop: () => spinner.stop() };
 }

@@ -6,9 +6,9 @@ export default {
     {
       type: "customJwt",
       applicationID: "convex",
-      issuer: env.CONVEX_SITE_URL,
-      jwks: `${env.CONVEX_SITE_URL}/auth/.well-known/jwks.json`,
-      algorithm: "RS256",
+      issuer: `${env.CONVEX_CLOUD_URL}/components/auth`,
+      jwks: `${env.CONVEX_CLOUD_URL}/.well-known/jwks.json`,
+      algorithm: "ES256",
     },
   ],
 } satisfies AuthConfig;

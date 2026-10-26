@@ -5,20 +5,12 @@ import google from "@convex-dev/auth/components/google/convex.config.js";
 
 const app = defineApp({
   env: {
-    AUTH_PRIVATE_KEY: v.string(),
-    AUTH_JWKS: v.string(),
     AUTH_GOOGLE_CLIENT_ID: v.string(),
     AUTH_GOOGLE_CLIENT_SECRET: v.string(),
   },
 });
 
-app.use(auth, {
-  httpPrefix: "/auth",
-  env: {
-    AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
-    AUTH_JWKS: app.env.AUTH_JWKS,
-  },
-});
+app.use(auth);
 
 // The `httpPrefix` below controls where the component's `callback` route is
 // mounted. That gets combined with the `CONVEX_SITE_URL` to form the full

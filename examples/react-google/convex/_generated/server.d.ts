@@ -32,8 +32,6 @@ type Env = {
   readonly CONVEX_SITE_URL: string;
   readonly AUTH_GOOGLE_CLIENT_ID: string;
   readonly AUTH_GOOGLE_CLIENT_SECRET: string;
-  readonly AUTH_JWKS: string;
-  readonly AUTH_PRIVATE_KEY: string;
 };
 
 /**

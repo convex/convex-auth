@@ -48,7 +48,6 @@ anonymous: the refresh token is minted straight into an httpOnly cookie and
 ```sh
 cd examples/nextjs
 npx convex dev --once   # provisions a deployment, generates convex/_generated
-npx @convex-dev/auth    # sets AUTH_PRIVATE_KEY + AUTH_JWKS on the deployment
 npm run dev             # runs Convex and next dev together
 ```
 

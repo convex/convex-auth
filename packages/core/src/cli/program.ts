@@ -5,43 +5,33 @@
  *   1. Confirms `@convex-dev/auth` is a dependency of the project in the current
  *      directory. If it isn't, it crashes with the exact install command for the
  *      detected package manager (it does NOT install anything itself).
- *   2. Generates an RS256 key pair and sets the AUTH_PRIVATE_KEY / AUTH_JWKS env
- *      vars on the Convex deployment (idempotent; `--force` rotates them).
- *   3. Scaffolds `convex/auth.config.ts`, `convex/convex.config.ts` and
+ *   2. Scaffolds `convex/auth.config.ts`, `convex/convex.config.ts` and
  *      `convex/auth.ts`. Existing files are left untouched — the CLI instead
  *      prints the content the file should contain.
  *
+ * There is no signing material to set up: access tokens are signed with the
+ * deployment's own key (`ctx.auth.signJwt`), and the public keys are served by
+ * the deployment at `${CONVEX_CLOUD_URL}/.well-known/jwks.json`.
+ *
  * The command's behavior is expressed as a set of injectable dependencies (see
  * `defaultDeps`) so it can be driven end-to-end in unit tests with the file
- * system, key generation, and Convex env access all stubbed out.
+ * system all stubbed out.
  */
 
-// TODO(nicolas) This is a rough draft. Ideally, we simplify the setup process
-// (e.g. by skipping the need for a key pair generation + simplyfying the API)
-// so that users don’t need to rely on this.
-
 import { Command } from "commander";
-import { generateKeyPair, exportPKCS8, exportJWK } from "jose";
-import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import chalk from "chalk";
 import {
   codeBlock,
   command as commandLine,
-  detail,
   errorFrame,
   heading,
   item,
   pad,
-  startSpinner,
   step,
   symbols,
-  type Spinner,
 } from "./output.ts";
-
-const ALG = "RS256";
 
 /** The package the generated `convex.config.ts` / `auth.ts` import from. */
 const AUTH_PACKAGE = "@convex-dev/auth";
@@ -63,31 +53,19 @@ export default {
     {
       type: "customJwt",
       applicationID: "convex",
-      issuer: env.CONVEX_SITE_URL,
-      jwks: \`\${env.CONVEX_SITE_URL}/auth/.well-known/jwks.json\`,
-      algorithm: "RS256",
+      issuer: \`\${env.CONVEX_CLOUD_URL}/components/auth\`,
+      jwks: \`\${env.CONVEX_CLOUD_URL}/.well-known/jwks.json\`,
+      algorithm: "ES256",
     },
   ],
 } satisfies AuthConfig;
 `,
   "convex.config.ts": `import { defineApp } from "convex/server";
-import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
 
-const app = defineApp({
-  env: {
-    AUTH_PRIVATE_KEY: v.string(),
-    AUTH_JWKS: v.string(),
-  },
-});
+const app = defineApp();
 
-app.use(auth, {
-  httpPrefix: "/auth",
-  env: {
-    AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
-    AUTH_JWKS: app.env.AUTH_JWKS,
-  },
-});
+app.use(auth);
 // TODO Add auth providers
 
 export default app;
@@ -110,11 +88,6 @@ export const { signOut, refreshSession, isAuthenticated } = auth;
 /** The install command for a given package manager. */
 type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
-type AuthKeys = {
-  authPrivateKey: string;
-  authJwks: string;
-};
-
 type PackageJson = {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -130,11 +103,6 @@ export type InitDeps = {
   };
   log: (message: string) => void;
   warn: (message: string) => void;
-  /** Show progress while a slow step runs. Erased before the result prints. */
-  spinner: (text: string) => Spinner;
-  generateKeys: () => Promise<AuthKeys>;
-  getEnv: (key: string) => string | null;
-  setEnv: (key: string, value: string) => void;
   detectPackageManager: (dir: string) => string;
 };
 
@@ -174,55 +142,6 @@ export function detectPackageManager(
   return "npm";
 }
 
-/** Generate a fresh RS256 key pair as base64 PKCS8 + a JWKS JSON string. */
-async function generateAuthKeys() {
-  const { publicKey, privateKey } = await generateKeyPair(ALG, {
-    extractable: true,
-  });
-  const privatePem = await exportPKCS8(privateKey);
-  const pubJwk = await exportJWK(publicKey);
-  const kid = randomUUID();
-
-  return {
-    authPrivateKey: Buffer.from(privatePem).toString("base64"),
-    authJwks: JSON.stringify({
-      keys: [{ ...pubJwk, kid, alg: ALG, use: "sig" }],
-    }),
-  };
-}
-
-/** Read an env var off the current directory's Convex deployment. */
-function getConvexEnv(key: string) {
-  const result = spawnSync("npx", ["convex", "env", "get", key], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-  });
-  if (result.status !== 0) return null;
-  const value = (result.stdout ?? "").trim();
-  return value.length > 0 ? value : null;
-}
-
-/**
- * Set an env var on the current directory's Convex deployment.
- *
- * The output of the Convex CLI is captured, not printed: it echoes the value it
- * sets, and one of the values here is the private signing key. If the command
- * fails, its stderr goes into the error message.
- */
-function setConvexEnv(key: string, value: string) {
-  const result = spawnSync("npx", ["convex", "env", "set", key, value], {
-    cwd: process.cwd(),
-    encoding: "utf8",
-  });
-  if (result.status !== 0) {
-    const reason = (result.stderr ?? "").trim();
-    throw new Error(
-      `Could not set ${key} on the Convex deployment.` +
-        (reason.length > 0 ? `\n\n${indent(reason)}` : ""),
-    );
-  }
-}
-
 /** The real implementations, injected into `runInit` (overridden in tests). */
 export function defaultDeps(): InitDeps {
   return {
@@ -235,10 +154,6 @@ export function defaultDeps(): InitDeps {
     },
     log: (message) => console.log(message),
     warn: (message) => console.warn(message),
-    spinner: startSpinner,
-    generateKeys: generateAuthKeys,
-    getEnv: getConvexEnv,
-    setEnv: setConvexEnv,
     detectPackageManager,
   };
 }
@@ -272,38 +187,8 @@ function indent(text: string) {
     .join("\n");
 }
 
-/** What happened to the signing keys on the deployment. */
-type KeyOutcome = "kept" | "written";
-
 /** What happened to one scaffolded file. */
 type FileOutcome = { name: string; status: "created" | "exists" };
-
-/**
- * Make sure the signing keys exist on the deployment (idempotent). It returns
- * what it did; the caller prints the result.
- */
-async function ensureAuthKeys(
-  deps: InitDeps,
-  force: boolean,
-): Promise<KeyOutcome> {
-  const reading = deps.spinner("Reading the deployment environment…");
-  const isSet = deps.getEnv("AUTH_PRIVATE_KEY") && deps.getEnv("AUTH_JWKS");
-  reading.stop();
-  if (!force && isSet) return "kept";
-
-  const generating = deps.spinner("Generating an RS256 key pair…");
-  const { authPrivateKey, authJwks } = await deps.generateKeys();
-  generating.stop();
-
-  const setting = deps.spinner("Setting the keys on the Convex deployment…");
-  try {
-    deps.setEnv("AUTH_PRIVATE_KEY", authPrivateKey);
-    deps.setEnv("AUTH_JWKS", authJwks);
-  } finally {
-    setting.stop();
-  }
-  return "written";
-}
 
 /**
  * Write each scaffolded file into `convex/`, and create that directory if it is
@@ -324,29 +209,6 @@ function writeAuthFiles(deps: InitDeps, dir: string): FileOutcome[] {
     deps.fs.writeFileSync(filePath, content);
     return { name, status: "created" as const };
   });
-}
-
-function reportKeys(deps: InitDeps, outcome: KeyOutcome) {
-  deps.log(heading("Signing keys"));
-  if (outcome === "kept") {
-    deps.log(
-      item(
-        symbols.pending,
-        "AUTH_PRIVATE_KEY and AUTH_JWKS are already set — left unchanged",
-      ),
-    );
-    deps.log(detail("Pass --force to rotate the signing key."));
-    return;
-  }
-  deps.log(
-    item(symbols.done, "Generated an RS256 key pair for the auth JWT tokens"),
-  );
-  deps.log(
-    item(
-      symbols.done,
-      "Set AUTH_PRIVATE_KEY and AUTH_JWKS on the Convex deployment",
-    ),
-  );
 }
 
 /**
@@ -390,11 +252,7 @@ function reportNextSteps(deps: InitDeps) {
  * reported via `command.error`, which prints to stderr and exits (or throws a
  * `CommanderError` when the command has `exitOverride` set, as in tests).
  */
-async function runInit(
-  deps: InitDeps,
-  options: { force?: boolean },
-  command: Command,
-) {
+async function runInit(deps: InitDeps, command: Command) {
   const dir = deps.cwd();
   const pkgPath = join(dir, "package.json");
 
@@ -429,9 +287,6 @@ async function runInit(
 
   deps.log(`${chalk.bold("Convex Auth")} ${chalk.dim(`setup in ${dir}`)}`);
 
-  const keyOutcome = await ensureAuthKeys(deps, options.force ?? false);
-  reportKeys(deps, keyOutcome);
-
   reportFiles(deps, writeAuthFiles(deps, dir));
   reportNextSteps(deps);
 }
@@ -442,17 +297,15 @@ export function createProgram(deps: InitDeps = defaultDeps()) {
   program
     .name("@convex-dev/auth")
     .description(
-      "Set up Convex Auth in this project: put the signing keys on the " +
-        "Convex deployment, and scaffold the convex/ files.",
+      "Set up Convex Auth in this project: scaffold the convex/ files.",
     )
-    .option("--force", "Regenerate the auth signing keys even if already set")
     // Mark every failure with the same symbol, both ours (`command.error`) and
     // the ones commander itself writes, which start with "error: ".
     .configureOutput({
       outputError: (text, write) =>
         write(`${symbols.failed} ${text.replace(/^error: /, "")}`),
     })
-    .action((options, command) => runInit(deps, options, command));
+    .action((_options, command) => runInit(deps, command));
   return program;
 }
 
