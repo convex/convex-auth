@@ -9,7 +9,9 @@
   --ifm-color-primary-lighter: #a22c88;
   --ifm-color-primary-lightest: #b73199;
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+  /* The Docusaurus build boosts the specificity of its default (a dark gray,
+     even in light mode), thus the `!important`. */
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08) !important;
 }
 
 [data-theme="dark"] {
@@ -20,7 +22,7 @@
   --ifm-color-primary-light: #ecb1df;
   --ifm-color-primary-lighter: #f0bee5;
   --ifm-color-primary-lightest: #f8e0f3;
-  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.12);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.12) !important;
 }
 
 [data-theme="dark"] div[class^="announcementBar_"] {
