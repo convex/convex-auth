@@ -151,7 +151,7 @@ export function useSignInWithUsernamePassword(api: {
   const { run, pending } = usePasswordFlow(signInMutation);
   return {
     /**
-     * Passes up the given crendentials to perform a username/password sign in.
+     * Passes up the given credentials to perform a username/password sign in.
      *
      * Returns an object with a `status` field.
      *
@@ -201,7 +201,7 @@ export function useSignUpWithUsernamePassword(api: {
   const { run, pending } = usePasswordFlow(signUpMutation);
   return {
     /**
-     * Passes up the given crendentials to perform a username/password sign up.
+     * Passes up the given credentials to perform a username/password sign up.
      *
      * Returns an object with a `status` field.
      *
