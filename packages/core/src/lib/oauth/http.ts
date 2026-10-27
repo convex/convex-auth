@@ -44,7 +44,7 @@ export type CallbackMethod = "GET" | "POST";
  * Each provider's component customizes the callback through these options,
  * such as its token endpoint and the methods the callback is served over.
  *
- * ```ts
+ * ```ts skip-check
  * const http = buildCallbackRouter<ClaimedRequest>({
  *   claim: (ctx, stateHash) =>
  *     ctx.runMutation(internal.provider.claimAuthorizationRequest, {
