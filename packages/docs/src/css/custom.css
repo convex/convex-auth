@@ -31,3 +31,16 @@
 div[class^="announcementBar_"] a {
   text-decoration: underline;
 }
+
+/* Lets the `StepByStep` list widen over the table of contents, as on
+   docs.convex.dev. */
+main .container .col[class*="docItemCol"] {
+  z-index: 50;
+}
+
+/* Aligns the content with the sidebar instead of centering it on wide
+   screens. Infima styles `.container` with boosted specificity
+   (`:not(#\#)`), thus the `!important`. */
+main > .container {
+  margin-left: 0 !important;
+}

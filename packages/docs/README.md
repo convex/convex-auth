@@ -21,8 +21,11 @@ of a directory with its `_category_.json`.
   one is broken.
 - Use admonitions (`:::warning`, `:::info`) for callouts, and `@theme/Tabs`
   for tabs.
-- `<Steps>`/`<Step>` and `<Cards>` live in `src/components/`; see each file
-  for usage.
+- `<StepByStep>`/`<Step title="…">` and `<DocCardList items={[…]} />` have
+  the names and props of the components of https://docs.convex.dev, and like
+  there, every page has them without an import (`src/theme/MDXComponents.tsx`).
+  See `src/components/` for usage. A `DocCardList` item links by URL and
+  `docId`, not by file, thus moving the docs means updating those.
 - Include code from the examples with an empty code block whose `file`
   names a file relative to the repository root. `highlight` picks lines by
   their content; see `src/codeInclude.mjs`:

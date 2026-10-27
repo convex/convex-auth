@@ -4,9 +4,6 @@ title: Passkey
 description: Sign users in with a username and a passkey.
 ---
 
-import { Step, Steps } from "@site/src/components/Steps";
-import { Cards } from "@site/src/components/Cards";
-
 The passkey component lets you implement passkey-based login.
 
 A passkey replaces the password with a key pair that stays on the user's device:
@@ -21,27 +18,21 @@ account.
 
 ## Setting up username + passkey login in your app
 
-<Steps>
+<StepByStep>
 
-<Step>
+<Step title="Follow the “Getting Started” guide">
 
-### Follow the “Getting Started” guide
+First, install Convex Auth and run its setup command as described in the
+[Getting Started](../getting-started.mdx) guide.
 
-First, follow the [Getting Started](../getting-started.mdx) guide:
-
-<Cards>
-
-- [Getting Started](../getting-started.mdx)
-
-  Installing dependencies + initial set up.
-
-</Cards>
+```sh
+npm i @convex-dev/auth@beta
+npx @convex-dev/auth
+```
 
 </Step>
 
-<Step>
-
-### Install the components
+<Step title="Install the components">
 
 Register the passkey component and the username component alongside the core
 in `convex/convex.config.ts`. The username component stores which user each
@@ -53,9 +44,7 @@ username identifies:
 
 </Step>
 
-<Step>
-
-### Add a `users` table to the schema
+<Step title={<>Add a <code>users</code> table to the schema</>}>
 
 Add an empty `users` table to your schema in `convex/schema.ts`. The username
 component keeps the username, so the table does not need a field for it.
@@ -68,9 +57,7 @@ Convex Auth will create a row for each account. You can also add application-spe
 
 </Step>
 
-<Step>
-
-### Set up user creation
+<Step title="Set up user creation">
 
 Write a `createUser` mutation that creates a row in your `users` table and
 returns its id. The provider calls it the first time it sees an account.
@@ -86,17 +73,11 @@ what is true at creation time. Leave it out if there is nothing to do.
 
 </Step>
 
-<Step>
-
-### Set up the public backend functions
+<Step title="Set up the public backend functions">
 
 Set up the passkey provider with `setupUsernamePasskey` and export the
 mutations it hands back once you attach the callback that creates your user
-rows, in `convex/auth.ts`:
-
-```ts file="examples/react-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });"
-
-```
+rows, in `convex/auth.ts`.
 
 `rpId` and `origin` bind the passkeys to your app:
 
@@ -116,11 +97,13 @@ the production domain before you deploy.
 
 :::
 
+```ts file="examples/react-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });"
+
+```
+
 </Step>
 
-<Step>
-
-### Set up the provider on the client
+<Step title="Set up the provider on the client">
 
 Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
 `signOut` mutations in `src/main.tsx`:
@@ -131,9 +114,7 @@ Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
 
 </Step>
 
-<Step>
-
-### Set up the authentication UI
+<Step title="Set up the authentication UI">
 
 In your front-end, set up a route for logging in. Because the flow is
 identifier-first, the same page and the same field serve account creation and
@@ -159,7 +140,7 @@ Copy the following code block inside of your app:
 
 </Step>
 
-</Steps>
+</StepByStep>
 
 ## Going further
 
@@ -167,11 +148,9 @@ Copy the following code block inside of your app:
 
 When your app supports passkeys, it is highly recommended to allow users to add multiple passkeys. This is especially useful for users who use multiple devices, or hardware authenticators.
 
-<Steps>
+<StepByStep>
 
-<Step>
-
-#### Make sure the Convex functions for passkey managements are exposed
+<Step title="Make sure the Convex functions for passkey managements are exposed">
 
 In `convex/auth.ts`, make sure the following functions are exported:
 `listPasskeys`, `renamePasskey`, `startAddPasskey`, `verifyAddPasskey`,
@@ -183,9 +162,7 @@ In `convex/auth.ts`, make sure the following functions are exported:
 
 </Step>
 
-<Step>
-
-#### Build the passkey management page
+<Step title="Build the passkey management page">
 
 In your app’s settings page, add the UI code for adding, renaming, and removing passkeys. This code uses the `useAddPasskey` and `useRemovePasskey` hooks provided by Convex Auth, and the `renamePasskey` mutation.
 
@@ -197,4 +174,4 @@ We recommend copying the following component into your app, adapting it to your 
 
 </Step>
 
-</Steps>
+</StepByStep>

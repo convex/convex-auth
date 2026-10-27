@@ -6,18 +6,21 @@ description: Set up Convex Auth in your project.
 
 import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
-import { Step, Steps } from "@site/src/components/Steps";
-import { Cards } from "@site/src/components/Cards";
 
-Every project using Convex Auth follows these steps.
+Every project using Convex Auth starts with these steps.
 
-<Steps>
+<StepByStep>
 
-<Step>
+<Step title="Install Convex Auth">
 
-### Install Convex Auth
+Add the Convex Auth package to your project.
 
-Add the Convex Auth package to your project:
+:::warning
+
+Convex Auth v2 is still in development. This installs the latest development
+build from NPM.
+
+:::
 
 {/* prettier-ignore-start */}
 
@@ -46,26 +49,11 @@ Add the Convex Auth package to your project:
 
 {/* prettier-ignore-end */}
 
-:::warning
-
-Convex Auth v2 is still in development. This installs the latest development
-build from NPM.
-
-:::
-
 </Step>
 
-<Step>
+<Step title="Run the setup command">
 
-### Run the setup command
-
-Run the Convex Auth CLI to configure your project.
-
-```sh
-npx @convex-dev/auth
-```
-
-This command:
+Run the Convex Auth CLI to configure your project. This command:
 
 - Verifies you have `@convex-dev/auth` installed.
 - Initializes the following files in `convex/`: `auth.config.ts`, `convex.config.ts`, `auth.ts`.
@@ -73,38 +61,49 @@ This command:
 Access tokens are signed with your deployment's own key, so there are no
 secrets to configure.
 
+```sh
+npx @convex-dev/auth
+```
+
 </Step>
 
-<Step>
+</StepByStep>
 
-### Install a login provider
+## Install a login provider
 
 Pick a login method and follow its guide to wire it up:
 
-<Cards>
-
-- [Username + Password](./login-providers/password.mdx)
-
-  Sign users in with a username and a password.
-
-- [Username + Passkey](./login-providers/passkey.mdx)
-
-  Sign users in with a username and a passkey.
-
-- [Email + Password](./login-providers/email-password.mdx)
-
-  Sign users in with an email address and a password.
-
-- [OAuth](./login-providers/oauth.mdx)
-
-  Sign users in with Apple, Google, or GitHub.
-
-- [Anonymous](./login-providers/anonymous.mdx)
-
-  Sign users in without any credentials.
-
-</Cards>
-
-</Step>
-
-</Steps>
+<DocCardList
+  items={[
+    {
+      type: "link",
+      href: "/login-providers/password",
+      docId: "login-providers/password",
+      label: "Username + Password",
+    },
+    {
+      type: "link",
+      href: "/login-providers/passkey",
+      docId: "login-providers/passkey",
+      label: "Username + Passkey",
+    },
+    {
+      type: "link",
+      href: "/login-providers/email-password",
+      docId: "login-providers/email-password",
+      label: "Email + Password",
+    },
+    {
+      type: "link",
+      href: "/login-providers/oauth",
+      docId: "login-providers/oauth",
+      label: "OAuth",
+    },
+    {
+      type: "link",
+      href: "/login-providers/anonymous",
+      docId: "login-providers/anonymous",
+      label: "Anonymous",
+    },
+  ]}
+/>
