@@ -14,6 +14,13 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08) !important;
 }
 
+/* Infima's light background is `transparent`, which lets the `StepByStep` line
+   show through the step numbers. The Docusaurus build boosts the specificity
+   of Infima's value, thus the `!important`. */
+[data-theme="light"] {
+  --ifm-background-color: #fff !important;
+}
+
 [data-theme="dark"] {
   --ifm-color-primary: #e597d4;
   --ifm-color-primary-dark: #de7dc9;
