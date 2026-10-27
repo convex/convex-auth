@@ -38,6 +38,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         string | null,
         Name
       >;
+      listSessions: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          creationTime: number;
+          expiresAt: number;
+          lastRefreshedAt: number;
+          sessionId: string;
+        }>,
+        Name
+      >;
       refresh: FunctionReference<
         "mutation",
         "internal",
@@ -56,6 +68,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             };
           }
         | { kind: "noSession" },
+        Name
+      >;
+      revokeSessions: FunctionReference<
+        "mutation",
+        "internal",
+        { sessionIds: Array<string> },
+        Array<string>,
         Name
       >;
       signIn: FunctionReference<
