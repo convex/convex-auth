@@ -9,7 +9,6 @@ import {
   type AuthClaims,
   type TokenBundle,
   type RefreshResult,
-  USE_USER_ID_AS_ACCOUNT_ID,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
@@ -77,7 +76,7 @@ function ttl(overrides: Parameters<typeof resolveTtlConfig>[0] = {}) {
 /** The lifetimes `setupConvexAuth` passes when the app overrides none. */
 const DEFAULT_TTL = ttl();
 
-/** Establish a brand new identity: the account, its app user, and a session. */
+/** Establish a brand new identity: its app user and a session. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
   return await t.mutation(api.public.signUp, {
     claims: c,
@@ -87,10 +86,15 @@ async function signUp(t: ConvexTestApi, c: AuthClaims) {
   });
 }
 
-/** Sign a known identity back in, as an app that attached an `onSignIn` does. */
-async function signIn(t: ConvexTestApi, c: AuthClaims) {
+/**
+ * Sign a known user back in, as an app that attached an `onSignIn` does. The
+ * method resolved the identity to `userId` in its own component; the core
+ * keeps no accounts of its own.
+ */
+async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
   return await t.mutation(api.public.signIn, {
     claims: c,
+    userId,
     onSignInHandle: ON_SIGN_IN_HANDLE,
     ...DEFAULT_TTL,
   });
@@ -157,17 +161,24 @@ async function redeemedHash(t: ConvexTestApi) {
 }
 
 describe("signUp", () => {
-  test("creates an account + session and mints a verifiable JWT", async () => {
+  test("creates a session and mints a verifiable JWT", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
 
     expect(bundle.userId).toBeTruthy();
     expect(bundle.refreshToken).toBeTruthy();
 
-    const sessionId = await t.run(
-      async (ctx) => (await ctx.db.query("sessions").unique())?._id,
+    const session = await t.run(
+      async (ctx) => await ctx.db.query("sessions").unique(),
     );
-    expect(sessionId).not.toBeUndefined();
+    expect(session).not.toBeNull();
+    const sessionId = session!._id;
+    // The session records the method that signed it in, and the user the
+    // app minted. The core stores nothing else about the identity.
+    expect(session).toMatchObject({
+      userId: bundle.userId,
+      provider: "password",
+    });
 
     // The access token verifies against the deployment JWKS with the right
     // claims.
@@ -177,12 +188,6 @@ describe("signUp", () => {
     expect(payload.sub).toBe(sessionId);
     expect(payload.exp! * 1000).toBeGreaterThan(Date.now());
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(payload.exp! * 1000);
-
-    // In addition to the session verified above, there should be an account
-    const counts = await t.run(async (ctx) => ({
-      accounts: (await ctx.db.query("accounts").collect()).length,
-    }));
-    expect(counts).toEqual({ accounts: 1 });
   });
 
   test("invokes the app's createUser with the claims, then onSignIn", async () => {
@@ -224,9 +229,9 @@ describe("signUp", () => {
       ...DEFAULT_TTL,
     });
 
-    // The account is keyed to the id the app's createUser returned.
-    const account = await t.run((ctx) => ctx.db.query("accounts").unique());
-    expect(account?.userId).toBe(bundle.userId);
+    // The bundle carries the id the app's createUser returned, which is what
+    // the method records against its identity.
+    expect(bundle.userId).toBe("user1");
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
   });
@@ -243,50 +248,50 @@ describe("signUp", () => {
       }),
     ).rejects.toThrow(/no sign-ins for you/);
 
-    // The account insert is a write of the same mutation, so it rolls back with
-    // it, and the app's own users row rolls back the same way. The session was
-    // never reached, since onSignIn runs before it is minted.
-    const counts = await t.run(async (ctx) => ({
-      accounts: (await ctx.db.query("accounts").collect()).length,
-      sessions: (await ctx.db.query("sessions").collect()).length,
-    }));
-    expect(counts).toEqual({ accounts: 0, sessions: 0 });
+    // The app's own users row is a write of the same mutation, so it rolls
+    // back with it (the fixture's createUser keeps no rows, so the caller
+    // count stands in). The session was never reached, since onSignIn runs
+    // before it is minted.
+    expect(await sessionCount(t)).toBe(0);
   });
 
-  test("refuses to sign up an identity that already has an account", async () => {
+  test("mints a user on every call: telling a new identity from a known one is the method's job", async () => {
     const t = setup();
-    await signUp(t, claims());
+    const first = await signUp(t, claims());
+    const second = await signUp(t, claims());
 
-    // Rather than minting a second app user for someone who already has one.
-    await expect(signUp(t, claims())).rejects.toThrow(/already\s+exists/i);
-
-    const counts = await t.run(async (ctx) => ({
-      accounts: (await ctx.db.query("accounts").collect()).length,
-      sessions: (await ctx.db.query("sessions").collect()).length,
-    }));
-    expect(counts).toEqual({ accounts: 1, sessions: 1 });
+    // The core keeps no accounts, so it cannot refuse a repeated sign-up of
+    // one identity. The method's component is where that check lives,
+    // which is why methods resolve the identity there before choosing
+    // between signUp and signIn.
+    expect(second.userId).not.toBe(first.userId);
+    expect(await sessionCount(t)).toBe(2);
   });
 });
 
 describe("signIn", () => {
-  test("reuses the existing account and mints a fresh session", async () => {
+  test("mints a fresh session for the given user", async () => {
     const t = setup();
     const first = await signUp(t, claims({ profile: { name: "Alice" } }));
-    const second = await signIn(t, claims({ profile: { name: "Alice 2.0" } }));
+    const second = await signIn(
+      t,
+      claims({ profile: { name: "Alice 2.0" } }),
+      first.userId,
+    );
 
     expect(second.userId).toBe(first.userId);
-
-    const { accounts, sessions } = await t.run(async (ctx) => {
-      const accountDocs = await ctx.db.query("accounts").collect();
-      const sessionDocs = await ctx.db.query("sessions").collect();
-      return {
-        accounts: accountDocs.length,
-        sessions: sessionDocs.length,
-      };
-    });
-    // One account reused; a fresh session per sign-in.
-    expect(accounts).toBe(1);
-    expect(sessions).toBe(2);
+    // A fresh session per sign-in, both for the one user and through the
+    // same method.
+    const sessions = await t.run(
+      async (ctx) => await ctx.db.query("sessions").collect(),
+    );
+    expect(sessions).toHaveLength(2);
+    expect(
+      sessions.map(({ userId, provider }) => ({ userId, provider })),
+    ).toEqual([
+      { userId: first.userId, provider: "password" },
+      { userId: first.userId, provider: "password" },
+    ]);
   });
 
   test("invokes the app's onSignIn with the resolved user id and latest claims", async () => {
@@ -294,7 +299,7 @@ describe("signIn", () => {
     testApp.resetUserCallbackCalls();
 
     const first = await signUp(t, claims({ profile: { name: "Alice" } }));
-    await signIn(t, claims({ profile: { name: "Alice 2.0" } }));
+    await signIn(t, claims({ profile: { name: "Alice 2.0" } }), first.userId);
 
     // The app gets the known id and the fresh profile to sync from. createUser
     // ran once, for the sign-up; onSignIn ran for both.
@@ -318,6 +323,7 @@ describe("signIn", () => {
     // No `onSignInHandle` is what an app that left `onSignIn` out sends.
     const bundle = await t.mutation(api.public.signIn, {
       claims: claims(),
+      userId: first.userId,
       ...DEFAULT_TTL,
     });
 
@@ -325,103 +331,57 @@ describe("signIn", () => {
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
   });
 
-  test("refuses to sign in an identity with no account", async () => {
+  test("takes the method's word for the user: no app user has to exist", async () => {
     const t = setup();
 
-    // A miss means the records of the method and the core's have diverged, and
-    // creating a user here would paper over that.
-    await expect(signIn(t, claims())).rejects.toThrow(
-      /must go through signUp/i,
-    );
+    // The core cannot check the user id against the app's users table, nor
+    // against accounts of its own. A method that passes a wrong id signs the
+    // caller in as that user, which is why methods only pass an id read from
+    // their own component after verifying the identity.
+    const bundle = await signIn(t, claims(), "someone");
+    expect(bundle.userId).toBe("someone");
+    expect(await sessionCount(t)).toBe(1);
+  });
 
-    const sessions = await t.run(
-      async (ctx) => (await ctx.db.query("sessions").collect()).length,
-    );
-    expect(sessions).toBe(0);
+  test("refuses an empty user id", async () => {
+    const t = setup();
+
+    // The placeholder a method without an identifier of its own sends as
+    // the account id must never reach here as the user id.
+    await expect(signIn(t, claims(), "")).rejects.toThrow(/no user id/i);
+    expect(await sessionCount(t)).toBe(0);
   });
 });
 
-describe("signUpWithoutSession", () => {
-  test("creates the user and the account, but no session", async () => {
+describe("createUser", () => {
+  test("creates the user, but no session", async () => {
     const t = setup();
     testApp.resetUserCallbackCalls();
 
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
+    const { userId } = await t.mutation(api.public.createUser, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
     });
 
-    // The account is keyed to the id the app's createUser returned.
-    const account = await t.run((ctx) => ctx.db.query("accounts").unique());
-    expect(account?.userId).toBe(userId);
+    // The id is the one the app's createUser returned.
+    expect(userId).toBe("user1");
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
-    // No sign-in happened, so onSignIn does not run.
+    // No sign-in happened, so onSignIn does not run, and no session was
+    // minted.
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
-
-    // The account exists, but no session was minted.
-    const counts = await t.run(async (ctx) => ({
-      accounts: (await ctx.db.query("accounts").collect()).length,
-      sessions: (await ctx.db.query("sessions").collect()).length,
-    }));
-    expect(counts).toEqual({ accounts: 1, sessions: 0 });
+    expect(await sessionCount(t)).toBe(0);
   });
 
-  test("a later signIn resolves the same user and mints a session", async () => {
+  test("a later signIn with the user id mints a session", async () => {
     const t = setup();
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
+    const { userId } = await t.mutation(api.public.createUser, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
     });
 
-    const bundle = await signIn(t, claims());
+    const bundle = await signIn(t, claims(), userId);
     expect(bundle.userId).toBe(userId);
-
-    // The sign-in reused the account that signUpWithoutSession made.
-    const counts = await t.run(async (ctx) => ({
-      accounts: (await ctx.db.query("accounts").collect()).length,
-      sessions: (await ctx.db.query("sessions").collect()).length,
-    }));
-    expect(counts).toEqual({ accounts: 1, sessions: 1 });
-  });
-
-  test("keys the account by the minted user id with USE_USER_ID_AS_ACCOUNT_ID", async () => {
-    const t = setup();
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
-      claims: claims({
-        providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
-        profile: { email: "alice@example.com" },
-      }),
-      createUserHandle: CREATE_USER_HANDLE,
-    });
-
-    // The account's identifier is the user id the app minted, so a later
-    // sign-in that passes the user id resolves the same user.
-    const bundle = await signIn(t, claims({ providerAccountId: userId }));
-    expect(bundle.userId).toBe(userId);
-
-    const accounts = await t.run(
-      async (ctx) => await ctx.db.query("accounts").collect(),
-    );
-    expect(accounts).toHaveLength(1);
-    expect(accounts[0].providerAccountId).toBe(userId);
-  });
-
-  test("refuses an identity that already has an account", async () => {
-    const t = setup();
-    await signUp(t, claims());
-
-    // Like signUp: a second app user for the same identity is never minted.
-    await expect(
-      t.mutation(api.public.signUpWithoutSession, {
-        claims: claims(),
-        createUserHandle: CREATE_USER_HANDLE,
-      }),
-    ).rejects.toThrow(/already\s+exists/i);
-
-    const accounts = await t.run(
-      async (ctx) => (await ctx.db.query("accounts").collect()).length,
-    );
-    expect(accounts).toBe(1);
+    expect(await sessionCount(t)).toBe(1);
   });
 });
 
@@ -982,7 +942,7 @@ describe("listSessions", () => {
   test("lists every session of the user", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    const otherBundle = await signIn(t, claims());
+    const otherBundle = await signIn(t, claims(), bundle.userId);
 
     const sessions = await t.query(api.public.listSessions, {
       userId: bundle.userId,
@@ -995,8 +955,8 @@ describe("listSessions", () => {
   test("lists the newest session first", async () => {
     const t = setup();
     const first = await signUp(t, claims());
-    const second = await signIn(t, claims());
-    const third = await signIn(t, claims());
+    const second = await signIn(t, claims(), first.userId);
+    const third = await signIn(t, claims(), first.userId);
 
     const sessions = await t.query(api.public.listSessions, {
       userId: first.userId,
@@ -1047,7 +1007,7 @@ describe("listSessions", () => {
     const stale = await signUp(t, claims());
     // Past the default 30-day inactivity timeout.
     vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
-    const fresh = await signIn(t, claims());
+    const fresh = await signIn(t, claims(), stale.userId);
 
     const sessions = await t.query(api.public.listSessions, {
       userId: stale.userId,
@@ -1100,7 +1060,7 @@ describe("listSessions", () => {
   test("leaves out, with a warning, a session with no issued token", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    const otherBundle = await signIn(t, claims());
+    const otherBundle = await signIn(t, claims(), bundle.userId);
     // Not a state the token lifecycle reaches; forced here to cover the guard.
     await t.run(async (ctx) => {
       const tokens = await ctx.db
@@ -1149,7 +1109,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const bundles = [await signUp(t, claims())];
     while (bundles.length < count) {
       vi.advanceTimersByTime(1000);
-      bundles.push(await signIn(t, claims()));
+      bundles.push(await signIn(t, claims(), bundles[0].userId));
     }
     return bundles;
   }
@@ -1168,7 +1128,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     expectRotated(await refresh(t, first.refreshToken));
 
     vi.advanceTimersByTime(1000);
-    const newest = await signIn(t, claims());
+    const newest = await signIn(t, claims(), first.userId);
 
     expect(await sessionCount(t)).toBe(MAX_SESSIONS_PER_USER);
     const listed = (
@@ -1184,7 +1144,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
   test("erases the revoked session's refresh tokens", async () => {
     const t = setup();
     const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
-    await signIn(t, claims());
+    await signIn(t, claims(), first.userId);
     const remaining = await t.run(async (ctx) =>
       ctx.db
         .query("refreshTokens")
@@ -1201,14 +1161,14 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const bundles = await signInUntil(t, MAX_SESSIONS_PER_USER);
     // Sessions from before the cap existed; not reachable by signing in.
     await t.run(async (ctx) => {
-      const { accountId } = (await ctx.db.get(
+      const { provider } = (await ctx.db.get(
         "sessions",
         sessionIdOf(bundles[0]) as Id<"sessions">,
       ))!;
       for (let i = 0; i < 2; i++) {
         const sessionId = await ctx.db.insert("sessions", {
           userId: bundles[0].userId,
-          accountId,
+          provider,
         });
         await ctx.db.insert("refreshTokens", {
           hash: `extra-${i}`,
@@ -1219,7 +1179,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     });
 
     vi.advanceTimersByTime(1000);
-    const newest = await signIn(t, claims());
+    const newest = await signIn(t, claims(), bundles[0].userId);
 
     expect(await sessionCount(t)).toBe(MAX_SESSIONS_PER_USER);
     const listed = (
@@ -1235,7 +1195,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const t = setup();
     const bob = await signUp(t, claims({ providerAccountId: "bob" }));
     const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
-    await signIn(t, claims());
+    await signIn(t, claims(), first.userId);
 
     expect(
       await t.query(api.public.listSessions, { userId: bob.userId }),
@@ -1250,8 +1210,8 @@ describe("revokeSessions", () => {
   test("revokes the sessions so they can no longer be refreshed", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    const second = await signIn(t, claims());
-    const third = await signIn(t, claims());
+    const second = await signIn(t, claims(), bundle.userId);
+    const third = await signIn(t, claims(), bundle.userId);
 
     const revoked = await t.mutation(api.public.revokeSessions, {
       sessionIds: [sessionIdOf(second), sessionIdOf(third)],
@@ -1294,7 +1254,7 @@ describe("revokeSessions", () => {
   test("skips an already-revoked session id", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
-    const otherBundle = await signIn(t, claims());
+    const otherBundle = await signIn(t, claims(), bundle.userId);
     await t.mutation(api.public.signOut, { refreshToken: bundle.refreshToken });
 
     expect(
@@ -1467,40 +1427,6 @@ describe("token lifetime configuration", () => {
   });
 });
 
-describe("getUserIdByAccount", () => {
-  test("returns null for an unknown identity", async () => {
-    const t = setup();
-    const userId = await t.query(api.public.getUserIdByAccount, {
-      provider: "password",
-      providerAccountId: "alice",
-    });
-    expect(userId).toBeNull();
-  });
-
-  test("returns the user id after the account is created by signUp", async () => {
-    const t = setup();
-    const bundle = await signUp(t, claims());
-    const userId = await t.query(api.public.getUserIdByAccount, {
-      provider: "password",
-      providerAccountId: "alice",
-    });
-    expect(userId).toBe(bundle.userId);
-  });
-
-  test("does not confuse identities across methods", async () => {
-    const t = setup();
-    await signUp(
-      t,
-      claims({ providerName: "password", providerAccountId: "alice" }),
-    );
-    const other = await t.query(api.public.getUserIdByAccount, {
-      provider: "google",
-      providerAccountId: "alice",
-    });
-    expect(other).toBeNull();
-  });
-});
-
 describe("getSession", () => {
   /** The session id a bundle's access token points at, from its `sub` claim. */
   function sessionIdOf(bundle: TokenBundle): string {
@@ -1551,11 +1477,11 @@ describe("getSession", () => {
   test("returns null for an id in another table", async () => {
     const t = setup();
     await signUp(t, claims());
-    const accountId = await t.run(
-      async (ctx) => (await ctx.db.query("accounts").unique())!._id,
+    const tokenId = await t.run(
+      async (ctx) => (await ctx.db.query("refreshTokens").unique())!._id,
     );
     expect(
-      await t.query(api.public.getSession, { sessionId: accountId }),
+      await t.query(api.public.getSession, { sessionId: tokenId }),
     ).toBeNull();
   });
 });

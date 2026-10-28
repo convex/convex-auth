@@ -1,10 +1,10 @@
 /**
- * The mutations Google's component registers over its own two tables.
+ * The mutations Google's component registers over its own three tables.
  *
  * @module
  */
 import type { Doc } from "./_generated/dataModel.ts";
-import { env, internalMutation, mutation } from "./_generated/server.ts";
+import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import { buildProviderFunctions } from "../../lib/oauth/providerFunctions.ts";
 
 export const {
@@ -12,7 +12,14 @@ export const {
   claimAuthorizationRequest,
   createTicket,
   claimTicket,
-} = buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">>({
+  getUserIdByAccount,
+  createAccount,
+} = buildProviderFunctions<
+  Doc<"authorizationRequests">,
+  Doc<"tickets">,
+  Doc<"accounts">
+>({
+  query,
   mutation,
   internalMutation,
   clientId: () => env.CLIENT_ID,

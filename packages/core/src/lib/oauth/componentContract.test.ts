@@ -79,7 +79,7 @@ function setup(schema: ComponentSchema, modules: ComponentModules) {
 }
 
 /**
- * The four mutations, by the names Convex registers them under. They are
+ * The six functions, by the names Convex registers them under. They are
  * written out rather than taken from a generated `api`, because each
  * component generates its own and this runs against all of them.
  */
@@ -115,12 +115,24 @@ const claimTicket = makeFunctionReference<
   null | { encryptedPayload: string }
 >("provider:claimTicket");
 
+const getUserIdByAccount = makeFunctionReference<
+  "query",
+  { providerAccountId: string },
+  string | null
+>("provider:getUserIdByAccount");
+
+const createAccount = makeFunctionReference<
+  "mutation",
+  { providerAccountId: string; userId: string },
+  null
+>("provider:createAccount");
+
 /**
- * Run the four mutations a component built with `buildProviderFunctions`
+ * Run the functions a component built with `buildProviderFunctions`
  * registers, start to finish: record an authorization request, claim it, mint
- * a ticket, and redeem it. Every argument and every returned field goes
- * through the component's own validators, so a validator that no longer
- * matches the table it describes fails here.
+ * a ticket, redeem it, then record the account and resolve it. Every argument
+ * and every returned field goes through the component's own validators, so a
+ * validator that no longer matches the table it describes fails here.
  */
 export function testProviderFunctionsContract(
   schema: ComponentSchema,
@@ -187,6 +199,37 @@ export function testProviderFunctionsContract(
           stateHash: await sha256Hex("someone-elses-state"),
         }),
       ).toBeNull();
+    });
+
+    test("an account resolves to its user once recorded, and only once", async () => {
+      const t = setup(schema, modules);
+
+      // Unknown before the first redemption records it.
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBeNull();
+
+      await t.mutation(createAccount, {
+        providerAccountId: "sub-1",
+        userId: "user-1",
+      });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-1");
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-2" }),
+      ).toBeNull();
+
+      // A second user for the same identity would split one person in two.
+      await expect(
+        t.mutation(createAccount, {
+          providerAccountId: "sub-1",
+          userId: "user-2",
+        }),
+      ).rejects.toThrow(/already exists/);
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-1");
     });
   });
 }

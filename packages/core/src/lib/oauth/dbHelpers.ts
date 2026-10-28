@@ -3,21 +3,27 @@
  *
  * An OAuth flow needs two short-lived documents: an authorization request,
  * written when sign-in starts and claimed by the provider callback, and a
- * ticket, minted by the callback and redeemed by the app. Every OAuth
- * component keeps those same two tables, so the reads and writes live here,
- * and each component's `provider.ts` supplies its own argument validators and
- * its own document type.
+ * ticket, minted by the callback and redeemed by the app. Redemption then
+ * needs one durable document: the account, which maps the attested identity
+ * to the app user. Every OAuth component keeps those same three tables, so
+ * the reads and writes live here, and each component's `provider.ts`
+ * supplies its own argument validators and its own document types.
  *
  * @module
  */
 import type {
+  GenericDatabaseReader,
   GenericDataModel,
   GenericMutationCtx,
   WithoutSystemFields,
 } from "convex/server";
 import type { GenericId, ObjectType } from "convex/values";
 import { CALLBACK_PATH } from "./constants.ts";
-import type { authorizationRequestFields, ticketFields } from "./schema.ts";
+import type {
+  accountFields,
+  authorizationRequestFields,
+  ticketFields,
+} from "./schema.ts";
 
 /** How long an authorization request stays claimable by the callback. */
 export const AUTHORIZATION_REQUEST_TTL_MS = 10 * 60 * 1000; // 10m
@@ -36,6 +42,13 @@ export const TICKET_TTL_MS = 2 * 60 * 1000;
  * The document types below are what carry the real contract.
  */
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
+/**
+ * The ctx the account lookup takes: a query's or a mutation's. Only `db.query`
+ * is named, because `GenericDatabaseReader` as a whole is not bivariant the
+ * way the writer is, so a component's own query ctx would not be accepted as
+ * a `GenericQueryCtx<GenericDataModel>`.
+ */
+type QueryCtx = { db: Pick<GenericDatabaseReader<GenericDataModel>, "query"> };
 
 /** What this code requires from an authorization request document. */
 export type AuthorizationRequestContract = ObjectType<
@@ -44,6 +57,9 @@ export type AuthorizationRequestContract = ObjectType<
 
 /** What this code requires from a ticket document. */
 export type TicketContract = ObjectType<typeof ticketFields>;
+
+/** What this code requires from an account document. */
+export type AccountContract = ObjectType<typeof accountFields>;
 
 /**
  * Record an in-flight authorization request and return the callback URL it
@@ -182,4 +198,79 @@ export async function claimTicket<Doc extends TicketContract>(
   }
   await ctx.db.delete("tickets", ticket._id);
   return { encryptedPayload: ticket.encryptedPayload };
+}
+
+/**
+ * Resolve a provider account id to the app user it belongs to, or `null`
+ * when this component has never seen the identity. Redemption calls this to
+ * pick between signing the user up and signing them in. `match` is an extra
+ * check over the stored account, for a component that keeps more on it (the
+ * custom-provider component also keys accounts by provider name).
+ *
+ * The caller writes out `Doc` as its own generated document type, e.g.
+ * `findAccountUserId<Doc<"accounts">>(ctx, args)`.
+ */
+export async function findAccountUserId<Doc extends AccountContract>(
+  ctx: QueryCtx,
+  args: {
+    providerAccountId: string;
+    match?: (account: Doc) => boolean;
+  },
+): Promise<string | null> {
+  // The same assertion as in claimAuthorizationRequest, for the same reason.
+  // A component that keeps more on the row can hold several rows with one
+  // provider account id (one per provider name), so this collects and
+  // filters rather than taking the unique row.
+  const accounts = (await ctx.db
+    .query("accounts")
+    .withIndex("providerAccountId", (q) =>
+      q.eq("providerAccountId", args.providerAccountId),
+    )
+    .collect()) as (Doc & { _id: GenericId<"accounts"> })[];
+  const matching =
+    args.match === undefined ? accounts : accounts.filter(args.match);
+  if (matching.length > 1) {
+    throw new Error(
+      `Invariant violation: ${matching.length} accounts for provider account ` +
+        `id ${JSON.stringify(args.providerAccountId)}`,
+    );
+  }
+  return matching[0]?.userId ?? null;
+}
+
+/**
+ * Record that the identity in `account` belongs to the app user `userId`.
+ * Redemption calls this once the core has minted the user for an identity
+ * `findAccountUserId` did not know, in the same mutation, so the two cannot
+ * disagree.
+ *
+ * Refuses an identity that already has an account: minting a second user for
+ * it would split one person in two, and the check in redemption that should
+ * have prevented it ran in this same transaction, so a hit here is a bug.
+ *
+ * The caller writes out `Doc` as its own generated document type, e.g.
+ * `insertAccount<Doc<"accounts">>(ctx, account, userId, match)`.
+ */
+export async function insertAccount<Doc extends AccountContract>(
+  ctx: MutationCtx,
+  // `Omit` of a generic type hides the fields the contract promises, so the
+  // intersection names the one this code reads.
+  account: Omit<WithoutSystemFields<Doc>, "userId"> & {
+    providerAccountId: string;
+  },
+  userId: string,
+  match?: (account: Doc) => boolean,
+): Promise<null> {
+  const existing = await findAccountUserId<Doc>(ctx, {
+    providerAccountId: account.providerAccountId,
+    match,
+  });
+  if (existing !== null) {
+    throw new Error(
+      `Invariant violation: an account for provider account id ` +
+        `${JSON.stringify(account.providerAccountId)} already exists`,
+    );
+  }
+  await ctx.db.insert("accounts", { ...account, userId });
+  return null;
 }

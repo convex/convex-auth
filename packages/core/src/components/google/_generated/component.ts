@@ -31,11 +31,25 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | { encryptedPayload: string },
         Name
       >;
+      createAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { providerAccountId: string; userId: string },
+        null,
+        Name
+      >;
       createAuthorizationRequest: FunctionReference<
         "mutation",
         "internal",
         { codeVerifier: string; redirectTo: string; stateHash: string },
         { callbackUrl: string; clientId: string },
+        Name
+      >;
+      getUserIdByAccount: FunctionReference<
+        "query",
+        "internal",
+        { providerAccountId: string },
+        string | null,
         Name
       >;
     };

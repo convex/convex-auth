@@ -24,18 +24,25 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      createUser: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          claims: {
+            profile: any;
+            providerAccountId: string;
+            providerName: string;
+          };
+          createUserHandle: string;
+        },
+        { userId: string },
+        Name
+      >;
       getSession: FunctionReference<
         "query",
         "internal",
         { sessionId: string },
         { userId: string } | null,
-        Name
-      >;
-      getUserIdByAccount: FunctionReference<
-        "query",
-        "internal",
-        { provider: string; providerAccountId: string },
-        string | null,
         Name
       >;
       listSessions: FunctionReference<
@@ -90,6 +97,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
           sessionMaxLifetimeSeconds: number;
+          userId: string;
         },
         {
           accessToken: string;
@@ -127,20 +135,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           refreshTokenExpiresAt: number;
           userId: string;
         },
-        Name
-      >;
-      signUpWithoutSession: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
-          createUserHandle: string;
-        },
-        { userId: string },
         Name
       >;
     };

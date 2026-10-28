@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+Schema and sign-in method API breaking changes - see below
+
+- moved accounts out of the core and into the components: the core's
+  `accounts` table is gone, and each OAuth component (`authGoogle`,
+  `authGithub`, `authApple`, `authOauth`) and the anonymous component keeps
+  its own `accounts` table mapping its identity to the app user id. The
+  core's `sessions` table replaces `accountId` with `provider`; upgrading
+  requires clearing the `auth/sessions` and `auth/refreshTokens` tables (which
+  signs every user out) and deleting `auth/accounts`. OAuth users who signed
+  in before the upgrade get a new app user on their next sign-in unless their
+  rows are copied into their component's `accounts` table first.
+- sign-in method API (`ctx.convexAuth`): `completeSignIn` takes the `userId`
+  the method resolved in its component, `signUpWithoutSession` is now
+  `createUser`, and `resolveUserId` is gone. The core's `getUserIdByAccount`
+  is gone; each OAuth component has its own.
+
 ## 2.0.0-beta.0
 
 Some API and schema breaking changes - see below
