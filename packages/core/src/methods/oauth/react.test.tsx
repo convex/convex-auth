@@ -148,6 +148,41 @@ describe("OAuth React client", () => {
     ).toEqual([]);
   });
 
+  test("each sign-in hook reports only its own provider's flow error", async () => {
+    window.history.replaceState(null, "", "/?convexAuthError=access_denied");
+    const storage = new InMemoryStorage();
+    seedPendingFlow(storage, googleRefs);
+
+    const { result } = renderOAuth(
+      () => ({
+        google: useSignInWithGoogle(googleApi).flowError,
+        github: useSignInWithGithub(githubApi).flowError,
+        any: useOauth().flowError,
+      }),
+      { storage },
+    );
+
+    await waitFor(() =>
+      expect(result.current.google).toEqual({ error: "ACCESS_DENIED" }),
+    );
+    expect(result.current.github).toBeNull();
+    expect(result.current.any).toEqual({ error: "ACCESS_DENIED" });
+  });
+
+  test("an INVALID_FLOW with no saved flow reaches every sign-in hook", async () => {
+    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
+
+    const { result } = renderOAuth(() => ({
+      google: useSignInWithGoogle(googleApi).flowError,
+      github: useSignInWithGithub(githubApi).flowError,
+    }));
+
+    await waitFor(() =>
+      expect(result.current.google).toEqual({ error: "INVALID_FLOW" }),
+    );
+    expect(result.current.github).toEqual({ error: "INVALID_FLOW" });
+  });
+
   test("useOauth reads a flow error that useOauthCallback set in another component", async () => {
     window.history.replaceState(null, "", "/?convexAuthError=access_denied");
     const { client } = oauthClient(new InMemoryStorage());

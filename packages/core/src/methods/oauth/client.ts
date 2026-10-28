@@ -236,21 +236,61 @@ async function dropPendingFlow(storage: SignInStorage): Promise<void> {
 }
 
 /**
+ * The name of the provider whose flow is saved, or null when none is. The
+ * saved flow is removed, because the flow it belongs to has ended. It never
+ * rejects.
+ */
+async function dropPendingFlowProvider(
+  storage: SignInStorage,
+): Promise<string | null> {
+  try {
+    return (await takePendingFlow(storage))?.providerName ?? null;
+  } catch {
+    // The flow error then names no provider.
+    await dropPendingFlow(storage);
+    return null;
+  }
+}
+
+/**
  * Redeem a callback `code` against the saved flow and adopt the session. It
  * never rejects. Every failure comes back in the result instead, so callers
- * that don't await it are safe.
+ * that don't await it are safe. `providerName` is the provider of the saved
+ * flow, or null when there is none.
  */
 async function redeem(
   auth: AuthClient,
   code: string,
-): Promise<OauthCompleteResult> {
-  // The storage read is inside the try so that a failed read is reported
-  // like any other failure here.
+): Promise<{ result: OauthCompleteResult; providerName: string | null }> {
+  let pending: PendingFlow | null;
   try {
-    const pending = await takePendingFlow(auth.signInStorage(OAUTH_STORAGE_ID));
-    if (pending === null) {
-      return { status: "error", userError: { error: "INVALID_FLOW" } };
-    }
+    pending = await takePendingFlow(auth.signInStorage(OAUTH_STORAGE_ID));
+  } catch (error) {
+    // A failed storage read is reported like any other failure here.
+    return {
+      result: { status: "error", userError: thrownFlowError(error) },
+      providerName: null,
+    };
+  }
+  if (pending === null) {
+    return {
+      result: { status: "error", userError: { error: "INVALID_FLOW" } },
+      providerName: null,
+    };
+  }
+  return {
+    result: await redeemPendingFlow(auth, pending, code),
+    providerName: pending.providerName,
+  };
+}
+
+/** Redeem `code` with the saved flow `pending`. It never rejects. */
+async function redeemPendingFlow(
+  auth: AuthClient,
+  pending: PendingFlow,
+  code: string,
+): Promise<OauthCompleteResult> {
+  try {
     // TODO(erquhart) Look at getting this reference without storing its
     // path.
     const completeSignIn = makeFunctionReference<"mutation">(
@@ -283,7 +323,9 @@ export async function completeOauthSignIn(
   code: string,
 ): Promise<OauthCompleteResult> {
   setOauthFlowError(auth, null);
-  return await auth.withSignInPending(() => redeem(auth, code));
+  return await auth.withSignInPending(
+    async () => (await redeem(auth, code)).result,
+  );
 }
 
 /**
@@ -345,11 +387,12 @@ export async function startOauthSignIn(
 /**
  * Finish the OAuth flow that the page URL returns to. The params are read and
  * removed from the URL with `auth.replaceUrl` before the first `await`. An
- * error param sets the flow error and drops the saved flow. A code starts the
- * redemption without waiting for it. The redemption enters
- * `auth.withSignInPending` before this function returns, so when this runs
- * before `auth.init()` resolves, the auth state never reports signed out
- * during the redemption. Returns whether the URL had a callback param.
+ * error param drops the saved flow and sets the flow error, with the provider
+ * of the saved flow. A code starts the redemption without waiting for it.
+ * Either one runs in `auth.withSignInPending`, entered before this function
+ * returns, so when this runs before `auth.init()` resolves, the auth state
+ * never reports signed out before the user is signed in or the flow error is
+ * set. Returns whether the URL had a callback param.
  */
 export function handleOauthCallback(auth: AuthClient): boolean {
   const href = currentHref();
@@ -369,8 +412,13 @@ export function handleOauthCallback(auth: AuthClient): boolean {
     // The server ended the flow with an error, so the saved state can never
     // be used. Drop it now so a stray code arriving later still reports
     // `INVALID_FLOW`.
-    void dropPendingFlow(auth.signInStorage(OAUTH_STORAGE_ID));
-    setOauthFlowError(auth, callbackFlowError(errorParam));
+    const flowError = callbackFlowError(errorParam);
+    void auth.withSignInPending(async () => {
+      const providerName = await dropPendingFlowProvider(
+        auth.signInStorage(OAUTH_STORAGE_ID),
+      );
+      setOauthFlowError(auth, flowError, providerName);
+    });
     return true;
   }
   if (code === null) {
@@ -381,9 +429,9 @@ export function handleOauthCallback(auth: AuthClient): boolean {
   // the auth state never reports signed out and done loading without the
   // error that explains it.
   void auth.withSignInPending(async () => {
-    const result = await redeem(auth, code);
+    const { result, providerName } = await redeem(auth, code);
     if (result.status === "error") {
-      setOauthFlowError(auth, result.userError);
+      setOauthFlowError(auth, result.userError, providerName);
     }
   });
   return true;

@@ -8,6 +8,7 @@ import {
   handleOauthCallback,
   startOauthSignIn,
 } from "./client.ts";
+import { getOauthFlowError } from "./flowState.ts";
 import {
   acmeRefs,
   calledPath,
@@ -147,7 +148,9 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()).toEqual({ error: "ACCESS_DENIED" });
+    await vi.waitFor(() =>
+      expect(flowError()).toEqual({ error: "ACCESS_DENIED" }),
+    );
     expect(mutation).not.toHaveBeenCalled();
     expect(window.location.search).toBe("");
   });
@@ -161,7 +164,7 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()?.error).toBe("ACCESS_DENIED");
+    await vi.waitFor(() => expect(flowError()?.error).toBe("ACCESS_DENIED"));
     // The flow ended in an error, so the stored state can never complete.
     await vi.waitFor(() => expect(readFlow(storage)).toBeNull());
   });
@@ -173,7 +176,7 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()).toEqual({ error: "EXPIRED" });
+    await vi.waitFor(() => expect(flowError()).toEqual({ error: "EXPIRED" }));
   });
 
   test("an oauth_error param sets OTHER_ERROR with the param as cause", async () => {
@@ -183,7 +186,12 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()).toEqual({ error: "OTHER_ERROR", cause: "oauth_error" });
+    await vi.waitFor(() =>
+      expect(flowError()).toEqual({
+        error: "OTHER_ERROR",
+        cause: "oauth_error",
+      }),
+    );
   });
 
   test("an unknown error param sets OTHER_ERROR", async () => {
@@ -193,10 +201,12 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()).toEqual({
-      error: "OTHER_ERROR",
-      cause: "server_exploded",
-    });
+    await vi.waitFor(() =>
+      expect(flowError()).toEqual({
+        error: "OTHER_ERROR",
+        cause: "server_exploded",
+      }),
+    );
   });
 
   test("a code without a pending flow sets INVALID_FLOW", async () => {
@@ -361,7 +371,7 @@ describe("OAuth client", () => {
     handleOauthCallback(client);
     await client.init();
 
-    expect(flowError()?.error).toBe("ACCESS_DENIED");
+    await vi.waitFor(() => expect(flowError()?.error).toBe("ACCESS_DENIED"));
     // The cleanup is not awaited, so let the event loop run once for it to
     // finish. An unhandled rejection from it would fail the test run.
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -437,7 +447,7 @@ describe("OAuth client", () => {
     const { client, convexMutation, flowError } = setupOAuth();
     handleOauthCallback(client);
     await client.init();
-    expect(flowError()?.error).toBe("ACCESS_DENIED");
+    await vi.waitFor(() => expect(flowError()?.error).toBe("ACCESS_DENIED"));
 
     convexMutation.mockResolvedValueOnce({
       redirect: "https://provider.example/auth",
@@ -499,6 +509,55 @@ describe("OAuth client", () => {
     expect(outcome).toEqual({
       status: "error",
       userError: { error: "OTHER_ERROR", cause: rejected },
+    });
+  });
+
+  test("a callback error names the provider of the saved flow", async () => {
+    window.history.replaceState(null, "", "/?convexAuthError=access_denied");
+    const storage = new InMemoryStorage();
+    seedPendingFlow(storage);
+    const { client } = setupOAuth({ storage });
+
+    handleOauthCallback(client);
+
+    await vi.waitFor(() =>
+      expect(getOauthFlowError(client, "acme")).toEqual({
+        error: "ACCESS_DENIED",
+      }),
+    );
+    expect(getOauthFlowError(client, "google")).toBeNull();
+    expect(getOauthFlowError(client)).toEqual({ error: "ACCESS_DENIED" });
+  });
+
+  test("a failed redemption names the provider of the saved flow", async () => {
+    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
+    const storage = new InMemoryStorage();
+    seedPendingFlow(storage);
+    const { client, mutation } = setupOAuth({ storage });
+    mutation.mockResolvedValueOnce(invalidCode);
+
+    handleOauthCallback(client);
+
+    await vi.waitFor(() =>
+      expect(getOauthFlowError(client, "acme")).toEqual({ error: "EXPIRED" }),
+    );
+    expect(getOauthFlowError(client, "google")).toBeNull();
+  });
+
+  test("a flow error with no saved flow names no provider", async () => {
+    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
+    const { client } = setupOAuth();
+
+    handleOauthCallback(client);
+
+    await vi.waitFor(() =>
+      expect(getOauthFlowError(client)).toEqual({ error: "INVALID_FLOW" }),
+    );
+    expect(getOauthFlowError(client, "acme")).toEqual({
+      error: "INVALID_FLOW",
+    });
+    expect(getOauthFlowError(client, "google")).toEqual({
+      error: "INVALID_FLOW",
     });
   });
 

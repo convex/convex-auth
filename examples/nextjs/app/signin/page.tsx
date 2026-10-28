@@ -2,10 +2,7 @@
 
 import { useConvexAuth } from "convex/react";
 import { useSignInAnonymously } from "@convex-dev/auth/methods/anonymous/react";
-import {
-  useOauth,
-  useSignInWithGithub,
-} from "@convex-dev/auth/methods/github/react";
+import { useSignInWithGithub } from "@convex-dev/auth/methods/github/react";
 import { useSignInWithUsernamePassword } from "@convex-dev/auth/methods/username-password/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,8 +20,7 @@ export default function SignIn() {
   // callback code through the sign-in route. A failure to start comes back
   // from `signInWithGithub`, and a failure after the redirect shows up in
   // `flowError`.
-  const { signIn: signInWithGithub } = useSignInWithGithub(api.auth);
-  const { flowError } = useOauth();
+  const { signIn: signInWithGithub, flowError } = useSignInWithGithub(api.auth);
   const { isLoading, isAuthenticated } = useConvexAuth();
   const router = useRouter();
   // The GitHub sign-in finishes on this page with no submit handler to

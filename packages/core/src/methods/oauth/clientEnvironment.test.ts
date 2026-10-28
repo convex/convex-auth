@@ -54,7 +54,7 @@ describe("OAuth client with no page URL", () => {
     });
     const { client, flowError } = setupOAuth();
     handleOauthCallback(client);
-    expect(flowError()?.error).toBe("ACCESS_DENIED");
+    await vi.waitFor(() => expect(flowError()?.error).toBe("ACCESS_DENIED"));
 
     vi.stubGlobal("window", {});
     await expect(startOauthSignIn(client, acmeRefs)).rejects.toThrow();

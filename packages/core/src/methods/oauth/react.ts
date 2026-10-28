@@ -21,15 +21,15 @@
  *
  * Errors come back as typed results for the app to switch on, as with the
  * password hooks. Starting a flow resolves to its result, and a failure after
- * the redirect back shows up in {@link useOauth}'s `flowError`.
+ * the redirect back shows up in the `flowError` of the provider's sign-in
+ * hook, and in {@link useOauth}'s `flowError`.
  *
  * ```tsx
- * const { signIn } = useOauthSignIn({
+ * const { signIn, flowError } = useOauthSignIn({
  *   providerName: "acme",
  *   startSignIn: api.auth.startSignInAcme,
  *   completeSignIn: api.auth.completeSignInAcme,
  * });
- * const { flowError } = useOauth();
  * const result = await signIn();
  * if (result.status === "error") {
  *   switch (result.userError.error) {
@@ -69,11 +69,29 @@ export type {
 /** What {@link useOauth} returns. */
 export type UseOauthReturn = {
   /**
-   * Why the last flow failed after the redirect back, or `null`. Cleared on
-   * the next sign-in. Switch on its `error` and supply the text for each code.
+   * Why the last flow of any provider failed after the redirect back, or
+   * `null`. Cleared on the next sign-in. Switch on its `error` and supply the
+   * text for each code.
    */
   flowError: OauthFlowError | null;
 };
+
+/**
+ * The flow error of `auth`. With `providerName`, it is the error of that
+ * provider's flow, or of a flow that names no provider.
+ */
+function useFlowError(providerName?: string): OauthFlowError | null {
+  const auth = useAuthClient();
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeOauthFlowError(auth, listener),
+    [auth],
+  );
+  return useSyncExternalStore(
+    subscribe,
+    () => getOauthFlowError(auth, providerName),
+    () => null,
+  );
+}
 
 /**
  * Read OAuth state that isn't tied to one provider. A flow completes on
@@ -82,17 +100,7 @@ export type UseOauthReturn = {
  * here without any provider's function references.
  */
 export function useOauth(): UseOauthReturn {
-  const auth = useAuthClient();
-  const subscribe = useCallback(
-    (listener: () => void) => subscribeOauthFlowError(auth, listener),
-    [auth],
-  );
-  const flowError = useSyncExternalStore(
-    subscribe,
-    () => getOauthFlowError(auth),
-    () => null,
-  );
-  return { flowError };
+  return { flowError: useFlowError() };
 }
 
 /**
@@ -103,15 +111,27 @@ export function useOauth(): UseOauthReturn {
  * hooks call it themselves.
  */
 export function useOauthCallback(): UseOauthReturn {
+  useHandleOauthCallback();
+  return useOauth();
+}
+
+/** Finish the OAuth flow that the page URL returns to when it mounts. */
+function useHandleOauthCallback(): void {
   const auth = useAuthClient();
   useEffect(() => {
     handleOauthCallback(auth);
   }, [auth]);
-  return useOauth();
 }
 
 /** What {@link useOauthSignIn} returns. */
 export type UseOauthSignInReturn = {
+  /**
+   * Why this provider's last flow failed after the redirect back, or `null`.
+   * Cleared on the next sign-in. An `INVALID_FLOW` with no saved flow names
+   * no provider, so every provider's hook reports it. Switch on its `error`
+   * and supply the text for each code.
+   */
+  flowError: OauthFlowError | null;
   /**
    * Start the provider's OAuth flow (or, with `options.code`, complete one
    * started elsewhere). Navigates away to the identity provider on the web.
@@ -135,15 +155,16 @@ export type UseOauthSignInReturn = {
  * Run one OAuth provider's sign-in flow from its function references. The
  * per-provider hooks like `useSignInWithGoogle` call this with their
  * own references. It finishes the flow that the page URL returns to on mount,
- * through {@link useOauthCallback}.
+ * like {@link useOauthCallback}.
  *
  * A failure while starting the flow comes back in the result. Failures after
  * the redirect back have no caller left to return to, so they are reported
- * through {@link useOauth}'s `flowError`.
+ * through `flowError`.
  */
 export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
   const auth = useAuthClient();
-  useOauthCallback();
+  useHandleOauthCallback();
+  const flowError = useFlowError(refs.providerName);
   // Generated api objects create a fresh reference object on every property
   // access, so the memo depends on the function paths instead. The `refs` it
   // captures can then be from an earlier render, which is fine because the
@@ -165,5 +186,5 @@ export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
             )) as UseOauthSignInReturn["signIn"],
     [auth, providerName, startPath, completePath],
   );
-  return { signIn };
+  return { signIn, flowError };
 }

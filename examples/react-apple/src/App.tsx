@@ -2,7 +2,6 @@ import { type ReactNode, useState } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
-  useOauth,
   useOauthCallback,
   useSignInWithApple,
 } from "@convex-dev/auth/methods/apple/react";
@@ -10,12 +9,11 @@ import { api } from "../convex/_generated/api";
 
 /**
  * A failure to start comes back from the sign-in call, and a failure after the
- * redirect back shows up in `useOauth`'s `flowError`. Each is handled with an
+ * redirect back shows up in the hook's `flowError`. Each is handled with an
  * exhaustive switch on its code.
  */
 function SignedOut(): ReactNode {
-  const { signIn } = useSignInWithApple(api.auth);
-  const { flowError } = useOauth();
+  const { signIn, flowError } = useSignInWithApple(api.auth);
   const [startError, setStartError] = useState<string | null>(null);
   return (
     <>
