@@ -30,10 +30,7 @@ function makeAuth(convex = makeConvexClient()) {
   return createAuthClient({ convex, api: API, storage: new InMemoryStorage() });
 }
 
-/**
- * Renders the flow error from the default oauth setup. The hook throws when
- * oauth() was never registered, so rendering this at all is the assertion.
- */
+/** Renders the OAuth flow error of the auth client. */
 function OauthFlowError() {
   return <div>{String(useOauth().flowError)}</div>;
 }
@@ -93,7 +90,7 @@ describe("ConvexAuthProvider", () => {
     expect(mutationSpy).toHaveBeenCalledWith(signIn, {});
   });
 
-  test("oauth() is registered by createAuthClient", () => {
+  test("the OAuth hooks work under the provider", () => {
     render(
       <ConvexAuthProvider auth={makeAuth()}>
         <OauthFlowError />

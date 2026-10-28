@@ -6,7 +6,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { InMemoryStorage } from "../../browser/storage.ts";
 import { makeSlimBundle } from "../../lib/types.ts";
 import { useSignInWithGithub } from "../../methods/github/react.ts";
-import { useOauth, type OauthProviderApi } from "../../methods/oauth/react.ts";
+import {
+  useOauthCallback,
+  type OauthProviderApi,
+} from "../../methods/oauth/react.ts";
 import {
   NAMESPACE,
   bundle,
@@ -110,7 +113,7 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
     let flowError: unknown;
     function Probe() {
       token = useAuthToken();
-      flowError = useOauth().flowError;
+      flowError = useOauthCallback().flowError;
       return null;
     }
     render(
@@ -151,11 +154,15 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
     stubProxy({ status: "complete", tokens: slim });
     const { client } = makeConvexClient();
     const replaceState = vi.spyOn(window.history, "replaceState");
+    function Callback() {
+      useOauthCallback();
+      return null;
+    }
     render(
       <ConvexAuthNextjsProvider
         auth={createNextjsAuthClient({ convex: client, storage })}
       >
-        {null}
+        <Callback />
       </ConvexAuthNextjsProvider>,
     );
 

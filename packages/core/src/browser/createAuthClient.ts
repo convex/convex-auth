@@ -5,7 +5,6 @@
  */
 import { ConvexHttpClient } from "convex/browser";
 import type { ConvexAuthApi } from "../lib/types.ts";
-import { oauth } from "../methods/oauth/client.ts";
 import { AuthClient } from "./sessionManager.ts";
 import {
   type ConvexClientApi,
@@ -138,7 +137,6 @@ export function createAuthClient<C extends ConvexClientApi>(
     },
     storage: options.storage ?? defaultStorage(),
     storageNamespace: options.storageNamespace ?? url,
-    ambientSignIns: [oauth()],
     verbose: options.verbose,
   });
 }

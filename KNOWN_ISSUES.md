@@ -25,8 +25,8 @@ No action item, just here for awareness.
 
 ## One pending OAuth flow per storage
 
-The client keeps a single pending-flow key (`flow` in the oauth setup's
-scoped storage, `packages/core/src/methods/oauth/client.ts`). Two sign-ins running concurrently in
+The client keeps a single pending-flow key (`flow` in the OAuth sign-in
+storage, `packages/core/src/methods/oauth/client.ts`). Two sign-ins running concurrently in
 different tabs overwrite each other, and both fail recoverably (`expired` /
 `invalid_flow`); retrying works.
 
@@ -42,7 +42,7 @@ rejected at setup (`packages/core/src/lib/oauth/redemption.ts`), so React
 Native apps must return via https universal links / app links.
 
 React Native also has no page URL for the client to work from: it defines
-`window` but no `window.location`. So the startup handler that finishes a flow
+`window` but no `window.location`. So the callback handler that finishes a flow
 from callback params does nothing there, and `signIn` requires an explicit
 `redirectTo` (`packages/core/src/methods/oauth/client.ts`). Supporting React Native
 properly means deciding what `redirectTo` looks like when it can't be a page

@@ -1,17 +1,16 @@
 // @vitest-environment jsdom
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { anyApi, makeFunctionReference } from "convex/server";
 import { ReactNode, StrictMode } from "react";
 import { afterEach, describe, expect, expectTypeOf, test, vi } from "vitest";
-import { AuthClient } from "../../browser/sessionManager.ts";
 import { InMemoryStorage } from "../../browser/storage.ts";
 import { useAuthToken } from "../../react/index.tsx";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
-import { unusedConvex } from "../../react/testSignInApi.ts";
 import { useSignInWithGithub } from "../github/react.ts";
 import { useSignInWithGoogle } from "../google/react.ts";
 import {
   useOauth,
+  useOauthCallback,
   useOauthSignIn,
   type OauthCompleteResult,
   type OauthProviderApi,
@@ -22,7 +21,6 @@ import {
 } from "./react.ts";
 import {
   acmeRefs,
-  NAMESPACE,
   calledPath,
   completed,
   oauthClient,
@@ -107,27 +105,81 @@ describe("OAuth React client", () => {
     restoreNavigatorProduct();
   });
 
-  test("the hooks throw when oauth() is not registered", () => {
-    const client = new AuthClient({
-      mode: "spa",
-      convex: unusedConvex,
-      url: NAMESPACE,
-      authApi: {
-        refreshSession: async () => ({ kind: "noSession" as const }),
-        signOut: async () => {},
+  test("the hooks throw outside a provider", () => {
+    expect(() => renderHook(() => useSignInWithGoogle(googleApi))).toThrow(
+      /useAuthClient must be used within a <ConvexAuthProvider>/,
+    );
+    expect(() => renderHook(() => useOauth())).toThrow(
+      /useAuthClient must be used within a <ConvexAuthProvider>/,
+    );
+  });
+
+  test("the auth state never reports signed out while a callback code is redeemed", async () => {
+    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
+    const storage = new InMemoryStorage();
+    seedPendingFlow(storage, googleRefs);
+    const redemption = Promise.withResolvers<typeof completed>();
+    // Every auth state the hook renders with. A state that is done loading
+    // and not authenticated would send the user to a sign-in screen.
+    const states: Array<{ isLoading: boolean; isAuthenticated: boolean }> = [];
+
+    const { result, mutation } = renderOAuth(
+      () => {
+        const flow = useGoogleFlow();
+        states.push({ ...flow.auth });
+        return flow;
       },
-      storage: new InMemoryStorage(),
-      storageNamespace: NAMESPACE,
-    });
-    const wrapper = ({ children }: { children: ReactNode }) => (
-      <AuthProvider authClient={client}>{children}</AuthProvider>
+      {
+        storage,
+        strictMode: true,
+        onMutation: (mutation) =>
+          mutation.mockReturnValueOnce(redemption.promise),
+      },
     );
-    expect(() =>
-      renderHook(() => useSignInWithGoogle(googleApi), { wrapper }),
-    ).toThrow(/No OAuth setup is registered/);
-    expect(() => renderHook(() => useOauth(), { wrapper })).toThrow(
-      /No OAuth setup is registered/,
+    // The redemption waits on the mutation, and the session has loaded.
+    await waitFor(() => expect(mutation).toHaveBeenCalledOnce());
+    await act(async () => {});
+    expect(result.current.auth.isLoading).toBe(true);
+
+    redemption.resolve(completed);
+    await waitFor(() => expect(result.current.auth.isAuthenticated).toBe(true));
+    expect(
+      states.filter((state) => !state.isLoading && !state.isAuthenticated),
+    ).toEqual([]);
+  });
+
+  test("useOauth reads a flow error that useOauthCallback set in another component", async () => {
+    window.history.replaceState(null, "", "/?convexAuthError=access_denied");
+    const { client } = oauthClient(new InMemoryStorage());
+    let flowError: unknown;
+    function Callback() {
+      useOauthCallback();
+      return null;
+    }
+    function Banner() {
+      flowError = useOauth().flowError;
+      return null;
+    }
+    render(
+      <AuthProvider authClient={client}>
+        <Callback />
+        <Banner />
+      </AuthProvider>,
     );
+
+    await waitFor(() => expect(flowError).toEqual({ error: "ACCESS_DENIED" }));
+  });
+
+  test("useOauth alone does not redeem a callback code", async () => {
+    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
+    const { result, mutation } = renderOAuth(() => ({
+      auth: useAuth(),
+      flowError: useOauth().flowError,
+    }));
+
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    expect(mutation).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("?convexAuthCode=code-1");
   });
 
   test("StrictMode double-mount redeems a callback code once", async () => {

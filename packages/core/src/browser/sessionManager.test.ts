@@ -6,7 +6,6 @@ import type {
   TokenBundle,
 } from "../lib/types.ts";
 import { unusedConvex } from "../react/testSignInApi.ts";
-import type { AmbientSignInClient } from "./ambientSignInClient.ts";
 import {
   AuthClient,
   INITIAL_AUTH_STATE,
@@ -527,175 +526,30 @@ const ENVELOPE_REF = SIGN_IN_REF as unknown as SignInFunction<"mutation">;
 /** {@link ENVELOPE_REF} typed as an action. */
 const ENVELOPE_ACTION_REF = SIGN_IN_REF as unknown as SignInFunction<"action">;
 
-/** An {@link AuthClient} constructed with the given ambient sign-ins. */
-function makeClientWithSignIns(
-  signIns: ReadonlyArray<AmbientSignInClient>,
-  storage: TokenStorage = new InMemoryStorage(),
-) {
-  const client = new AuthClient({
-    mode: "spa",
-    convex: unusedConvex,
-    url: NAMESPACE,
-    signInApi: SIGN_IN_API,
-    authApi: {
-      refreshSession: async () => ({ kind: "noSession" }),
-      signOut: async () => {},
-    },
-    storage,
-    storageNamespace: NAMESPACE,
-    ambientSignIns: signIns,
-  });
-  return { client, storage };
-}
-
-describe("AuthClient ambient sign-ins", () => {
+describe("AuthClient sign-in completion during the session load", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test("throws when two sign-ins share an id", () => {
-    expect(() =>
-      makeClientWithSignIns([
-        { id: "oauth", setup: () => {} },
-        { id: "oauth", setup: () => {} },
-      ]),
-    ).toThrow(/"oauth" is registered twice/);
-  });
-
-  test("throws when a sign-in id is not alphanumeric", () => {
-    expect(() =>
-      makeClientWithSignIns([{ id: "pass-key", setup: () => {} }]),
-    ).toThrow(/"pass-key" is invalid/);
-  });
-
-  test("scoped value writes land under the sign-in id", () => {
-    const { client } = makeClientWithSignIns([
-      {
-        id: "oauth",
-        setup: (ctx) => {
-          ctx.values.set("actions", "registered");
-        },
-      },
-    ]);
-    expect(client.ambientSignInValues("oauth").get<string>("actions")).toBe(
-      "registered",
-    );
-  });
-
-  test("scoped storage writes land under the sign-in prefix", () => {
-    const storage = new InMemoryStorage();
-    makeClientWithSignIns(
-      [
-        {
-          id: "oauth",
-          setup: (ctx) => {
-            void ctx.storage.set("verifier", "v1");
-          },
-        },
-      ],
-      storage,
-    );
-    // Provider prefix first, then the client's deployment namespacing.
-    expect(
-      storage.getItem(
-        new NamespacedStorage(storage, NAMESPACE).key(
-          "__convexAuthProvider_oauth_verifier",
-        ),
-      ),
-    ).toBe("v1");
-  });
-
-  test("every setup receives the same sign-in api and client", () => {
-    const received: Array<{ signInApi: AuthSignInApi; client: AuthClient }> =
-      [];
-    const { client } = makeClientWithSignIns([
-      {
-        id: "a",
-        setup: (ctx) => {
-          received.push({ signInApi: ctx.signInApi, client: ctx.client });
-        },
-      },
-      {
-        id: "b",
-        setup: (ctx) => {
-          received.push({ signInApi: ctx.signInApi, client: ctx.client });
-        },
-      },
-    ]);
-    expect(received[0].signInApi).toBe(client.signIn);
-    expect(received[1].signInApi).toBe(client.signIn);
-    expect(received[0].client).toBe(client);
-    expect(received[1].client).toBe(client);
-  });
-
-  test("onInit callbacks run during init in registration order, before the session loads", async () => {
-    const storage = new InMemoryStorage();
-    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
-    const order: string[] = [];
-    const { client } = makeClientWithSignIns(
-      [
-        {
-          id: "a",
-          setup: (ctx) => ({
-            // The persisted token isn't visible yet, proving the callback
-            // runs before the session loads.
-            onInit: () => order.push(`a:${ctx.client.getAccessToken()}`),
-          }),
-        },
-        { id: "b", setup: () => {} },
-        { id: "c", setup: () => ({ onInit: () => order.push("c") }) },
-      ],
-      storage,
-    );
-    expect(order).toEqual([]);
-    await client.init();
-    expect(order).toEqual(["a:null", "c"]);
-    expect(client.getAccessToken()).toBe("access-1");
-  });
-
-  test("a second init after dispose does not re-run onInit callbacks", async () => {
-    const onInit = vi.fn();
-    const { client } = makeClientWithSignIns([
-      { id: "probe", setup: () => ({ onInit }) },
-    ]);
-    await client.init();
-    client.dispose();
-    await client.init();
-    expect(onInit).toHaveBeenCalledTimes(1);
-  });
-
-  test("a withSignInPending call in onInit holds loading past the session load", async () => {
-    // What every ambient sign-in does: onInit starts a sign-in whose network
-    // call has not finished by the time init finishes loading the session.
-    // Without the withSignInPending wrapper the client would report signed out
-    // until the call finished, sending the user to a sign-in screen while they
-    // are signing in.
+  test("withSignInPending entered before init holds loading past the session load", async () => {
+    // What an OAuth callback does: a mount effect starts a sign-in whose
+    // network call has not finished by the time init finishes loading the
+    // session. Without the withSignInPending wrapper the client would report
+    // signed out until the call finished, sending the user to a sign-in
+    // screen while they are signing in.
     const signIn = Promise.withResolvers<void>();
-    // onInit returns nothing, so the promise it starts is saved here for the
-    // test to await.
-    const pending: Promise<void>[] = [];
-    const { client } = makeClientWithSignIns([
-      {
-        id: "probe",
-        setup: (ctx) => ({
-          onInit: () => {
-            pending.push(
-              ctx.client.withSignInPending(async () => {
-                await ctx.signInApi.mutation(SIGN_IN_REF, {});
-                await ctx.client.setSession(bundle(1));
-              }),
-            );
-          },
-        }),
-      },
-    ]);
+    const { client } = makeClient();
     SIGN_IN_MUTATION.mockReturnValueOnce(signIn.promise);
+    const pending = client.withSignInPending(async () => {
+      await SIGN_IN_API.mutation(ENVELOPE_REF, {});
+      await client.setSession(bundle(1));
+    });
 
     await client.init();
     expect(client.getSnapshot().isLoading).toBe(true);
 
     signIn.resolve();
-    await Promise.all(pending);
+    await pending;
     expect(client.getSnapshot()).toEqual({
       isLoading: false,
       isAuthenticated: true,
@@ -703,33 +557,63 @@ describe("AuthClient ambient sign-ins", () => {
     });
   });
 
-  test("a throwing onInit callback is logged and doesn't block the rest", async () => {
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
+  test("a sign-out while init reads storage keeps the user signed out", async () => {
+    // The access token read starts before the sign-out and answers after it
+    // clears the session, with the token it read.
+    const read = Promise.withResolvers<void>();
     const storage = new InMemoryStorage();
-    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
-    const order: string[] = [];
-    const { client } = makeClientWithSignIns(
-      [
-        {
-          id: "broken",
-          setup: () => ({
-            onInit: () => {
-              throw new Error("boom");
-            },
-          }),
-        },
-        { id: "ok", setup: () => ({ onInit: () => order.push("ok") }) },
-      ],
-      storage,
-    );
+    const jwtKey = `${JWT_STORAGE_KEY}_${SUFFIX}`;
+    storage.setItem(jwtKey, "access-1");
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    const getItem = storage.getItem.bind(storage);
+    const delayed: TokenStorage = {
+      getItem: async (key) => {
+        const value = getItem(key);
+        if (key === jwtKey) await read.promise;
+        return value;
+      },
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+    };
+    const { client } = makeClient({}, delayed);
 
-    await client.init();
-    expect(order).toEqual(["ok"]);
-    expect(consoleError).toHaveBeenCalledTimes(1);
-    expect(consoleError.mock.calls[0][0]).toContain('"broken"');
-    expect(client.getSnapshot()).toMatchObject({
+    const initialized = client.init();
+    const signedOut = client.signOut();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    read.resolve();
+    await Promise.all([initialized, signedOut]);
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: false,
+      token: null,
+    });
+  });
+
+  test("a session set while init reads storage is kept", async () => {
+    // The storage read starts before the session is set and answers after,
+    // with the empty storage it read.
+    const read = Promise.withResolvers<void>();
+    const storage = new InMemoryStorage();
+    const getItem = storage.getItem.bind(storage);
+    const delayed: TokenStorage = {
+      getItem: async (key) => {
+        const value = getItem(key);
+        await read.promise;
+        return value;
+      },
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+    };
+    const { client } = makeClient({}, delayed);
+
+    const initialized = client.init();
+    const stored = client.setSession(bundle(1));
+    read.resolve();
+    await Promise.all([initialized, stored]);
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
       isAuthenticated: true,
       token: "access-1",
     });

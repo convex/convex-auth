@@ -2,12 +2,18 @@
  * React client for the generic OAuth method, exported at
  * `@convex-dev/auth/methods/oauth/react`.
  *
- * OAuth is registered by default in `ConvexAuthProvider` and
- * `ConvexAuthNextjsProvider`. {@link useOauthSignIn} runs the flow of an
- * identity provider from its function references. The Google, Apple and
- * GitHub methods have their own hooks, at
- * `@convex-dev/auth/methods/<provider>/react`. {@link useOauth} returns the
- * state that isn't tied to one provider.
+ * {@link useOauthSignIn} runs the flow of an identity provider from its
+ * function references. The Google, Apple and GitHub methods have their own
+ * hooks, at `@convex-dev/auth/methods/<provider>/react`. {@link useOauth}
+ * returns the state that isn't tied to one provider.
+ *
+ * {@link useOauthSignIn} and the per-provider hooks finish the flow that the
+ * page URL returns to when they mount. The flow returns to the page that
+ * started it, unless `redirectTo` names another page. The auth state reports
+ * loading during the redemption only when the hook mounts in the page's first
+ * render. So call {@link useOauthCallback} on a custom `redirectTo` page, and
+ * at the root of the app when the sign-in form renders only after loading
+ * finishes.
  *
  * Under Next.js, add each provider's `completeSignIn*` function to the auth
  * proxy's `signIn` allowlist. Its `startSignIn*` function runs on the Convex
@@ -37,23 +43,21 @@
 "use client";
 
 import { getFunctionName } from "convex/server";
-import { useMemo } from "react";
-import { useAmbientSignInValue } from "../../react/methods.ts";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useAuthClient } from "../../react/client.tsx";
 import {
-  OAUTH_ACTIONS_KEY,
-  OAUTH_FLOW_ERROR_KEY,
-  OAUTH_SETUP_ID,
-  type OauthActions,
+  completeOauthSignIn,
+  handleOauthCallback,
+  startOauthSignIn,
   type OauthCompleteResult,
   type OauthFlowError,
   type OauthProviderRefs,
   type OauthStartResult,
   type SignInOptions,
 } from "./client.ts";
+import { getOauthFlowError, subscribeOauthFlowError } from "./flowState.ts";
 
-export { oauth } from "./client.ts";
 export type {
-  OauthActions,
   OauthCompleteResult,
   OauthFlowError,
   OauthProviderApi,
@@ -61,13 +65,6 @@ export type {
   OauthStartResult,
   SignInOptions,
 } from "./client.ts";
-
-/** What every hook here throws when the OAuth setup published nothing. */
-const NOT_REGISTERED_ERROR =
-  "No OAuth setup is registered. ConvexAuthProvider and " +
-  "ConvexAuthNextjsProvider register oauth() from " +
-  "@convex-dev/auth/methods/oauth/react by default, so include it yourself " +
-  "if you set the `ambientSignIns` prop.";
 
 /** What {@link useOauth} returns. */
 export type UseOauthReturn = {
@@ -85,16 +82,32 @@ export type UseOauthReturn = {
  * here without any provider's function references.
  */
 export function useOauth(): UseOauthReturn {
-  const flowError = useAmbientSignInValue<OauthFlowError | null>(
-    OAUTH_SETUP_ID,
-    OAUTH_FLOW_ERROR_KEY,
+  const auth = useAuthClient();
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeOauthFlowError(auth, listener),
+    [auth],
   );
-  // The value is published at setup, so `undefined` means oauth() was never
-  // registered.
-  if (flowError === undefined) {
-    throw new Error(NOT_REGISTERED_ERROR);
-  }
+  const flowError = useSyncExternalStore(
+    subscribe,
+    () => getOauthFlowError(auth),
+    () => null,
+  );
   return { flowError };
+}
+
+/**
+ * Finish the OAuth flow that the page URL returns to when the component
+ * mounts, and return the flow error like {@link useOauth}. Use it on a custom
+ * `redirectTo` page that renders no sign-in hook, and at the root of the app
+ * when the sign-in hooks render only after loading finishes. The sign-in
+ * hooks call it themselves.
+ */
+export function useOauthCallback(): UseOauthReturn {
+  const auth = useAuthClient();
+  useEffect(() => {
+    handleOauthCallback(auth);
+  }, [auth]);
+  return useOauth();
 }
 
 /** What {@link useOauthSignIn} returns. */
@@ -121,17 +134,16 @@ export type UseOauthSignInReturn = {
 /**
  * Run one OAuth provider's sign-in flow from its function references. The
  * per-provider hooks like `useSignInWithGoogle` call this with their
- * own references.
+ * own references. It finishes the flow that the page URL returns to on mount,
+ * through {@link useOauthCallback}.
  *
  * A failure while starting the flow comes back in the result. Failures after
  * the redirect back have no caller left to return to, so they are reported
  * through {@link useOauth}'s `flowError`.
  */
 export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
-  const actions = useAmbientSignInValue<OauthActions>(
-    OAUTH_SETUP_ID,
-    OAUTH_ACTIONS_KEY,
-  );
+  const auth = useAuthClient();
+  useOauthCallback();
   // Generated api objects create a fresh reference object on every property
   // access, so the memo depends on the function paths instead. The `refs` it
   // captures can then be from an earlier render, which is fine because the
@@ -139,14 +151,19 @@ export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
   const startPath = getFunctionName(refs.startSignIn);
   const completePath = getFunctionName(refs.completeSignIn);
   const { providerName } = refs;
-  const signIn = useMemo(() => {
-    if (actions === undefined) {
-      throw new Error(NOT_REGISTERED_ERROR);
-    }
-    // One function serves both call shapes. The action picks the path from
-    // whether `code` is set, and the result matches the shape called.
-    return ((options?: SignInOptions) =>
-      actions.signIn(refs, options)) as UseOauthSignInReturn["signIn"];
-  }, [actions, providerName, startPath, completePath]);
+  const signIn = useMemo(
+    // One function serves both call shapes. It picks the path from whether
+    // `code` is set, and the result matches the shape called.
+    () =>
+      ((options?: SignInOptions) =>
+        options?.code !== undefined
+          ? completeOauthSignIn(auth, options.code)
+          : startOauthSignIn(
+              auth,
+              refs,
+              options,
+            )) as UseOauthSignInReturn["signIn"],
+    [auth, providerName, startPath, completePath],
+  );
   return { signIn };
 }

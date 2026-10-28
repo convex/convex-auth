@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { ConvexError } from "convex/values";
-import { AuthClient, type AuthState } from "../../browser/sessionManager.ts";
+import type { AuthState } from "../../browser/sessionManager.ts";
 import { InMemoryStorage, type TokenStorage } from "../../browser/storage.ts";
-import { unusedConvex } from "../../react/testSignInApi.ts";
-import { oauth } from "./client.ts";
+import {
+  completeOauthSignIn,
+  handleOauthCallback,
+  startOauthSignIn,
+} from "./client.ts";
 import {
   acmeRefs,
-  NAMESPACE,
   calledPath,
   completed,
   flowStorage,
@@ -26,37 +28,19 @@ describe("OAuth client", () => {
     restoreNavigatorProduct();
   });
 
-  test("registers actions and a null flow error at setup", () => {
-    const { actions, flowError } = setupOAuth();
-    expect(actions.signIn).toBeTypeOf("function");
+  test("the flow error starts null", () => {
+    const { flowError } = setupOAuth();
     expect(flowError()).toBeNull();
   });
 
-  test("registering oauth() twice on one provider throws", () => {
-    expect(
-      () =>
-        new AuthClient({
-          mode: "spa",
-          convex: unusedConvex,
-          url: NAMESPACE,
-          authApi: {
-            refreshSession: async () => ({ kind: "noSession" as const }),
-            signOut: async () => {},
-          },
-          storage: new InMemoryStorage(),
-          storageNamespace: NAMESPACE,
-          ambientSignIns: [oauth(), oauth()],
-        }),
-    ).toThrow(/registered twice/);
-  });
-
-  test("init redeems a callback code and adopts the session", async () => {
+  test("a callback code redeems and adopts the session", async () => {
     window.history.replaceState(null, "", "/?convexAuthCode=code-1");
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
     const { client, mutation, flowError } = setupOAuth({ storage });
     mutation.mockResolvedValueOnce(completed);
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() =>
@@ -83,6 +67,7 @@ describe("OAuth client", () => {
     const { client, mutation } = setupOAuth({ storage });
     mutation.mockResolvedValueOnce(completed);
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() =>
@@ -111,6 +96,7 @@ describe("OAuth client", () => {
       }
     });
 
+    handleOauthCallback(client);
     await client.init();
     expect(client.getSnapshot().isLoading).toBe(true);
 
@@ -123,13 +109,14 @@ describe("OAuth client", () => {
     unsubscribe();
   });
 
-  test("a second client on the same URL finds it clean and no-ops", async () => {
+  test("a second callback on the same URL finds it clean and no-ops", async () => {
     window.history.replaceState(null, "", "/?convexAuthCode=code-1");
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
     const { client: first, mutation: firstMutation } = setupOAuth({ storage });
     firstMutation.mockResolvedValueOnce(completed);
 
+    handleOauthCallback(first);
     await first.init();
     await vi.waitFor(() =>
       expect(first.getSnapshot().isAuthenticated).toBe(true),
@@ -144,6 +131,7 @@ describe("OAuth client", () => {
       mutation: secondMutation,
       flowError: secondFlowError,
     } = setupOAuth({ storage });
+    handleOauthCallback(second);
     await second.init();
 
     expect(secondMutation).not.toHaveBeenCalled();
@@ -156,6 +144,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?convexAuthError=access_denied");
     const { client, mutation, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()).toEqual({ error: "ACCESS_DENIED" });
@@ -169,6 +158,7 @@ describe("OAuth client", () => {
     seedPendingFlow(storage);
     const { client, flowError } = setupOAuth({ storage });
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()?.error).toBe("ACCESS_DENIED");
@@ -180,6 +170,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?convexAuthError=expired");
     const { client, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()).toEqual({ error: "EXPIRED" });
@@ -189,6 +180,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?convexAuthError=oauth_error");
     const { client, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()).toEqual({ error: "OTHER_ERROR", cause: "oauth_error" });
@@ -198,6 +190,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?convexAuthError=server_exploded");
     const { client, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()).toEqual({
@@ -210,6 +203,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?convexAuthCode=code-1");
     const { client, mutation, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() => expect(flowError()?.error).toBe("INVALID_FLOW"));
@@ -229,6 +223,7 @@ describe("OAuth client", () => {
     );
     const { client, mutation, flowError } = setupOAuth({ storage });
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() => expect(flowError()?.error).toBe("INVALID_FLOW"));
@@ -242,6 +237,7 @@ describe("OAuth client", () => {
     const { client, mutation, flowError } = setupOAuth({ storage });
     mutation.mockResolvedValueOnce(invalidCode);
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() => expect(flowError()?.error).toBe("EXPIRED"));
@@ -264,6 +260,7 @@ describe("OAuth client", () => {
       }
     });
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() => expect(flowError()?.error).toBe("EXPIRED"));
@@ -281,6 +278,7 @@ describe("OAuth client", () => {
     const boom = new Error("boom");
     mutation.mockRejectedValueOnce(boom);
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() =>
@@ -298,6 +296,7 @@ describe("OAuth client", () => {
       new ConvexError("A verified email is required to sign in"),
     );
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() =>
@@ -316,6 +315,7 @@ describe("OAuth client", () => {
     const { client, mutation, flowError } = setupOAuth({ storage });
     mutation.mockRejectedValueOnce(new ConvexError({ reason: "policy" }));
 
+    handleOauthCallback(client);
     await client.init();
 
     // The app's backend chose the shape, so the app can read it.
@@ -341,6 +341,7 @@ describe("OAuth client", () => {
     };
     const { client, mutation, flowError } = setupOAuth({ storage });
 
+    handleOauthCallback(client);
     await client.init();
 
     await vi.waitFor(() => expect(flowError()?.error).toBe("OTHER_ERROR"));
@@ -357,6 +358,7 @@ describe("OAuth client", () => {
     };
     const { client, flowError } = setupOAuth({ storage });
 
+    handleOauthCallback(client);
     await client.init();
 
     expect(flowError()?.error).toBe("ACCESS_DENIED");
@@ -366,15 +368,15 @@ describe("OAuth client", () => {
     expect(flowError()?.error).toBe("ACCESS_DENIED");
   });
 
-  test("signIn starts a flow, persists it, and returns the redirect", async () => {
+  test("startOauthSignIn starts a flow, persists it, and returns the redirect", async () => {
     stubReactNative();
-    const { mutation, convexMutation, actions, storage } = setupOAuth();
+    const { mutation, convexMutation, client, storage } = setupOAuth();
     convexMutation.mockResolvedValueOnce({
       redirect: "https://provider.example/auth?client_id=x",
       state: "state-1",
     });
 
-    const outcome = await actions.signIn(acmeRefs, {
+    const outcome = await startOauthSignIn(client, acmeRefs, {
       redirectTo: "http://localhost/app",
     });
 
@@ -398,13 +400,13 @@ describe("OAuth client", () => {
     });
   });
 
-  test("signIn with a code completes the pending flow", async () => {
+  test("completeOauthSignIn completes the pending flow", async () => {
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
-    const { client, mutation, actions } = setupOAuth({ storage });
+    const { client, mutation } = setupOAuth({ storage });
     mutation.mockResolvedValueOnce(completed);
 
-    const outcome = await actions.signIn(acmeRefs, { code: "code-1" });
+    const outcome = await completeOauthSignIn(client, "code-1");
 
     expect(outcome).toEqual({ status: "complete" });
     expect(mutation).toHaveBeenCalledOnce();
@@ -416,10 +418,10 @@ describe("OAuth client", () => {
     expect(client.getSnapshot().isAuthenticated).toBe(true);
   });
 
-  test("signIn with a code returns a failure rather than publishing it", async () => {
-    const { mutation, actions, flowError } = setupOAuth();
+  test("completeOauthSignIn returns a failure rather than setting it", async () => {
+    const { mutation, client, flowError } = setupOAuth();
 
-    const outcome = await actions.signIn(acmeRefs, { code: "code-1" });
+    const outcome = await completeOauthSignIn(client, "code-1");
 
     expect(outcome).toEqual({
       status: "error",
@@ -429,10 +431,11 @@ describe("OAuth client", () => {
     expect(mutation).not.toHaveBeenCalled();
   });
 
-  test("signIn clears a previous flow error", async () => {
+  test("startOauthSignIn clears a previous flow error", async () => {
     window.history.replaceState(null, "", "/?convexAuthError=access_denied");
     stubReactNative();
-    const { client, convexMutation, actions, flowError } = setupOAuth();
+    const { client, convexMutation, flowError } = setupOAuth();
+    handleOauthCallback(client);
     await client.init();
     expect(flowError()?.error).toBe("ACCESS_DENIED");
 
@@ -441,17 +444,19 @@ describe("OAuth client", () => {
       state: "state-2",
     });
     // React Native has no page URL to default to, so `redirectTo` is required.
-    await actions.signIn(acmeRefs, { redirectTo: "http://localhost/app" });
+    await startOauthSignIn(client, acmeRefs, {
+      redirectTo: "http://localhost/app",
+    });
 
     expect(flowError()).toBeNull();
   });
 
   test("a failed start resolves to OTHER_ERROR with the thrown error", async () => {
-    const { convexMutation, actions, flowError, storage } = setupOAuth();
+    const { convexMutation, client, flowError, storage } = setupOAuth();
     const boom = new Error("boom");
     convexMutation.mockRejectedValueOnce(boom);
 
-    const outcome = await actions.signIn(acmeRefs);
+    const outcome = await startOauthSignIn(client, acmeRefs);
 
     expect(outcome).toEqual({
       status: "error",
@@ -468,13 +473,13 @@ describe("OAuth client", () => {
       setItem: () => Promise.reject(new Error("storage broken")),
       removeItem: () => {},
     };
-    const { convexMutation, actions, flowError } = setupOAuth({ storage });
+    const { convexMutation, client, flowError } = setupOAuth({ storage });
     convexMutation.mockResolvedValueOnce({
       redirect: "https://provider.example/auth",
       state: "state-1",
     });
 
-    const outcome = await actions.signIn(acmeRefs);
+    const outcome = await startOauthSignIn(client, acmeRefs);
 
     expect(outcome).toMatchObject({
       status: "error",
@@ -485,11 +490,11 @@ describe("OAuth client", () => {
 
   test("a ConvexError from the start is OTHER_ERROR too", async () => {
     // Starting runs no app code, so nothing there rejects a sign-in.
-    const { convexMutation, actions } = setupOAuth();
+    const { convexMutation, client } = setupOAuth();
     const rejected = new ConvexError("Sign-ups are closed");
     convexMutation.mockRejectedValueOnce(rejected);
 
-    const outcome = await actions.signIn(acmeRefs);
+    const outcome = await startOauthSignIn(client, acmeRefs);
 
     expect(outcome).toEqual({
       status: "error",
@@ -501,6 +506,7 @@ describe("OAuth client", () => {
     window.history.replaceState(null, "", "/?code=foreign&error=foreign");
     const { client, mutation, flowError } = setupOAuth();
 
+    handleOauthCallback(client);
     await client.init();
 
     // Only namespaced params are ours. A plain code or error is the app's.

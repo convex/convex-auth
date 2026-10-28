@@ -65,7 +65,6 @@ import {
 } from "../../browser/signInApi.ts";
 import { TokenStorage, defaultStorage } from "../../browser/storage.ts";
 import type { AuthSessionResponse } from "../../lib/types.ts";
-import { oauth } from "../../methods/oauth/client.ts";
 import {
   AuthProvider,
   useAuth,
@@ -198,7 +197,6 @@ export function createNextjsAuthClient<C extends ConvexClientApi>(
     },
     storage: options.storage ?? defaultStorage(),
     storageNamespace: options.storageNamespace ?? url,
-    ambientSignIns: [oauth()],
     replaceUrl: replaceNextjsUrl,
     verbose: options.verbose,
   });

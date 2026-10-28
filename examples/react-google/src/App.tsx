@@ -3,6 +3,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
   useOauth,
+  useOauthCallback,
   useSignInWithGoogle,
 } from "@convex-dev/auth/methods/google/react";
 import { api } from "../convex/_generated/api";
@@ -102,6 +103,10 @@ function SignedIn(): ReactNode {
 }
 
 export default function App(): ReactNode {
+  // The sign-in form renders only after loading, so the root finishes the
+  // flow that the page URL returns to. The auth state reports loading until
+  // the user is signed in.
+  useOauthCallback();
   const { isLoading, isAuthenticated } = useConvexAuth();
   return (
     <main>

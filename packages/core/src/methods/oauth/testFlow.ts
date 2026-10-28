@@ -17,15 +17,11 @@ import {
 } from "../../browser/storage.ts";
 import type { TokenBundle } from "../../lib/types.ts";
 import {
-  OAUTH_ACTIONS_KEY,
-  OAUTH_FLOW_ERROR_KEY,
-  OAUTH_SETUP_ID,
-  oauth,
-  type OauthActions,
-  type OauthFlowError,
+  OAUTH_STORAGE_ID,
   type OauthProviderRefs,
   type PendingFlow,
 } from "./client.ts";
+import { getOauthFlowError } from "./flowState.ts";
 
 /** The deployment url the tests namespace their storage under. */
 export const NAMESPACE = "https://happy-animal-123.convex.cloud";
@@ -62,9 +58,9 @@ export const acmeRefs: OauthProviderRefs = {
   completeSignIn: makeFunctionReference<"mutation">("auth:completeSignInAcme"),
 };
 
-/** The oauth setup's scoped storage view over `storage`. */
+/** The OAuth sign-in storage over `storage`. */
 export function flowStorage(storage: TokenStorage) {
-  return new NamespacedStorage(storage, NAMESPACE).forSignIn(OAUTH_SETUP_ID);
+  return new NamespacedStorage(storage, NAMESPACE).forSignIn(OAUTH_STORAGE_ID);
 }
 
 /**
@@ -79,7 +75,7 @@ export function readFlow(storage: TokenStorage): PendingFlow | null {
   return JSON.parse(raw) as PendingFlow;
 }
 
-/** Store a pending flow the way `signIn` would before navigating away. */
+/** Store a pending flow the way `startOauthSignIn` would before navigating away. */
 export function seedPendingFlow(
   storage: TokenStorage,
   refs: OauthProviderRefs = acmeRefs,
@@ -96,11 +92,10 @@ export function seedPendingFlow(
 }
 
 /**
- * An AuthClient with the real oauth setup registered, plus mocks standing in
- * for the Convex calls: `mutation` behind the sign-in api (completing a flow)
- * and `convexMutation` behind the plain Convex caller (starting one). Each
- * records the function reference it was called with, so tests can assert which
- * function ran.
+ * An AuthClient plus mocks standing in for the Convex calls: `mutation`
+ * behind the sign-in api (completing a flow) and `convexMutation` behind the
+ * Convex client (starting one). Each records the function reference it was
+ * called with, so tests can assert which function ran.
  */
 export function oauthClient(storage: TokenStorage): {
   client: AuthClient;
@@ -126,21 +121,17 @@ export function oauthClient(storage: TokenStorage): {
     },
     storage,
     storageNamespace: NAMESPACE,
-    ambientSignIns: [oauth()],
   });
   return { client, signInApi, mutation, convexMutation };
 }
 
-/** {@link oauthClient} plus the values the oauth setup published. */
+/** {@link oauthClient} plus a reader of its flow error. */
 export function setupOAuth({
   storage = new InMemoryStorage() as TokenStorage,
 } = {}) {
   const { client, mutation, convexMutation } = oauthClient(storage);
-  const oauthValues = client.ambientSignInValues(OAUTH_SETUP_ID);
-  const actions = oauthValues.get<OauthActions>(OAUTH_ACTIONS_KEY)!;
-  const flowError = () =>
-    oauthValues.get<OauthFlowError | null>(OAUTH_FLOW_ERROR_KEY);
-  return { client, mutation, convexMutation, actions, flowError, storage };
+  const flowError = () => getOauthFlowError(client);
+  return { client, mutation, convexMutation, flowError, storage };
 }
 
 /** The function path the `mutation` mock was called with. */

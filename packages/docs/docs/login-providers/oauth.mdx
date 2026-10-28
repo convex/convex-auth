@@ -184,10 +184,13 @@ callbacks, in `convex/auth.ts`:
 <Step title="Set up the authentication UI">
 
 In your front-end, install hooks and attach listeners for initiating OAuth login.
+The sign-in hook finishes the flow when the user comes back to the page. This
+form renders only after loading finishes, so `App` calls `useOauthCallback` to
+finish the flow while the auth state reports loading.
 
 Include an `App.tsx` like the following in your application:
 
-```tsx file="examples/react-apple/src/App.tsx" title="src/App.tsx"
+```tsx file="examples/react-apple/src/App.tsx" title="src/App.tsx" highlight="useOauthCallback();"
 ```
 
 </Step>
@@ -284,10 +287,13 @@ time. This example doesn't use it, but it's available if you need it.
 <Step title="Set up the authentication UI">
 
 In your front-end, install hooks and attach listeners for initiating OAuth login.
+The sign-in hook finishes the flow when the user comes back to the page. This
+form renders only after loading finishes, so `App` calls `useOauthCallback` to
+finish the flow while the auth state reports loading.
 
 Include an `App.tsx` like the following in your application:
 
-```tsx file="examples/react-google/src/App.tsx" title="src/App.tsx"
+```tsx file="examples/react-google/src/App.tsx" title="src/App.tsx" highlight="useOauthCallback();"
 ```
 
 </Step>
@@ -384,10 +390,13 @@ time. This example doesn't use it, but it's available if you need it.
 <Step title="Set up the authentication UI">
 
 In your front-end, install hooks and attach listeners for initiating OAuth login.
+The sign-in hook finishes the flow when the user comes back to the page. This
+form renders only after loading finishes, so `App` calls `useOauthCallback` to
+finish the flow while the auth state reports loading.
 
 Include an `App.tsx` like the following in your application:
 
-```tsx file="examples/react-github/src/App.tsx" title="src/App.tsx"
+```tsx file="examples/react-github/src/App.tsx" title="src/App.tsx" highlight="useOauthCallback();"
 ```
 
 </Step>
