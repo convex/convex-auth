@@ -133,6 +133,34 @@ type RefreshOutcome =
   | { kind: "noSession" };
 
 /**
+ * How long before its `exp` a cached access token stops being handed out
+ * as-is, in milliseconds. Covers the time the token takes to reach the backend.
+ */
+const ACCESS_TOKEN_EXPIRY_LEEWAY_MS = 10_000;
+
+/**
+ * Whether an access token (a JWT) is expired or about to expire, judged from
+ * its `exp` claim. This only decodes the token; the backend verifies it.
+ *
+ * A token whose expiry can't be read is not treated as expired: the backend
+ * is left to judge it, as it was before this check existed.
+ */
+function isAccessTokenExpiring(token: string): boolean {
+  let exp: unknown;
+  try {
+    const payload = token.split(".")[1];
+    if (payload === undefined) return false;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    exp = (JSON.parse(atob(padded)) as { exp?: unknown }).exp;
+  } catch {
+    return false;
+  }
+  if (typeof exp !== "number") return false;
+  return exp * 1000 - Date.now() <= ACCESS_TOKEN_EXPIRY_LEEWAY_MS;
+}
+
+/**
  * Returns the global `window` object when it supports DOM event listeners,
  * otherwise `null`.
  *
@@ -444,7 +472,8 @@ export class AuthClient {
    * The function handed to Convex's `ConvexProviderWithAuth`.
    *
    * Returns a cached access token, or fetches a new token if
-   * `forceRefreshToken` is `true`.
+   * `forceRefreshToken` is `true` or the cached token has expired (or is
+   * about to).
    */
   fetchAccessToken = async ({
     forceRefreshToken,
@@ -452,7 +481,13 @@ export class AuthClient {
     forceRefreshToken: boolean;
   }): Promise<string | null> => {
     if (!forceRefreshToken) {
-      return this.#accessToken;
+      // A token restored from storage after a reload or a cold start may have
+      // expired while the app was closed. Handing it to Convex can leave the
+      // client reconnecting forever (the backend may drop the socket without
+      // an auth error that would trigger a forced refresh), so refresh first.
+      const cached = this.#accessToken;
+      if (cached === null || !isAccessTokenExpiring(cached)) return cached;
+      this.#log("cached access token is expired, refreshing");
     }
     const tokenBeforeLock = this.#accessToken;
     return await runWithMutex(this.#lockKey, async () => {
