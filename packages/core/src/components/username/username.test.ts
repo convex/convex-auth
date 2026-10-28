@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
+import { MAX_USERNAME_LENGTH } from "./validation.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -110,7 +111,7 @@ describe("setUsername", () => {
     });
   });
 
-  test("accepts a one-character username and a very long username", async () => {
+  test("accepts a one-character username and a username of the maximum length", async () => {
     const t = setup();
     expect(
       await t.mutation(api.public.setUsername, {
@@ -118,7 +119,8 @@ describe("setUsername", () => {
         username: "a",
       }),
     ).toEqual({ success: true, previousUsername: null });
-    const long = "b".repeat(5000);
+    // The length counts code points, thus an astral character counts as one.
+    const long = "😀".repeat(MAX_USERNAME_LENGTH);
     expect(
       await t.mutation(api.public.setUsername, {
         userId: "user2",
@@ -128,6 +130,27 @@ describe("setUsername", () => {
     expect(
       await t.query(api.public.getUserIdByUsername, { username: long }),
     ).toBe("user2");
+  });
+
+  test("rejects a username that is too long", async () => {
+    const t = setup();
+    for (const username of [
+      "b".repeat(MAX_USERNAME_LENGTH + 1),
+      "b".repeat(1_000_000),
+    ]) {
+      expect(
+        await t.mutation(api.public.setUsername, { userId: "user1", username }),
+      ).toEqual({
+        success: false,
+        userError: {
+          error: "USERNAME_TOO_LONG",
+          maximumLength: MAX_USERNAME_LENGTH,
+        },
+      });
+      expect(
+        await t.query(api.public.getUserIdByUsername, { username }),
+      ).toBeNull();
+    }
   });
 
   test("rejects a username with surrounding whitespace", async () => {

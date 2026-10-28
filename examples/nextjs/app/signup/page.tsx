@@ -35,6 +35,7 @@ export default function SignUp() {
               case "USERNAME_TAKEN":
                 return "That username is already taken.";
               case "USERNAME_TOO_SHORT":
+              case "USERNAME_TOO_LONG":
               case "USERNAME_HAS_SURROUNDING_WHITESPACE":
               case "USERNAME_HAS_INVALID_CHARACTERS":
                 return "That username is invalid";

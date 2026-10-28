@@ -54,6 +54,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             success: false;
             userError:
               | { error: "USERNAME_TOO_SHORT"; minimumLength: number }
+              | { error: "USERNAME_TOO_LONG"; maximumLength: number }
               | { error: "USERNAME_HAS_SURROUNDING_WHITESPACE" }
               | { error: "USERNAME_HAS_INVALID_CHARACTERS" }
               | { error: "USERNAME_TAKEN" };

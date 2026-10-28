@@ -1,8 +1,9 @@
 import { Infer, v } from "convex/values";
 
 // The component applies only the rules that are correct for all applications.
-// There is no maximum length, and characters of all scripts are permitted:
-// the component can be used in an international application.
+// Characters of all scripts are permitted: the component can be used in an
+// international application. The maximum length is generous; it only keeps
+// a username far below the size limits of a Convex document.
 //
 // The component rejects only usernames that are clearly malformed.
 //
@@ -10,6 +11,7 @@ import { Infer, v } from "convex/values";
 // minimum length of 3, a list of reserved names, …) applies them before it
 // calls `setUsername`.
 export const MIN_USERNAME_LENGTH = 1;
+export const MAX_USERNAME_LENGTH = 100;
 
 /**
  * The user-facing errors for `setUsername`. An application can show these
@@ -20,6 +22,10 @@ export const setUsernameUserError = v.union(
   v.object({
     error: v.literal("USERNAME_TOO_SHORT"),
     minimumLength: v.number(),
+  }),
+  v.object({
+    error: v.literal("USERNAME_TOO_LONG"),
+    maximumLength: v.number(),
   }),
   // The username starts or ends with a space or a different whitespace
   // character.
@@ -130,6 +136,11 @@ function hasDisallowedCharacter(username: string): boolean {
 export function validateUsernameFormat(
   username: string,
 ): SetUsernameUserError | null {
+  // See the comment on the minimum length below for how the length is
+  // measured.
+  if (isTooLong(username)) {
+    return { error: "USERNAME_TOO_LONG", maximumLength: MAX_USERNAME_LENGTH };
+  }
   // Reject whitespace at the start and at the end. The `u` flag makes `\s`
   // match all Unicode whitespace. A comparison with `username.trim()` does
   // not find some of these characters.
@@ -154,6 +165,15 @@ export function validateUsernameFormat(
     return { error: "USERNAME_TOO_SHORT", minimumLength: MIN_USERNAME_LENGTH };
   }
   return null;
+}
+
+/**
+ * Tell if the username has more than {@link MAX_USERNAME_LENGTH} code
+ * points after normalization. No stored username is that long, thus a lookup
+ * can skip the database for such a username.
+ */
+export function isTooLong(username: string): boolean {
+  return [...normalizeUsername(username)].length > MAX_USERNAME_LENGTH;
 }
 
 /**

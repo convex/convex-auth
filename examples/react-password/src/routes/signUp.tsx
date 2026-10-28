@@ -25,6 +25,8 @@ export function SignUp() {
                 return "That username is already taken.";
               case "USERNAME_TOO_SHORT":
                 return `Username must be at least ${result.userError.minimumLength} characters.`;
+              case "USERNAME_TOO_LONG":
+                return `Username must be at most ${result.userError.maximumLength} characters.`;
               case "USERNAME_HAS_SURROUNDING_WHITESPACE":
                 return "Username can't start or end with whitespace.";
               case "USERNAME_HAS_INVALID_CHARACTERS":
