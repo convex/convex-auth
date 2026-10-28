@@ -1,12 +1,15 @@
-// Token lifetimes: the validated config of a call, when a refresh token
-// expires under it, and the copy the component stores for the cleanup loop.
+// Token lifetimes: their defaults, the validated config of a call, when a
+// refresh token expires under it, and the copy the component stores for the
+// cleanup loop.
 
 import type { Doc } from "./_generated/dataModel.ts";
 import type { MutationCtx, QueryCtx } from "./_generated/server.ts";
-import {
-  DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
-  DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
-} from "../lib/ttl.ts";
+
+// Defaults for the configurable token lifetimes. The app overrides them per
+// deployment via `setupConvexAuth`, which threads the chosen values in as call
+// args; when it passes nothing, these apply.
+export const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60; // 1 minute
+export const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
 // `ctx.auth.signJwt` refuses to mint a token that lives longer than an hour,
 // so an access-token TTL past that is a misconfiguration.
