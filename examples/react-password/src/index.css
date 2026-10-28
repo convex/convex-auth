@@ -33,3 +33,9 @@ input {
   box-sizing: border-box;
   font-size: 1rem;
 }
+
+input[type="checkbox"] {
+  display: inline;
+  width: auto;
+  margin: 0 0.5rem 0 0;
+}

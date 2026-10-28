@@ -1,4 +1,3 @@
-import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../server/userId.ts";
 import {
@@ -272,14 +271,19 @@ export function setupUsernamePassword<UsersTable extends string>(
 
         /**
          * Change the password of the signed-in user. The user must re-authenticate
-         * by giving their current password.
+         * by giving their current password. Signs out the user's other sessions
+         * if `signOutOtherSessions` is `true`.
          */
-        changePassword: mutationGeneric({
-          args: { currentPassword: v.string(), newPassword: v.string() },
+        changePassword: authMutation({
+          args: {
+            currentPassword: v.string(),
+            newPassword: v.string(),
+            signOutOtherSessions: v.optional(v.boolean()),
+          },
           returns: changePasswordResult,
           handler: async (
             ctx,
-            { currentPassword, newPassword },
+            { currentPassword, newPassword, signOutOtherSessions = false },
           ): Promise<ChangePasswordResult> => {
             const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
@@ -333,7 +337,11 @@ export function setupUsernamePassword<UsersTable extends string>(
               );
             }
 
-            // TODO(nicolas) Allow the user to choose to revoke their existing sessions here (needs core support)
+            // The current password was just verified, so the caller owns this
+            // session: sign out the user's other sessions if requested.
+            if (signOutOtherSessions) {
+              await ctx.convexAuth.revokeOtherSessions();
+            }
             return { success: true };
           },
         }),
