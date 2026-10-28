@@ -17,6 +17,7 @@ import {
   type ConvexAuthCtx,
   type UserCallbacks,
 } from "../lib/types.ts";
+import { getAuthUserId } from "./userId.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -105,13 +106,17 @@ export type AuthCore<UsersTable extends string = string> = {
     Promise<RefreshResult>
   >;
   /**
-   * Reports whether the caller's access token identifies a signed-in user.
+   * Reports whether the caller's access token identifies a live session.
    *
    * Convex verifies the token's signature (against the deployment's JWKS)
    * before this query runs, so the result is a trustworthy authentication
    * verdict. SSR hosts call it with the token from the auth cookie to decide
    * authentication state, rather than trusting the (client-controlled) cookie
    * by merely decoding it.
+   *
+   * The query reads the session, so it returns `false` once the session is
+   * gone (signed out elsewhere, revoked, or expired) even while the token
+   * itself is still valid, and a subscription re-runs when that happens.
    */
   isAuthenticated: RegisteredQuery<
     "public",
@@ -247,7 +252,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     args: {},
     returns: v.boolean(),
     handler: async (ctx): Promise<boolean> => {
-      return (await ctx.auth.getUserIdentity()) !== null;
+      return (await getAuthUserId(ctx, component)) !== null;
     },
   });
 
