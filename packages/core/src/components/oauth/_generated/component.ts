@@ -31,6 +31,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | { encryptedPayload: string },
         Name
       >;
+      createAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { providerAccountId: string; providerName: string; userId: string },
+        null,
+        Name
+      >;
       createAuthorizationRequest: FunctionReference<
         "mutation",
         "internal",
@@ -44,6 +51,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           userInfoEndpoints?: Record<string, string>;
         },
         { callbackUrl: string; clientId: string },
+        Name
+      >;
+      getUserIdByAccount: FunctionReference<
+        "query",
+        "internal",
+        { providerAccountId: string; providerName: string },
+        string | null,
         Name
       >;
     };

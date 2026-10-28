@@ -127,10 +127,10 @@ export type AuthCore<UsersTable extends string = string> = {
    * Register a provider with the core and get the function builders its
    * implementation uses.
    *
-   * `name` identifies the provider in the core's `accounts` table: accounts
-   * are keyed by `(name, providerAccountId)`, so it must be unique among the
-   * providers bound to this core — a duplicate throws immediately (two
-   * providers sharing a name would silently share accounts).
+   * `name` identifies the provider to the app's user callbacks and on the
+   * sessions it signs in, so it must be unique among the providers bound to
+   * this core — a duplicate throws immediately (two providers sharing a name
+   * would be indistinguishable to the app).
    *
    * `createUser` is the app's user-creating callback for this provider and
    * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
@@ -169,10 +169,11 @@ export type AuthCore<UsersTable extends string = string> = {
  * The core never triggers a sign-in itself: it has no idea how any given
  * provider authenticates a user. *Triggering sign-in is each provider's
  * responsibility.* A provider verifies the user its own way (checking a
- * password, say) and then calls one of the helpers the core injects on
- * `ctx.convexAuth` to exchange the verified identity for a session:
- * `completeSignUp` when it has just established the account, `completeSignIn`
- * when the account already exists.
+ * password, say), resolves the identity to an app user in its own component,
+ * and then calls one of the helpers the core injects on `ctx.convexAuth` to
+ * exchange the verified identity for a session: `completeSignUp` when the
+ * identity is new (the core mints the app user), `completeSignIn` when the
+ * component already maps it to a user.
  *
  * Token lifetimes are configurable here and default to 1m (access) and 30d
  * (refresh). The access-token TTL must be shorter than the refresh-token TTL,
@@ -258,7 +259,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
   // Names of providers bound to this core, for duplicate detection. Scoped to
   // this `setupConvexAuth` call (not module-global): the collision that matters is
-  // two providers on the same core, whose accounts would silently share rows.
+  // two providers on the same core, which the app could not tell apart.
   const boundProviderNames = new Set<string>();
 
   const bindProvider = <Provider extends string, Profile>({
@@ -275,8 +276,8 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     if (boundProviderNames.has(name)) {
       throw new Error(
         `A provider named "${name}" is already bound to this auth core. ` +
-          `Provider names key the accounts table, so each provider must ` +
-          `have a unique name.`,
+          `Provider names identify the provider to the app's callbacks and ` +
+          `on sessions, so each provider must have a unique name.`,
       );
     }
     boundProviderNames.add(name);
@@ -327,6 +328,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         });
       },
       completeSignIn: async (args: {
+        userId: string;
         providerAccountId: string;
         profile: Profile;
       }): Promise<TokenBundle> => {
@@ -336,33 +338,26 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
+          userId: args.userId,
           onSignInHandle: await onSignInHandle(),
           accessTokenTtlSeconds,
           refreshTokenTtlSeconds,
         });
       },
-      // Creates the app user + account without a session, for providers where
-      // the user must complete a step (e.g. an email validation) before the
-      // first sign-in.
-      signUpWithoutSession: async (args: {
+      // Creates the app user without a session, for providers where the user
+      // must complete a step (e.g. an email validation) before the first
+      // sign-in.
+      createUser: async (args: {
         providerAccountId: string;
         profile: Profile;
       }): Promise<{ userId: string }> => {
-        return await ctx.runMutation(component.public.signUpWithoutSession, {
+        return await ctx.runMutation(component.public.createUser, {
           claims: {
             providerName: name,
             providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
           createUserHandle: await createFunctionHandle(createUser),
-        });
-      },
-      resolveUserId: async (
-        providerAccountId: string,
-      ): Promise<string | null> => {
-        return await ctx.runQuery(component.public.getUserIdByAccount, {
-          provider: name,
-          providerAccountId,
         });
       },
       revokeOtherSessions: async (): Promise<number> => {

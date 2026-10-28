@@ -64,3 +64,22 @@ export const authorizationRequestsTable = defineTable(
 export const ticketsTable = defineTable(ticketFields).index("ticketCodeHash", [
   "ticketCodeHash",
 ]);
+
+/**
+ * An account maps the identity the provider attested (its `sub`, or the
+ * profile `id` the provider's mapping produced) to the app user it belongs
+ * to. The first redemption of an identity creates it, after the core has
+ * minted the app user; every later redemption resolves it and signs that
+ * user in. The core keeps no copy: this row is the one place the identity
+ * and the user meet.
+ */
+export const accountFields = {
+  /** The provider-scoped account id: the profile mapping's `id`. */
+  providerAccountId: v.string(),
+  /** The opaque app user id the core's `createUser` callback returned. */
+  userId: v.string(),
+};
+
+export const accountsTable = defineTable(accountFields)
+  .index("providerAccountId", ["providerAccountId"])
+  .index("userId", ["userId"]);

@@ -262,6 +262,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             // the account exists and `completeSignIn` (which throws otherwise)
             // is the right helper.
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
               providerAccountId: userId,
               profile: {},
             });

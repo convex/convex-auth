@@ -172,6 +172,10 @@ export function setupApple<UsersTable extends string>(
         authMutation,
         claimTicket: (ctx, args) =>
           ctx.runMutation(options.component.provider.claimTicket, args),
+        getUserIdByAccount: (ctx, args) =>
+          ctx.runQuery(options.component.provider.getUserIdByAccount, args),
+        createAccount: (ctx, args) =>
+          ctx.runMutation(options.component.provider.createAccount, args),
         profile: (payload) => {
           if (payload.claims === undefined) {
             throw new Error(

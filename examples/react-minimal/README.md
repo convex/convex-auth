@@ -4,7 +4,7 @@ An in-repo Convex backend that mounts the `@convex-dev/auth` components. It
 exists as an example of wiring the auth system to an application and for unit
 testing the auth system.
 
-The auth system owns sessions, providers, accounts, and JWT minting;
+The auth system owns sessions, providers, and JWT minting;
 `convex/users.ts` owns the app side (the `createUser` callback). Providers from the auth system expose sign in methods.
 
 ## Generate code / run

@@ -135,6 +135,10 @@ export function setupGoogle<UsersTable extends string>(
         authMutation,
         claimTicket: (ctx, args) =>
           ctx.runMutation(options.component.provider.claimTicket, args),
+        getUserIdByAccount: (ctx, args) =>
+          ctx.runQuery(options.component.provider.getUserIdByAccount, args),
+        createAccount: (ctx, args) =>
+          ctx.runMutation(options.component.provider.createAccount, args),
         profile: (payload) => normalizeGoogleProfile(payload.claims),
       });
 

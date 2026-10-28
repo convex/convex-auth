@@ -95,18 +95,14 @@ async function seedSignedUpUser(
  * Configure the passed in `T` with a session for `userId`.
  *
  * The access token's subject is a session id, and the core looks the user up
- * through the session, so this seeds a session for the account
+ * through the session, so this seeds a session for the user
  * `seedSignedUpUser` created.
  */
 async function asUser(t: T, userId: string) {
   const sessionId = await runInComponent(t, "auth", async (ctx) => {
-    const account = await ctx.db
-      .query("accounts")
-      .filter((q) => q.eq(q.field("userId"), userId))
-      .unique();
     return await ctx.db.insert("sessions", {
       userId,
-      accountId: account!._id,
+      provider: "emailPassword",
     });
   });
   return t.withIdentity({ subject: sessionId });

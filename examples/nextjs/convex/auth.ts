@@ -4,7 +4,7 @@ import { setupAnonymous } from "@convex-dev/auth/methods/anonymous/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
 import { setupUsernamePassword } from "@convex-dev/auth/methods/username-password/server";
 
-// The core owns sessions, accounts, and JWT minting. Each provider is wired to
+// The core owns sessions and JWT minting. Each provider is wired to
 // it with its own setup function, and only hands back its functions once the
 // app attaches the callbacks that create its user rows. Each provider exposes
 // the functions its client hooks call: `signInAnonymously` for the anonymous
