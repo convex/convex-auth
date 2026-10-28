@@ -381,7 +381,8 @@ export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
    *
    * Symmetric and repeatable with {@link dispose}. The session load happens
    * once, but the cross-tab listener is (re)attached on every call, so an
-   * `init` after a `dispose` fully restores the client.
+   * `init` after a `dispose` fully restores the client. A repeat call
+   * resolves when the first call has loaded the session.
    */
   async init(options?: {
     /**
@@ -394,7 +395,10 @@ export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
     // the listener rather than skipping it. Idempotent, so repeat calls are
     // harmless.
     this.#attachStorageListener();
-    if (this.#initialized) return;
+    if (this.#initialized) {
+      await this.#loaded;
+      return;
+    }
     this.#initialized = true;
     let markLoaded!: () => void;
     this.#loaded = new Promise((resolve) => {

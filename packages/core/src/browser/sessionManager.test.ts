@@ -763,6 +763,20 @@ class AsyncTokenStorage implements TokenStorage {
 describe("AuthClient (async storage)", () => {
   afterEach(restoreWindow);
 
+  test("a repeat init resolves when the first one has loaded the session", async () => {
+    const storage = new AsyncTokenStorage();
+    storage.entries.set(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
+    const { client } = makeClient({}, storage);
+
+    void client.init();
+    await client.init();
+
+    expect(client.getSnapshot()).toMatchObject({
+      isLoading: false,
+      isAuthenticated: true,
+    });
+  });
+
   test("hydrates a persisted session on init", async () => {
     // The case that matters on React Native: a session survives an app
     // restart, rather than the user landing on the sign-in screen every launch.

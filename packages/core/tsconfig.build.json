@@ -37,6 +37,7 @@
     "src/components/emailTestSetup.ts",
     "src/components/totpTestSetup.ts",
     "src/methods/oauth/testFlow.ts",
-    "src/react/testSignInApi.ts"
+    "src/react/testSignInApi.ts",
+    "src/react/testWebSocket.ts"
   ]
 }

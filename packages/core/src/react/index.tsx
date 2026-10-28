@@ -41,6 +41,7 @@ import {
   ConvexAuthTokenContext,
   useAuth,
   useAuthConvexClient,
+  useResumeConvexAfterSessionLoad,
 } from "./client.tsx";
 
 export {
@@ -69,6 +70,7 @@ export function ConvexAuthProvider({
   children: ReactNode;
 }) {
   const convex = useAuthConvexClient(auth);
+  useResumeConvexAfterSessionLoad(auth, convex);
   return (
     <AuthProvider authClient={auth}>
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>

@@ -7,6 +7,12 @@ import type { SignInFunction } from "../../browser/signInApi.ts";
 import { InMemoryStorage, JWT_STORAGE_KEY } from "../../browser/storage.ts";
 import { useAuthToken } from "../../react/index.tsx";
 import {
+  FakeWebSocket,
+  openSocket,
+  sentTypes,
+  webSocketConstructor,
+} from "../../react/testWebSocket.ts";
+import {
   ConvexAuthNextjsProvider,
   ConvexAuthNextjsServerStateProvider,
   createNextjsAuthClient,
@@ -116,5 +122,30 @@ describe("createNextjsAuthClient", () => {
 
     await waitFor(() => expect(token).toBe("access-ssr"));
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
+  });
+
+  test("a signed-out call on the Convex client is sent under expectAuth", async () => {
+    FakeWebSocket.instances = [];
+    const convex = new ConvexReactClient(URL, {
+      expectAuth: true,
+      webSocketConstructor,
+    });
+    const auth = createNextjsAuthClient({
+      convex,
+      storage: new InMemoryStorage(),
+    });
+    render(
+      <ConvexAuthNextjsProvider auth={auth}>
+        <div />
+      </ConvexAuthNextjsProvider>,
+    );
+    await waitFor(() => expect(auth.getSnapshot().isLoading).toBe(false));
+
+    // An OAuth start, for example, runs on the Convex client.
+    void convex.mutation(makeFunctionReference<"mutation">("auth:start"), {});
+    const socket = await openSocket();
+
+    await waitFor(() => expect(sentTypes(socket)).toContain("Mutation"));
+    void convex.close();
   });
 });

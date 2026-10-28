@@ -1,5 +1,6 @@
 "use client";
 
+import type { ConvexReactClient } from "convex/react";
 import {
   ReactNode,
   createContext,
@@ -72,6 +73,46 @@ export function useAuthConvexClient<C extends ConvexClientApi>(
     () => auth.convex,
     () => auth.convex,
   );
+}
+
+/**
+ * Let the Convex client send calls once the session loads, when
+ * `ConvexProviderWithAuth` does not set its auth. A `ConvexReactClient` built
+ * with `expectAuth` pauses its websocket until `setAuth` runs, and
+ * `ConvexProviderWithAuth` calls `setAuth` only for a signed-in user whose
+ * session is not loading. Without this, a signed-out user's sign-in calls and
+ * the redemption of an OAuth callback code are never sent.
+ *
+ * With no access token the fetcher returns null and makes no request, so the
+ * Convex client resumes its websocket unauthenticated. With one, which happens
+ * while a sign-in is pending, it is the auth client's fetcher, so the Convex
+ * client can refresh an expired token. `ConvexProviderWithAuth` sets its own
+ * auth once the user is signed in and the session is not loading.
+ */
+export function useResumeConvexAfterSessionLoad(
+  auth: AuthClient,
+  convex: ConvexReactClient,
+): void {
+  useEffect(() => {
+    let current = true;
+    // The provider's own init() call runs first, because child effects run
+    // before parent effects. This call resolves when that one has loaded.
+    void auth.init().then(() => {
+      const { isLoading, isAuthenticated } = auth.getSnapshot();
+      if (current && (isLoading || !isAuthenticated)) {
+        convex.setAuth(
+          async (args) =>
+            auth.getAccessToken() === null
+              ? null
+              : await auth.fetchAccessToken(args),
+          () => {},
+        );
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [auth, convex]);
 }
 
 /** The current access token (a JWT), or null when signed out. */
