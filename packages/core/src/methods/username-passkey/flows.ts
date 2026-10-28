@@ -5,15 +5,9 @@
  * @module
  */
 
-import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
-import type {
-  ClientView,
-  SignInError,
-  SlimTokenBundle,
-  TokenBundle,
-} from "../../lib/types.ts";
+import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { ClientView, SignInError } from "../../lib/types.ts";
 import {
   authenticate,
   register,
@@ -70,18 +64,14 @@ export type UsernamePasskeyApi = {
 
 /** What the sign-in flows need from the surrounding React tree. */
 export type SignInFlowContext = {
-  /** The Convex client of the surrounding provider. */
-  convex: ConvexReactClient;
+  /**
+   * The auth client of the surrounding provider. The start mutation runs on
+   * `auth.convex`. The finishing mutations mint a session, so they run on
+   * `auth.signIn`, which works under both session models (SPA and SSR).
+   */
+  auth: AuthClient;
   /** The mutation references the app re-exported from its `setupConvexAuth`. */
   api: UsernamePasskeyApi;
-  /**
-   * Runs a mutation that mints a session. The finishing mutations go
-   * through this, and not through `convex`, because they must work under
-   * both session models (SPA and SSR).
-   */
-  signInApi: AuthSignInApi;
-  /** Stores a minted session. */
-  setSession: (session: TokenBundle | SlimTokenBundle) => Promise<void>;
 };
 
 /**
@@ -125,13 +115,13 @@ export async function runSignInOrSignUpFlow(
   ctx: SignInFlowContext,
   { username }: { username: string },
 ): Promise<SignInFlowResult> {
-  const { convex, api, signInApi, setSession } = ctx;
+  const { auth, api } = ctx;
 
   if (!supportsWebAuthn()) {
     return { status: "error", userError: { error: "WEBAUTHN_UNSUPPORTED" } };
   }
 
-  const start = await convex.mutation(api.startSignInWithUsernamePasskey, {
+  const start = await auth.convex.mutation(api.startSignInWithUsernamePasskey, {
     username,
   });
   if (!start.success) {
@@ -146,7 +136,7 @@ export async function runSignInOrSignUpFlow(
     if (!ceremony.success) {
       return { status: "error", userError: ceremony.userError };
     }
-    const result = await signInApi.mutation(
+    const result = await auth.signIn.mutation(
       api.finishSignUpWithUsernamePasskey,
       {
         username,
@@ -156,7 +146,7 @@ export async function runSignInOrSignUpFlow(
     if (result.status !== "complete") {
       return result;
     }
-    await setSession(result.tokens);
+    await auth.setSession(result.tokens);
     return { ...result, flow: "signUp" };
   }
 
@@ -164,12 +154,15 @@ export async function runSignInOrSignUpFlow(
   if (!ceremony.success) {
     return { status: "error", userError: ceremony.userError };
   }
-  const result = await signInApi.mutation(api.finishSignInWithUsernamePasskey, {
-    response: ceremony.response,
-  });
+  const result = await auth.signIn.mutation(
+    api.finishSignInWithUsernamePasskey,
+    {
+      response: ceremony.response,
+    },
+  );
   if (result.status !== "complete") {
     return result;
   }
-  await setSession(result.tokens);
+  await auth.setSession(result.tokens);
   return { ...result, flow: "signIn" };
 }

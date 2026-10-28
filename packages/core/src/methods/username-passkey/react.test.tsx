@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { ConvexProvider, type ConvexReactClient } from "convex/react";
+import type { ConvexReactClient } from "convex/react";
 import { anyApi, getFunctionName, type FunctionReference } from "convex/server";
 import { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -42,8 +42,8 @@ const runMutation = (fn: FunctionReference<"mutation">, args: unknown) =>
 // which the tests substitute rather than mocking a transport.
 const signInApi = { mutation: runMutation } as unknown as AuthSignInApi;
 
-// The two challenge mutations run on the Convex client from `useConvex()`,
-// which the tests stand in for with the same dispatcher.
+// The two challenge mutations run on the auth client's Convex client, which
+// the tests stand in for with the same dispatcher.
 const convexClient = { mutation: runMutation } as unknown as ConvexReactClient;
 
 // `anyApi` is what the generated `api` is. It returns a new reference object
@@ -296,6 +296,9 @@ afterEach(() => {
 function makeWrapper() {
   const client = new AuthClient({
     mode: "spa",
+    convex: convexClient,
+    url: NAMESPACE,
+    signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -304,9 +307,7 @@ function makeWrapper() {
     storageNamespace: NAMESPACE,
   });
   return ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      <ConvexProvider client={convexClient}>{children}</ConvexProvider>
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
 }
 

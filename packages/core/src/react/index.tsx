@@ -1,10 +1,27 @@
 /**
  * React bindings for Convex Auth.
  *
- * Wrap your app in {@link ConvexAuthProvider} (in place of `ConvexProvider`) to
- * enable authentication. The provider owns the token lifecycle — storing the
- * session, refreshing the access token, signing out — and feeds Convex's
- * `ConvexProviderWithAuth` a `useAuth` hook.
+ * Build the auth client once with {@link createAuthClient}, outside React,
+ * from your `ConvexReactClient`. Then wrap your app in
+ * {@link ConvexAuthProvider} in place of `ConvexProvider`. The auth client
+ * stores the session, refreshes the access token, and signs out. The provider
+ * passes its state to Convex's `ConvexProviderWithAuth`.
+ *
+ * ```tsx
+ * import { ConvexAuthProvider, createAuthClient } from "@convex-dev/auth/react";
+ * import { ConvexReactClient } from "convex/react";
+ * import { api } from "../convex/_generated/api";
+ *
+ * const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
+ * const auth = createAuthClient({
+ *   convex,
+ *   api: api.auth,
+ * });
+ *
+ * function Root({ children }: { children: React.ReactNode }) {
+ *   return <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>;
+ * }
+ * ```
  *
  * Authentication methods are deliberately not part of this core: each auth provider
  * (password, OAuth, passkey, …) ships its own authentication API that returns a
@@ -15,148 +32,46 @@
  */
 "use client";
 
-import { ConvexHttpClient } from "convex/browser";
-import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
-import { ReactNode, useContext, useMemo } from "react";
-import type {
-  AmbientSignInClient,
-  AuthSignInApi,
-} from "../browser/ambientSignInClient.ts";
-import { AuthClient } from "../browser/sessionManager.ts";
-import { TokenStorage, defaultStorage } from "../browser/storage.ts";
-import { oauth } from "../methods/oauth/client.ts";
-import type { ConvexAuthApi } from "../lib/types.ts";
+import { ConvexProviderWithAuth, type ConvexReactClient } from "convex/react";
+import { ReactNode, useContext } from "react";
+import type { AuthClient } from "../browser/sessionManager.ts";
 import {
   AuthProvider,
   ConvexAuthActionsContext,
   ConvexAuthTokenContext,
   useAuth,
+  useAuthConvexClient,
 } from "./client.tsx";
 
+export {
+  createAuthClient,
+  type CreateAuthClientOptions,
+} from "../browser/createAuthClient.ts";
+export type { AuthClient, AuthState } from "../browser/sessionManager.ts";
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";
+export { useAuthClient, type AuthSignInApi } from "./client.tsx";
 
 /**
- * Replace your `ConvexProvider` with this to enable authentication.
- *
- * ```tsx
- * import { ConvexAuthProvider } from "@convex-dev/auth/react";
- * import { ConvexReactClient } from "convex/react";
- * import { api } from "../convex/_generated/api";
- *
- * const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
- *
- * function Root({ children }: { children: React.ReactNode }) {
- *   return (
- *     <ConvexAuthProvider
- *       client={convex}
- *       api={{ refreshSession: api.auth.refreshSession, signOut: api.auth.signOut }}
- *     >
- *       {children}
- *     </ConvexAuthProvider>
- *   );
- * }
- * ```
+ * Replace your `ConvexProvider` with this to enable authentication. See the
+ * module docs for an example.
  */
 export function ConvexAuthProvider({
-  client,
-  api,
-  storage,
-  storageNamespace,
-  ambientSignIns,
+  auth,
   children,
 }: {
-  /** Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient). */
-  client: ConvexReactClient;
-  /** The app's `refreshSession` and `signOut` mutation references. */
-  api: ConvexAuthApi;
   /**
-   * A custom {@link TokenStorage} implementation.
-   *
-   * If none is supplied, the system defaults to `localStorage` in the browser
-   * and in-memory where there is no `localStorage` (SSR).
-   *
-   * Client runtimes with no `localStorage` like React Native are strongly
-   * advised to provide an implementation, because the in-memory default will
-   * cause users to get logged out each time the app closes.
-   *
-   * Here's an example of an implementation for Expo that could be passed in
-   * here:
-   *
-   * ```ts
-   * import * as SecureStore from "expo-secure-store";
-   *
-   * const secureStorage = {
-   *   getItem: SecureStore.getItemAsync,
-   *   setItem: SecureStore.setItemAsync,
-   *   removeItem: SecureStore.deleteItemAsync,
-   * };
-   * ```
+   * The auth client from {@link createAuthClient}, built with a
+   * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    */
-  storage?: TokenStorage;
-  /**
-   * Namespace for storage keys, which determines whether tokens are shared.
-   * Non-alphanumeric characters are ignored. Defaults to the deployment URL.
-   */
-  storageNamespace?: string;
-  /**
-   * Advanced. Ambient sign-ins run initialization for auth providers that can
-   * take action outside of a user activated sign in flow, such as reading an
-   * oauth code from a url query param.
-   *
-   * Setting this replaces the default (`[oauth()]`) entirely rather than adding
-   * to it. Pass `[]` to register nothing, or include `oauth()` (from
-   * `@convex-dev/auth/methods/oauth/react`) yourself to keep it alongside
-   * other sign-ins. Read once when the client is created and not expected to
-   * change.
-   */
-  ambientSignIns?: AmbientSignInClient[];
+  auth: AuthClient<ConvexReactClient>;
   children: ReactNode;
 }) {
-  const { authClient, signInApi } = useMemo(() => {
-    // Refresh and sign-out go over a *separate* HTTP client, not the websocket
-    // `client`. A refresh happens while `client` is paused waiting for a token,
-    // so calling it through `client` would deadlock on the very handshake the
-    // refresh is meant to satisfy.
-    const httpClient = new ConvexHttpClient(client.url, {
-      logger: client.logger,
-    });
-    // Sign-in functions run against the deployment over the same websocket
-    // client as the rest of the app (it isn't paused pre-auth, unlike the
-    // refresh path below), so the response carries the full token bundle for
-    // `setSession` to persist. The same object serves provider setups here
-    // and, via AuthProvider below, provider hooks.
-    const signInApi: AuthSignInApi = {
-      mutation: (fn, args) => client.mutation(fn, args),
-      action: (fn, args) => client.action(fn, args),
-    };
-    const authClient = new AuthClient({
-      mode: "spa",
-      authApi: {
-        refreshSession: (refreshToken) =>
-          httpClient.mutation(api.refreshSession, { refreshToken }),
-        signOut: async (refreshToken) => {
-          await httpClient.mutation(api.signOut, { refreshToken });
-        },
-      },
-      storage: storage ?? defaultStorage(),
-      storageNamespace: storageNamespace ?? client.url,
-      ambientSignIns: {
-        signIns: ambientSignIns ?? [oauth()],
-        signInApi,
-        // Mutations that mint no session use the same websocket client.
-        convex: { mutation: (fn, args) => client.mutation(fn, args) },
-      },
-    });
-    return { authClient, signInApi };
-    // `client` identity is what matters. The other props are read once at
-    // construction and are not expected to change.
-  }, [client]);
-
+  const convex = useAuthConvexClient(auth);
   return (
-    <AuthProvider authClient={authClient} signInApi={signInApi}>
-      <ConvexProviderWithAuth client={client} useAuth={useAuth}>
+    <AuthProvider authClient={auth}>
+      <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
         {children}
       </ConvexProviderWithAuth>
     </AuthProvider>
@@ -173,6 +88,8 @@ export function ConvexAuthProvider({
  * - `setSession` adopts a {@link TokenBundle} produced by a provider's
  *   sign-in.
  * - `signOut` revokes and clears the session.
+ *
+ * Provider code reads the whole client with {@link useAuthClient}.
  */
 export function useAuthActions() {
   const actions = useContext(ConvexAuthActionsContext);

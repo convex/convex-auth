@@ -9,36 +9,14 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import type { AuthSignInApi } from "../browser/ambientSignInClient.ts";
 import {
   INITIAL_AUTH_STATE,
   type AuthClient,
 } from "../browser/sessionManager.ts";
+import type { AuthSignInApi, ConvexClientApi } from "../browser/signInApi.ts";
 import type { SlimTokenBundle, TokenBundle } from "../lib/types.ts";
 
 export type { AuthSignInApi };
-
-const ConvexAuthSignInApiContext = createContext<AuthSignInApi | undefined>(
-  undefined,
-);
-
-/**
- * The {@link AuthSignInApi} for the surrounding auth provider.
- *
- * Provider hooks call this to run their sign-in function instead of reaching
- * for `useMutation`/`useAction`, which is what keeps them working under either
- * session model. Throws when used outside an auth provider.
- */
-export function useAuthSignInApi(): AuthSignInApi {
-  const signInApi = useContext(ConvexAuthSignInApiContext);
-  if (signInApi === undefined) {
-    throw new Error(
-      "useAuthSignInApi must be used within a <ConvexAuthProvider> (or, under " +
-        "Next.js, a <ConvexAuthNextjsProvider>).",
-    );
-  }
-  return signInApi;
-}
 
 // React calls this during SSR and initial hydration — before `init()` has read
 // storage — so it always reports the loading state. It lives here rather than
@@ -64,13 +42,37 @@ export const ConvexAuthActionsContext = createContext<
   ConvexAuthActionsContextType | undefined
 >(undefined);
 
-/**
- * The bound {@link AuthClient}. The sign-in methods read it through
- * `useAmbientSignInValue` in `react/methods.ts`. Apps do not use it.
- */
+/** The {@link AuthClient} of the surrounding provider. */
 export const AuthClientContext = createContext<AuthClient | undefined>(
   undefined,
 );
+
+/**
+ * The {@link AuthClient} of the surrounding provider. Provider hooks call this
+ * to run sign-in functions with `signIn`, run other functions on `convex`,
+ * and store sessions with `setSession`. Throws outside a provider.
+ */
+export function useAuthClient(): AuthClient {
+  const authClient = useContext(AuthClientContext);
+  if (authClient === undefined) {
+    throw new Error(
+      "useAuthClient must be used within a <ConvexAuthProvider> (or, under " +
+        "Next.js, a <ConvexAuthNextjsProvider>).",
+    );
+  }
+  return authClient;
+}
+
+/** Returns `auth.convex` and re-renders when `setConvex` replaces it. */
+export function useAuthConvexClient<C extends ConvexClientApi>(
+  auth: AuthClient<C>,
+): C {
+  return useSyncExternalStore(
+    auth.subscribe,
+    () => auth.convex,
+    () => auth.convex,
+  );
+}
 
 /** The current access token (a JWT), or null when signed out. */
 export const ConvexAuthTokenContext = createContext<string | null>(null);
@@ -110,12 +112,12 @@ export function useAuth() {
  */
 export function AuthProvider({
   authClient,
-  signInApi,
+  initialAccessToken,
   children,
 }: {
   authClient: AuthClient;
-  /** How provider hooks execute their sign-in functions. See {@link AuthSignInApi}. */
-  signInApi: AuthSignInApi;
+  /** An access token from an SSR host, passed to the first `init()` call. */
+  initialAccessToken?: string | null;
   children: ReactNode;
 }) {
   const state = useSyncExternalStore(
@@ -129,7 +131,9 @@ export function AuthProvider({
     // client instance, so it is init'd, disposed, then init'd again. That's
     // fine because init()/dispose() are symmetric, and the second init()
     // re-attaches the cross-tab listener the dispose() removed.
-    void authClient.init();
+    // init() reads initialAccessToken only on its first call, so it is not a
+    // dependency.
+    void authClient.init({ initialAccessToken });
     return () => authClient.dispose();
   }, [authClient]);
 
@@ -158,13 +162,11 @@ export function AuthProvider({
   return (
     <AuthClientContext.Provider value={authClient}>
       <ConvexAuthInternalContext.Provider value={authState}>
-        <ConvexAuthSignInApiContext.Provider value={signInApi}>
-          <ConvexAuthActionsContext.Provider value={actions}>
-            <ConvexAuthTokenContext.Provider value={state.token}>
-              {children}
-            </ConvexAuthTokenContext.Provider>
-          </ConvexAuthActionsContext.Provider>
-        </ConvexAuthSignInApiContext.Provider>
+        <ConvexAuthActionsContext.Provider value={actions}>
+          <ConvexAuthTokenContext.Provider value={state.token}>
+            {children}
+          </ConvexAuthTokenContext.Provider>
+        </ConvexAuthActionsContext.Provider>
       </ConvexAuthInternalContext.Provider>
     </AuthClientContext.Provider>
   );

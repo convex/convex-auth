@@ -18,10 +18,8 @@
  */
 "use client";
 
-import { useConvex } from "convex/react";
 import { useCallback, useMemo } from "react";
-import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import {
   runSignInOrSignUpFlow,
@@ -139,11 +137,8 @@ export type SignInWithUsernamePasskeyResult =
 export function useSignInWithUsernamePasskey(
   usernamePasskeyApi: UsernamePasskeyApi,
 ) {
-  const { setSession } = useAuthActions();
-
-  // Using useAuthSignInApi for mutations that return a session to support SSR
-  const signInApi = useAuthSignInApi();
-  const convex = useConvex();
+  // The mutations that return a session run on `auth.signIn` to support SSR.
+  const auth = useAuthClient();
 
   const startSignIn = useStableFunctionReference(
     usernamePasskeyApi.startSignInWithUsernamePasskey,
@@ -159,34 +154,24 @@ export function useSignInWithUsernamePasskey(
   );
   const ctx = useMemo(
     () => ({
-      convex,
+      auth,
       api: {
         startSignInWithUsernamePasskey: startSignIn,
         startAutofillSignInWithUsernamePasskey: startAutofillSignIn,
         finishSignInWithUsernamePasskey: finishSignIn,
         finishSignUpWithUsernamePasskey: finishSignUp,
       },
-      signInApi,
-      setSession,
     }),
-    [
-      convex,
-      startSignIn,
-      startAutofillSignIn,
-      finishSignIn,
-      finishSignUp,
-      signInApi,
-      setSession,
-    ],
+    [auth, startSignIn, startAutofillSignIn, finishSignIn, finishSignUp],
   );
 
   const autofill = usePasskeyAutofill<UsernamePasskeyAutofillError>({
     start: async () => {
-      const { options } = await convex.mutation(startAutofillSignIn, {});
+      const { options } = await auth.convex.mutation(startAutofillSignIn, {});
       return options;
     },
     onAssertion: async (response) => {
-      const result = await signInApi.mutation(finishSignIn, { response });
+      const result = await auth.signIn.mutation(finishSignIn, { response });
       if (result.status !== "complete") {
         // The autofill loop takes its own `success` boolean, not the
         // envelope: it retries on a failed assertion rather than handing
@@ -194,7 +179,7 @@ export function useSignInWithUsernamePasskey(
         return { success: false, userError: result.userError };
       }
 
-      await setSession(result.tokens);
+      await auth.setSession(result.tokens);
       return { success: true };
     },
   });

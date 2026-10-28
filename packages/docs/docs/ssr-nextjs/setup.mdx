@@ -124,7 +124,8 @@ the parts of the integration that are specific to Next.js:
 - `nextjsProxyRedirect` redirects a request from inside the proxy.
 - `convexAuthNextjsAccessToken` reads the access token in a Server Component.
 - `isAuthenticatedNextjs` checks whether the current request is signed in.
-- `ConvexAuthNextjsServerProvider` replaces `ConvexAuthProvider`.
+- `ConvexAuthNextjsServerProvider` passes the access token to the client
+  provider.
 
 ```tsx file="examples/nextjs/src/lib/convexAuth.tsx" title="src/lib/convexAuth.tsx"
 
@@ -154,13 +155,23 @@ cookies.
 
 <Step title="Set up the provider">
 
-Wrap your app in `ConvexAuthNextjsServerProvider` in the root layout. It is a
-Server Component that reads the access token from the cookie and renders the
-client-side `ConvexAuthNextjsProvider`, so the Convex client is ready to
-authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
-`ConvexProvider`.
+Create a Client Component file that builds the Convex client and the auth
+client at module scope, and renders `ConvexAuthNextjsProvider` from
+`@convex-dev/auth/ssr/nextjs/client`. Use it in place of `ConvexAuthProvider`
+and `ConvexProvider`. `createNextjsAuthClient` takes the `refreshRoute`,
+`signOutRoute` and `signInRoute` options when your auth routes are not at
+`/auth/refresh`, `/auth/signout` and `/auth/signin`.
 
-```tsx file="examples/nextjs/app/layout.tsx" title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"
+```tsx file="examples/nextjs/app/ConvexClientProvider.tsx" title="app/ConvexClientProvider.tsx" highlight="const auth = createNextjsAuthClient({ convex });" highlight="<ConvexAuthNextjsProvider auth={auth}>"
+
+```
+
+Wrap your app in `ConvexAuthNextjsServerProvider` and this file in the root
+layout. `ConvexAuthNextjsServerProvider` is a Server Component that reads the
+access token from the cookie and passes it to `ConvexAuthNextjsProvider`, so
+the Convex client is ready to authenticate when the page loads.
+
+```tsx file="examples/nextjs/app/layout.tsx" title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="import { ConvexClientProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"
 
 ```
 

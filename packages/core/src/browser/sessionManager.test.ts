@@ -5,16 +5,19 @@ import type {
   SlimTokenBundle,
   TokenBundle,
 } from "../lib/types.ts";
-import type {
-  AmbientSignInClient,
-  AuthSignInApi,
-} from "./ambientSignInClient.ts";
+import { unusedConvex } from "../react/testSignInApi.ts";
+import type { AmbientSignInClient } from "./ambientSignInClient.ts";
 import {
   AuthClient,
   INITIAL_AUTH_STATE,
   SpaAuthApi,
   SsrAuthApi,
 } from "./sessionManager.ts";
+import type {
+  AuthSignInApi,
+  ConvexClientApi,
+  SignInFunction,
+} from "./signInApi.ts";
 import {
   InMemoryStorage,
   JWT_STORAGE_KEY,
@@ -62,6 +65,8 @@ function makeClient(
 ) {
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" }),
       signOut: async () => {},
@@ -76,10 +81,12 @@ function makeClient(
 function makeSsrClient(
   authApi: Partial<SsrAuthApi> = {},
   storage = new InMemoryStorage(),
-  extra: { initialAccessToken?: string | null } = {},
 ) {
   const client = new AuthClient({
     mode: "ssr",
+    convex: unusedConvex,
+    url: NAMESPACE,
+    signInApi: SIGN_IN_API,
     authApi: {
       refreshSession: async () => null,
       signOut: async () => {},
@@ -87,7 +94,6 @@ function makeSsrClient(
     },
     storage,
     storageNamespace: NAMESPACE,
-    ...extra,
   });
   return { client, storage };
 }
@@ -380,10 +386,133 @@ describe("AuthClient", () => {
   });
 });
 
+/** A stub Convex client whose calls are mocks. */
+function stubConvex(url?: string) {
+  const mutation = vi.fn();
+  const action = vi.fn();
+  const convex = { mutation, action } as unknown as ConvexClientApi & {
+    url?: string;
+  };
+  if (url !== undefined) convex.url = url;
+  return { convex, mutation, action };
+}
+
+function makeClientWith(
+  convex: ConvexClientApi,
+  signInApi?: AuthSignInApi,
+): AuthClient {
+  return new AuthClient({
+    mode: "spa",
+    convex,
+    url: NAMESPACE,
+    signInApi,
+    authApi: {
+      refreshSession: async () => ({ kind: "noSession" }),
+      signOut: async () => {},
+    },
+    storage: new InMemoryStorage(),
+    storageNamespace: NAMESPACE,
+  });
+}
+
+describe("AuthClient Convex client and sign-in API", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("sign-in functions run on the Convex client without a sign-in API", async () => {
+    const { convex, mutation, action } = stubConvex();
+    mutation.mockResolvedValue("from mutation");
+    action.mockResolvedValue("from action");
+    const client = makeClientWith(convex);
+
+    await expect(client.signIn.mutation(ENVELOPE_REF, {})).resolves.toBe(
+      "from mutation",
+    );
+    await expect(client.signIn.action(ENVELOPE_ACTION_REF, {})).resolves.toBe(
+      "from action",
+    );
+    expect(mutation).toHaveBeenCalledWith(SIGN_IN_REF, {});
+    expect(action).toHaveBeenCalledWith(SIGN_IN_REF, {});
+  });
+
+  test("sign-in functions run on the sign-in API when one is set", async () => {
+    const { convex, mutation } = stubConvex();
+    SIGN_IN_MUTATION.mockResolvedValueOnce("from sign-in api");
+    const client = makeClientWith(convex, SIGN_IN_API);
+
+    await expect(client.signIn.mutation(ENVELOPE_REF, {})).resolves.toBe(
+      "from sign-in api",
+    );
+    expect(SIGN_IN_MUTATION).toHaveBeenCalledWith(SIGN_IN_REF, {});
+    expect(mutation).not.toHaveBeenCalled();
+  });
+
+  test("convex is the client from the config", () => {
+    const { convex } = stubConvex();
+    expect(makeClientWith(convex).convex).toBe(convex);
+  });
+
+  test("setConvex replaces the client and notifies subscribers", async () => {
+    const first = stubConvex(NAMESPACE);
+    const second = stubConvex(`${NAMESPACE}/`);
+    second.mutation.mockResolvedValue("second");
+    const client = makeClientWith(first.convex);
+    const snapshot = client.getSnapshot();
+    const listener = vi.fn();
+    client.subscribe(listener);
+
+    client.setConvex(second.convex);
+
+    expect(client.convex).toBe(second.convex);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(client.getSnapshot()).toBe(snapshot);
+    await expect(client.signIn.mutation(ENVELOPE_REF, {})).resolves.toBe(
+      "second",
+    );
+    expect(first.mutation).not.toHaveBeenCalled();
+  });
+
+  test("a Convex client for another deployment is rejected", () => {
+    const other = stubConvex("https://other-animal-456.convex.cloud");
+    expect(() => makeClientWith(other.convex)).toThrow(
+      /Build a new auth client for a different deployment/,
+    );
+    const { convex } = stubConvex(NAMESPACE);
+    const client = makeClientWith(convex);
+    expect(() => client.setConvex(other.convex)).toThrow(
+      /Build a new auth client for a different deployment/,
+    );
+    expect(client.convex).toBe(convex);
+  });
+
+  test("signInStorage scopes keys by method and namespace", async () => {
+    const storage = new InMemoryStorage();
+    const client = new AuthClient({
+      mode: "spa",
+      convex: unusedConvex,
+      url: NAMESPACE,
+      authApi: {
+        refreshSession: async () => ({ kind: "noSession" }),
+        signOut: async () => {},
+      },
+      storage,
+      storageNamespace: NAMESPACE,
+    });
+    await client.signInStorage("oauth").set("flow", "f1");
+    expect(storage.getItem(`__convexAuthProvider_oauth_flow_${SUFFIX}`)).toBe(
+      "f1",
+    );
+    expect(() => client.signInStorage("pass-key")).toThrow(
+      /"pass-key" is invalid/,
+    );
+  });
+});
+
 /** The mutation stub behind {@link SIGN_IN_API}. */
 const SIGN_IN_MUTATION = vi.fn();
 
-/** A stub sign-in api handed to every setup below. */
+/** A stub sign-in api for the clients below. */
 const SIGN_IN_API = {
   mutation: SIGN_IN_MUTATION,
   action: vi.fn(),
@@ -392,6 +521,12 @@ const SIGN_IN_API = {
 /** A reference to hand the stub. Its path is never resolved. */
 const SIGN_IN_REF = makeFunctionReference<"mutation">("auth:probeSignIn");
 
+/** {@link SIGN_IN_REF} typed as a function that returns the sign-in envelope. */
+const ENVELOPE_REF = SIGN_IN_REF as unknown as SignInFunction<"mutation">;
+
+/** {@link ENVELOPE_REF} typed as an action. */
+const ENVELOPE_ACTION_REF = SIGN_IN_REF as unknown as SignInFunction<"action">;
+
 /** An {@link AuthClient} constructed with the given ambient sign-ins. */
 function makeClientWithSignIns(
   signIns: ReadonlyArray<AmbientSignInClient>,
@@ -399,17 +534,16 @@ function makeClientWithSignIns(
 ) {
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
+    signInApi: SIGN_IN_API,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" }),
       signOut: async () => {},
     },
     storage,
     storageNamespace: NAMESPACE,
-    ambientSignIns: {
-      signIns,
-      signInApi: SIGN_IN_API,
-      convex: { mutation: vi.fn() },
-    },
+    ambientSignIns: signIns,
   });
   return { client, storage };
 }
@@ -488,8 +622,8 @@ describe("AuthClient ambient sign-ins", () => {
         },
       },
     ]);
-    expect(received[0].signInApi).toBe(SIGN_IN_API);
-    expect(received[1].signInApi).toBe(SIGN_IN_API);
+    expect(received[0].signInApi).toBe(client.signIn);
+    expect(received[1].signInApi).toBe(client.signIn);
     expect(received[0].client).toBe(client);
     expect(received[1].client).toBe(client);
   });
@@ -698,10 +832,8 @@ describe("AuthClient (SSR)", () => {
     // fresher than anything already in storage — it should win and persist.
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "stale-access");
-    const { client } = makeSsrClient({}, storage, {
-      initialAccessToken: "access-ssr",
-    });
-    await client.init();
+    const { client } = makeSsrClient({}, storage);
+    await client.init({ initialAccessToken: "access-ssr" });
 
     expect(client.getSnapshot()).toMatchObject({
       isAuthenticated: true,

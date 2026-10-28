@@ -7,8 +7,12 @@
  * `(Request) => Response` functions mounted directly as route handlers (see
  * `@convex-dev/auth/ssr`). What remains
  * Next-specific is the proxy (up-front refresh + redirects), reading the
- * access token in Server Components, and the server-side provider that hydrates
- * the client.
+ * access token in Server Components, and the server-side provider that passes
+ * the access token to the client.
+ *
+ * The app builds its Convex client and auth client in a Client Component file
+ * of its own (see `@convex-dev/auth/ssr/nextjs/client`), and renders it inside
+ * `ConvexAuthNextjsServerProvider` in the root layout.
  *
  * @module
  */
@@ -209,27 +213,25 @@ export function setupConvexAuthNextjs(config: ConvexAuthNextjsConfig) {
     return checkAuthenticated(await convexAuthNextjsAccessToken());
   }
 
-  /** Server Component that reads the cookie token and renders the client
-   * provider, so the client hydrates ready to authenticate. */
-  // TODO: Accept `signInRoute`, `refreshRoute`, and `signOutRoute` and pass
-  // them through to `ConvexAuthNextjsProvider`, so the auth route handlers can
-  // be mounted somewhere other than the default `/auth/*` paths.
+  /**
+   * Server Component that reads the access token from the cookie and passes
+   * it to the `ConvexAuthNextjsProvider` rendered inside it, so the Convex
+   * client hydrates ready to authenticate.
+   */
   async function ConvexAuthNextjsServerProvider({
     children,
   }: {
     children: ReactNode;
   }) {
     const initialToken = await convexAuthNextjsAccessToken();
-    // Lazily import the client component so other consumers of this module
+    // Lazily import the client module so other consumers of this module
     // don't have to take on those dependencies.
-    const { ConvexAuthNextjsProvider } = await import("./client.tsx");
+    const { ConvexAuthNextjsServerStateProvider } =
+      await import("./client.tsx");
     return (
-      <ConvexAuthNextjsProvider
-        convexUrl={config.convexUrl}
-        initialToken={initialToken}
-      >
+      <ConvexAuthNextjsServerStateProvider initialToken={initialToken}>
         {children}
-      </ConvexAuthNextjsProvider>
+      </ConvexAuthNextjsServerStateProvider>
     );
   }
 

@@ -7,13 +7,15 @@ import { AuthClient } from "../browser/sessionManager.ts";
 import { InMemoryStorage } from "../browser/storage.ts";
 import { AuthProvider } from "./client.tsx";
 import { useAmbientSignInValue } from "./methods.ts";
-import { stubSignInApi } from "./testSignInApi.ts";
+import { stubSignInApi, unusedConvex } from "./testSignInApi.ts";
 
 const NAMESPACE = "https://happy-animal-123.convex.cloud";
 
 function makeClient() {
   return new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -31,24 +33,23 @@ function makeProbeClient() {
   const probe: { values?: SignInValues } = {};
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
+    signInApi: stubSignInApi().signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
     },
     storage: new InMemoryStorage(),
     storageNamespace: NAMESPACE,
-    ambientSignIns: {
-      signIns: [
-        {
-          id: "probe",
-          setup: (ctx) => {
-            probe.values = ctx.values;
-          },
+    ambientSignIns: [
+      {
+        id: "probe",
+        setup: (ctx) => {
+          probe.values = ctx.values;
         },
-      ],
-      signInApi: stubSignInApi().signInApi,
-      convex: { mutation: vi.fn() },
-    },
+      },
+    ],
   });
   if (probe.values === undefined) {
     throw new Error("probe setup did not run");
@@ -58,9 +59,7 @@ function makeProbeClient() {
 
 function wrapperFor(client: AuthClient) {
   return ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
 }
 

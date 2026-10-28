@@ -8,7 +8,7 @@ import { InMemoryStorage } from "../../browser/storage.ts";
 import type { TokenBundle } from "../../lib/types.ts";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
 import { useAuthToken } from "../../react/index.tsx";
-import { stubSignInApi } from "../../react/testSignInApi.ts";
+import { stubSignInApi, unusedConvex } from "../../react/testSignInApi.ts";
 import {
   SignInWithUsernamePasswordResult,
   SignUpWithUsernamePasswordResult,
@@ -63,6 +63,9 @@ const flows = [
 function renderFlow(useFlow: () => Flow) {
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
+    signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -71,9 +74,7 @@ function renderFlow(useFlow: () => Flow) {
     storageNamespace: NAMESPACE,
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({ auth: useAuth(), token: useAuthToken(), flow: useFlow() }),

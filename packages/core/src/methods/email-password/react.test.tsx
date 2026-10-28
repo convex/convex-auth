@@ -90,6 +90,9 @@ function stubConvexQuery() {
 function renderWithProviders<T>(useHook: () => T) {
   const authClient = new AuthClient({
     mode: "spa",
+    convex: convexClient,
+    url: NAMESPACE,
+    signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -102,9 +105,7 @@ function renderWithProviders<T>(useHook: () => T) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <StrictMode>
       <ConvexProvider client={convexClient}>
-        <AuthProvider authClient={authClient} signInApi={signInApi}>
-          {children}
-        </AuthProvider>
+        <AuthProvider authClient={authClient}>{children}</AuthProvider>
       </ConvexProvider>
     </StrictMode>
   );

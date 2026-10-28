@@ -10,7 +10,7 @@ import {
 } from "../browser/storage.ts";
 import type { TokenBundle } from "../lib/types.ts";
 import { AuthProvider, useAuth } from "./client.tsx";
-import { stubSignInApi } from "./testSignInApi.ts";
+import { unusedConvex } from "./testSignInApi.ts";
 import { useAuthActions, useAuthToken } from "./index.tsx";
 
 const NAMESPACE = "https://happy-animal-123.convex.cloud";
@@ -32,6 +32,8 @@ function makeClient(
 ) {
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -46,9 +48,7 @@ function makeClient(
 /** Render the provider around a hook and expose every auth hook's value. */
 function renderAuth(client: AuthClient) {
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({
@@ -89,9 +89,7 @@ describe("React bindings", () => {
     const dispose = vi.spyOn(client, "dispose");
 
     const { unmount } = render(
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-        hi
-      </AuthProvider>,
+      <AuthProvider authClient={client}>hi</AuthProvider>,
     );
     expect(init).toHaveBeenCalledTimes(1);
     expect(dispose).not.toHaveBeenCalled();
@@ -180,11 +178,7 @@ describe("React bindings", () => {
     // dev, or an ordinary route change — disposes then re-inits it. Cross-tab
     // sign-out must still work afterward, which only holds if the re-init
     // re-attaches the window storage listener the dispose removed.
-    render(
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-        hi
-      </AuthProvider>,
-    ).unmount();
+    render(<AuthProvider authClient={client}>hi</AuthProvider>).unmount();
 
     const { result } = renderAuth(client);
     await waitFor(() => expect(result.current.auth.isLoading).toBe(false));

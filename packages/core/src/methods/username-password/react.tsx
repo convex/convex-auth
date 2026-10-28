@@ -3,8 +3,8 @@
  * `@convex-dev/auth/methods/username-password/react`.
  *
  * A provider's job on the client is to run its own sign-in flow and hand the
- * resulting {@link TokenBundle} to the core client's `setSession` (see {@link
- * useAuthActions}).
+ * resulting {@link TokenBundle} to the core client's `setSession` (see
+ * `useAuthClient`).
  *
  * The password provider has two flows and provides a hook for each:
  *  1. signing in to an existing account ({@link useSignInWithUsernamePassword})
@@ -20,8 +20,7 @@
 import { FunctionReference } from "convex/server";
 import { useCallback, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
-import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import type { SignInResult, SignUpResult } from "./server.ts";
 
@@ -226,19 +225,18 @@ export function useSignUpWithUsernamePassword(api: {
 function usePasswordFlow<
   Result extends ClientView<SignInResult> | ClientView<SignUpResult>,
 >(mutation: FunctionReference<"mutation", "public", Credentials, Result>) {
-  const { setSession } = useAuthActions();
-  // Running through the signInApi rather than `useAction` is what lets these hooks
-  // serve both session models. See {@link useAuthSignInApi}.
-  const signInApi = useAuthSignInApi();
+  // Running through `auth.signIn` rather than `useMutation` is what lets
+  // these hooks serve both session models.
+  const auth = useAuthClient();
   const [pending, setPending] = useState(false);
 
   const run = useCallback(
     async (credentials: Credentials): Promise<Result | UnexpectedFailure> => {
       setPending(true);
       try {
-        const result = await signInApi.mutation(mutation, credentials);
+        const result = await auth.signIn.mutation(mutation, credentials);
         if (result.status === "complete") {
-          await setSession(result.tokens);
+          await auth.setSession(result.tokens);
         }
         return result;
       } catch (cause) {
@@ -252,7 +250,7 @@ function usePasswordFlow<
         setPending(false);
       }
     },
-    [signInApi, mutation, setSession],
+    [auth, mutation],
   );
 
   return { run, pending };

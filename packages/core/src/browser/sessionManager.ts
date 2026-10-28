@@ -5,16 +5,19 @@ import type {
 } from "../lib/types.ts";
 import { KeyedStore, type SignInValuesReader } from "./keyedStore.ts";
 import { runWithMutex } from "./mutex.ts";
-import type {
-  AmbientSignInClient,
-  AuthSignInApi,
-  ConvexMutationApi,
-} from "./ambientSignInClient.ts";
+import type { AmbientSignInClient } from "./ambientSignInClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
+import {
+  type AuthSignInApi,
+  type ConvexClientApi,
+  deploymentUrlOf,
+  sameDeployment,
+} from "./signInApi.ts";
 import {
   JWT_STORAGE_KEY,
   NamespacedStorage,
   REFRESH_TOKEN_STORAGE_KEY,
+  type SignInStorage,
   TokenStorage,
 } from "./storage.ts";
 
@@ -44,30 +47,25 @@ export interface SsrAuthApi {
 }
 
 /** Config common to both session models. */
-interface AuthClientConfigBase {
+interface AuthClientConfigBase<C extends ConvexClientApi> {
+  /** The app's Convex client. Ordinary calls in the sign-in flows use it. */
+  convex: C;
+  /** The Convex deployment URL. */
+  url: string;
   /** Where tokens are persisted. */
   storage: TokenStorage;
   /** Namespace for storage keys; typically the deployment URL. */
   storageNamespace: string;
   /**
-   * An access token to store on {@link AuthClient.init}, typically provided by
-   * an SSR host.
+   * Ambient sign-ins to set up while the client is constructed. See
+   * {@link AmbientSignInClient}.
    */
-  initialAccessToken?: string | null;
+  ambientSignIns?: ReadonlyArray<AmbientSignInClient>;
   /**
-   * Ambient sign-ins to set up while the client is constructed, along with
-   * the clients handed to each setup. See {@link AmbientSignInClient}.
+   * Replaces the page URL without navigating. Defaults to
+   * `history.replaceState` with the current history state.
    */
-  ambientSignIns?: {
-    signIns: ReadonlyArray<AmbientSignInClient>;
-    signInApi: AuthSignInApi;
-    convex: ConvexMutationApi;
-    /**
-     * Replaces the page URL without navigating. Defaults to
-     * `history.replaceState` with the current history state.
-     */
-    replaceUrl?: (url: string) => void;
-  };
+  replaceUrl?: (url: string) => void;
   /** Log refresh/lifecycle steps to the console. */
   verbose?: boolean;
 }
@@ -82,9 +80,25 @@ interface AuthClientConfigBase {
  *  - `"ssr"`: the refresh token is in an httpOnly cookie; a {@link SsrAuthApi}
  *    is called without one and reads the cookie server-side.
  */
-export type AuthClientConfig =
-  | (AuthClientConfigBase & { mode: "spa"; authApi: SpaAuthApi })
-  | (AuthClientConfigBase & { mode: "ssr"; authApi: SsrAuthApi });
+export type AuthClientConfig<C extends ConvexClientApi = ConvexClientApi> =
+  | (AuthClientConfigBase<C> & {
+      mode: "spa";
+      authApi: SpaAuthApi;
+      /**
+       * Runs the sign-in functions. When it is omitted, sign-in functions run
+       * on `convex`.
+       */
+      signInApi?: AuthSignInApi;
+    })
+  | (AuthClientConfigBase<C> & {
+      mode: "ssr";
+      authApi: SsrAuthApi;
+      /**
+       * Runs the sign-in functions. SSR sign-in goes through the auth proxy,
+       * so it is required.
+       */
+      signInApi: AuthSignInApi;
+    });
 
 /** Auth state that can be subscribed to via {@link AuthClient.subscribe} */
 export interface AuthState {
@@ -160,6 +174,15 @@ function replaceUrlKeepingState(url: string): void {
   window.history.replaceState(window.history.state, "", url);
 }
 
+/** Throws unless `id` is a valid sign-in id, which is alphanumeric. */
+function checkSignInId(id: string): void {
+  if (!/^[a-zA-Z0-9]+$/.test(id)) {
+    throw new Error(
+      `[convex-auth] Sign-in id "${id}" is invalid. Ids must be alphanumeric.`,
+    );
+  }
+}
+
 /**
  * Framework-agnostic owner of the auth session on the client.
  *
@@ -170,8 +193,12 @@ function replaceUrlKeepingState(url: string): void {
  * establishes sessions from provider authentication results. Providers
  * authenticate and sign-in users and call {@link AuthClient.setSession} with
  * a token bundle.
+ *
+ * It is built with the app's Convex client, which the sign-in flows read from
+ * {@link AuthClient.convex}. Sign-in functions run through
+ * {@link AuthClient.signIn}.
  */
-export class AuthClient {
+export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */
@@ -179,12 +206,19 @@ export class AuthClient {
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
-  readonly #initialAccessToken: string | null;
   /**
    * Which side owns the refresh token: this client (SPA) or an httpOnly cookie
    * (SSR). Enforced in {@link AuthClient.#storeFullTokenResult}.
    */
   readonly #mode: "spa" | "ssr";
+  /** The app's Convex client, replaced by {@link setConvex}. */
+  #convex: C;
+  /** The deployment URL from the config. */
+  readonly #url: string;
+  /** The sign-in API from the config, or null to use the Convex client. */
+  readonly #signInApi: AuthSignInApi | null;
+  /** How {@link replaceUrl} replaces the page URL. */
+  readonly #replaceUrl: (url: string) => void;
 
   #accessToken: string | null = null;
   /**
@@ -200,14 +234,18 @@ export class AuthClient {
   readonly #listeners = new Set<Listener>();
   #storageListener: ((event: StorageEvent) => void) | null = null;
 
-  constructor(config: AuthClientConfig) {
+  constructor(config: AuthClientConfig<C>) {
+    this.#url = config.url;
+    this.#checkDeployment(config.convex);
+    this.#convex = config.convex;
+    this.#signInApi = config.signInApi ?? null;
+    this.#replaceUrl = config.replaceUrl ?? replaceUrlKeepingState;
     this.#storage = new NamespacedStorage(
       config.storage,
       config.storageNamespace,
     );
     this.#verbose = config.verbose ?? false;
     this.#lockKey = this.#storage.key(REFRESH_TOKEN_STORAGE_KEY);
-    this.#initialAccessToken = config.initialAccessToken ?? null;
     this.#mode = config.mode;
 
     // Bind the mode-specific refresh/sign-out behavior.
@@ -252,7 +290,8 @@ export class AuthClient {
   // useSyncExternalStore, others via their own reactivity).
 
   /**
-   * Subscribe to be notified when the {@link AuthState} changes.
+   * Subscribe to be notified when the {@link AuthState} or the Convex client
+   * changes.
    *
    * Subscribers should call {@link getSnapshot} when notified of a change.
    */
@@ -269,6 +308,72 @@ export class AuthClient {
   /** The current access token, or null. */
   getAccessToken(): string | null {
     return this.#accessToken;
+  }
+
+  // --- Convex client and sign-in API -----------------------------------------
+
+  /**
+   * The app's Convex client. The sign-in flows read it at call time, so they
+   * use the client from the latest {@link setConvex}.
+   */
+  get convex(): C {
+    return this.#convex;
+  }
+
+  /**
+   * Replace the Convex client and notify subscribers. The call throws, and
+   * changes nothing, when `next` is for a different deployment. A different
+   * deployment needs a new auth client, because refresh, sign-out, and the
+   * storage namespace use the URL given at construction.
+   *
+   * The React providers move Convex auth to the new client. Plain JavaScript
+   * calls `next.setAuth(...)` itself.
+   */
+  setConvex(next: C): void {
+    this.#checkDeployment(next);
+    this.#convex = next;
+    this.#emit();
+  }
+
+  /**
+   * Runs a provider's sign-in function. It uses the `signInApi` from the
+   * config when one is set, and the Convex client otherwise.
+   */
+  readonly signIn: AuthSignInApi = {
+    mutation: (fn, args) =>
+      (this.#signInApi ?? this.#convex).mutation(fn, args),
+    action: (fn, args) => (this.#signInApi ?? this.#convex).action(fn, args),
+  };
+
+  /**
+   * Persistent storage for one sign-in method, such as `"oauth"`. It uses
+   * this client's storage and namespace, and its keys never collide with the
+   * session keys or another method's keys. Throws when `id` is not
+   * alphanumeric.
+   */
+  signInStorage(id: string): SignInStorage {
+    checkSignInId(id);
+    return this.#storage.forSignIn(id);
+  }
+
+  /**
+   * Replace the page URL without navigating. A binding sets how, so it can
+   * keep its router in sync.
+   */
+  replaceUrl(url: string): void {
+    this.#replaceUrl(url);
+  }
+
+  /** Throws unless `convex` is for this client's deployment. */
+  #checkDeployment(convex: C): void {
+    const clientUrl = deploymentUrlOf(convex);
+    if (clientUrl !== undefined && !sameDeployment(clientUrl, this.#url)) {
+      throw new Error(
+        `[convex-auth] The Convex client is for ${clientUrl}, but this auth ` +
+          `client is for ${this.#url}. Build a new auth client for a ` +
+          "different deployment.",
+      );
+    }
   }
 
   // --- Ambient sign-in surface ----------------------------------------------
@@ -302,12 +407,8 @@ export class AuthClient {
   ): void {
     if (ambientSignIns === undefined) return;
     const seen = new Set<string>();
-    for (const { id, setup } of ambientSignIns.signIns) {
-      if (!/^[a-zA-Z0-9]+$/.test(id)) {
-        throw new Error(
-          `Ambient sign-in id "${id}" is invalid; ids must be alphanumeric`,
-        );
-      }
+    for (const { id, setup } of ambientSignIns) {
+      checkSignInId(id);
       if (seen.has(id)) {
         throw new Error(
           `Ambient sign-in id "${id}" is registered twice; each auth ` +
@@ -318,10 +419,10 @@ export class AuthClient {
       const registration = setup({
         client: this,
         values: this.#ambientValues.forSignIn(id),
-        storage: this.#storage.forSignIn(id),
-        signInApi: ambientSignIns.signInApi,
-        convex: ambientSignIns.convex,
-        replaceUrl: ambientSignIns.replaceUrl ?? replaceUrlKeepingState,
+        storage: this.signInStorage(id),
+        signInApi: this.signIn,
+        convex: { mutation: (fn, args) => this.#convex.mutation(fn, args) },
+        replaceUrl: (url) => this.replaceUrl(url),
       });
       if (registration?.onInit !== undefined) {
         this.#initCallbacks.push({ id, callback: registration.onInit });
@@ -340,7 +441,13 @@ export class AuthClient {
    * load happen once, but the cross-tab listener is (re)attached on every
    * call, so an `init` after a `dispose` fully restores the client.
    */
-  async init(): Promise<void> {
+  async init(options?: {
+    /**
+     * An access token to store before the session loads, typically from an
+     * SSR host. It is used only on the first call.
+     */
+    initialAccessToken?: string | null;
+  }): Promise<void> {
     // Attach before the one-time guard so a dispose()/init() cycle re-attaches
     // the listener rather than skipping it. Idempotent, so repeat calls are
     // harmless.
@@ -365,8 +472,9 @@ export class AuthClient {
     // An initially provided token is considered to be the freshest value, so
     // persist it before the load below reads it back (and so other tabs see
     // it).
-    if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+    const initialAccessToken = options?.initialAccessToken ?? null;
+    if (initialAccessToken !== null) {
+      await this.#storage.set(JWT_STORAGE_KEY, initialAccessToken);
     }
     const [accessToken, refreshToken] = await Promise.all([
       this.#storage.get(JWT_STORAGE_KEY),
@@ -609,6 +717,11 @@ export class AuthClient {
       isAuthenticated: this.#accessToken !== null,
       token: this.#accessToken,
     };
+    this.#emit();
+  }
+
+  /** Calls the subscribers. The snapshot is unchanged. */
+  #emit(): void {
     for (const listener of this.#listeners) listener();
   }
 

@@ -39,52 +39,10 @@ import type {
   FunctionReference,
   FunctionReturnType,
 } from "convex/server";
-import type { ClientView, SignInEnvelope } from "../lib/types.ts";
 import type { SignInValues } from "./keyedStore.ts";
 import type { AuthClient } from "./sessionManager.ts";
+import type { AuthSignInApi } from "./signInApi.ts";
 import type { SignInStorage } from "./storage.ts";
-
-/**
- * A public function returning the shared `SignInEnvelope`, as the client sees
- * it. The requirement is on `_returnType` alone, leaving the args as Convex
- * declares them so its clients still infer optional args.
- */
-export type SignInFunction<Type extends "mutation" | "action"> =
-  FunctionReference<Type, "public"> & {
-    _returnType: ClientView<SignInEnvelope>;
-  };
-
-/**
- * How a provider's sign-in functions get executed. Provider code takes this
- * as given via {@link AmbientSignInContext} instead of picking a transport
- * itself. Executing the call is the only thing that differs between the two
- * session models, so one implementation of a provider serves both:
- *
- *  - SPA: called against the deployment, returning the full `TokenBundle`
- *    for client JS to persist.
- *  - SSR: called through the auth proxy on the SSR host, returning an
- *    access-only `SlimTokenBundle` (the refresh token stays server-side).
- *
- * A provider never sees which model it is running under.
- *
- * Only functions returning the shared `SignInEnvelope` are accepted, because
- * under SSR the auth proxy refuses any other result. A function that mints no
- * session goes through {@link ConvexMutationApi} instead.
- *
- * Sign-in functions are safe to run before authentication on any transport.
- * Callers retry them on network errors, so a sign-in function must tolerate
- * re-executing after an attempt that already committed server-side.
- */
-export interface AuthSignInApi {
-  mutation<F extends SignInFunction<"mutation">>(
-    fn: F,
-    args: FunctionArgs<F>,
-  ): Promise<FunctionReturnType<F>>;
-  action<F extends SignInFunction<"action">>(
-    fn: F,
-    args: FunctionArgs<F>,
-  ): Promise<FunctionReturnType<F>>;
-}
 
 /**
  * How an ambient sign-in calls its public mutations that mint no session, like

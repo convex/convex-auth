@@ -9,12 +9,22 @@
 
 export {
   type TokenStorage,
+  type SignInStorage,
   InMemoryStorage,
   defaultStorage,
   JWT_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
 } from "./storage.ts";
 export { runWithMutex } from "./mutex.ts";
+export type {
+  AuthSignInApi,
+  ConvexClientApi,
+  SignInFunction,
+} from "./signInApi.ts";
+export {
+  createAuthClient,
+  type CreateAuthClientOptions,
+} from "./createAuthClient.ts";
 export {
   AuthClient,
   type SpaAuthApi,

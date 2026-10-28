@@ -15,7 +15,7 @@ import {
   stubReactNative,
 } from "../../methods/oauth/testFlow.ts";
 import { useAuthToken } from "../../react/index.tsx";
-import { ConvexAuthNextjsProvider } from "./client.tsx";
+import { ConvexAuthNextjsProvider, createNextjsAuthClient } from "./client.tsx";
 
 const githubApi = {
   startSignInWithGithub: makeFunctionReference<"mutation">(
@@ -78,7 +78,12 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
       return null;
     }
     render(
-      <ConvexAuthNextjsProvider client={client} storage={new InMemoryStorage()}>
+      <ConvexAuthNextjsProvider
+        auth={createNextjsAuthClient({
+          convex: client,
+          storage: new InMemoryStorage(),
+        })}
+      >
         <Probe />
       </ConvexAuthNextjsProvider>,
     );
@@ -109,7 +114,9 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
       return null;
     }
     render(
-      <ConvexAuthNextjsProvider client={client} storage={storage}>
+      <ConvexAuthNextjsProvider
+        auth={createNextjsAuthClient({ convex: client, storage })}
+      >
         <Probe />
       </ConvexAuthNextjsProvider>,
     );
@@ -145,7 +152,9 @@ describe("OAuth under ConvexAuthNextjsProvider", () => {
     const { client } = makeConvexClient();
     const replaceState = vi.spyOn(window.history, "replaceState");
     render(
-      <ConvexAuthNextjsProvider client={client} storage={storage}>
+      <ConvexAuthNextjsProvider
+        auth={createNextjsAuthClient({ convex: client, storage })}
+      >
         {null}
       </ConvexAuthNextjsProvider>,
     );

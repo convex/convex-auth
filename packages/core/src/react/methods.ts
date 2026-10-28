@@ -8,9 +8,8 @@
  * point) when the API for custom sign-in methods is stable.
  *
  * An ambient sign-in publishes its actions and status from its
- * {@link AmbientSignInClient} (passed to `ConvexAuthProvider`'s
- * `ambientSignIns` prop); its hooks read them back with
- * {@link useAmbientSignInValue}.
+ * {@link AmbientSignInClient} (registered by the auth client factories); its
+ * hooks read them back with {@link useAmbientSignInValue}.
  *
  * @module
  */
@@ -22,8 +21,8 @@ import { AuthClientContext } from "./client.tsx";
 export type {
   AmbientSignInClient,
   AmbientSignInContext,
-  AuthSignInApi,
 } from "../browser/ambientSignInClient.ts";
+export type { AuthSignInApi } from "../browser/signInApi.ts";
 
 /**
  * Subscribe to a value published by the ambient sign-in registered as `id`

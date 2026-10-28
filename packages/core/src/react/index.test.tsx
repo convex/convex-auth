@@ -1,17 +1,17 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
-import { ConvexReactClient } from "convex/react";
+import { render, renderHook, screen } from "@testing-library/react";
+import { ConvexReactClient, useConvex } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import { StrictMode } from "react";
+import { ReactNode } from "react";
 import { describe, expect, test, vi } from "vitest";
-import type {
-  AmbientSignInClient,
-  AuthSignInApi,
-} from "../browser/ambientSignInClient.ts";
+import { createAuthClient } from "../browser/createAuthClient.ts";
+import type { SignInFunction } from "../browser/signInApi.ts";
+import { InMemoryStorage } from "../browser/storage.ts";
 import { useOauth } from "../methods/oauth/react.ts";
-import { useAuthSignInApi } from "./client.tsx";
+import { useAuthClient } from "./client.tsx";
 import { ConvexAuthProvider } from "./index.tsx";
-import { useAmbientSignInValue } from "./methods.ts";
+
+const URL = "https://happy-animal-123.convex.cloud";
 
 const API = {
   refreshSession: makeFunctionReference<"mutation">("auth:refreshSession"),
@@ -23,13 +23,11 @@ const API = {
  * authenticates or subscribes, so it never opens a connection.
  */
 function makeConvexClient() {
-  return new ConvexReactClient("https://happy-animal-123.convex.cloud");
+  return new ConvexReactClient(URL);
 }
 
-/** Renders the value a probe setup publishes under its scoped `status` key. */
-function ProbeStatus() {
-  const status = useAmbientSignInValue<string>("probe", "status");
-  return <div>{status ?? "missing"}</div>;
+function makeAuth(convex = makeConvexClient()) {
+  return createAuthClient({ convex, api: API, storage: new InMemoryStorage() });
 }
 
 /**
@@ -40,91 +38,64 @@ function OauthFlowError() {
   return <div>{String(useOauth().flowError)}</div>;
 }
 
-describe("ConvexAuthProvider ambient sign-ins", () => {
-  test("published setup values are readable on the first render", () => {
-    const client = makeConvexClient();
-    const probe: AmbientSignInClient = {
-      id: "probe",
-      setup: (ctx) => {
-        ctx.values.set("status", "registered");
-      },
-    };
-    render(
-      <ConvexAuthProvider client={client} api={API} ambientSignIns={[probe]}>
-        <ProbeStatus />
-      </ConvexAuthProvider>,
-    );
-    expect(screen.getByText("registered")).toBeDefined();
+describe("ConvexAuthProvider", () => {
+  test("useAuthClient returns the auth client inside the provider", () => {
+    const auth = makeAuth();
+    const { result } = renderHook(() => useAuthClient(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>
+      ),
+    });
+    expect(result.current).toBe(auth);
   });
 
-  test("onInit runs once per client under StrictMode", () => {
-    const client = makeConvexClient();
-    const onInit = vi.fn();
-    render(
-      <StrictMode>
-        <ConvexAuthProvider
-          client={client}
-          api={API}
-          ambientSignIns={[{ id: "probe", setup: () => ({ onInit }) }]}
-        >
-          <div />
-        </ConvexAuthProvider>
-      </StrictMode>,
+  test("useAuthClient throws outside a provider", () => {
+    expect(() => renderHook(() => useAuthClient())).toThrow(
+      /useAuthClient must be used within a <ConvexAuthProvider>/,
     );
-    expect(onInit).toHaveBeenCalledTimes(1);
   });
 
-  test("setups and hooks receive the same sign-in api", () => {
-    const client = makeConvexClient();
-    const fromSetup: AuthSignInApi[] = [];
-    const fromHook: AuthSignInApi[] = [];
-    function Capture() {
-      fromHook.push(useAuthSignInApi());
-      return null;
-    }
-    render(
-      <ConvexAuthProvider
-        client={client}
-        api={API}
-        ambientSignIns={[
-          {
-            id: "probe",
-            setup: (ctx) => {
-              fromSetup.push(ctx.signInApi);
-            },
-          },
-        ]}
-      >
-        <Capture />
-      </ConvexAuthProvider>,
-    );
-    expect(fromHook[0]).toBe(fromSetup[0]);
+  test("the provider renders the auth client's Convex client", () => {
+    const convex = makeConvexClient();
+    const auth = makeAuth(convex);
+    const { result } = renderHook(() => useConvex(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>
+      ),
+    });
+    expect(result.current).toBe(convex);
+  });
+
+  test("setConvex renders the new Convex client", () => {
+    const first = makeConvexClient();
+    const second = makeConvexClient();
+    const auth = makeAuth(first);
+    const { result, rerender } = renderHook(() => useConvex(), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>
+      ),
+    });
+    auth.setConvex(second);
+    rerender();
+    expect(result.current).toBe(second);
   });
 
   test("the sign-in api routes through the Convex client", async () => {
-    const client = makeConvexClient();
+    const convex = makeConvexClient();
     const mutationSpy = vi
-      .spyOn(client, "mutation")
+      .spyOn(convex, "mutation")
       .mockResolvedValue("result" as never);
-    const signIn = makeFunctionReference<"mutation">("auth:signInProbe");
-    const captured: AuthSignInApi[] = [];
-    function Capture() {
-      captured.push(useAuthSignInApi());
-      return null;
-    }
-    render(
-      <ConvexAuthProvider client={client} api={API}>
-        <Capture />
-      </ConvexAuthProvider>,
-    );
-    await expect(captured[0].mutation(signIn, {})).resolves.toBe("result");
+    const signIn = makeFunctionReference<"mutation">(
+      "auth:signInProbe",
+    ) as unknown as SignInFunction<"mutation">;
+    const auth = makeAuth(convex);
+    await expect(auth.signIn.mutation(signIn, {})).resolves.toBe("result");
     expect(mutationSpy).toHaveBeenCalledWith(signIn, {});
   });
 
-  test("oauth() is registered when no ambient sign-ins are given", () => {
-    const client = makeConvexClient();
+  test("oauth() is registered by createAuthClient", () => {
     render(
-      <ConvexAuthProvider client={client} api={API}>
+      <ConvexAuthProvider auth={makeAuth()}>
         <OauthFlowError />
       </ConvexAuthProvider>,
     );

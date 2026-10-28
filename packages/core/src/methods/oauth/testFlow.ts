@@ -5,7 +5,10 @@
  */
 import { getFunctionName, makeFunctionReference } from "convex/server";
 import { vi } from "vitest";
-import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
+import type {
+  AuthSignInApi,
+  ConvexClientApi,
+} from "../../browser/signInApi.ts";
 import { AuthClient } from "../../browser/sessionManager.ts";
 import {
   InMemoryStorage,
@@ -108,19 +111,22 @@ export function oauthClient(storage: TokenStorage): {
   const mutation = vi.fn();
   const signInApi = { mutation, action: vi.fn() } as unknown as AuthSignInApi;
   const convexMutation = vi.fn();
+  const convex = {
+    mutation: convexMutation,
+    action: vi.fn(),
+  } as unknown as ConvexClientApi;
   const client = new AuthClient({
     mode: "spa",
+    convex,
+    url: NAMESPACE,
+    signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
     },
     storage,
     storageNamespace: NAMESPACE,
-    ambientSignIns: {
-      signIns: [oauth()],
-      signInApi,
-      convex: { mutation: convexMutation },
-    },
+    ambientSignIns: [oauth()],
   });
   return { client, signInApi, mutation, convexMutation };
 }

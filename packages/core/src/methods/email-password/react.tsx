@@ -8,18 +8,9 @@
 
 import { FunctionReference } from "convex/server";
 import { useConvex, useMutation, useQuery } from "convex/react";
-import {
-  useCallback,
-  useRef,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useRef, useEffect, useMemo, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
-import { AuthClientContext, useAuth } from "../../react/client.tsx";
-import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuth, useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import { NamespacedStorage, defaultStorage } from "../../browser/storage.ts";
 import type {
@@ -266,18 +257,6 @@ function useSecretStorage(): NamespacedStorage {
 }
 
 /**
- * The auth client's `withSignInPending`: while its call runs, the auth state
- * reports `isLoading` instead of signed out.
- */
-function useWithSignInPending() {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
-  return authClient.withSignInPending;
-}
-
-/**
  * Track the in-flight state of async calls.
  */
 function usePending() {
@@ -430,8 +409,7 @@ export function useSignInWithEmailPassword(api: {
   const signInMutation = useStableFunctionReference(
     api.signInWithEmailPassword,
   );
-  const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const auth = useAuthClient();
   const { pending, track } = usePending();
 
   const signIn = useCallback(
@@ -441,16 +419,19 @@ export function useSignInWithEmailPassword(api: {
     }): Promise<SignInResult> =>
       track(async () => {
         try {
-          const result = await signInApi.mutation(signInMutation, credentials);
+          const result = await auth.signIn.mutation(
+            signInMutation,
+            credentials,
+          );
           if (result.status === "complete") {
-            await setSession(result.tokens);
+            await auth.setSession(result.tokens);
           }
           return result;
         } catch (cause) {
           return foldSignInError(cause);
         }
       }),
-    [signInApi, signInMutation, setSession, track],
+    [auth, signInMutation, track],
   );
 
   return { signIn, pending };
@@ -583,33 +564,25 @@ export function useCompleteSignUp(
   { emailCode }: { emailCode: string },
 ): CompleteSignUpState {
   const completeSignUpMutation = useStableFunctionReference(api.completeSignUp);
-  const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
-  const withSignInPending = useWithSignInPending();
+  const auth = useAuthClient();
 
   // Keep `isLoading` true while the server validates the link and the client
   // stores the new session, so the app does not see a signed-out user and
   // go to the sign-in page during this time.
   const complete = useCallback(
     (browserSecret: string) =>
-      withSignInPending(async () => {
-        const result = await signInApi.mutation(completeSignUpMutation, {
+      auth.withSignInPending(async () => {
+        const result = await auth.signIn.mutation(completeSignUpMutation, {
           emailCode,
           browserSecret,
         });
         if (result.status === "complete") {
-          await setSession(result.tokens);
+          await auth.setSession(result.tokens);
           return { done: true } as const;
         }
         return { done: false, userError: result.userError } as const;
       }),
-    [
-      signInApi,
-      completeSignUpMutation,
-      emailCode,
-      setSession,
-      withSignInPending,
-    ],
+    [auth, completeSignUpMutation, emailCode],
   );
 
   return useLinkFlow<SignInError<ClientView<CompleteSignUpResult>>>(
@@ -737,8 +710,7 @@ export function useCompletePasswordRecovery(
     recoveryApi.completePasswordRecovery,
   );
   const { isLoading } = useAuth();
-  const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const auth = useAuthClient();
   const storage = useSecretStorage();
   const { pending, track } = usePending();
   // The secret from storage: not read yet, missing, or found.
@@ -781,13 +753,13 @@ export function useCompletePasswordRecovery(
           );
         }
         try {
-          const result = await signInApi.mutation(completeMutation, {
+          const result = await auth.signIn.mutation(completeMutation, {
             emailCode,
             browserSecret,
             newPassword,
           });
           if (result.status === "complete") {
-            await setSession(result.tokens);
+            await auth.setSession(result.tokens);
             await storage.remove(SECRET_STORAGE_KEYS.passwordRecovery);
             setOutcome({ status: "complete" });
           } else if (isPasswordRecoveryLinkError(result.userError)) {
@@ -798,15 +770,7 @@ export function useCompletePasswordRecovery(
           return foldSignInError(cause);
         }
       }),
-    [
-      signInApi,
-      completeMutation,
-      emailCode,
-      browserSecret,
-      storage,
-      setSession,
-      track,
-    ],
+    [auth, completeMutation, emailCode, browserSecret, storage, track],
   );
 
   if (outcome !== undefined) {

@@ -4,7 +4,7 @@
  *
  * A provider's job on the client is to run its own sign-in flow and hand the
  * resulting {@link TokenBundle} to the core client's `setSession` (see
- * {@link useAuthActions}). This anonymous provider is the simplest case. It
+ * `useAuthClient`). This anonymous provider is the simplest case. It
  * has a single mutation that directly returns the `TokenBundle`.
  *
  * It's useful as an example of the bare minimum a provider needs on the
@@ -17,8 +17,7 @@
 import { FunctionReference } from "convex/server";
 import { useCallback } from "react";
 import type { ClientView, SignInComplete } from "../../lib/types.ts";
-import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 
 /**
@@ -65,13 +64,12 @@ export function useSignInAnonymously(api: {
   signInAnonymously: SignInAnonymouslyMutation;
 }) {
   const signInMutation = useStableFunctionReference(api.signInAnonymously);
-  const { setSession } = useAuthActions();
-  // Running through the signInApi rather than `useMutation` is what lets this one
-  // hook serve both session models. See {@link AuthSignInApi}.
-  const signInApi = useAuthSignInApi();
+  const auth = useAuthClient();
+  // Running through `auth.signIn` rather than `useMutation` is what lets this
+  // one hook serve both session models. See {@link AuthSignInApi}.
   const signIn = useCallback(async () => {
-    const result = await signInApi.mutation(signInMutation, {});
-    await setSession(result.tokens);
-  }, [signInApi, signInMutation, setSession]);
+    const result = await auth.signIn.mutation(signInMutation, {});
+    await auth.setSession(result.tokens);
+  }, [auth, signInMutation]);
   return { signIn };
 }

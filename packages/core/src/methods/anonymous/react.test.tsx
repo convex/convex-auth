@@ -8,7 +8,7 @@ import { InMemoryStorage } from "../../browser/storage.ts";
 import type { TokenBundle } from "../../lib/types.ts";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
 import { useAuthToken } from "../../react/index.tsx";
-import { stubSignInApi } from "../../react/testSignInApi.ts";
+import { stubSignInApi, unusedConvex } from "../../react/testSignInApi.ts";
 import { SignInAnonymouslyMutation, useSignInAnonymously } from "./react.tsx";
 
 // The hook runs its sign-in mutation through the injected `AuthSignInApi`, so the
@@ -37,6 +37,9 @@ function renderAnonymousAuth(
 ) {
   const client = new AuthClient({
     mode: "spa",
+    convex: unusedConvex,
+    url: NAMESPACE,
+    signInApi,
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
       signOut: async () => {},
@@ -45,9 +48,7 @@ function renderAnonymousAuth(
     storageNamespace: NAMESPACE,
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({
