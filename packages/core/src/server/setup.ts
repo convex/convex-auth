@@ -281,6 +281,28 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     const onSignInHandle = async (): Promise<string | undefined> =>
       onSignIn === undefined ? undefined : await createFunctionHandle(onSignIn);
 
+    /**
+     * Revoke the given sessions (as `listSessions` lists them) and count the
+     * active ones revoked. Expired sessions are deleted too, but not counted.
+     */
+    const revokeListedSessions = async (
+      ctx: GenericMutationCtx<GenericDataModel>,
+      sessions: { sessionId: string; expiresAt: number }[],
+    ): Promise<number> => {
+      if (sessions.length === 0) {
+        return 0;
+      }
+      const revoked = new Set(
+        await ctx.runMutation(component.public.revokeSessions, {
+          sessionIds: sessions.map(({ sessionId }) => sessionId),
+        }),
+      );
+      const now = Date.now();
+      return sessions.filter(
+        ({ sessionId, expiresAt }) => revoked.has(sessionId) && expiresAt > now,
+      ).length;
+    };
+
     // The helpers close over the live ctx.
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
@@ -354,20 +376,16 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         const sessions = await ctx.runQuery(component.public.listSessions, {
           userId: session.userId,
         });
-        const others = sessions.filter(
-          ({ sessionId }) => sessionId !== currentSessionId,
+        return await revokeListedSessions(
+          ctx,
+          sessions.filter(({ sessionId }) => sessionId !== currentSessionId),
         );
-        const revoked = new Set(
-          await ctx.runMutation(component.public.revokeSessions, {
-            sessionIds: others.map(({ sessionId }) => sessionId),
-          }),
-        );
-        // Expired sessions are deleted too, but only the active ones count.
-        const now = Date.now();
-        return others.filter(
-          ({ sessionId, expiresAt }) =>
-            revoked.has(sessionId) && expiresAt > now,
-        ).length;
+      },
+      revokeAllSessions: async (userId: string): Promise<number> => {
+        const sessions = await ctx.runQuery(component.public.listSessions, {
+          userId,
+        });
+        return await revokeListedSessions(ctx, sessions);
       },
     });
 

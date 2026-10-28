@@ -813,8 +813,9 @@ export function setupEmailPassword<UsersTable extends string>(
 
         /**
          * Complete a password recovery: the link code + browser secret prove
-         * ownership of the email, so set the new password and sign the user
-         * in, in one transaction. Notifies the primary email (ASVS 6.3.7).
+         * ownership of the email, so set the new password, sign out every
+         * existing session of the user, and sign the user in, in one
+         * transaction. Notifies the primary email (ASVS 6.3.7).
          */
         completePasswordRecovery: authMutation({
           args: {
@@ -878,6 +879,13 @@ export function setupEmailPassword<UsersTable extends string>(
                 { cause: setResult.userError },
               );
             }
+
+            // A recovery often follows an account takeover, so sign out every
+            // session that predates it, which may belong to whoever knew the
+            // old password. That includes this browser's session if it is the
+            // user's: it predates the proof of ownership. Revoke before
+            // minting the new session, so it survives.
+            await ctx.convexAuth.revokeAllSessions(userId);
 
             const tokens = await ctx.convexAuth.completeSignIn({
               providerAccountId: userId,
