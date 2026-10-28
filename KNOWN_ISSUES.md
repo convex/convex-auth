@@ -56,7 +56,8 @@ token.
 
 Retired rows are pruned inline by the refreshes of their own session, so a
 session abandoned mid-life leaves its remaining rows behind until it is signed
-out or expires — the same way an abandoned session row itself lingers today. Roughly
+out or expires, when the session cleanup loop
+(`packages/core/src/component/cleanup.ts`) erases them with the session. Roughly
 `horizon ÷ refresh interval` rows, about 60 at the defaults.
 
 Nothing bounds that per-session set independently, and both `pruneRetiredTokens`
@@ -67,9 +68,11 @@ could grow it until those reads exceed the transaction's limits, which would
 make the session unrefreshable and un-signoutable. Accepted for now on the
 basis that the sweep below lands first.
 
-Fix direction: a `@convex-dev/batch-worker` loop over retired `refreshTokens`
-rows by `retiredAt`, mirroring `packages/core/src/components/passkey/cleanup.ts`,
-to sweep orphans globally and cap the table regardless of any one session's
-behavior. Bound its idle probe's range read above (the passkey version's
-`gte(cursor)` is unbounded, which would put the whole index tail in the loop's
-read set and thrash on OCC at refresh volume).
+Fix direction: a sweep of the retired `refreshTokens` rows by `retiredAt`,
+over the `by_state` index that the session cleanup loop already scans for
+issued tokens, to erase an abandoned session's rows an hour after they retire
+rather than when the session expires. Rows are retired by refreshes, which the
+session loop deliberately doesn't ping from, so the sweep would need its own
+wake-up schedule. Note that it would not help the pathological case above:
+those rows are within the horizon, which no sweep may erase without giving up
+the detection.

@@ -20,9 +20,11 @@ import {
 import { sha256Hex } from "../lib/crypto.ts";
 import {
   type TtlConfig,
+  recordTtlConfig,
   refreshTokenExpiresAt,
   resolveTtlConfig,
 } from "./expiry.ts";
+import { scheduleSessionCleanup } from "./cleanup.ts";
 import {
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
@@ -86,6 +88,7 @@ async function issueSession(
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
+  await recordTtlConfig(ctx, ttl);
   await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
@@ -104,6 +107,8 @@ async function issueSession(
     sessionId,
     ttl.accessTokenTtlSeconds,
   );
+  // The loop erases the session once it expires.
+  await scheduleSessionCleanup(ctx);
   return {
     accessToken,
     refreshToken,
@@ -383,8 +388,11 @@ export const getUserIdByAccount = query({
  * Returns an object with the session's `userId` when the session row exists.
  * If there is no row for the session id, it returns `null`.
  *
- * A session is live exactly as long as its row exists: sign-out, refresh-token
- * reuse detection, and expired-token cleanup all delete the row.
+ * A session is live as long as its row exists. Sign-out, revocation, and
+ * refresh-token reuse detection delete the row right away. An expired session
+ * is deleted by the background cleanup loop (see cleanup.ts), which may run a
+ * little after the session expired; `refresh` refuses its tokens in the
+ * meantime, so its access tokens are the last it has.
  *
  * This is a component function; it is callable by the app, not by end-user
  * clients, so it does not expose session existence to the outside world.
@@ -440,6 +448,11 @@ export const refresh = mutation({
     // unconditional.
     const ttl = resolveTtlConfig(args);
     const now = Date.now();
+    // A changed TTL can expire other sessions right away (or later than the
+    // loop planned), thus the loop runs again with the stored new value.
+    if (await recordTtlConfig(ctx, ttl)) {
+      await scheduleSessionCleanup(ctx);
+    }
 
     const token = await lookupRefreshTokenByHash(
       ctx,
@@ -562,7 +575,6 @@ export const signOut = mutation({
  * TTL after `lastRefreshedAt`. A token expires one TTL after it was issued,
  * under the TTL configured when it is presented, and every other token the
  * session remembers is older than the newest issued one, so none outlives it.
- * The TTL is the app's configuration, so callers apply it themselves.
  *
  * A session with no issued token is left out with a warning. The token
  * lifecycle never leaves one (sign-in and each refresh issue a token), so
@@ -570,10 +582,10 @@ export const signOut = mutation({
  *
  * Sessions are listed newest first.
  *
- * Expired sessions are included, since a session's row outlives its tokens
- * until something deletes it. The query does not read the clock, so its result
- * stays cached until a session or token changes; callers that want only the
- * active sessions compare the expiry to the current time themselves.
+ * The background cleanup loop deletes a session once it expires, so the list
+ * holds the live sessions. A session that expired moments ago can still show
+ * up until the loop gets to it. The query does not read the clock, so its
+ * result stays cached until a session or token changes.
  *
  * This is a component function callable by the app, not by end-user clients.
  */

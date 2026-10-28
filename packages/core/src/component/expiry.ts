@@ -1,7 +1,8 @@
-// Token lifetimes: the validated config of a call, and when a refresh token
-// expires under it.
+// Token lifetimes: the validated config of a call, when a refresh token
+// expires under it, and the copy the component stores for the cleanup loop.
 
 import type { Doc } from "./_generated/dataModel.ts";
+import type { MutationCtx, QueryCtx } from "./_generated/server.ts";
 import {
   DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
   DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
@@ -58,4 +59,48 @@ export function refreshTokenExpiresAt(
   refreshTokenTtlSeconds: number,
 ): number {
   return token._creationTime + refreshTokenTtlSeconds * 1000;
+}
+
+/**
+ * Store the refresh-token TTL that a call was given, for the cleanup loop.
+ *
+ * Returns `true` when the stored value changed (or none was stored yet), in
+ * which case the caller pings the loop: a lowered TTL can expire sessions
+ * right away. Writes nothing when the value is unchanged, which is the common
+ * case, so the read is all a refresh pays.
+ */
+export async function recordTtlConfig(
+  ctx: MutationCtx,
+  ttl: TtlConfig,
+): Promise<boolean> {
+  const stored = await ctx.db.query("ttlConfig").first();
+  if (stored === null) {
+    await ctx.db.insert("ttlConfig", {
+      refreshTokenTtlSeconds: ttl.refreshTokenTtlSeconds,
+    });
+    return true;
+  }
+  if (stored.refreshTokenTtlSeconds === ttl.refreshTokenTtlSeconds) {
+    return false;
+  }
+  await ctx.db.patch("ttlConfig", stored._id, {
+    refreshTokenTtlSeconds: ttl.refreshTokenTtlSeconds,
+  });
+  return true;
+}
+
+/**
+ * The refresh-token TTL that the app last passed in, or `null` when no call
+ * has stored one yet.
+ *
+ * The cleanup loop runs with no caller, thus this stored copy is all it has.
+ * It lags a deploy that changes the TTL until the next sign-in or refresh
+ * stores the new value, whereas `refresh` always checks expiry against the
+ * TTL of its own call.
+ */
+export async function storedRefreshTokenTtlSeconds(
+  ctx: QueryCtx,
+): Promise<number | null> {
+  const stored = await ctx.db.query("ttlConfig").first();
+  return stored?.refreshTokenTtlSeconds ?? null;
 }

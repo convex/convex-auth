@@ -12,7 +12,10 @@ export default defineSchema({
     .index("by_provider_account", ["provider", "providerAccountId"])
     .index("by_user", ["userId"]),
 
-  // One row per active session. Its refresh tokens live in `refreshTokens`.
+  // One row per live session. Its refresh tokens live in `refreshTokens`.
+  // Sign-out, revocation, and refresh-token reuse detection delete the row
+  // right away; an expired session's row is deleted by the background loop in
+  // cleanup.ts shortly after it expires.
   // The row is only written when the session is created or deleted, so a query
   // reading it (e.g. to check session liveness) is not invalidated by token
   // refreshes.
@@ -51,7 +54,9 @@ export default defineSchema({
   // A token stores no expiry: it expires `refreshTokenTtlSeconds` after its
   // `_creationTime`, under the TTL configured when it is checked. A changed
   // TTL thus applies to every outstanding token, not just the ones issued
-  // after the change.
+  // after the change. The `by_state` index lets the cleanup loop scan the
+  // issued tokens of every session oldest first, which finds the sessions that
+  // expired under the current TTL.
   refreshTokens: defineTable({
     hash: v.string(),
     sessionId: v.id("sessions"),
@@ -65,5 +70,15 @@ export default defineSchema({
     retiredAt: v.optional(v.number()),
   })
     .index("by_hash", ["hash"])
-    .index("by_session_state", ["sessionId", "state", "retiredAt"]),
+    .index("by_session_state", ["sessionId", "state", "retiredAt"])
+    .index("by_state", ["state", "retiredAt"]),
+
+  // The token lifetimes the app last passed in, so that the cleanup loop,
+  // which runs with no caller to pass them, knows when a session expires. At
+  // most one row. The functions that take the TTLs as args (sign-in and
+  // refresh) write it when the value they get differs from the stored one,
+  // which is rare, thus reading it on every refresh stays cheap.
+  ttlConfig: defineTable({
+    refreshTokenTtlSeconds: v.number(),
+  }),
 });
