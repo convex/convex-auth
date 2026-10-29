@@ -271,6 +271,11 @@ export class AuthClient {
     return this.#accessToken;
   }
 
+  /** @internal */
+  get storage(): NamespacedStorage {
+    return this.#storage;
+  }
+
   // --- Ambient sign-in surface ----------------------------------------------
 
   /**
