@@ -10,7 +10,7 @@ This demo is a simplified version of the [react-passkey](../react-passkey/README
 Run the example from its own directory.
 
 ```bash
-cd examples/react-passkey
+cd examples/react-passkey-basic
 npx convex dev --once    # provisions a deployment, generates convex/_generated
 npm run dev              # start the Vite frontend
 ```

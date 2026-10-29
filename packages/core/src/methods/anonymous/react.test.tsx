@@ -65,7 +65,7 @@ describe("useSignInAnonymously", () => {
     runSignIn.mockReset();
   });
 
-  test("signIn adopts the envelope's bundle from signInAnonymous into the core client", async () => {
+  test("signIn adopts the envelope's bundle from signInAnonymously into the core client", async () => {
     runSignIn.mockResolvedValue({ status: "complete", tokens: bundle });
     const { result } = renderAnonymousAuth();
     await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
