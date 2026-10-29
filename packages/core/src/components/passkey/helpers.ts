@@ -21,7 +21,7 @@ export function okOrNull<T>(read: () => T): T | null {
  * `verifyRegistrationResponse` and `verifyAuthenticationResponse` check this
  * too. It is checked separately, and first, because a mismatch is almost
  * always a misconfigured `rpId`. The message of the library names the check
- * that failed; this one names the setting of the provider to correct.
+ * that failed; this one names the setting of the method to correct.
  */
 export async function rpIdHashMatches(
   rpIdHash: Uint8Array<ArrayBuffer>,

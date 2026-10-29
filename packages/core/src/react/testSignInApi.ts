@@ -5,7 +5,7 @@ import type { AuthSignInApi } from "./client.tsx";
  * A stub {@link AuthSignInApi} for tests, with the mock standing in for the Convex
  * call.
  *
- * Provider hooks run their sign-in function through the signInApi rather than
+ * The hooks of the methods run their sign-in function through the signInApi rather than
  * calling `useMutation`/`useAction`, so tests substitute a signInApi instead of
  * mocking `convex/react`.
  */

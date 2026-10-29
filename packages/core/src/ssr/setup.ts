@@ -28,7 +28,7 @@ export interface ConvexAuthServerConfig {
   /** The app's `signOut` mutation reference. */
   signOut: SignOutFn;
   /**
-   * The provider sign-in functions to expose through the auth proxy.
+   * The sign-in functions of the methods to expose through the auth proxy.
    * This should include all the Convex backend functions in your app that can issue auth sessions (e.g. account creation, log in with existing account…).
    *
    * Anything not listed is refused, so this allowlist is the proxy's entire API
@@ -86,7 +86,7 @@ export function setupConvexAuthServer(config: ConvexAuthServerConfig) {
      * The sign-in route.
      *
      * Mount it once, at a static path, and every function in `signIn` is
-     * reachable from its provider's normal client hook.
+     * reachable from the normal client hook of its method.
      *
      * ```ts
      * // app/auth/signin/route.ts

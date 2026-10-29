@@ -4,7 +4,7 @@ title: Anonymous
 description: Sign users in without any credentials.
 ---
 
-The anonymous provider signs a user in without asking for any credentials. It's
+The anonymous sign-in method signs a user in without asking for any credentials. It's
 useful for letting people try your app before they commit to creating an
 account.
 
@@ -49,7 +49,7 @@ Convex Auth will create a row for each account. You can also add application-spe
 <Step title="Set up user creation">
 
 Write a `createUser` mutation that creates a row in your `users` table and
-returns its id. The provider calls it for every anonymous sign-in, since each
+returns its id. The method calls it for every anonymous sign-in, since each
 one establishes a new account.
 
 ```ts file="examples/react-minimal/convex/users.ts" title="convex/users.ts"
@@ -60,7 +60,7 @@ one establishes a new account.
 
 <Step title="Set up the public backend functions">
 
-Set up the anonymous provider with `setupAnonymous` and export the sign-in
+Set up the `anonymous` method with `setupAnonymous` and export the sign-in
 mutation it hands back once you attach the callback that creates your user
 rows, in `convex/auth.ts`:
 

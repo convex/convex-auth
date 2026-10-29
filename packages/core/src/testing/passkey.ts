@@ -15,11 +15,11 @@ import schema from "../components/passkey/schema.ts";
 const modules = import.meta.glob("../components/passkey/**/*.ts");
 
 /**
- * Register the passkey provider component with a `convex-test` instance.
+ * Register the passkey component with a `convex-test` instance.
  *
  * The component mounts the batch worker for its cleanup loop, so we register
  * that under `<name>/batchWorker` too — the same way it sits below the
- * component when the app `app.use`s the provider's `convex.config`.
+ * component when the app `app.use`s the `convex.config` of the component.
  *
  * @param t - The test convex instance, e.g. from calling `convexTest`.
  * @param name - The name of the component, as registered in convex.config.ts.

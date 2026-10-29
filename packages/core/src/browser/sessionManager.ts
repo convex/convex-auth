@@ -167,8 +167,8 @@ function replaceUrlKeepingState(url: string): void {
  * token via {@link AuthClient.fetchAccessToken} (refreshing under a cross-tab
  * lock when forced), keeps in sync across tabs, and exposes a
  * subscribe/snapshot API so any UI framework can render its state. It
- * establishes sessions from provider authentication results. Providers
- * authenticate and sign-in users and call {@link AuthClient.setSession} with
+ * establishes sessions from the authentication results of the sign-in methods.
+ * Methods authenticate and sign-in users and call {@link AuthClient.setSession} with
  * a token bundle.
  */
 export class AuthClient {
@@ -397,7 +397,7 @@ export class AuthClient {
   // --- Public actions ------------------------------------------------------
 
   /**
-   * Adopt the session a provider just established. Providers call this after
+   * Adopt the session a method just established. Methods call this after
    * their own sign-in flow returns a session: a full {@link TokenBundle} when
    * the client holds the refresh token (SPA), or an access-only {@link
    * SlimTokenBundle} when the refresh token is in a cookie (SSR).

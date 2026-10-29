@@ -4,7 +4,7 @@ This demo shows:
 
 - The core component.
 - The password component.
-- The email component, with the `EmailPassword` provider: sign-up with email
+- The email component, with the `emailPassword` method: sign-up with email
   validation, sign-in, change password, change email, and password recovery.
 
 ## Generate code / run

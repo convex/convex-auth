@@ -134,8 +134,7 @@ function authCookieOptions(
  * merged in, so the refresh cookie is httpOnly and never reaches client JS.
  *
  * This is the one place that knows which cookies hold a session, so refresh,
- * the proxy, and every provider's sign-in handler shape writes cookies
- * identically.
+ * the proxy, and every method's sign-in handler write cookies identically.
  */
 export async function writeAuthCookies(
   cookies: CookieStore,

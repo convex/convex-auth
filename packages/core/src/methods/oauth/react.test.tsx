@@ -244,7 +244,7 @@ describe("OAuth React client", () => {
     });
   });
 
-  test("useOauthSignIn runs a provider that ships no hook of its own", async () => {
+  test("useOauthSignIn runs an OAuth method that ships no hook of its own", async () => {
     stubReactNative();
     const { result, convexMutation, storage } = renderOAuth(() => ({
       auth: useAuth(),

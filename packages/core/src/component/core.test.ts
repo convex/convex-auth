@@ -305,7 +305,7 @@ describe("signIn", () => {
   test("refuses to sign in an identity with no account", async () => {
     const t = setup();
 
-    // A miss means the provider's records and the core's have diverged, and
+    // A miss means the records of the method and the core's have diverged, and
     // creating a user here would paper over that.
     await expect(signIn(t, claims())).rejects.toThrow(
       /must go through signUp/i,
@@ -1125,7 +1125,7 @@ describe("getUserIdByAccount", () => {
     expect(userId).toBe(bundle.userId);
   });
 
-  test("does not confuse identities across providers", async () => {
+  test("does not confuse identities across methods", async () => {
     const t = setup();
     await signUp(
       t,

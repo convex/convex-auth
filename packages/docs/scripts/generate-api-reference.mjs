@@ -119,7 +119,7 @@ function writeShims(entries) {
 /**
  * Docusaurus labels a folder of the sidebar after its name, capitalized. Each
  * folder gets a `_category_.json` so the label matches the import path, for
- * example `providers` or `password`, and kind folders read `Classes` and
+ * example `methods` or `password`, and kind folders read `Classes` and
  * `Interfaces`. A folder with an `index.md` links to it. Docusaurus shows a
  * folder that holds nothing else as a plain link.
  */

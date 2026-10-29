@@ -1,10 +1,10 @@
 ---
 sidebar_position: 2
-title: Login providers with Next.js
-description: How the login provider guides apply to a Next.js app.
+title: Sign-in methods with Next.js
+description: How the sign-in method guides apply to a Next.js app.
 ---
 
-Most of each [login provider guide](../login-providers/password.mdx) applies to a
+Most of each [sign-in method guide](../login-providers/password.mdx) applies to a
 Next.js app without changes. This page lists what is different. It assumes you
 have already followed [Setting up Next.js](./setup.mdx).
 
@@ -13,9 +13,9 @@ have already followed [Setting up Next.js](./setup.mdx).
 - **The backend.** Installing the components, the `users` table, the user
   creation callbacks, and the functions you export from `convex/auth.ts` are
   the same. Also export `isAuthenticated` from the core (see the
-  “Set up the backend for your login providers” step of
+  “Set up the backend for your sign-in methods” step of
   [Setting up Next.js](./setup.mdx)).
-- **The provider hooks.** Your sign-in and sign-up pages call the same hooks
+- **The hooks of the methods.** Your sign-in and sign-up pages call the same hooks
   as in a single-page app, like `useSignInWithUsernamePassword` from
   `@convex-dev/auth/methods/username-password/react` or `useSignInAnonymously` from
   `@convex-dev/auth/methods/anonymous/react`. There are no Next.js versions of
@@ -23,7 +23,7 @@ have already followed [Setting up Next.js](./setup.mdx).
   calls to your `/auth/signin` route. The route calls your deployment and moves
   the refresh token into the `httpOnly` cookie before it returns the result.
 - **Errors.** The hooks return the same typed `userError` values, so you can
-  handle errors the same way as in the provider guides.
+  handle errors the same way as in the sign-in method guides.
 
 ## What is different
 
@@ -38,9 +38,9 @@ Don't wrap your app in `ConvexAuthProvider`. Use
 The `/auth/signin` route only forwards the functions listed in `signIn` in
 `setupConvexAuthServer`. If a function the hooks need isn't listed, the
 route refuses the call with a `403` error. Add these functions for each
-provider:
+sign-in method:
 
-| Provider         | Functions to list in `signIn`                                           |
+| Method           | Functions to list in `signIn`                                           |
 | ---------------- | ----------------------------------------------------------------------- |
 | Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`              |
 | Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`    |
@@ -48,17 +48,17 @@ provider:
 | Email + password | `signInWithEmailPassword`, `completeSignUp`, `completePasswordRecovery` |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`         |
 
-Only list functions that create a session. The other functions a provider
+Only list functions that create a session. The other functions a method
 exports, like `changePassword`, passkey `startSignInWithUsernamePasskey`, OAuth
 `startSignInWithGithub`, or `startChangeEmail`,
 are called through the Convex client as usual and don't need to be listed.
 
 ### Adapt the authentication UI to Next.js
 
-The UI code in the provider guides comes from Vite single-page apps. To use it
+The UI code in the sign-in method guides comes from Vite single-page apps. To use it
 in a Next.js app:
 
-- Add `"use client"` to the components that call a provider hook. Only the
+- Add `"use client"` to the components that call the hook of a method. Only the
   form needs it: the page around it can stay a Server Component that renders
   the form. (The example below marks the whole page for brevity.)
 - Put the pages in `app/` (for example, `app/signin/page.tsx`), and navigate with
@@ -82,9 +82,9 @@ and sign-up pages, and also the pages that emailed links open, like
 OAuth, that includes the page the provider redirects back to: the hook redeems
 the callback code there, and a redirect away from it drops the code.
 
-### Use your Next.js origin in the provider config
+### Use your Next.js origin in the method config
 
-Some providers need the URL of your frontend. The provider guides use the Vite
+Some sign-in methods need the URL of your frontend. The guides use the Vite
 dev server (`http://localhost:5173`). `next dev` serves on
 `http://localhost:3000` by default:
 

@@ -1,7 +1,7 @@
 /**
- * Framework-agnostic browser client for the passkey provider.
+ * Framework-agnostic browser client for the username-passkey method.
  *
- * This module is internal: the public surface of the provider is the React
+ * This module is internal: the public surface of the method is the React
  * hooks in `react.tsx`, which are built on it. The `exports` field of the
  * package blocks `providers/passkey/client`, so an app cannot import this
  * file. It becomes a public entry point only when a real non-React consumer
@@ -41,7 +41,7 @@ import { fromBase64URL, toBase64URL } from "./base64url.ts";
 
 // Apps and custom flows read the WebAuthn JSON types from here, so they
 // never depend on `@simplewebauthn/*` directly. The `Wire…` variants are
-// the exact shapes of the provider's mutations.
+// the exact shapes of the mutations of the method.
 export type {
   AuthenticationResponseJSON,
   PublicKeyCredentialCreationOptionsJSON,
