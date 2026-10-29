@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api.js";
-import { registerAnonymousProvider } from "@convex-dev/auth/components/anonymous/test";
+import { registerAnonymous } from "@convex-dev/auth/components/anonymous/test";
 import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import schema from "./schema.js";
@@ -12,7 +12,7 @@ const modules = import.meta.glob("./**/*.ts");
 function setup() {
   const t = convexTest(schema, modules);
   registerCore(t);
-  registerAnonymousProvider(t);
+  registerAnonymous(t);
   return t;
 }
 

@@ -94,7 +94,7 @@ export type OauthCatalog<
 /**
  * App-defined config for setting up the `oauth` method for one OAuth provider.
  */
-export type OauthProviderOptions = {
+export type OauthOptions = {
   /**
    * This provider's oauth component instance, e.g. `components.authAcme`.
    * The component is installed once per provider.
@@ -132,7 +132,7 @@ export function setupOauth<
   providerName: Provider,
   catalog: OauthCatalog<Profile, UserInfo>,
   callbacks: UserCallbacks<Provider, Profile, UsersTable>,
-  options: OauthProviderOptions,
+  options: OauthOptions,
 ) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time, not on the first sign-in.

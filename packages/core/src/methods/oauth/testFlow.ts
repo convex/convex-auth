@@ -55,8 +55,10 @@ export const invalidCode = {
  */
 export const acmeRefs: OauthProviderRefs = {
   providerName: "acme",
-  startSignIn: makeFunctionReference<"mutation">("auth:startSignInAcme"),
-  completeSignIn: makeFunctionReference<"mutation">("auth:completeSignInAcme"),
+  startSignIn: makeFunctionReference<"mutation">("auth:startSignInWithAcme"),
+  completeSignIn: makeFunctionReference<"mutation">(
+    "auth:completeSignInWithAcme",
+  ),
 };
 
 /** The oauth setup's scoped storage view over `storage`. */

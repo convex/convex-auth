@@ -24,11 +24,11 @@ const modules = import.meta.glob("../components/password/**/*.ts");
  * @param t - The test convex instance, e.g. from calling `convexTest`.
  * @param name - The name of the component, as registered in convex.config.ts.
  */
-export function registerPasswordProvider(
+export function registerPassword(
   t: TestConvex<SchemaDefinition<GenericSchema, boolean>>,
   name: string = "authPassword",
 ) {
   t.registerComponent(name, schema, modules);
   registerRateLimiter(t, `${name}/rateLimiter`);
 }
-export default { registerPasswordProvider, schema, modules };
+export default { registerPassword, schema, modules };

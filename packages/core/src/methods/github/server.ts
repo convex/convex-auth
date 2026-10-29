@@ -75,7 +75,7 @@ export function normalizeGithubProfile(
 }
 
 /** App-defined config for setting up the `github` method. */
-export type GithubProviderOptions = {
+export type GithubOptions = {
   /** The GitHub oauth component instance, i.e. `components.authGithub`. */
   component: ComponentApi;
   /**
@@ -110,7 +110,7 @@ export type GithubProviderOptions = {
  */
 export function setupGithub<UsersTable extends string>(
   core: AuthCore<UsersTable>,
-  options: GithubProviderOptions,
+  options: GithubOptions,
 ) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time, not on the first sign-in.

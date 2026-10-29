@@ -20,8 +20,8 @@
  * ```tsx
  * const { signIn } = useOauthSignIn({
  *   providerName: "acme",
- *   startSignIn: api.auth.startSignInAcme,
- *   completeSignIn: api.auth.completeSignInAcme,
+ *   startSignIn: api.auth.startSignInWithAcme,
+ *   completeSignIn: api.auth.completeSignInWithAcme,
  * });
  * const { flowError } = useOauth();
  * const result = await signIn();
