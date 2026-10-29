@@ -51,7 +51,6 @@ import {
   type SignInOptions,
 } from "./client.ts";
 
-export { oauth } from "./client.ts";
 export type {
   OauthActions,
   OauthCompleteResult,
@@ -65,9 +64,7 @@ export type {
 /** What every hook here throws when the OAuth setup published nothing. */
 const NOT_REGISTERED_ERROR =
   "No OAuth setup is registered. ConvexAuthProvider and " +
-  "ConvexAuthNextjsProvider register oauth() from " +
-  "@convex-dev/auth/methods/oauth/react by default, so include it yourself " +
-  "if you set the `ambientSignIns` prop.";
+  "ConvexAuthNextjsProvider register it by default.";
 
 /** What {@link useOauth} returns. */
 export type UseOauthReturn = {

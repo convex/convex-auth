@@ -59,14 +59,7 @@ export type { ConvexAuthActionsContextType } from "./client.tsx";
  * }
  * ```
  */
-export function ConvexAuthProvider({
-  client,
-  api,
-  storage,
-  storageNamespace,
-  ambientSignIns,
-  children,
-}: {
+export function ConvexAuthProvider(props: {
   /** Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient). */
   client: ConvexReactClient;
   /** The app's `refreshSession` and `signOut` mutation references. */
@@ -106,14 +99,20 @@ export function ConvexAuthProvider({
    * oauth code from a url query param.
    *
    * Setting this replaces the default (`[oauth()]`) entirely rather than adding
-   * to it. Pass `[]` to register nothing, or include `oauth()` (from
-   * `@convex-dev/auth/methods/oauth/react`) yourself to keep it alongside
-   * other sign-ins. Read once when the client is created and not expected to
-   * change.
+   * to it. Pass `[]` to register nothing. Read once when the client is
+   * created and not expected to change.
+   *
+   * Internal until the API for custom sign-in methods is stable.
+   *
+   * @internal
    */
   ambientSignIns?: AmbientSignInClient[];
   children: ReactNode;
 }) {
+  // Destructure in the body: `ambientSignIns` is internal, and a
+  // destructured parameter would name it in the published declarations.
+  const { client, api, storage, storageNamespace, ambientSignIns, children } =
+    props;
   const { authClient, signInApi } = useMemo(() => {
     // Refresh and sign-out go over a *separate* HTTP client, not the websocket
     // `client`. A refresh happens while `client` is paused waiting for a token,
