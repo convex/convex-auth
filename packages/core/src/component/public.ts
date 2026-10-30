@@ -18,7 +18,10 @@ import {
   type OnSignInFn,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
-import { refreshTokenExpiresAt } from "./expiry.ts";
+import {
+  refreshTokenInactivityExpiresAt,
+  sessionMaxLifetimeExpiresAt,
+} from "./expiry.ts";
 import {
   type TtlConfig,
   validateTtlConfig,
@@ -92,11 +95,13 @@ async function issueSession(
     userId,
     accountId,
   });
+  // Read back for its `_creationTime`, which its max lifetime counts from.
+  const session = (await ctx.db.get("sessions", sessionId))!;
   // Issued like any other token: it is redeemed on the session's first
   // refresh.
   const { refreshToken, expiresAt } = await issueRefreshToken(
     ctx,
-    sessionId,
+    session,
     now,
     ttl,
   );
@@ -250,8 +255,8 @@ async function notifySignIn(
  * `createUser` just made, since both are subtransactions of this one.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
- * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token lifetimes are the
- * app's configuration, which `setupConvexAuth` resolves and passes in.
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
+ * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
  * Throws when the identity already has an account. See {@link signIn} for the
  * return-visit path.
@@ -286,8 +291,8 @@ export const signUp = mutation({
  * `onSignInHandle` app callback.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
- * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token lifetimes are the
- * app's configuration, which `setupConvexAuth` resolves and passes in.
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
+ * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
  * Throws when the identity has no account.
  */
@@ -409,7 +414,9 @@ export const getSession = query({
  *    trying again.
  *  * `spent` or `dropped`: the session's holders have diverged, which is what
  *    a stolen token looks like. Revoke the session.
- *  * Unknown, or expired: report no session.
+ *  * Unknown, or expired (not refreshed within the refresh inactivity timeout,
+ *    or past the session's max lifetime):
+ *    report no session.
  *
  * The outcomes are the arms of {@link vRefreshResult}: `rotated` carries the
  * new refresh token to persist, and `noSession` means the client must reflect
@@ -462,8 +469,25 @@ export const refresh = mutation({
         break;
     }
 
-    if (refreshTokenExpiresAt(token, ttl.refreshTokenTtlSeconds) <= now) {
-      await deleteSession(ctx, token.sessionId);
+    // Every refresh token row is deleted along with its session, so if we found
+    // the token, the session also exists. Note that a refresh never writes the
+    // session row: queries that read it (e.g. to check session liveness) stay
+    // cached across token refreshes.
+    const session = (await ctx.db.get("sessions", token.sessionId))!;
+    // A redeemed token's session last refreshed when it issued its newest
+    // token, so date inactivity from that one.
+    const lastIssued =
+      token.state === "redeemed"
+        ? ((await newestIssuedToken(ctx, session._id)) ?? token)
+        : token;
+    if (
+      refreshTokenInactivityExpiresAt(
+        lastIssued,
+        ttl.refreshInactivityTimeoutSeconds,
+      ) <= now ||
+      sessionMaxLifetimeExpiresAt(session, ttl.sessionMaxLifetimeSeconds) <= now
+    ) {
+      await deleteSession(ctx, session._id);
       return { kind: "noSession" };
     }
     if (token.state === "issued") {
@@ -493,14 +517,9 @@ export const refresh = mutation({
       }
     }
 
-    // Every refresh token row is deleted along with its session, so if we found
-    // the token, the session also exists. Note that a refresh never writes the
-    // session row: queries that read it (e.g. to check session liveness) stay
-    // cached across token refreshes.
-    const session = (await ctx.db.get("sessions", token.sessionId))!;
     const { refreshToken, expiresAt } = await issueRefreshToken(
       ctx,
-      session._id,
+      session,
       now,
       ttl,
     );
@@ -550,16 +569,6 @@ export const signOut = mutation({
  * refreshes about once per access-token TTL, so callers may read this as a
  * rough activity signal, but it tracks the client holding the session, not
  * user interaction.
- *
- * It also dates the session's expiry: the session expires one refresh-token
- * TTL after `lastRefreshedAt`. A token expires one TTL after it was issued,
- * under the TTL configured when it is presented, and every other token the
- * session remembers is older than the newest issued one, so none outlives it.
- * The TTL is the app's configuration, so callers apply it themselves.
- *
- * A session with no issued token is left out with a warning. The token
- * lifecycle never leaves one (sign-in and each refresh issue a token), so
- * finding one means a bug.
  *
  * Sessions are listed newest first.
  *

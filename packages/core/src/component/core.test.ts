@@ -110,6 +110,8 @@ async function refresh(t: ConvexTestApi, refreshToken: string) {
   });
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
 /** How many sessions currently exist. */
 async function sessionCount(t: ConvexTestApi) {
   return await t.run(
@@ -533,7 +535,7 @@ describe("refresh", () => {
 
     const successor = expectRotated(await refresh(t, bundle.refreshToken));
 
-    // Past the default 30-day refresh-token TTL.
+    // Past the default 30-day inactivity timeout.
     vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
 
     const result = await refresh(t, bundle.refreshToken);
@@ -551,7 +553,7 @@ describe("refresh", () => {
     const bundle = await signUp(t, claims());
     const successor = expectRotated(await refresh(t, bundle.refreshToken));
 
-    // Past the default 30-day refresh-token TTL.
+    // Past the default 30-day inactivity timeout.
     vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
 
     expect((await refresh(t, successor.refreshToken)).kind).toBe("noSession");
@@ -559,27 +561,27 @@ describe("refresh", () => {
     expect(await issuedHashes(t)).toEqual([]);
   });
 
-  test("a lowered TTL expires tokens issued under the old one", async () => {
+  test("a lowered inactivity timeout expires tokens issued under the old one", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
-    // Issued under the default 30-day TTL.
+    // Issued under the default 30-day inactivity timeout.
     const bundle = await signUp(t, claims());
     vi.advanceTimersByTime(2 * 60 * 60 * 1000);
 
-    // Two hours old: dead under a one-hour TTL, though the 30-day TTL it was
-    // issued under has days to go.
+    // Two hours old: dead under a one-hour inactivity timeout, though the
+    // 30-day one it was issued under has days to go.
     const result = await t.mutation(api.public.refresh, {
       refreshToken: bundle.refreshToken,
       ...ttl({
-        refreshTokenTtlSeconds: 60 * 60,
+        refreshInactivityTimeoutSeconds: 60 * 60,
       }),
     });
     expect(result.kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
   });
 
-  test("a lowered TTL expires the redeemed token a retry would present", async () => {
+  test("a lowered inactivity timeout expires the redeemed token a retry would present", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
@@ -592,11 +594,99 @@ describe("refresh", () => {
     const result = await t.mutation(api.public.refresh, {
       refreshToken: bundle.refreshToken,
       ...ttl({
-        refreshTokenTtlSeconds: 60 * 60,
+        refreshInactivityTimeoutSeconds: 60 * 60,
       }),
     });
     expect(result.kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("refuses a session past its max lifetime, however recently it refreshed", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const lifetimes = ttl({
+      refreshInactivityTimeoutSeconds: 60 * 60,
+      sessionMaxLifetimeSeconds: 2 * 60 * 60,
+    });
+    let bundle: TokenBundle = await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...lifetimes,
+    });
+    // Refresh every half hour, well within the inactivity timeout, until the
+    // session is just short of its max lifetime.
+    for (let i = 0; i < 3; i++) {
+      vi.advanceTimersByTime(30 * 60 * 1000);
+      bundle = expectRotated(
+        await t.mutation(api.public.refresh, {
+          refreshToken: bundle.refreshToken,
+          ...lifetimes,
+        }),
+      );
+    }
+    // Just past the two-hour max lifetime.
+    vi.advanceTimersByTime(30 * 60 * 1000 + 1);
+
+    const result = await t.mutation(api.public.refresh, {
+      refreshToken: bundle.refreshToken,
+      ...lifetimes,
+    });
+    expect(result.kind).toBe("noSession");
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("a lowered max lifetime ends a session created before the change", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    // Created under the default 30-day max lifetime.
+    const bundle = await signUp(t, claims());
+    vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+    // Refresh under the old config so that the lowered inactivity timeout
+    // can't end the session.
+    const fresh = expectRotated(await refresh(t, bundle.refreshToken));
+    vi.advanceTimersByTime(60 * 1000);
+
+    const result = await t.mutation(api.public.refresh, {
+      refreshToken: fresh.refreshToken,
+      ...ttl({
+        sessionMaxLifetimeSeconds: 60 * 60,
+      }),
+    });
+    expect(result.kind).toBe("noSession");
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("a redeemed token's inactivity counts from the session's newest token", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const lifetimes = ttl({ refreshInactivityTimeoutSeconds: 60 * 60 });
+    const bundle: TokenBundle = await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...lifetimes,
+    });
+    // The refresh commits, but the client never gets the response.
+    vi.advanceTimersByTime(50 * 60 * 1000);
+    expectRotated(
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        ...lifetimes,
+      }),
+    );
+    // The retried token is past the timeout, but the session last refreshed
+    // 20 minutes ago.
+    vi.advanceTimersByTime(20 * 60 * 1000);
+
+    expectRotated(
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        ...lifetimes,
+      }),
+    );
+    expect(await sessionCount(t)).toBe(1);
   });
 
   test("reports no session for an unknown refresh token", async () => {
@@ -955,7 +1045,7 @@ describe("listSessions", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const stale = await signUp(t, claims());
-    // Past the default 30-day refresh-token TTL.
+    // Past the default 30-day inactivity timeout.
     vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
     const fresh = await signIn(t, claims());
 
@@ -967,7 +1057,7 @@ describe("listSessions", () => {
     );
   });
 
-  test("no token outlives one TTL past the session's lastRefreshedAt", async () => {
+  test("no token outlives one inactivity timeout past the session's lastRefreshedAt", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
@@ -977,15 +1067,15 @@ describe("listSessions", () => {
     // responses were lost would: the session has two issued siblings.
     expectRotated(await refresh(t, bundle.refreshToken));
     vi.advanceTimersByTime(60_000);
-    // Issued under the default 30-day TTL.
+    // Issued under the default 30-day inactivity timeout.
     const older = expectRotated(await refresh(t, bundle.refreshToken));
     vi.advanceTimersByTime(60_000);
-    // Issued after the TTL was lowered to an hour.
+    // Issued after the timeout was lowered to an hour.
     expectRotated(
       await t.mutation(api.public.refresh, {
         refreshToken: bundle.refreshToken,
         ...ttl({
-          refreshTokenTtlSeconds: oneHourSeconds,
+          refreshInactivityTimeoutSeconds: oneHourSeconds,
         }),
       }),
     );
@@ -995,13 +1085,13 @@ describe("listSessions", () => {
     });
     expect(Math.floor(listed.lastRefreshedAt)).toBe(Date.now());
 
-    // Once past it, the older sibling, issued under the longer TTL, can't
+    // Once past it, the older sibling, issued under the longer timeout, can't
     // refresh the session either.
     vi.setSystemTime(Math.ceil(listed.lastRefreshedAt + oneHourSeconds * 1000));
     const result = await t.mutation(api.public.refresh, {
       refreshToken: older.refreshToken,
       ...ttl({
-        refreshTokenTtlSeconds: oneHourSeconds,
+        refreshInactivityTimeoutSeconds: oneHourSeconds,
       }),
     });
     expect(result.kind).toBe("noSession");
@@ -1266,7 +1356,7 @@ describe("token lifetime configuration", () => {
     expect(expMs).toBeLessThanOrEqual(Date.now() + 300_000);
   });
 
-  test("honors a custom refresh-token TTL on sign-up and on rotation", async () => {
+  test("honors a custom inactivity timeout on sign-up and on rotation", async () => {
     const t = setup();
     const oneHourSeconds = 60 * 60;
     const oneHourMs = oneHourSeconds * 1000;
@@ -1276,7 +1366,7 @@ describe("token lifetime configuration", () => {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
       ...ttl({
-        refreshTokenTtlSeconds: oneHourSeconds,
+        refreshInactivityTimeoutSeconds: oneHourSeconds,
       }),
     });
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThanOrEqual(
@@ -1291,7 +1381,7 @@ describe("token lifetime configuration", () => {
       await t.mutation(api.public.refresh, {
         refreshToken: bundle.refreshToken,
         ...ttl({
-          refreshTokenTtlSeconds: oneHourSeconds,
+          refreshInactivityTimeoutSeconds: oneHourSeconds,
         }),
       }),
     );
@@ -1300,7 +1390,39 @@ describe("token lifetime configuration", () => {
     );
   });
 
-  test("rejects a configuration where the access TTL is not shorter than the refresh TTL", async () => {
+  test("caps the refresh token's expiry at the session's max lifetime", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const t = setup();
+    const lifetimes = ttl({
+      refreshInactivityTimeoutSeconds: 2 * 60 * 60,
+      sessionMaxLifetimeSeconds: 3 * 60 * 60,
+    });
+    const bundle = await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...lifetimes,
+    });
+    const [session] = await t.run(async (ctx) =>
+      ctx.db.query("sessions").collect(),
+    );
+    // Fresh, the inactivity timeout comes first.
+    expect(bundle.refreshTokenExpiresAt).toBe(Date.now() + 2 * HOUR_MS);
+
+    // Two hours in, the max lifetime comes first.
+    vi.advanceTimersByTime(2 * HOUR_MS - 60_000);
+    const rotated = expectRotated(
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        ...lifetimes,
+      }),
+    );
+    expect(rotated.refreshTokenExpiresAt).toBe(
+      session._creationTime + 3 * HOUR_MS,
+    );
+  });
+
+  test("rejects a configuration where the access TTL is not shorter than the inactivity timeout", async () => {
     const t = setup();
     await expect(
       t.mutation(api.public.signUp, {
@@ -1308,9 +1430,40 @@ describe("token lifetime configuration", () => {
         createUserHandle: CREATE_USER_HANDLE,
         ...DEFAULT_TTL,
         accessTokenTtlSeconds: 100,
-        refreshTokenTtlSeconds: 1, // 1s — shorter than the 100s access token
+        refreshInactivityTimeoutSeconds: 1, // 1s — shorter than the 100s access token
       }),
-    ).rejects.toThrow(/shorter than the refresh-token TTL/i);
+    ).rejects.toThrow(/shorter than the refresh inactivity timeout/i);
+  });
+
+  test("rejects a configuration where the inactivity timeout is longer than the max lifetime", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.public.signUp, {
+        claims: claims(),
+        createUserHandle: CREATE_USER_HANDLE,
+        ...DEFAULT_TTL,
+        refreshInactivityTimeoutSeconds: 2 * 60 * 60,
+        sessionMaxLifetimeSeconds: 60 * 60,
+      }),
+    ).rejects.toThrow(/at most the session max lifetime/i);
+  });
+
+  test("accepts an inactivity timeout equal to the max lifetime", async () => {
+    const t = setup();
+    const bundle = await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({
+        refreshInactivityTimeoutSeconds: 60 * 60,
+        sessionMaxLifetimeSeconds: 60 * 60,
+      }),
+    });
+    const [session] = await t.run(async (ctx) =>
+      ctx.db.query("sessions").collect(),
+    );
+    expect(bundle.refreshTokenExpiresAt).toBeLessThanOrEqual(
+      session._creationTime + HOUR_MS,
+    );
   });
 });
 

@@ -92,12 +92,12 @@ const revokeAllSessions = authMutation({
     await ctx.convexAuth.revokeAllSessions(userId),
 });
 
-// The same app redeployed with a lower refresh-token TTL: the same component and
-// provider name, so it sees the sessions the default-TTL core minted.
-const SHORT_REFRESH_TOKEN_TTL_SECONDS = 60 * 60;
+// The same app redeployed with a lower inactivity timeout: the same component
+// and provider name, so it sees the sessions the default-timeout core minted.
+const SHORT_INACTIVITY_TIMEOUT_SECONDS = 60 * 60;
 const shortTtlCore = setupConvexAuth({
   component: components.auth,
-  refreshTokenTtlSeconds: SHORT_REFRESH_TOKEN_TTL_SECONDS,
+  refreshInactivityTimeoutSeconds: SHORT_INACTIVITY_TIMEOUT_SECONDS,
 });
 
 const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindProvider({
@@ -245,7 +245,7 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
       vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
       const t = setup();
       await t.mutation(signUpRef, { accountId: "alice" });
-      // Past the default 30-day refresh-token TTL.
+      // Past the default 30-day inactivity timeout.
       vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
       await t.mutation(signInRef, { accountId: "alice" });
       const bundle = await t.mutation(signInRef, { accountId: "alice" });
@@ -267,15 +267,15 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
     }
   });
 
-  test("counts a session as expired under a TTL lowered since it last refreshed", async () => {
+  test("counts a session as expired under an inactivity timeout lowered since it last refreshed", async () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
       const t = setup();
-      // Signed in under the default 30-day TTL.
+      // Signed in under the default 30-day inactivity timeout.
       await t.mutation(signUpRef, { accountId: "alice" });
-      // Past the lowered TTL, though days short of the default.
-      vi.advanceTimersByTime(2 * SHORT_REFRESH_TOKEN_TTL_SECONDS * 1000);
+      // Past the lowered inactivity timeout, though days short of the default.
+      vi.advanceTimersByTime(2 * SHORT_INACTIVITY_TIMEOUT_SECONDS * 1000);
       await t.mutation(signInShortTtlRef, { accountId: "alice" });
       const bundle = await t.mutation(signInShortTtlRef, {
         accountId: "alice",
@@ -350,7 +350,7 @@ describe("ctx.convexAuth.revokeAllSessions", () => {
       vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
       const t = setup();
       const bundle = await t.mutation(signUpRef, { accountId: "alice" });
-      // Past the default 30-day refresh-token TTL.
+      // Past the default 30-day inactivity timeout.
       vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
       await t.mutation(signInRef, { accountId: "alice" });
 
@@ -404,9 +404,9 @@ describe("setupConvexAuth", () => {
     expect(() =>
       setupConvexAuth({
         component: components.auth,
-        accessTokenTtlSeconds: 100,
-        refreshTokenTtlSeconds: 1,
+        refreshInactivityTimeoutSeconds: 2 * 60 * 60,
+        sessionMaxLifetimeSeconds: 60 * 60,
       }),
-    ).toThrow(/shorter than the refresh-token TTL/i);
+    ).toThrow(/at most the session max lifetime/i);
   });
 });

@@ -175,8 +175,10 @@ export type AuthCore<UsersTable extends string = string> = {
  * `completeSignUp` when it has just established the account, `completeSignIn`
  * when the account already exists.
  *
- * Token lifetimes are configurable here and default to 1m (access) and 30d
- * (refresh). The access-token TTL must be shorter than the refresh-token TTL,
+ * Token and session lifetimes are configurable here. The access-token TTL
+ * defaults to 1m, and `sessionMaxLifetimeSeconds` to 30d.
+ * `refreshInactivityTimeoutSeconds` defaults to the max lifetime and cannot
+ * exceed it. The access-token TTL must be shorter than the inactivity timeout,
  * and (since the client refreshes shortly before expiry) comfortably longer
  * than a few seconds.
  *
@@ -210,14 +212,34 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    */
   accessTokenTtlSeconds?: number;
   /**
-   * Refresh-token lifetime in seconds. Defaults to 30 days.
+   * How long in seconds a session may go without refreshing before it
+   * expires.
    *
-   * Changes to this value apply to every refresh token, including ones that
-   * have already been issued: a token expires this long after it was issued,
-   * under the value configured when it is presented. Lowering it thus ends
-   * sessions that have gone longer than the new value without refreshing.
+   * Cannot exceed `sessionMaxLifetimeSeconds`.
+   *
+   * A connected client refreshes about once per access-token TTL, so this is
+   * how long a client may stay away (closed, offline, asleep) and still
+   * resume its session.
+   *
+   * Changes to this value apply to every session, including ones that already
+   * exist: a session expires this long after its last refresh, under the
+   * value configured when it is checked. Lowering it thus ends sessions that
+   * have gone longer than the new value without refreshing.
    */
-  refreshTokenTtlSeconds?: number;
+  refreshInactivityTimeoutSeconds?: number;
+  /**
+   * How long in seconds a session may last.
+   *
+   * Defaults to 30 days. Once it is reached, the user has to sign in again.
+   *
+   * A session expires at the sooner of this and its refresh inactivity timeout
+   * (`refreshInactivityTimeoutSeconds`).
+   *
+   * Changes to this value apply to every session, including ones that already
+   * exist: a session expires this long after it was created, under the value
+   * configured when it is checked.
+   */
+  sessionMaxLifetimeSeconds?: number;
 }): AuthCore<UsersTable> {
   const { component } = options;
   // Resolved once, when the app's modules load, so an invalid configuration
@@ -294,11 +316,16 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     /**
      * Revoke the given sessions (as `listSessions` lists them) and count the
      * active ones revoked. Expired sessions are deleted too, but not counted. A
-     * session expires one refresh-token TTL after it last refreshed.
+     * session expires one inactivity timeout after it last refreshed, or one
+     * max lifetime after it was created, whichever comes first.
      */
     const revokeListedSessions = async (
       ctx: GenericMutationCtx<GenericDataModel>,
-      sessions: { sessionId: string; lastRefreshedAt: number }[],
+      sessions: {
+        sessionId: string;
+        creationTime: number;
+        lastRefreshedAt: number;
+      }[],
     ): Promise<number> => {
       if (sessions.length === 0) {
         return 0;
@@ -308,11 +335,14 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           sessionIds: sessions.map(({ sessionId }) => sessionId),
         }),
       );
-      const ttlMs = ttl.refreshTokenTtlSeconds * 1000;
+      const maxLifetimeMs = ttl.sessionMaxLifetimeSeconds * 1000;
+      const inactivityTimeoutMs = ttl.refreshInactivityTimeoutSeconds * 1000;
       const now = Date.now();
       return sessions.filter(
-        ({ sessionId, lastRefreshedAt }) =>
-          revoked.has(sessionId) && lastRefreshedAt + ttlMs > now,
+        ({ sessionId, creationTime, lastRefreshedAt }) =>
+          revoked.has(sessionId) &&
+          lastRefreshedAt + inactivityTimeoutMs > now &&
+          creationTime + maxLifetimeMs > now,
       ).length;
     };
 

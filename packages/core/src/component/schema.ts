@@ -13,6 +13,9 @@ export default defineSchema({
     .index("by_user", ["userId"]),
 
   // One row per active session. Its refresh tokens live in `refreshTokens`.
+  // A session expires once it goes `refreshInactivityTimeoutSeconds` without a
+  // refresh, or at the latest `sessionMaxLifetimeSeconds` after its
+  // `_creationTime`, under the values configured when it is checked.
   // The row is only written when the session is created or deleted, so a query
   // reading it (e.g. to check session liveness) is not invalidated by token
   // refreshes.
@@ -48,10 +51,11 @@ export default defineSchema({
   // refreshed) can be derived from the `_creationTime` of its newest row via
   // the `by_session_state` index; the session row itself stores no timestamp.
   //
-  // A token stores no expiry: it expires `refreshTokenTtlSeconds` after its
-  // `_creationTime`, under the TTL configured when it is checked. A changed
-  // TTL thus applies to every outstanding token, not just the ones issued
-  // after the change.
+  // A token stores no expiry: it expires `refreshInactivityTimeoutSeconds`
+  // after its `_creationTime`, under the timeout configured when it is checked
+  // (and with its session, at the session's max lifetime). A changed timeout
+  // thus applies to every outstanding token, not just the ones issued after the
+  // change.
   refreshTokens: defineTable({
     hash: v.string(),
     sessionId: v.id("sessions"),

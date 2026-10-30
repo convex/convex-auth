@@ -5,6 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel.ts";
 import type { MutationCtx, QueryCtx } from "./_generated/server.ts";
 import { generateRefreshToken } from "./crypto.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import { sessionMaxLifetimeExpiresAt } from "./expiry.ts";
 import type { TtlConfig } from "../lib/ttl.ts";
 
 // How many issued, never-presented refresh tokens a session may have. Each
@@ -57,8 +58,8 @@ export function sessionTokensInState(
 
 /**
  * The session's newest issued refresh token: the one from its sign-in or its
- * latest refresh. It is the session's last token to expire, thus the session
- * expires with it.
+ * latest refresh. It is the session's last token to go idle, thus the session
+ * goes idle with it (unless its max lifetime ends it first).
  *
  * `null` only for a session with no issued token, which the token lifecycle
  * never leaves (sign-in and each refresh issue one).
@@ -190,25 +191,30 @@ export async function pruneRetiredTokens(
  * Issue a new refresh token for a session.
  *
  * Returns the raw token, and stores its hash for later lookup. The returned
- * `expiresAt` holds under the current TTL; a later change to the TTL moves it.
- * It is computed from `now` rather than the row's `_creationTime`, so it can
- * differ from what `refresh` enforces by a fraction of a millisecond.
+ * `expiresAt` is the sooner of the token's inactivity expiry and the session's
+ * max lifetime, and holds under the current config; a later change to either
+ * moves it. The inactivity expiry is computed from `now` rather than the row's
+ * `_creationTime`, so it can differ from what `refresh` enforces by a fraction
+ * of a millisecond.
  */
 export async function issueRefreshToken(
   ctx: MutationCtx,
-  sessionId: Id<"sessions">,
+  session: Pick<Doc<"sessions">, "_id" | "_creationTime">,
   now: number,
   ttl: TtlConfig,
 ): Promise<{ refreshToken: string; expiresAt: number }> {
   const refreshToken = generateRefreshToken();
   await ctx.db.insert("refreshTokens", {
     hash: await sha256Hex(refreshToken),
-    sessionId,
+    sessionId: session._id,
     state: "issued",
   });
   return {
     refreshToken,
-    expiresAt: now + ttl.refreshTokenTtlSeconds * 1000,
+    expiresAt: Math.min(
+      now + ttl.refreshInactivityTimeoutSeconds * 1000,
+      sessionMaxLifetimeExpiresAt(session, ttl.sessionMaxLifetimeSeconds),
+    ),
   };
 }
 
