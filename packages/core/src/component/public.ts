@@ -113,7 +113,7 @@ async function issueSession(
     sessionId,
     ttl.accessTokenTtlSeconds,
   );
-  // The loop erases the session once it reaches its max lifetime.
+  // The loops erase the session once it expires.
   await scheduleSessionCleanup(ctx);
   return {
     accessToken,
@@ -390,10 +390,9 @@ export const getUserIdByAccount = query({
  *
  * A session is live as long as its row exists. Sign-out, revocation, and
  * refresh-token reuse detection delete the row right away. An expired session
- * is deleted by a background cleanup loop (see cleanup.ts) once it reaches its
- * max lifetime, which can be a while after it expired for inactivity;
- * `refresh` refuses its tokens in the meantime, so its access tokens are the
- * last it has.
+ * is deleted by a background cleanup loop (see cleanup.ts), which may run a
+ * little after the session expired; `refresh` refuses its tokens in the
+ * meantime, so its access tokens are the last it has.
  *
  * This is a component function; it is callable by the app, not by end-user
  * clients, so it does not expose session existence to the outside world.
@@ -450,7 +449,7 @@ export const refresh = mutation({
     const ttl = validateTtlConfig(args);
     const now = Date.now();
     // A changed lifetime can expire other sessions right away (or later than
-    // the loop planned), thus the loop runs again with the stored new values.
+    // the loops planned), thus the loops run again with the stored new values.
     if (await recordTtlConfig(ctx, ttl)) {
       await scheduleSessionCleanup(ctx);
     }
@@ -586,10 +585,9 @@ export const signOut = mutation({
  *
  * Sessions are listed newest first.
  *
- * The background cleanup loop deletes a session once it reaches its max
- * lifetime. A session that expired for inactivity before that still shows up
- * until then; callers that want only the active sessions compare the expiry
- * to the current time themselves. The query does not read the clock, so its
+ * The background cleanup loops delete a session once it expires, so the list
+ * holds the live sessions. A session that expired moments ago can still show
+ * up until the loop gets to it. The query does not read the clock, so its
  * result stays cached until a session or token changes.
  *
  * This is a component function callable by the app, not by end-user clients.
