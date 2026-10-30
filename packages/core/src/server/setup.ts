@@ -319,36 +319,20 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       onSignIn === undefined ? undefined : await createFunctionHandle(onSignIn);
 
     /**
-     * Revoke the given sessions (as `listSessions` lists them) and count the
-     * active ones revoked. Expired sessions are deleted too, but not counted. A
-     * session expires one inactivity timeout after it last refreshed, or one
-     * max lifetime after it was created, whichever comes first.
+     * Revoke the given sessions (as `listSessions` lists them) and return how
+     * many were revoked.
      */
     const revokeListedSessions = async (
       ctx: GenericMutationCtx<GenericDataModel>,
-      sessions: {
-        sessionId: string;
-        creationTime: number;
-        lastRefreshedAt: number;
-      }[],
+      sessions: { sessionId: string }[],
     ): Promise<number> => {
       if (sessions.length === 0) {
         return 0;
       }
-      const revoked = new Set(
-        await ctx.runMutation(component.public.revokeSessions, {
-          sessionIds: sessions.map(({ sessionId }) => sessionId),
-        }),
-      );
-      const maxLifetimeMs = ttl.sessionMaxLifetimeSeconds * 1000;
-      const inactivityTimeoutMs = ttl.refreshInactivityTimeoutSeconds * 1000;
-      const now = Date.now();
-      return sessions.filter(
-        ({ sessionId, creationTime, lastRefreshedAt }) =>
-          revoked.has(sessionId) &&
-          lastRefreshedAt + inactivityTimeoutMs > now &&
-          creationTime + maxLifetimeMs > now,
-      ).length;
+      const revoked = await ctx.runMutation(component.public.revokeSessions, {
+        sessionIds: sessions.map(({ sessionId }) => sessionId),
+      });
+      return revoked.length;
     };
 
     // The helpers close over the live ctx.
