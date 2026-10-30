@@ -31,7 +31,7 @@ export function sessionMaxLifetimeExpiresAt(
   return session._creationTime + sessionMaxLifetimeSeconds * 1000;
 }
 
-/** The lifetimes as stored in `ttlConfig`, for the cleanup loop. */
+/** The lifetimes that the cleanup loops need, as stored in `ttlConfig`. */
 export type StoredTtlConfig = Pick<
   TtlConfig,
   "refreshInactivityTimeoutSeconds" | "sessionMaxLifetimeSeconds"
@@ -76,8 +76,8 @@ export async function recordTtlConfig(
  * The session lifetimes that the app last passed in, or `null` when no call
  * has stored them yet.
  *
- * The cleanup loop runs with no caller, thus this stored copy is all it
- * has. It lags a deploy that changes a lifetime until the next sign-in or
+ * The cleanup loops run with no caller, thus this stored copy is all they
+ * have. It lags a deploy that changes a lifetime until the next sign-in or
  * refresh stores the new value, whereas `refresh` always checks expiry against
  * the lifetimes of its own call.
  */
