@@ -59,13 +59,13 @@ session abandoned mid-life leaves its remaining rows behind until it is signed
 out or expires — the same way an abandoned session row itself lingers today. Roughly
 `horizon ÷ refresh interval` rows, about 60 at the defaults.
 
-Nothing bounds that per-session set independently, and both `pruneRetiredTokens`
-and `deleteSession` read all of it. At any plausible refresh rate that is a
-few dozen rows, but a session refreshed pathologically often (an unthrottled
-client, or an attacker hammering `refresh` — see the rate-limiting entry above)
-could grow it until those reads exceed the transaction's limits, which would
-make the session unrefreshable and un-signoutable. Accepted for now on the
-basis that the sweep below lands first.
+Nothing bounds how many rows a session holds. A session refreshed
+pathologically often (an unthrottled client, or someone hammering `refresh`
+with that session's tokens — see Rate limiting) can grow its retired rows
+(read by `pruneRetiredTokens`) or, within `REFRESH_GRACE_MS`, its issued rows
+(read by `redeem`) past the transaction read limits, making that session
+unrefreshable. It can still be signed out, since deleting a session no longer
+reads its rows.
 
 Fix direction: a `@convex-dev/batch-worker` loop over retired `refreshTokens`
 rows by `retiredAt`, mirroring `packages/core/src/components/passkey/cleanup.ts`,

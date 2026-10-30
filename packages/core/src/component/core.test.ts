@@ -60,8 +60,8 @@ function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   };
 }
 
-function setup() {
-  return convexTest(schema, modules);
+function setup(options?: { transactionLimits?: boolean }) {
+  return convexTest({ schema, modules, ...options });
 }
 
 type ConvexTestApi = ReturnType<typeof setup>;
@@ -76,6 +76,16 @@ function ttl(overrides: Parameters<typeof resolveTtlConfig>[0] = {}) {
 
 /** The lifetimes `setupConvexAuth` passes when the app overrides none. */
 const DEFAULT_TTL = ttl();
+
+/**
+ * Run the scheduled functions to completion, such as the erasure of a deleted
+ * session's refresh tokens (see `deleteSession`), with or without fake timers.
+ */
+async function finishScheduledFunctions(t: ConvexTestApi) {
+  await t.finishAllScheduledFunctions(() => {
+    if (vi.isFakeTimers()) vi.runAllTimers();
+  });
+}
 
 /** Establish a brand new identity: the account, its app user, and a session. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
@@ -558,6 +568,7 @@ describe("refresh", () => {
 
     expect((await refresh(t, successor.refreshToken)).kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     expect(await issuedHashes(t)).toEqual([]);
   });
 
@@ -745,6 +756,7 @@ describe("refresh-token reuse detection", () => {
 
     expect((await refresh(t, stolen.refreshToken)).kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     expect(await retiredHashes(t)).toEqual([]);
     expect(await issuedHashes(t)).toEqual([]);
 
@@ -838,6 +850,7 @@ describe("refresh-token reuse detection", () => {
     // redeemed token than like a client on a bad network.
     expect((await refresh(t, bundle.refreshToken)).kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     expect(await issuedHashes(t)).toEqual([]);
   });
 
@@ -923,6 +936,7 @@ describe("signOut", () => {
     });
 
     expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     expect(await issuedHashes(t)).toEqual([]);
     expect((await refresh(t, bundle.refreshToken)).kind).toBe("noSession");
   });
@@ -939,6 +953,7 @@ describe("signOut", () => {
     await t.mutation(api.public.signOut, { refreshToken: bundle.refreshToken });
 
     expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     expect(await retiredHashes(t)).toEqual([]);
     expect((await refresh(t, next.refreshToken)).kind).toBe("noSession");
   });
@@ -953,9 +968,32 @@ describe("signOut", () => {
 
     await t.mutation(api.public.signOut, { refreshToken: next.refreshToken });
 
-    // A refresh token must never outlive the session it names.
+    // The tokens are erased in the background, right after the session.
+    await finishScheduledFunctions(t);
     expect(await retiredHashes(t)).toEqual([]);
     expect(await issuedHashes(t)).toEqual([]);
+  });
+
+  test("a token whose session is gone reports no session", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const t = setup();
+      const bundle = await signUp(t, claims());
+      const rotated = expectRotated(await refresh(t, bundle.refreshToken));
+      const next = expectRotated(await refresh(t, rotated.refreshToken));
+
+      await t.mutation(api.public.signOut, { refreshToken: next.refreshToken });
+
+      // Before the tokens are erased, each one still names the session, which
+      // ended already. A spent one isn't a sign of a fork then: there is nothing
+      // left to revoke.
+      expect(await issuedHashes(t)).toHaveLength(1);
+      expect((await refresh(t, next.refreshToken)).kind).toBe("noSession");
+      expect((await refresh(t, bundle.refreshToken)).kind).toBe("noSession");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   test("is idempotent — signing out an already-revoked token does not throw", async () => {
@@ -1185,6 +1223,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const t = setup();
     const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
     await signIn(t, claims());
+    await finishScheduledFunctions(t);
     const remaining = await t.run(async (ctx) =>
       ctx.db
         .query("refreshTokens")
@@ -1285,6 +1324,39 @@ describe("revokeSessions", () => {
     await t.mutation(api.public.revokeSessions, {
       sessionIds: [sessionIdOf(bundle)],
     });
+    await finishScheduledFunctions(t);
+    const tokens = await t.run(
+      async (ctx) => await ctx.db.query("refreshTokens").collect(),
+    );
+    expect(tokens).toEqual([]);
+  });
+
+  test("revokes sessions holding more refresh tokens than one transaction can delete", async () => {
+    // The real limits: 16,000 writes and 32,000 reads per transaction.
+    const t = setup({ transactionLimits: true });
+    const bundles = [await signUp(t, claims())];
+    for (let i = 1; i < 12; i++) bundles.push(await signIn(t, claims()));
+    // 1,500 rows each, 18,000 in all: more than one transaction may delete,
+    // and more than one run of the erasure handles for a single session.
+    for (const bundle of bundles) {
+      await t.run(async (ctx) => {
+        for (let i = 1; i < 1500; i++) {
+          await ctx.db.insert("refreshTokens", {
+            hash: `${sessionIdOf(bundle)}-${i}`,
+            sessionId: sessionIdOf(bundle) as Id<"sessions">,
+            state: "spent",
+            retiredAt: Date.now(),
+          });
+        }
+      });
+    }
+
+    const revoked = await t.mutation(api.public.revokeSessions, {
+      sessionIds: bundles.map(sessionIdOf),
+    });
+    expect(revoked).toHaveLength(12);
+    expect(await sessionCount(t)).toBe(0);
+    await finishScheduledFunctions(t);
     const tokens = await t.run(
       async (ctx) => await ctx.db.query("refreshTokens").collect(),
     );
