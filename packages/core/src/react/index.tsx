@@ -28,6 +28,7 @@ import { oauth } from "../methods/oauth/client.ts";
 import type { ConvexAuthApi } from "../lib/types.ts";
 import {
   AuthProvider,
+  SessionWatcher,
   ConvexAuthActionsContext,
   ConvexAuthTokenContext,
   useAuth,
@@ -51,7 +52,11 @@ export type { ConvexAuthActionsContextType } from "./client.tsx";
  *   return (
  *     <ConvexAuthProvider
  *       client={convex}
- *       api={{ refreshSession: api.auth.refreshSession, signOut: api.auth.signOut }}
+ *       api={{
+ *         refreshSession: api.auth.refreshSession,
+ *         signOut: api.auth.signOut,
+ *         isAuthenticated: api.auth.isAuthenticated,
+ *       }}
  *     >
  *       {children}
  *     </ConvexAuthProvider>
@@ -69,7 +74,9 @@ export function ConvexAuthProvider({
 }: {
   /** Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient). */
   client: ConvexReactClient;
-  /** The app's `refreshSession` and `signOut` mutation references. */
+  /** The app's `refreshSession` and `signOut` mutation references, and its
+   * `isAuthenticated` query reference. The provider subscribes to
+   * `isAuthenticated`, so a session revoked server-side signs the client out reactively. */
   api: ConvexAuthApi;
   /**
    * A custom {@link TokenStorage} implementation.
@@ -157,6 +164,7 @@ export function ConvexAuthProvider({
   return (
     <AuthProvider authClient={authClient} signInApi={signInApi}>
       <ConvexProviderWithAuth client={client} useAuth={useAuth}>
+        <SessionWatcher isAuthenticated={api.isAuthenticated} />
         {children}
       </ConvexProviderWithAuth>
     </AuthProvider>

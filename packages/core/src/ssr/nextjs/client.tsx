@@ -29,14 +29,19 @@
 
 import { ConvexHttpClient } from "convex/browser";
 import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { makeFunctionReference } from "convex/server";
 import { ReactNode, useMemo } from "react";
 import type { AmbientSignInClient } from "../../browser/ambientSignInClient.ts";
 import { AuthClient } from "../../browser/sessionManager.ts";
 import { TokenStorage, defaultStorage } from "../../browser/storage.ts";
-import type { AuthSessionResponse } from "../../lib/types.ts";
+import type {
+  AuthSessionResponse,
+  IsAuthenticatedFn,
+} from "../../lib/types.ts";
 import { oauth } from "../../methods/oauth/client.ts";
 import {
   AuthProvider,
+  SessionWatcher,
   useAuth,
   type AuthSignInApi,
 } from "../../react/client.tsx";
@@ -80,6 +85,7 @@ export function ConvexAuthNextjsProvider({
   signInRoute = "/auth/signin",
   storage,
   ambientSignIns,
+  isAuthenticatedFunctionName,
   children,
 }: {
   /** An existing `ConvexReactClient`. If omitted, one is created from
@@ -112,6 +118,13 @@ export function ConvexAuthNextjsProvider({
    * change.
    */
   ambientSignIns?: AmbientSignInClient[];
+  /**
+   * The name of the app's `isAuthenticated` query (the server provider passes
+   * `getFunctionName(config.isAuthenticated)`; a reference itself does not survive
+   * the server→client boundary). The provider subscribes to it, so a session
+   * revoked server-side signs the browser out reactively.
+   */
+  isAuthenticatedFunctionName: string;
   children: ReactNode;
 }) {
   const { authClient, convex, signInApi } = useMemo(() => {
@@ -189,9 +202,16 @@ export function ConvexAuthNextjsProvider({
     // `client`/`convexUrl` identity is what matters; other props are read once.
   }, [client, convexUrl]);
 
+  const isAuthenticated = useMemo(
+    () =>
+      makeFunctionReference(isAuthenticatedFunctionName) as IsAuthenticatedFn,
+    [isAuthenticatedFunctionName],
+  );
+
   return (
     <AuthProvider authClient={authClient} signInApi={signInApi}>
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
+        <SessionWatcher isAuthenticated={isAuthenticated} />
         {children}
       </ConvexProviderWithAuth>
     </AuthProvider>
