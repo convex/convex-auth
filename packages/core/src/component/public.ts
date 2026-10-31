@@ -47,6 +47,8 @@ export const REFRESH_GRACE_MS = 5 * 1000; // 5 seconds
 // reuse-detection horizon: past it the row is gone and a replayed token reads
 // as unknown, which revokes nothing but also grants nothing.
 export const SPENT_TOKEN_HORIZON_MS = 60 * 60 * 1000; // 1 hour
+// Convex's limit on the documents one transaction writes.
+const TRANSACTION_WRITE_LIMIT = 16_000;
 
 // The `iss` claim is set by the deployment when this component calls
 // `ctx.auth.signJwt`: `${CONVEX_CLOUD_URL}/components/auth`, which is what the
@@ -856,5 +858,43 @@ export const revokeSessions = mutation({
       revoked.push(sessionId);
     }
     return revoked;
+  },
+});
+
+/**
+ * Revoke as many of a user's sessions as one transaction can delete, and say
+ * whether any are left, so a caller revoking a user with many sessions goes a
+ * transaction at a time. Each session costs the token rows it holds plus
+ * itself, counted as they are read, and the batch stops short of the
+ * transaction's write limit by the one write the caller needs to schedule
+ * its continuation. A session holding more tokens than that is deleted over
+ * several calls. A caller revoking several users makes one call per
+ * transaction, since each call spends the transaction's whole budget.
+ *
+ * This is a component function callable by the app, not by end-user clients.
+ */
+export const revokeUserSessions = mutation({
+  args: { userId: v.string() },
+  returns: v.object({ more: v.boolean() }),
+  handler: async (ctx, { userId }) => {
+    const budget = TRANSACTION_WRITE_LIMIT - 1;
+    let written = 0;
+    const sessions = ctx.db
+      .query("sessions")
+      .withIndex("by_user", (q) => q.eq("userId", userId));
+    for await (const session of sessions) {
+      const room = budget - written;
+      if (room === 0) return { more: true };
+      const tokens = await ctx.db
+        .query("refreshTokens")
+        .withIndex("by_session_state", (q) => q.eq("sessionId", session._id))
+        .take(room);
+      if (tokens.length === room && written > 0) return { more: true };
+      for (const row of tokens) await ctx.db.delete("refreshTokens", row._id);
+      if (tokens.length === room) return { more: true };
+      await ctx.db.delete("sessions", session._id);
+      written += tokens.length + 1;
+    }
+    return { more: false };
   },
 });

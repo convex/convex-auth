@@ -1047,6 +1047,65 @@ describe("revokeSessions", () => {
   });
 });
 
+describe("revokeUserSessions", () => {
+  /** Give the session `count` more spent refresh tokens. */
+  async function spend(t: ConvexTestApi, sessionId: string, count: number) {
+    await t.run(async (ctx) => {
+      const session = ctx.db.normalizeId("sessions", sessionId);
+      if (session === null) throw new Error(`no session ${sessionId}`);
+      for (let i = 0; i < count; i += 1) {
+        await ctx.db.insert("refreshTokens", {
+          hash: `${sessionId}-${i}`,
+          sessionId: session,
+          state: "spent",
+          expiresAt: Date.now() + 60_000,
+          retiredAt: Date.now(),
+        });
+      }
+    });
+  }
+
+  async function userIdOf(t: ConvexTestApi) {
+    return await t.run(
+      async (ctx) => (await ctx.db.query("sessions").first())?.userId ?? "",
+    );
+  }
+
+  test("stops at the writes its sessions and their tokens take, under the transaction's limit", async () => {
+    const t = setup();
+    const first = await signUp(t, claims());
+    const second = await signIn(t, claims());
+    await spend(t, sessionIdOf(first), 9_000);
+    await spend(t, sessionIdOf(second), 9_000);
+    const userId = await userIdOf(t);
+
+    expect(await t.mutation(api.public.revokeUserSessions, { userId })).toEqual(
+      { more: true },
+    );
+    expect(await sessionCount(t)).toBe(1);
+    expect(await t.mutation(api.public.revokeUserSessions, { userId })).toEqual(
+      { more: false },
+    );
+    expect(await sessionCount(t)).toBe(0);
+    expect(await tokensInState(t, "spent", "issued")).toEqual([]);
+  }, 120_000);
+
+  test("goes on with a session whose tokens alone pass the limit", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await spend(t, sessionIdOf(bundle), 17_000);
+    const userId = await userIdOf(t);
+
+    expect(await t.mutation(api.public.revokeUserSessions, { userId })).toEqual(
+      { more: true },
+    );
+    expect(await t.mutation(api.public.revokeUserSessions, { userId })).toEqual(
+      { more: false },
+    );
+    expect(await sessionCount(t)).toBe(0);
+  }, 120_000);
+});
+
 describe("token lifetime configuration", () => {
   test("honors a custom access-token TTL on sign-up", async () => {
     const t = setup();
