@@ -9,12 +9,12 @@ This is a pnpm monorepo:
   - The core: sessions, accounts, and JWT minting. It knows no sign-in method.
   - The optional components, which store the data of the sign-in methods:
     `username`, `password`, `email`, `passkey`, `totp`, `anonymous`,
-    `oauth`, `google`, `apple`, and `github`. Most of them key their data by
-    an opaque user id. `totp` is a second factor, not part of a sign-in
-    method, and the package does not export it for now.
+    `oauth`, `google`, `apple`, `github`, and `workos`. Most of them key
+    their data by an opaque user id. `totp` is a second factor, not part of a
+    sign-in method, and the package does not export it for now.
   - The sign-in methods, which the app wires up: `anonymous`,
     `username-password`, `email-password`, `username-passkey`, `oauth`,
-    `google`, `apple`, and `github`.
+    `google`, `apple`, `github`, and `workos`.
 - `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
@@ -43,6 +43,9 @@ check:doc-examples`). It is not an example to copy.
     method.
   - `react-github` wires up the core and the github component with the
     `github` method.
+  - `react-workos` wires up the core and the workos component with the
+    `workos` method (SSO routed by email domain), and the directory sync with
+    a handler that signs deprovisioned users out.
   - `nextjs` is a Next.js (App Router) app with SSR sign-in. It wires up the
     `anonymous`, `usernamePassword`, and `github` methods.
 
@@ -51,7 +54,7 @@ check:doc-examples`). It is not an example to copy.
 - `component/` — the core Convex component (`auth`): sessions, accounts, JWTs.
 - `components/<name>/` — the optional Convex components (`username`,
   `password`, `email`, `passkey`, `totp`, `anonymous`, `oauth`, `google`,
-  `apple`, `github`).
+  `apple`, `github`, `workos`).
 - `methods/<method>/` — the sign-in methods, which use one or more
   components: `server.ts` (Convex functions of the app), `react.tsx` or
   `react.ts` (hooks), and the browser code. A method is published at
