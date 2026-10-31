@@ -152,7 +152,7 @@ export function setupApple<UsersTable extends string>(
       });
 
       const startSignIn = buildStartSignIn({
-        allowedOrigins,
+        allowedOrigins: () => allowedOrigins,
         authorizationEndpoint: AUTHORIZATION_ENDPOINT,
         scopes: SCOPES,
         callbackMethod: CALLBACK_METHOD,

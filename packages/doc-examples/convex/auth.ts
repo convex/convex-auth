@@ -7,9 +7,10 @@ import { setupGoogle } from "@convex-dev/auth/methods/google/server";
 import { setupOauth } from "@convex-dev/auth/methods/oauth/server";
 import { setupUsernamePasskey } from "@convex-dev/auth/methods/username-passkey/server";
 import { setupUsernamePassword } from "@convex-dev/auth/methods/username-password/server";
+import { setupWorkos } from "@convex-dev/auth/methods/workos/server";
 import { makeFunctionReference, type FunctionReference } from "convex/server";
 import { components, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { DataModel, Id } from "./_generated/dataModel";
 import { env } from "./_generated/server";
 import { acmeCatalog, type AcmeProfile } from "./acme";
 
@@ -94,6 +95,18 @@ export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(
   auth,
   { component: components.authGithub, allowedRedirectOrigins },
 ).attachUserCallbacks({ createUser: internal.users.createUserGithub });
+
+const workos = setupWorkos(auth, {
+  component: components.authWorkos,
+  module: "auth",
+  allowedRedirectOrigins,
+});
+export const { startSignInWithWorkos, completeSignInWithWorkos } =
+  workos.attachUserCallbacks({ createUser: internal.users.createUserWorkos });
+export const { syncWorkos, unregisterWorkos, onWorkosEvent } =
+  workos.attachDirectoryCallbacks<DataModel>({
+    "dsync.user.deleted": async () => {},
+  });
 
 // `setupOauth` takes the callbacks as an argument, thus a reference from
 // `internal` makes the type of `api` depend on itself (TS7022). A reference

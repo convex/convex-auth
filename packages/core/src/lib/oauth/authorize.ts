@@ -13,8 +13,10 @@ import type {
   FunctionReference,
   GenericDataModel,
   GenericMutationCtx,
+  RegisteredMutation,
 } from "convex/server";
 import { v } from "convex/values";
+import type { ObjectType, PropertyValidators } from "convex/values";
 import { sha256Hex } from "../crypto.ts";
 import { generateRandomToken, sha256Base64Url } from "./crypto.ts";
 import type { CallbackMethod } from "./http.ts";
@@ -51,9 +53,15 @@ type CreateAuthorizationRequestRef = FunctionReference<
  * errors, such as a `redirectTo` origin that isn't allowed, so there is
  * nothing for the user to correct.
  */
-export function buildStartSignIn(options: {
-  /** Origins `redirectTo` may point at, already validated and normalized. */
-  allowedOrigins: string[];
+export function buildStartSignIn<
+  StartArgs extends PropertyValidators = Record<never, never>,
+>(options: {
+  /**
+   * The origins `redirectTo` may point at, validated and normalized. It is a
+   * function so an app can read them when the mutation runs, not when the
+   * module loads.
+   */
+  allowedOrigins: () => string[];
   /** The provider's authorization endpoint (a full URL). */
   authorizationEndpoint: string;
   /** Scopes to request. Left off the URL entirely when empty. */
@@ -63,6 +71,20 @@ export function buildStartSignIn(options: {
    * `response_mode=form_post` to the authorization URL.
    */
   callbackMethod?: CallbackMethod;
+  /**
+   * Arguments `startSignIn` takes beyond `redirectTo`, such as the
+   * organization a WorkOS sign-in is routed to. Only `authorizationParams`
+   * reads them.
+   */
+  startArgs?: StartArgs;
+  /**
+   * Build the parameters the provider's authorization endpoint takes beyond
+   * the standard ones from the `startArgs`. It throws to refuse them, before
+   * anything is written. A standard parameter always wins over one of these.
+   */
+  authorizationParams?: (
+    args: ObjectType<StartArgs>,
+  ) => Readonly<Record<string, string>>;
   /**
    * Record the request in the provider's component, and return what the
    * authorization URL needs.
@@ -78,18 +100,27 @@ export function buildStartSignIn(options: {
         ctx: MutationCtx,
         args: CreateAuthorizationRequestArgs,
       ) => Promise<CreateAuthorizationRequestResult>);
-}) {
+}): RegisteredMutation<
+  "public",
+  { redirectTo: string } & ObjectType<StartArgs>,
+  Promise<{ redirect: string; state: string }>
+> {
   return mutationGeneric({
     args: {
+      ...options.startArgs,
       redirectTo: v.string(),
     },
     returns: v.object({ redirect: v.string(), state: v.string() }),
-    handler: async (ctx, args) => {
+    handler: async (
+      ctx,
+      args: { redirectTo: string } & ObjectType<StartArgs>,
+    ) => {
+      const extraParams = options.authorizationParams?.(args) ?? {};
       const redirectTo = parseUrl(args.redirectTo);
       if (redirectTo === null) {
         throw new Error("redirectTo must be an absolute URL");
       }
-      if (!options.allowedOrigins.includes(redirectTo.origin)) {
+      if (!options.allowedOrigins().includes(redirectTo.origin)) {
         throw new Error(
           `redirectTo origin "${redirectTo.origin}" is not in allowedRedirectOrigins`,
         );
@@ -113,6 +144,7 @@ export function buildStartSignIn(options: {
             );
 
       const params: Record<string, string> = {
+        ...extraParams,
         response_type: "code",
         client_id: clientId,
         redirect_uri: callbackUrl,

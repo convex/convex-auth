@@ -1,0 +1,187 @@
+---
+sidebar_position: 6
+title: Enterprise SSO and SCIM (WorkOS)
+description: Sign your customers' employees in with their company's identity provider, and keep their directories in sync.
+---
+
+The WorkOS component and the `workos` sign-in method let your customers'
+employees sign in with their company's identity provider (Okta, Entra ID,
+Google Workspace, any SAML or OIDC IdP) through
+[WorkOS](https://workos.com), and keep a copy of each customer's SCIM
+directory in your deployment, as WorkOS's own objects.
+
+WorkOS only does SSO and Directory Sync here. Sign-in goes through WorkOS's
+standalone SSO API, not AuthKit: WorkOS creates no users and no sessions of
+its own, and the session is Convex Auth's like with every other method.
+
+## Setup
+
+<StepByStep>
+
+<Step title="Follow the “Getting Started” guide">
+
+Install Convex Auth and run its setup command as described in the
+[Getting Started](../getting-started.mdx) guide.
+
+</Step>
+
+<Step title="Configure WorkOS">
+
+In the [WorkOS dashboard](https://dashboard.workos.com):
+
+1. Under **Redirects**, add `https://<your deployment>.convex.site/workos/callback`.
+2. Note the environment's **client ID** and an **API key**.
+
+```sh
+npx convex env set AUTH_WORKOS_CLIENT_ID client_...
+npx convex env set AUTH_WORKOS_API_KEY sk_...
+```
+
+You don't add the webhook in the dashboard: the deployment registers its own
+endpoint (see [Directory Sync](#directory-sync-scim)).
+
+</Step>
+
+<Step title="Install the component">
+
+```ts file="examples/react-workos/convex/convex.config.ts" title="convex/convex.config.ts"
+
+```
+
+</Step>
+
+<Step title="Set up the method">
+
+```ts file="examples/react-workos/convex/auth.ts" title="convex/auth.ts"
+
+```
+
+The profile passed to `createUser` and `onSignIn` is `vWorkosProfile`: the
+WorkOS profile id (the account id), the `organizationId`, the `connectionId`,
+the `idpId` and the email. The email is asserted by the customer's identity
+provider and not verified by WorkOS, so don't use it to link to an existing
+account unless its domain is one the organization verified.
+
+To serve the callback from your app's own domain (e.g. a proxy that forwards
+`https://app.example.com/workos/*` to the deployment's site URL), pass
+`callbackUrl: () => "https://app.example.com/workos/callback"` and add that
+URL as the redirect URI instead. `callbackUrl` and `allowedRedirectOrigins`
+can both be functions, read when sign-in starts, so they can come from the
+deployment's environment.
+
+</Step>
+
+<Step title="Sign in">
+
+A sign-in is routed to exactly one `organizationId` or `connectionId`, and
+takes an optional `loginHint` and `domainHint`. To route by the email the
+user typed, look its domain up with the component's `organizationDomains.get`
+query, which returns the organization that verified the domain and its
+active connection:
+
+```tsx file="examples/react-workos/src/App.tsx" title="src/App.tsx"
+
+```
+
+In a native iOS app, open the `redirect` URL in an
+`ASWebAuthenticationSession`, not a web view: Google and Microsoft identity
+providers refuse to sign in inside an embedded web view.
+
+</Step>
+
+</StepByStep>
+
+## Directory Sync (SCIM)
+
+The component keeps a copy of the WorkOS environment, one table per WorkOS
+object: `organizations`, `organizationDomains`, `connections`,
+`directories`, `directoryUsers` and `directoryGroups`, with WorkOS's field
+names in camelCase. There is no membership table: a directory user's roles
+are its own `role` and `roles`, as WorkOS assigns them from the groups it is
+in.
+
+Webhook deliveries keep the copy current: a verified delivery names an
+object, which the webhook reads again from WorkOS and writes as it is now, or
+removes if WorkOS answers 404. WorkOS delivers in no guaranteed order, and
+reading the current state makes the order not matter. A
+`dsync.group.user_added` or `dsync.group.user_removed` delivery reads the
+directory user again, whose roles it may move. A deleted directory loses its
+users and groups a batch at a time.
+
+`attachDirectoryCallbacks` takes your handlers, keyed by WorkOS event name,
+each given the object as WorkOS holds it now. A handler runs in the same
+transaction that writes the change to the copy, so your data and the copy
+never disagree. The example signs a user out everywhere when the directory
+deletes or deactivates them:
+
+```ts file="examples/react-workos/convex/users.ts" title="convex/users.ts"
+
+```
+
+`setupWorkos` takes `module`, the path of the module that exports what
+`attachDirectoryCallbacks` returns (`"auth"` for `convex/auth.ts`): the
+component calls its `onWorkosEvent` for every change.
+
+`syncWorkos` registers the deployment's webhook endpoint,
+`<site-url>/workos/webhook`, at WorkOS through the
+[Webhooks API](https://workos.com/docs/reference/webhooks), subscribed to the
+events the copy keeps, and keeps the secret WorkOS signs its deliveries with.
+It finds the endpoint by its URL, so it never creates a second one, and it
+enables the endpoint again if WorkOS disabled it. Until it has run, the
+webhook refuses every delivery.
+
+Then it lists everything WorkOS holds, a page per mutation in the
+background, and writes each object the same way, running the same handlers.
+A row the listings no longer show is read again by id and removed only if
+WorkOS answers 404, so overlapping runs are harmless. When WorkOS answers
+with a `Retry-After`, it waits that long and tries the same step again; any
+other failure ends the run, and the next one picks the work up. It fills a
+new deployment's copy and repairs deliveries the webhook missed: WorkOS
+retries a failed delivery for a few minutes in staging and for up to 3 days
+in production. Run it after every deploy:
+
+```sh
+npx convex run auth:syncWorkos
+```
+
+Every deployment that shares a WorkOS environment, such as a preview
+deployment, registers its own endpoint, and WorkOS keeps an endpoint after
+its deployment is gone. Run `unregisterWorkos`, which deletes this
+deployment's endpoint and its secret, before you delete the deployment:
+
+```sh
+npx convex run auth:unregisterWorkos
+```
+
+A handler that throws refuses the delivery, and WorkOS retries it; in a
+sync, it stops the run at that step, and the next sync tries again.
+
+The component's queries read the copy, one module per object:
+`organizations.get` and `list`, `organizationDomains.get` (by domain or
+email) and `list`, `connections.get` and `list`, `directories.get` and
+`list`, `directoryUsers.get` and `list` (by `directory`, `organization`,
+`organization` and `idpId`, which an SSO profile carries too, `idpId` or
+`email`), and `directoryGroups.get` and `list`.
+
+## Admin Portal
+
+Your customer's IT admin sets up their SSO connection, their SCIM directory
+and their domain in WorkOS's Admin Portal. The component's
+`portal.generateLink` action returns a short-lived link for one organization
+and an intent (`sso`, `dsync`, `domain_verification` or
+`certificate_renewal`). It does no authorization: check that the caller
+administers that organization first.
+
+```ts
+export const adminPortal = action({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => {
+    // Check that the caller administers `organizationId` here.
+    return await ctx.runAction(components.authWorkos.portal.generateLink, {
+      organizationId,
+      intent: "sso",
+      returnUrl: "https://app.example.com/settings",
+    });
+  },
+});
+```

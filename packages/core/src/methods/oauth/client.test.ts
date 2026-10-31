@@ -404,6 +404,25 @@ describe("OAuth client", () => {
     });
   });
 
+  test("signIn passes the method's start arguments to startSignIn", async () => {
+    stubReactNative();
+    const { convexMutation, actions } = setupOAuth();
+    convexMutation.mockResolvedValueOnce({
+      redirect: "https://provider.example/auth?client_id=x",
+      state: "state-1",
+    });
+
+    await actions.signIn(acmeRefs, {
+      redirectTo: "http://localhost/app",
+      startArgs: { organizationId: "org_1" },
+    });
+
+    expect(convexMutation).toHaveBeenCalledExactlyOnceWith(
+      acmeRefs.startSignIn,
+      { organizationId: "org_1", redirectTo: "http://localhost/app" },
+    );
+  });
+
   test("signIn with a code completes the pending flow", async () => {
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);

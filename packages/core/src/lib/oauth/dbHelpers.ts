@@ -58,8 +58,27 @@ export async function insertAuthorizationRequest<
   Doc extends AuthorizationRequestContract,
 >(
   ctx: MutationCtx,
-  fields: Omit<WithoutSystemFields<Doc>, "callbackUrl" | "expiresAt">,
+  fields: Omit<WithoutSystemFields<Doc>, "callbackUrl" | "expiresAt"> & {
+    callbackUrl?: string;
+  },
 ): Promise<{ callbackUrl: string }> {
+  const callbackUrl = fields.callbackUrl ?? defaultCallbackUrl();
+  const protocol = URL.canParse(callbackUrl)
+    ? new URL(callbackUrl).protocol
+    : null;
+  if (protocol !== "https:" && protocol !== "http:") {
+    throw new Error("callbackUrl must be an absolute http(s) URL");
+  }
+  await ctx.db.insert("authorizationRequests", {
+    ...fields,
+    callbackUrl,
+    expiresAt: Date.now() + AUTHORIZATION_REQUEST_TTL_MS,
+  });
+  return { callbackUrl };
+}
+
+/** The component's own callback route. */
+function defaultCallbackUrl(): string {
   // System env vars are only visible inside components on backends with
   // convex/convex-backend@64c163a (July 2026); cloud always has it,
   // self-hosted may not.
@@ -72,13 +91,7 @@ export async function insertAuthorizationRequest<
         "functions.",
     );
   }
-  const callbackUrl = `${siteUrl}${CALLBACK_PATH}`;
-  await ctx.db.insert("authorizationRequests", {
-    ...fields,
-    callbackUrl,
-    expiresAt: Date.now() + AUTHORIZATION_REQUEST_TTL_MS,
-  });
-  return { callbackUrl };
+  return `${siteUrl}${CALLBACK_PATH}`;
 }
 
 /**

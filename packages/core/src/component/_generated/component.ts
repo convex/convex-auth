@@ -77,6 +77,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Array<string>,
         Name
       >;
+      revokeUserSessions: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        { more: boolean },
+        Name
+      >;
       signIn: FunctionReference<
         "mutation",
         "internal",
