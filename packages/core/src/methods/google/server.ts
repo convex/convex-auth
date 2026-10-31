@@ -120,7 +120,7 @@ export function setupGoogle<UsersTable extends string>(
       });
 
       const startSignIn = buildStartSignIn({
-        allowedOrigins,
+        allowedOrigins: () => allowedOrigins,
         authorizationEndpoint: AUTHORIZATION_ENDPOINT,
         scopes: SCOPES,
         createAuthorizationRequest:

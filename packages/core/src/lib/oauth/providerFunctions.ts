@@ -43,12 +43,14 @@ type OnlyTheFieldsOf<Doc, Shared> = Shared &
 // table it writes cannot disagree about what a request or a ticket holds.
 
 /**
- * `createAuthorizationRequest` takes the request without the callback URL and
- * the deadline, which the component fills in itself.
+ * `createAuthorizationRequest` takes the request without the deadline, which
+ * the component fills in itself. The callback URL is optional: without it,
+ * the component uses its own callback route under `CONVEX_SITE_URL`.
  */
 const createRequestArgs = v
   .object(authorizationRequestFields)
-  .omit("callbackUrl", "expiresAt");
+  .omit("callbackUrl", "expiresAt")
+  .extend({ callbackUrl: v.optional(v.string()) });
 
 /** The fields of a claimed request that is still live. */
 const claimedRequestFields = v

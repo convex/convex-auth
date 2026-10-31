@@ -185,7 +185,7 @@ export function setupOauth<
   });
 
   const startSignIn = buildStartSignIn({
-    allowedOrigins,
+    allowedOrigins: () => allowedOrigins,
     authorizationEndpoint: catalog.authorizationEndpoint,
     scopes: catalog.scopes,
     callbackMethod: catalog.callbackMethod,

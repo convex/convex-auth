@@ -108,6 +108,12 @@ export type SignInOptions = {
   redirectTo?: string;
   /** A callback `code` to finish a saved flow instead of starting a new one. */
   code?: string;
+  /**
+   * Arguments the method's `startSignIn` takes beyond `redirectTo`, such as
+   * the organization a WorkOS sign-in is routed to. A method's own hook fills
+   * these from its options, and the server validates them.
+   */
+  startArgs?: Readonly<Record<string, string>>;
 };
 
 /** The sign-in actions {@link oauth} publishes for its hooks to read. */
@@ -367,6 +373,7 @@ export function oauth(): AmbientSignInClient {
       setFlowError(null);
       try {
         const { redirect, state } = await convex.mutation(refs.startSignIn, {
+          ...options?.startArgs,
           redirectTo,
         });
         await storage.set(
