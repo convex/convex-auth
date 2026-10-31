@@ -10,6 +10,7 @@ import oauth from "@convex-dev/auth/components/oauth/convex.config.js";
 import passkey from "@convex-dev/auth/components/passkey/convex.config.js";
 import password from "@convex-dev/auth/components/password/convex.config.js";
 import username from "@convex-dev/auth/components/username/convex.config.js";
+import workos from "@convex-dev/auth/components/workos/convex.config.js";
 import resend from "@convex-dev/resend/convex.config.js";
 
 const app = defineApp({
@@ -24,6 +25,8 @@ const app = defineApp({
     AUTH_GITHUB_CLIENT_SECRET: v.string(),
     AUTH_ACME_CLIENT_ID: v.string(),
     AUTH_ACME_CLIENT_SECRET: v.string(),
+    AUTH_WORKOS_CLIENT_ID: v.string(),
+    AUTH_WORKOS_API_KEY: v.string(),
     RESEND_API_KEY: v.string(),
     SITE_URL: v.string(),
   },
@@ -66,6 +69,13 @@ app.use(oauth, {
   env: {
     CLIENT_ID: app.env.AUTH_ACME_CLIENT_ID,
     CLIENT_SECRET: app.env.AUTH_ACME_CLIENT_SECRET,
+  },
+});
+app.use(workos, {
+  httpPrefix: "/workos",
+  env: {
+    CLIENT_ID: app.env.AUTH_WORKOS_CLIENT_ID,
+    CLIENT_SECRET: app.env.AUTH_WORKOS_API_KEY,
   },
 });
 app.use(resend);

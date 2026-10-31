@@ -40,6 +40,8 @@ type Env = {
   readonly AUTH_GITHUB_CLIENT_SECRET: string;
   readonly AUTH_GOOGLE_CLIENT_ID: string;
   readonly AUTH_GOOGLE_CLIENT_SECRET: string;
+  readonly AUTH_WORKOS_API_KEY: string;
+  readonly AUTH_WORKOS_CLIENT_ID: string;
   readonly RESEND_API_KEY: string;
   readonly SITE_URL: string;
 };

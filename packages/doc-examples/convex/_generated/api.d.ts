@@ -62,5 +62,6 @@ export declare const components: {
   authApple: import("@convex-dev/auth/components/apple/_generated/component.js").ComponentApi<"authApple">;
   authGithub: import("@convex-dev/auth/components/github/_generated/component.js").ComponentApi<"authGithub">;
   authAcme: import("@convex-dev/auth/components/oauth/_generated/component.js").ComponentApi<"authAcme">;
+  authWorkos: import("@convex-dev/auth/components/workos/_generated/component.js").ComponentApi<"authWorkos">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };

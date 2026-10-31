@@ -243,6 +243,20 @@
       "types": "./dist/methods/github/react.d.ts",
       "default": "./dist/methods/github/react.js"
     },
+    "./methods/workos/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/workos/server.d.ts"
+      },
+      "types": "./dist/methods/workos/server.d.ts",
+      "default": "./dist/methods/workos/server.js"
+    },
+    "./methods/workos/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/workos/react.d.ts"
+      },
+      "types": "./dist/methods/workos/react.d.ts",
+      "default": "./dist/methods/workos/react.js"
+    },
     "./components/username/convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/components/username/convex.config.d.ts"
@@ -503,7 +517,36 @@
       "types": "./dist/components/github/_generated/component.d.ts",
       "default": "./dist/components/github/_generated/component.js"
     },
-    "./components/github/test": "./src/testing/github.ts"
+    "./components/github/test": "./src/testing/github.ts",
+    "./components/workos/convex.config.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/workos/convex.config.d.ts"
+      },
+      "types": "./dist/components/workos/convex.config.d.ts",
+      "default": "./dist/components/workos/convex.config.js"
+    },
+    "./components/workos/convex.config": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/workos/convex.config.d.ts"
+      },
+      "types": "./dist/components/workos/convex.config.d.ts",
+      "default": "./dist/components/workos/convex.config.js"
+    },
+    "./components/workos/_generated/component.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/workos/_generated/component.d.ts"
+      },
+      "types": "./dist/components/workos/_generated/component.d.ts",
+      "default": "./dist/components/workos/_generated/component.js"
+    },
+    "./components/workos/_generated/component": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/workos/_generated/component.d.ts"
+      },
+      "types": "./dist/components/workos/_generated/component.d.ts",
+      "default": "./dist/components/workos/_generated/component.js"
+    },
+    "./components/workos/test": "./src/testing/workos.ts"
   },
   "dependencies": {
     "@babel/code-frame": "^7.29.7",
