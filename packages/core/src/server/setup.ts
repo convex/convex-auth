@@ -18,6 +18,7 @@ import {
   type UserCallbacks,
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
+import { DEFAULT_REFRESH_TOKEN_TTL_SECONDS } from "../lib/ttl.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -179,8 +180,8 @@ export type AuthCore<UsersTable extends string = string> = {
  * and (since the client refreshes shortly before expiry) comfortably longer
  * than a few seconds.
  *
- * Changes to token TTLs impact newly minted tokens, not ones that have
- * already been issued.
+ * Changes to access token TTLs impact newly minted tokens, not ones that have
+ * already been issued. Session/refresh related TTLs apply to all issued tokens.
  */
 export function setupConvexAuth<UsersTable extends string = "users">(options: {
   component: ComponentApi;
@@ -211,8 +212,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   /**
    * Refresh-token lifetime in seconds. Defaults to 30 days.
    *
-   * Changes to this value impact newly minted tokens, not ones that have
-   * already been issued.
+   * Changes to this value apply to every refresh token, including ones that
+   * have already been issued: a token expires this long after it was issued,
+   * under the value configured when it is presented. Lowering it thus ends
+   * sessions that have gone longer than the new value without refreshing.
    */
   refreshTokenTtlSeconds?: number;
 }): AuthCore<UsersTable> {
@@ -288,11 +291,12 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
     /**
      * Revoke the given sessions (as `listSessions` lists them) and count the
-     * active ones revoked. Expired sessions are deleted too, but not counted.
+     * active ones revoked. Expired sessions are deleted too, but not counted. A
+     * session expires one refresh-token TTL after it last refreshed.
      */
     const revokeListedSessions = async (
       ctx: GenericMutationCtx<GenericDataModel>,
-      sessions: { sessionId: string; expiresAt: number }[],
+      sessions: { sessionId: string; lastRefreshedAt: number }[],
     ): Promise<number> => {
       if (sessions.length === 0) {
         return 0;
@@ -302,9 +306,12 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           sessionIds: sessions.map(({ sessionId }) => sessionId),
         }),
       );
+      const ttlMs =
+        (refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS) * 1000;
       const now = Date.now();
       return sessions.filter(
-        ({ sessionId, expiresAt }) => revoked.has(sessionId) && expiresAt > now,
+        ({ sessionId, lastRefreshedAt }) =>
+          revoked.has(sessionId) && lastRefreshedAt + ttlMs > now,
       ).length;
     };
 

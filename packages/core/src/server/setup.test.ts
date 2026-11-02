@@ -92,6 +92,37 @@ const revokeAllSessions = authMutation({
     await ctx.convexAuth.revokeAllSessions(userId),
 });
 
+// The same app redeployed with a lower refresh-token TTL: the same component and
+// provider name, so it sees the sessions the default-TTL core minted.
+const SHORT_REFRESH_TOKEN_TTL_SECONDS = 60 * 60;
+const shortTtlCore = setupConvexAuth({
+  component: components.auth,
+  refreshTokenTtlSeconds: SHORT_REFRESH_TOKEN_TTL_SECONDS,
+});
+
+const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindProvider({
+  name: "test-provider",
+  createUser: makeFunctionReference<"mutation">(
+    "testApp:createUser",
+  ) as unknown as CreateUserFn<"test-provider", unknown, "users">,
+});
+
+const signInShortTtl = shortTtlAuthMutation({
+  args: { accountId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, { accountId }) =>
+    await ctx.convexAuth.completeSignIn({
+      providerAccountId: accountId,
+      profile: {},
+    }),
+});
+
+const revokeOtherSessionsShortTtl = shortTtlAuthMutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => await ctx.convexAuth.revokeOtherSessions(),
+});
+
 const testApp = {
   createUser,
   signUp,
@@ -101,6 +132,8 @@ const testApp = {
   // The core's own registered functions, exercised as an app would export them.
   isAuthenticated: core.isAuthenticated,
   signOut: core.signOut,
+  signInShortTtl,
+  revokeOtherSessionsShortTtl,
 };
 
 /**
@@ -163,6 +196,17 @@ const signOutRef = makeFunctionReference<
   { refreshToken: string },
   null
 >("testApp:signOut");
+const signInShortTtlRef = makeFunctionReference<
+  "mutation",
+  { accountId: string },
+  TokenBundle
+>("testApp:signInShortTtl");
+
+const revokeOtherSessionsShortTtlRef = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  number
+>("testApp:revokeOtherSessionsShortTtl");
 
 describe("ctx.convexAuth.revokeOtherSessions", () => {
   test("revokes every session of the user but the caller's", async () => {
@@ -218,6 +262,29 @@ describe("ctx.convexAuth.revokeOtherSessions", () => {
       expect(remaining.map((s) => s.sessionId)).toEqual([
         sessionIdentity(bundle).subject,
       ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("counts a session as expired under a TTL lowered since it last refreshed", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+      const t = setup();
+      // Signed in under the default 30-day TTL.
+      await t.mutation(signUpRef, { accountId: "alice" });
+      // Past the lowered TTL, though days short of the default.
+      vi.advanceTimersByTime(2 * SHORT_REFRESH_TOKEN_TTL_SECONDS * 1000);
+      await t.mutation(signInShortTtlRef, { accountId: "alice" });
+      const bundle = await t.mutation(signInShortTtlRef, {
+        accountId: "alice",
+      });
+
+      const revoked = await t
+        .withIdentity(sessionIdentity(bundle))
+        .mutation(revokeOtherSessionsShortTtlRef, {});
+      expect(revoked).toBe(1);
     } finally {
       vi.useRealTimers();
     }
