@@ -35,7 +35,7 @@ export function convexAuthProvider(
   return {
     type: "customJwt",
     // The `aud` claim that the auth component sets on the tokens.
-    applicationID: "convex",
+    applicationID: "convex-auth",
     issuer: `${cloudUrl}/components/${componentName}`,
     jwks: `${cloudUrl}/.well-known/jwks.json`,
     algorithm: "ES256",

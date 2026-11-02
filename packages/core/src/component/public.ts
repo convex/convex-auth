@@ -27,7 +27,7 @@ import {
 // --- Configuration ---------------------------------------------------------
 
 // `aud` claim; must match `applicationID` in the app's auth.config.ts.
-const AUDIENCE = "convex";
+const AUDIENCE = "convex-auth";
 // `ctx.auth.signJwt` refuses to mint a token that lives longer than an hour,
 // so an access-token TTL past that is a misconfiguration.
 const MAX_ACCESS_TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
