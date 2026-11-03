@@ -39,7 +39,7 @@ const modules = {
 // `CONVEX_CLOUD_URL` set, convex-test uses its default origin.
 const ISSUER =
   process.env.CONVEX_CLOUD_URL ?? "https://some-deployment.convex.cloud";
-const AUDIENCE = "convex";
+const AUDIENCE = "convex-auth";
 const CREATE_USER_HANDLE = "testApp:createUser";
 const ON_SIGN_IN_HANDLE = "testApp:onSignIn";
 const THROWING_ON_SIGN_IN_HANDLE = "testApp:onSignInThatThrows";

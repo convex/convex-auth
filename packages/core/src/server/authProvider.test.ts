@@ -10,7 +10,7 @@ describe("convexAuthProvider", () => {
     vi.stubEnv("CONVEX_CLOUD_URL", "https://happy-otter-123.convex.cloud");
     expect(convexAuthProvider()).toEqual({
       type: "customJwt",
-      applicationID: "convex",
+      applicationID: "convex-auth",
       issuer: "https://happy-otter-123.convex.cloud/components/auth",
       jwks: "https://happy-otter-123.convex.cloud/.well-known/jwks.json",
       algorithm: "ES256",
