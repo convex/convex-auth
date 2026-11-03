@@ -53,9 +53,9 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          accessTokenTtlSeconds?: number;
+          accessTokenTtlSeconds: number;
           refreshToken: string;
-          refreshTokenTtlSeconds?: number;
+          refreshTokenTtlSeconds: number;
         },
         | {
             kind: "rotated";
@@ -80,14 +80,14 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          accessTokenTtlSeconds?: number;
+          accessTokenTtlSeconds: number;
           claims: {
             profile: any;
             providerAccountId: string;
             providerName: string;
           };
           onSignInHandle?: string;
-          refreshTokenTtlSeconds?: number;
+          refreshTokenTtlSeconds: number;
         },
         {
           accessToken: string;
@@ -108,7 +108,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          accessTokenTtlSeconds?: number;
+          accessTokenTtlSeconds: number;
           claims: {
             profile: any;
             providerAccountId: string;
@@ -116,7 +116,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           };
           createUserHandle: string;
           onSignInHandle?: string;
-          refreshTokenTtlSeconds?: number;
+          refreshTokenTtlSeconds: number;
         },
         {
           accessToken: string;

@@ -398,3 +398,15 @@ describe("isAuthenticated", () => {
     expect(await caller.query(isAuthenticatedRef, {})).toBe(false);
   });
 });
+
+describe("setupConvexAuth", () => {
+  test("rejects an invalid lifetime configuration when it is set up", () => {
+    expect(() =>
+      setupConvexAuth({
+        component: components.auth,
+        accessTokenTtlSeconds: 100,
+        refreshTokenTtlSeconds: 1,
+      }),
+    ).toThrow(/shorter than the refresh-token TTL/i);
+  });
+});
