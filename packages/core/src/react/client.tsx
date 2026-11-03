@@ -1,5 +1,6 @@
 "use client";
 
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   ReactNode,
   createContext,
@@ -14,7 +15,11 @@ import {
   INITIAL_AUTH_STATE,
   type AuthClient,
 } from "../browser/sessionManager.ts";
-import type { SlimTokenBundle, TokenBundle } from "../lib/types.ts";
+import type {
+  IsAuthenticatedFn,
+  SlimTokenBundle,
+  TokenBundle,
+} from "../lib/types.ts";
 
 export type { AuthSignInApi };
 
@@ -101,6 +106,44 @@ export function useAuth() {
     throw new Error("useAuth must be used within a <ConvexAuthProvider>.");
   }
   return auth;
+}
+
+/**
+ * Watches the app's `isAuthenticated` query and signs the client out when its
+ * session is revoked server-side.
+ *
+ * The subscription (only active once the client itself authenticates) makes
+ * revocation reactive: when a session is deleted, the query re-runs, the
+ * result flips to `false`, and the local session is cleared without waiting
+ * for the access token to expire.
+ *
+ * Upon `false`, it triggers a full `signOut`. In addition to clearing client
+ * signed-in state, under SSR it clears the cookies holding the dead tokens.
+ * On an already-revoked session the Convex `signOut` call is a no-op.
+ *
+ * It is meant to be rendered inside `ConvexProviderWithAuth` (it subscribes
+ * via `useQuery`, and reads `useConvexAuth`) by both the SPA and the Next.js
+ * providers.
+ */
+export function SessionWatcher({
+  isAuthenticated,
+}: {
+  isAuthenticated: IsAuthenticatedFn;
+}) {
+  const authClient = useContext(AuthClientContext);
+  if (authClient === undefined) {
+    throw new Error("SessionWatcher must be rendered under AuthProvider.");
+  }
+  const { isAuthenticated: isClientAuthenticated } = useConvexAuth();
+  const hasLiveSession = useQuery(
+    isAuthenticated,
+    isClientAuthenticated ? {} : "skip",
+  );
+  const revoked = hasLiveSession === false;
+  useEffect(() => {
+    if (revoked) void authClient.signOut();
+  }, [revoked, authClient]);
+  return null;
 }
 
 /**

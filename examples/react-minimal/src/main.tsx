@@ -14,6 +14,7 @@ createRoot(document.getElementById("root")!).render(
       api={{
         refreshSession: api.auth.refreshSession,
         signOut: api.auth.signOut,
+        isAuthenticated: api.auth.isAuthenticated,
       }}
     >
       <App />
