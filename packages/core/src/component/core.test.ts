@@ -12,6 +12,7 @@ import {
   USE_USER_ID_AS_ACCOUNT_ID,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import { resolveTtlConfig } from "../lib/ttl.ts";
 import {
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
@@ -65,12 +66,24 @@ function setup() {
 
 type ConvexTestApi = ReturnType<typeof setup>;
 
+/**
+ * The lifetimes `setupConvexAuth` passes when the app overrides the given ones,
+ * as the component always receives a complete configuration.
+ */
+function ttl(overrides: Parameters<typeof resolveTtlConfig>[0] = {}) {
+  return resolveTtlConfig(overrides);
+}
+
+/** The lifetimes `setupConvexAuth` passes when the app overrides none. */
+const DEFAULT_TTL = ttl();
+
 /** Establish a brand new identity: the account, its app user, and a session. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
   return await t.mutation(api.public.signUp, {
     claims: c,
     createUserHandle: CREATE_USER_HANDLE,
     onSignInHandle: ON_SIGN_IN_HANDLE,
+    ...DEFAULT_TTL,
   });
 }
 
@@ -79,6 +92,7 @@ async function signIn(t: ConvexTestApi, c: AuthClaims) {
   return await t.mutation(api.public.signIn, {
     claims: c,
     onSignInHandle: ON_SIGN_IN_HANDLE,
+    ...DEFAULT_TTL,
   });
 }
 
@@ -90,7 +104,10 @@ function expectRotated(result: RefreshResult): TokenBundle {
 
 /** Exchange a refresh token, as a client rotating its session does. */
 async function refresh(t: ConvexTestApi, refreshToken: string) {
-  return await t.mutation(api.public.refresh, { refreshToken });
+  return await t.mutation(api.public.refresh, {
+    refreshToken,
+    ...DEFAULT_TTL,
+  });
 }
 
 /** How many sessions currently exist. */
@@ -202,6 +219,7 @@ describe("signUp", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
+      ...DEFAULT_TTL,
     });
 
     // The account is keyed to the id the app's createUser returned.
@@ -219,6 +237,7 @@ describe("signUp", () => {
         claims: claims(),
         createUserHandle: CREATE_USER_HANDLE,
         onSignInHandle: THROWING_ON_SIGN_IN_HANDLE,
+        ...DEFAULT_TTL,
       }),
     ).rejects.toThrow(/no sign-ins for you/);
 
@@ -297,6 +316,7 @@ describe("signIn", () => {
     // No `onSignInHandle` is what an app that left `onSignIn` out sends.
     const bundle = await t.mutation(api.public.signIn, {
       claims: claims(),
+      ...DEFAULT_TTL,
     });
 
     expect(bundle.userId).toBe(first.userId);
@@ -551,7 +571,9 @@ describe("refresh", () => {
     // issued under has days to go.
     const result = await t.mutation(api.public.refresh, {
       refreshToken: bundle.refreshToken,
-      refreshTokenTtlSeconds: 60 * 60,
+      ...ttl({
+        refreshTokenTtlSeconds: 60 * 60,
+      }),
     });
     expect(result.kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
@@ -569,7 +591,9 @@ describe("refresh", () => {
 
     const result = await t.mutation(api.public.refresh, {
       refreshToken: bundle.refreshToken,
-      refreshTokenTtlSeconds: 60 * 60,
+      ...ttl({
+        refreshTokenTtlSeconds: 60 * 60,
+      }),
     });
     expect(result.kind).toBe("noSession");
     expect(await sessionCount(t)).toBe(0);
@@ -960,7 +984,9 @@ describe("listSessions", () => {
     expectRotated(
       await t.mutation(api.public.refresh, {
         refreshToken: bundle.refreshToken,
-        refreshTokenTtlSeconds: oneHourSeconds,
+        ...ttl({
+          refreshTokenTtlSeconds: oneHourSeconds,
+        }),
       }),
     );
 
@@ -974,7 +1000,9 @@ describe("listSessions", () => {
     vi.setSystemTime(Math.ceil(listed.lastRefreshedAt + oneHourSeconds * 1000));
     const result = await t.mutation(api.public.refresh, {
       refreshToken: older.refreshToken,
-      refreshTokenTtlSeconds: oneHourSeconds,
+      ...ttl({
+        refreshTokenTtlSeconds: oneHourSeconds,
+      }),
     });
     expect(result.kind).toBe("noSession");
   });
@@ -1228,7 +1256,9 @@ describe("token lifetime configuration", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
-      accessTokenTtlSeconds: 300, // 5 minutes
+      ...ttl({
+        accessTokenTtlSeconds: 300, // 5 minutes
+      }),
     });
     // The JWT `exp` is floored to the second, so allow a small window.
     const expMs = decodeJwt(bundle.accessToken).exp! * 1000;
@@ -1245,7 +1275,9 @@ describe("token lifetime configuration", () => {
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
       createUserHandle: CREATE_USER_HANDLE,
-      refreshTokenTtlSeconds: oneHourSeconds,
+      ...ttl({
+        refreshTokenTtlSeconds: oneHourSeconds,
+      }),
     });
     expect(bundle.refreshTokenExpiresAt).toBeGreaterThanOrEqual(
       before + oneHourMs,
@@ -1258,7 +1290,9 @@ describe("token lifetime configuration", () => {
     const rotated = expectRotated(
       await t.mutation(api.public.refresh, {
         refreshToken: bundle.refreshToken,
-        refreshTokenTtlSeconds: oneHourSeconds,
+        ...ttl({
+          refreshTokenTtlSeconds: oneHourSeconds,
+        }),
       }),
     );
     expect(rotated.refreshTokenExpiresAt).toBeLessThanOrEqual(
@@ -1272,6 +1306,7 @@ describe("token lifetime configuration", () => {
       t.mutation(api.public.signUp, {
         claims: claims(),
         createUserHandle: CREATE_USER_HANDLE,
+        ...DEFAULT_TTL,
         accessTokenTtlSeconds: 100,
         refreshTokenTtlSeconds: 1, // 1s — shorter than the 100s access token
       }),

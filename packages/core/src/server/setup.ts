@@ -18,7 +18,7 @@ import {
   type UserCallbacks,
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
-import { DEFAULT_REFRESH_TOKEN_TTL_SECONDS } from "../lib/ttl.ts";
+import { resolveTtlConfig } from "../lib/ttl.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -219,7 +219,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    */
   refreshTokenTtlSeconds?: number;
 }): AuthCore<UsersTable> {
-  const { component, accessTokenTtlSeconds, refreshTokenTtlSeconds } = options;
+  const { component } = options;
+  // Resolved once, when the app's modules load, so an invalid configuration
+  // fails the deploy rather than the first sign-in.
+  const ttl = resolveTtlConfig(options);
   // The default only matters to the type system (the core never touches the
   // table), but keep the value in sync with the `= "users"` default above.
   const usersTable = options.usersTable ?? ("users" as UsersTable);
@@ -230,8 +233,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     handler: async (ctx, args): Promise<RefreshResult> => {
       return await ctx.runMutation(component.public.refresh, {
         refreshToken: args.refreshToken,
-        accessTokenTtlSeconds,
-        refreshTokenTtlSeconds,
+        ...ttl,
       });
     },
   });
@@ -306,8 +308,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           sessionIds: sessions.map(({ sessionId }) => sessionId),
         }),
       );
-      const ttlMs =
-        (refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS) * 1000;
+      const ttlMs = ttl.refreshTokenTtlSeconds * 1000;
       const now = Date.now();
       return sessions.filter(
         ({ sessionId, lastRefreshedAt }) =>
@@ -329,8 +330,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           },
           createUserHandle: await createFunctionHandle(createUser),
           onSignInHandle: await onSignInHandle(),
-          accessTokenTtlSeconds,
-          refreshTokenTtlSeconds,
+          ...ttl,
         });
       },
       completeSignIn: async (args: {
@@ -344,8 +344,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             profile: args.profile,
           },
           onSignInHandle: await onSignInHandle(),
-          accessTokenTtlSeconds,
-          refreshTokenTtlSeconds,
+          ...ttl,
         });
       },
       // Creates the app user + account without a session, for methods where

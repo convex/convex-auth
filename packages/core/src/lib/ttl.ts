@@ -1,8 +1,8 @@
+import { v } from "convex/values";
+
 // Defaults for the configurable token lifetimes. The app overrides them per
-// deployment via `setupConvexAuth`, which threads the chosen values in as call
-// args to the core component; when it passes nothing, these apply. They live
-// here because the app side needs them too: it derives a session's expiry
-// from its `lastRefreshedAt` (see `listSessions`).
+// deployment via `setupConvexAuth`, which resolves the full configuration once
+// and passes it to the core component on every call.
 export const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 60; // 1 minute
 export const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
@@ -20,14 +20,44 @@ export type TtlConfig = {
   refreshTokenTtlSeconds: number;
 };
 
+/** The argument validators of a `TtlConfig`, for the component functions. */
+export const vTtlConfigFields = {
+  accessTokenTtlSeconds: v.number(),
+  refreshTokenTtlSeconds: v.number(),
+};
+
+/**
+ * Produces a valid `TtlConfig` from the app's options, filling in the
+ * defaults for the values it leaves out.
+ *
+ * Throws when given invalid values.
+ */
 export function resolveTtlConfig(args: {
   accessTokenTtlSeconds?: number;
   refreshTokenTtlSeconds?: number;
 }): TtlConfig {
-  const accessTokenTtlSeconds =
-    args.accessTokenTtlSeconds ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS;
-  const refreshTokenTtlSeconds =
-    args.refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS;
+  return validateTtlConfig({
+    accessTokenTtlSeconds:
+      args.accessTokenTtlSeconds ?? DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+    refreshTokenTtlSeconds:
+      args.refreshTokenTtlSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
+  });
+}
+
+/**
+ * Checks a complete `TtlConfig` and returns it.
+ *
+ * Throws when given invalid values.
+ */
+export function validateTtlConfig(ttl: TtlConfig): TtlConfig {
+  const { accessTokenTtlSeconds, refreshTokenTtlSeconds } = ttl;
+  // Every comparison with `NaN` is false, so check finiteness first.
+  if (
+    !Number.isFinite(accessTokenTtlSeconds) ||
+    !Number.isFinite(refreshTokenTtlSeconds)
+  ) {
+    throw new Error("Token TTLs must be finite numbers.");
+  }
   if (accessTokenTtlSeconds <= 0 || refreshTokenTtlSeconds <= 0) {
     throw new Error("Token TTLs must be positive.");
   }

@@ -19,7 +19,11 @@ import {
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 import { refreshTokenExpiresAt } from "./expiry.ts";
-import { type TtlConfig, resolveTtlConfig } from "../lib/ttl.ts";
+import {
+  type TtlConfig,
+  validateTtlConfig,
+  vTtlConfigFields,
+} from "../lib/ttl.ts";
 import {
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
@@ -246,10 +250,8 @@ async function notifySignIn(
  * `createUser` just made, since both are subtransactions of this one.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
- * `iss = ${CONVEX_CLOUD_URL}/components/auth`. Token lifetimes default to
- * 1m (access) and 30d (refresh) unless
- * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
- * sets these once via `setupConvexAuth`).
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token lifetimes are the
+ * app's configuration, which `setupConvexAuth` resolves and passes in.
  *
  * Throws when the identity already has an account. See {@link signIn} for the
  * return-visit path.
@@ -259,12 +261,11 @@ export const signUp = mutation({
     claims: vAuthClaims,
     createUserHandle: v.string(),
     onSignInHandle: v.optional(v.string()),
-    accessTokenTtlSeconds: v.optional(v.number()),
-    refreshTokenTtlSeconds: v.optional(v.number()),
+    ...vTtlConfigFields,
   },
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
-    const ttl = resolveTtlConfig(args);
+    const ttl = validateTtlConfig(args);
     const { accountId, userId } = await createAccount(
       ctx,
       args.claims,
@@ -285,10 +286,8 @@ export const signUp = mutation({
  * `onSignInHandle` app callback.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
- * `iss = ${CONVEX_CLOUD_URL}/components/auth`. Token lifetimes default to
- * 1m (access) and 30d (refresh) unless
- * `accessTokenTtlSeconds` / `refreshTokenTtlSeconds` are supplied (the app
- * sets these once via `setupConvexAuth`).
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token lifetimes are the
+ * app's configuration, which `setupConvexAuth` resolves and passes in.
  *
  * Throws when the identity has no account.
  */
@@ -296,12 +295,11 @@ export const signIn = mutation({
   args: {
     claims: vAuthClaims,
     onSignInHandle: v.optional(v.string()),
-    accessTokenTtlSeconds: v.optional(v.number()),
-    refreshTokenTtlSeconds: v.optional(v.number()),
+    ...vTtlConfigFields,
   },
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
-    const ttl = resolveTtlConfig(args);
+    const ttl = validateTtlConfig(args);
     const { claims } = args;
     const account = await accountByIdentity(
       ctx,
@@ -427,15 +425,13 @@ export const getSession = query({
 export const refresh = mutation({
   args: {
     refreshToken: v.string(),
-    accessTokenTtlSeconds: v.optional(v.number()),
-    refreshTokenTtlSeconds: v.optional(v.number()),
+    ...vTtlConfigFields,
   },
   returns: vRefreshResult,
   handler: async (ctx, args): Promise<RefreshResult> => {
-    // Resolve the TTL config well before use below - it does some validation
-    // of the config that will throw if invalid, and that should be
-    // unconditional.
-    const ttl = resolveTtlConfig(args);
+    // Validate the TTL config well before use below: an invalid one should
+    // throw unconditionally.
+    const ttl = validateTtlConfig(args);
     const now = Date.now();
 
     const token = await lookupRefreshTokenByHash(
