@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
-  DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
+  DEFAULT_SESSION_MAX_LIFETIME_SECONDS,
   resolveTtlConfig,
 } from "./ttl.ts";
 
@@ -9,7 +9,8 @@ describe("resolveTtlConfig", () => {
   test("fills in every default when given nothing", () => {
     expect(resolveTtlConfig({})).toEqual({
       accessTokenTtlSeconds: DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
-      refreshTokenTtlSeconds: DEFAULT_REFRESH_TOKEN_TTL_SECONDS,
+      refreshInactivityTimeoutSeconds: DEFAULT_SESSION_MAX_LIFETIME_SECONDS,
+      sessionMaxLifetimeSeconds: DEFAULT_SESSION_MAX_LIFETIME_SECONDS,
     });
   });
 
@@ -17,24 +18,38 @@ describe("resolveTtlConfig", () => {
     expect(
       resolveTtlConfig({
         accessTokenTtlSeconds: 300,
-        refreshTokenTtlSeconds: 60 * 60,
+        refreshInactivityTimeoutSeconds: 60 * 60,
+        sessionMaxLifetimeSeconds: 2 * 60 * 60,
       }),
-    ).toEqual({ accessTokenTtlSeconds: 300, refreshTokenTtlSeconds: 60 * 60 });
+    ).toEqual({
+      accessTokenTtlSeconds: 300,
+      refreshInactivityTimeoutSeconds: 60 * 60,
+      sessionMaxLifetimeSeconds: 2 * 60 * 60,
+    });
   });
 
-  test("rejects an access-token TTL above the default refresh-token TTL", () => {
+  test("defaults the inactivity timeout to the app's max lifetime", () => {
+    expect(
+      resolveTtlConfig({ sessionMaxLifetimeSeconds: 60 * 60 })
+        .refreshInactivityTimeoutSeconds,
+    ).toBe(60 * 60);
+  });
+
+  test("rejects an inactivity timeout longer than the default max lifetime", () => {
     expect(() =>
       resolveTtlConfig({
-        refreshTokenTtlSeconds: DEFAULT_ACCESS_TOKEN_TTL_SECONDS,
+        refreshInactivityTimeoutSeconds:
+          2 * DEFAULT_SESSION_MAX_LIFETIME_SECONDS,
       }),
-    ).toThrow(/shorter than the refresh-token TTL/i);
+    ).toThrow(/at most the session max lifetime/i);
   });
 
   test.each([
     { accessTokenTtlSeconds: NaN },
-    { refreshTokenTtlSeconds: NaN },
-    { refreshTokenTtlSeconds: Infinity },
-  ])("rejects a non-finite TTL: %o", (args) => {
+    { refreshInactivityTimeoutSeconds: NaN },
+    { sessionMaxLifetimeSeconds: NaN },
+    { sessionMaxLifetimeSeconds: Infinity },
+  ])("rejects a non-finite lifetime: %o", (args) => {
     expect(() => resolveTtlConfig(args)).toThrow(/finite/i);
   });
 });

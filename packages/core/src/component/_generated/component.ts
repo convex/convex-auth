@@ -54,8 +54,9 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
+          refreshInactivityTimeoutSeconds: number;
           refreshToken: string;
-          refreshTokenTtlSeconds: number;
+          sessionMaxLifetimeSeconds: number;
         },
         | {
             kind: "rotated";
@@ -87,7 +88,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             providerName: string;
           };
           onSignInHandle?: string;
-          refreshTokenTtlSeconds: number;
+          refreshInactivityTimeoutSeconds: number;
+          sessionMaxLifetimeSeconds: number;
         },
         {
           accessToken: string;
@@ -116,7 +118,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           };
           createUserHandle: string;
           onSignInHandle?: string;
-          refreshTokenTtlSeconds: number;
+          refreshInactivityTimeoutSeconds: number;
+          sessionMaxLifetimeSeconds: number;
         },
         {
           accessToken: string;

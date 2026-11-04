@@ -1,17 +1,30 @@
-// When a refresh token expires under the configured lifetimes.
+// When refresh tokens and sessions expire under the configured lifetimes.
 
 import type { Doc } from "./_generated/dataModel.ts";
 
 /**
- * When a refresh token expires under the given refresh-token TTL.
+ * Returns a timestamp for when a refresh token stops being able to refresh its
+ * session for lack of use, under the given inactivity timeout.
  *
- * Expiry is derived rather than stored, so a changed TTL applies to every
- * outstanding token. It also means a session's newest token is always its
- * last to expire.
+ * Expiry is derived rather than stored, so a changed timeout applies to every
+ * outstanding token.
  */
-export function refreshTokenExpiresAt(
+export function refreshTokenInactivityExpiresAt(
   token: Pick<Doc<"refreshTokens">, "_creationTime">,
-  refreshTokenTtlSeconds: number,
+  refreshInactivityTimeoutSeconds: number,
 ): number {
-  return token._creationTime + refreshTokenTtlSeconds * 1000;
+  return token._creationTime + refreshInactivityTimeoutSeconds * 1000;
+}
+
+/**
+ * Returns a timestamp for when a session reaches its max lifetime.
+ *
+ * Derived from the session's `_creationTime`, so a changed max lifetime
+ * applies to every session.
+ */
+export function sessionMaxLifetimeExpiresAt(
+  session: Pick<Doc<"sessions">, "_creationTime">,
+  sessionMaxLifetimeSeconds: number,
+): number {
+  return session._creationTime + sessionMaxLifetimeSeconds * 1000;
 }
