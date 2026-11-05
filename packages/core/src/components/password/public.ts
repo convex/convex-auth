@@ -51,12 +51,24 @@ type SetPasswordResult = Infer<typeof setPasswordResult>;
  *
  * This can be used both when creating a new user (will create a row),
  * or to update the password for an existing user (will update the existing row).
+ *
+ * `minimumLength` is the minimum length of the new password. Each caller must
+ * set it, so that the caller decides the minimum and does not get the minimum
+ * of the component by accident. The password methods give
+ * `DEFAULT_MIN_PASSWORD_LENGTH`.
+ *
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
+ * than `MAX_PASSWORD_LENGTH`. This is an error of the caller, not of the
+ * user.
  */
 export const setPassword = mutation({
-  args: { userId: v.string(), password: v.string() },
+  args: { userId: v.string(), password: v.string(), minimumLength: v.number() },
   returns: setPasswordResult,
-  handler: async (ctx, { userId, password }): Promise<SetPasswordResult> => {
-    const userError = validateNewPassword(password, MIN_PASSWORD_LENGTH);
+  handler: async (
+    ctx,
+    { userId, password, minimumLength },
+  ): Promise<SetPasswordResult> => {
+    const userError = validateNewPassword(password, minimumLength);
     if (userError !== null) {
       return { success: false, userError };
     }

@@ -66,8 +66,9 @@ export type VerifyPasswordUserError = Infer<typeof verifyPasswordUserError>;
  * Returns a `PasswordFormatUserError` describing the first violation, or `null` when the
  * password is valid.
  *
- * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH}. This is
- * an error of the caller, not of the user.
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
+ * than {@link MAX_PASSWORD_LENGTH}. This is an error of the caller, not of the
+ * user: with a minimum above the maximum, no password could be valid.
  *
  * This doesn’t check that the password is not of the list of most commonly-used password
  * (use {@link validateNewPassword} when this check is necessary).
@@ -78,9 +79,11 @@ export function validatePasswordInputFormat(
 ): PasswordFormatUserError | null {
   // Use a negation, so that the test also rejects `NaN`:
   // `NaN < MIN_PASSWORD_LENGTH` is false.
-  if (!(minimumLength >= MIN_PASSWORD_LENGTH)) {
+  if (!(
+    minimumLength >= MIN_PASSWORD_LENGTH && minimumLength <= MAX_PASSWORD_LENGTH
+  )) {
     throw new Error(
-      `minimumLength must be ${MIN_PASSWORD_LENGTH} or more, but it is ${minimumLength}.`,
+      `minimumLength must be between ${MIN_PASSWORD_LENGTH} and ${MAX_PASSWORD_LENGTH}, but it is ${minimumLength}.`,
     );
   }
 
@@ -112,13 +115,15 @@ export function validatePasswordInputFormat(
  * {@link validatePasswordInputFormat} and then rejects the most frequent
  * passwords.
  *
- * The component gives {@link MIN_PASSWORD_LENGTH} as `minimumLength`. The
- * password methods give a higher minimum (`DEFAULT_MIN_PASSWORD_LENGTH`).
+ * `setPassword` of the component gives the `minimumLength` of its caller. The
+ * password methods give `DEFAULT_MIN_PASSWORD_LENGTH`, both here and to
+ * `setPassword`.
  *
  * Returns a `SetPasswordUserError` for the first violation, or
  * `null` when the password is applicable.
  *
- * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH}.
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
+ * than {@link MAX_PASSWORD_LENGTH}.
  */
 export function validateNewPassword(
   password: string,

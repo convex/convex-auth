@@ -211,6 +211,7 @@ export function setupUsernamePassword<UsersTable extends string>(
               {
                 userId: tokens.userId,
                 password,
+                minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
             );
             if (!setResult.success) {
@@ -333,7 +334,11 @@ export function setupUsernamePassword<UsersTable extends string>(
 
             const setResult = await ctx.runMutation(
               component.public.setPassword,
-              { userId, password: newPassword },
+              {
+                userId,
+                password: newPassword,
+                minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
+              },
             );
             if (!setResult.success) {
               // Unexpected: we pre-validated the new password above.

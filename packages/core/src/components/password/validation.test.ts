@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   validateNewPassword,
   validatePasswordInputFormat,
@@ -20,16 +21,26 @@ describe("minimumLength", () => {
     );
   });
 
+  test("accepts a minimumLength of MAX_PASSWORD_LENGTH", () => {
+    expect(
+      validatePasswordInputFormat(
+        "a".repeat(MAX_PASSWORD_LENGTH),
+        MAX_PASSWORD_LENGTH,
+      ),
+    ).toBe(null);
+  });
+
   test.each([
     ["less than MIN_PASSWORD_LENGTH", MIN_PASSWORD_LENGTH - 1],
     ["0", 0],
+    ["more than MAX_PASSWORD_LENGTH", MAX_PASSWORD_LENGTH + 1],
     ["NaN", NaN],
   ])("throws when minimumLength is %s", (_, minimumLength) => {
     expect(() =>
       validatePasswordInputFormat("kY7t-vQ2m", minimumLength),
-    ).toThrow("minimumLength must be 8 or more");
+    ).toThrow("minimumLength must be between 8 and 100");
     expect(() => validateNewPassword("kY7t-vQ2m", minimumLength)).toThrow(
-      "minimumLength must be 8 or more",
+      "minimumLength must be between 8 and 100",
     );
   });
 });
