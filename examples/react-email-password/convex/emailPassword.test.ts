@@ -216,7 +216,8 @@ describe("signUp", () => {
       .withRequestMetadata({ ip: IP })
       .mutation(api.auth.signUpWithEmailPassword, {
         email: EMAIL,
-        password: "short",
+        // 9 characters: the password component accepts it, the method does not.
+        password: "kY7t-vQ2m",
       });
     expect(result).toEqual({
       success: false,

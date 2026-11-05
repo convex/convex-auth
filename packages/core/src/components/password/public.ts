@@ -13,6 +13,7 @@ import {
   normalizePassword,
   setPasswordUserError,
   verifyPasswordUserError,
+  MIN_PASSWORD_LENGTH,
 } from "./validation.ts";
 
 // Throttle for password verification attempts.
@@ -55,7 +56,7 @@ export const setPassword = mutation({
   args: { userId: v.string(), password: v.string() },
   returns: setPasswordResult,
   handler: async (ctx, { userId, password }): Promise<SetPasswordResult> => {
-    const userError = validateNewPassword(password);
+    const userError = validateNewPassword(password, MIN_PASSWORD_LENGTH);
     if (userError !== null) {
       return { success: false, userError };
     }
@@ -111,7 +112,10 @@ export const verifyPassword = mutation({
     // Note that if we ever change the default password validation rules,
     // we need to make sure we edit the code so that validation here
     // still accepts older passwords.
-    const userError = validatePasswordInputFormat(password);
+    const userError = validatePasswordInputFormat(
+      password,
+      MIN_PASSWORD_LENGTH,
+    );
     if (userError !== null) {
       return { success: false, userError };
     }

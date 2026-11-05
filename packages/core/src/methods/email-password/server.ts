@@ -26,6 +26,7 @@ import {
   setPasswordUserError,
   verifyPasswordUserError,
 } from "../../components/password/validation.ts";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 import {
   startChallengeUserError,
   startFreeAddressUserError,
@@ -408,7 +409,10 @@ export function setupEmailPassword<UsersTable extends string>(
             if (emailError !== null) {
               return { success: false, userError: emailError };
             }
-            const passwordError = validateNewPassword(password);
+            const passwordError = validateNewPassword(
+              password,
+              DEFAULT_MIN_PASSWORD_LENGTH,
+            );
             if (passwordError !== null) {
               return { success: false, userError: passwordError };
             }
@@ -557,7 +561,10 @@ export function setupEmailPassword<UsersTable extends string>(
 
             // Validate the new password before the current password, so that
             // an invalid new password does not consume the rate limit.
-            const newPasswordError = validateNewPassword(newPassword);
+            const newPasswordError = validateNewPassword(
+              newPassword,
+              DEFAULT_MIN_PASSWORD_LENGTH,
+            );
             if (newPasswordError !== null) {
               return { success: false, userError: newPasswordError };
             }
@@ -830,7 +837,10 @@ export function setupEmailPassword<UsersTable extends string>(
           ): Promise<CompletePasswordRecoveryResult> => {
             // Validate the password before claiming the one-shot link, so a
             // rejected password does not burn the link.
-            const passwordError = validateNewPassword(newPassword);
+            const passwordError = validateNewPassword(
+              newPassword,
+              DEFAULT_MIN_PASSWORD_LENGTH,
+            );
             if (passwordError !== null) {
               return { status: "error", userError: passwordError };
             }

@@ -18,6 +18,7 @@ import {
   setPasswordUserError,
   verifyPasswordUserError,
 } from "../../components/password/validation.ts";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 
 // TODO: derive this from the component mount path rather than hardcoding it.
 const PROVIDER_NAME = "password";
@@ -155,7 +156,10 @@ export function setupUsernamePassword<UsersTable extends string>(
             if (usernameError !== null) {
               return { status: "error", userError: usernameError };
             }
-            const userError = validateNewPassword(password);
+            const userError = validateNewPassword(
+              password,
+              DEFAULT_MIN_PASSWORD_LENGTH,
+            );
             if (userError !== null) {
               return { status: "error", userError };
             }
@@ -292,7 +296,10 @@ export function setupUsernamePassword<UsersTable extends string>(
 
             // Validate the new password before verifying the current one, so
             // that invalid new password are ignored by the rate limit.
-            const newPasswordError = validateNewPassword(newPassword);
+            const newPasswordError = validateNewPassword(
+              newPassword,
+              DEFAULT_MIN_PASSWORD_LENGTH,
+            );
             if (newPasswordError !== null) {
               return { success: false, userError: newPasswordError };
             }
