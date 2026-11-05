@@ -1,5 +1,5 @@
 [package]
-name = "argon2id-wasm"
+name = "password-hash-wasm"
 version = "0.1.0"
 edition = "2021"
 

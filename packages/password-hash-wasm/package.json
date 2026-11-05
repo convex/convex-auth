@@ -1,14 +1,14 @@
 {
-  "name": "argon2id-wasm",
-  "version": "0.0.0-alpha.2",
-  "description": "argon2id password hashing in WASM",
-  "homepage": "https://github.com/convex/convex-auth/tree/reboot/packages/argon2id-wasm#readme",
+  "name": "password-hash-wasm",
+  "version": "0.0.0-alpha.0",
+  "description": "Password hashing in WASM",
+  "homepage": "https://github.com/convex/convex-auth/tree/reboot/packages/password-hash-wasm#readme",
   "bugs": "https://github.com/convex/convex-auth/issues",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/convex/convex-auth.git",
-    "directory": "packages/argon2id-wasm"
+    "directory": "packages/password-hash-wasm"
   },
   "files": [
     "dist",

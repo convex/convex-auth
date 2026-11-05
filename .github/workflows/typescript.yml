@@ -21,8 +21,8 @@ jobs:
 
       - uses: ./.github/actions/rust-setup
 
-      - name: Rust codegen (required for argon2id-wasm typechecking)
-        working-directory: packages/argon2id-wasm/rust
+      - name: Rust codegen (required for password-hash-wasm typechecking)
+        working-directory: packages/password-hash-wasm/rust
         run: just build
 
       - name: Install pnpm
