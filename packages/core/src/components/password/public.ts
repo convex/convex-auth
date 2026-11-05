@@ -15,6 +15,7 @@ import {
   verifyPasswordUserError,
   MIN_PASSWORD_LENGTH,
 } from "./validation.ts";
+import { isScryptPHC, verifyScryptPHC } from "./scrypt.ts";
 
 // Throttle for password verification attempts.
 //
@@ -84,8 +85,10 @@ type VerifyPasswordResult = Infer<typeof verifyPasswordResult>;
  *
  * This enforces a rate limit (see `rateLimiter` above).
  *
- * In the future, this will also automatically update password hashes
- * that do not match the latest security recommendations.
+ * The stored hash can be an argon2id hash or a scrypt hash that another
+ * system wrote in the table (for example the migration from Convex Auth v1,
+ * see `scrypt.ts`). A scrypt hash stays as it is: it becomes an argon2id hash
+ * only when the user sets a new password.
  */
 export const verifyPassword = mutation({
   args: { userId: v.string(), password: v.string() },
@@ -126,10 +129,15 @@ export const verifyPassword = mutation({
       // unrecoverable programming error rather than a user-facing condition.
       throw new Error(`No password stored for userId ${userId}.`);
     }
-    const matches = await verifyPasswordHash(
-      normalizePassword(password),
-      row.passwordHashPHC,
-    );
+    // Give scrypt the password as the user typed it: `verifyScryptPHC`
+    // normalizes it to NFKC, as v1 does. NFC (`normalizePassword`) does not
+    // replace compatibility characters, so it does not give the same bytes.
+    const matches = isScryptPHC(row.passwordHashPHC)
+      ? verifyScryptPHC(password, row.passwordHashPHC)
+      : await verifyPasswordHash(
+          normalizePassword(password),
+          row.passwordHashPHC,
+        );
     if (!matches) {
       return { success: false, userError: { error: "INVALID_CREDENTIALS" } };
     }

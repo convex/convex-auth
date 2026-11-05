@@ -10,6 +10,7 @@
 
 import type * as commonPasswords from "../commonPasswords.js";
 import type * as public_ from "../public.js";
+import type * as scrypt from "../scrypt.js";
 import type * as validation from "../validation.js";
 
 import type {
@@ -22,6 +23,7 @@ import { anyApi, componentsGeneric } from "convex/server";
 const fullApi: ApiFromModules<{
   commonPasswords: typeof commonPasswords;
   public: typeof public_;
+  scrypt: typeof scrypt;
   validation: typeof validation;
 }> = anyApi as any;
 
