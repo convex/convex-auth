@@ -48,14 +48,18 @@ Error: Cannot find package 'wbg' imported from .../argon2id-wasm/rust/pkg/argon2
 ## Configure TypeScript
 
 The test helpers ship as TypeScript source, and their relative imports keep
-the `.ts` extension. Set `allowImportingTsExtensions` in the `tsconfig.json`
-that covers your tests, usually `convex/tsconfig.json`, or `tsc` reports
-TS5097:
+the `.ts` extension. Add `allowImportingTsExtensions` to the `compilerOptions`
+of the `tsconfig.json` that covers your tests, usually `convex/tsconfig.json`,
+or `tsc` reports TS5097. TypeScript accepts the option only with `noEmit`,
+which the `convex/tsconfig.json` that Convex generates already sets. These are
+the options to add or check, not a whole file:
 
 ```json title="convex/tsconfig.json"
 {
   "compilerOptions": {
+    // ...the options you already have
     "allowImportingTsExtensions": true,
+    "noEmit": true,
     "types": ["node", "vite/client"]
   }
 }
