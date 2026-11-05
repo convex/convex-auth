@@ -1,0 +1,11 @@
+[package]
+name = "argon2id"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen.workspace = true
+argon2 = { version = "0.5", features = ["password-hash"] }
