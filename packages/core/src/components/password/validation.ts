@@ -112,8 +112,9 @@ export function validatePasswordInputFormat(
  * {@link validatePasswordInputFormat} and then rejects the most frequent
  * passwords.
  *
- * The component gives {@link MIN_PASSWORD_LENGTH} as `minimumLength`. The
- * password methods give a higher minimum (`DEFAULT_MIN_PASSWORD_LENGTH`).
+ * `setPassword` of the component gives the `minimumLength` of its caller. The
+ * password methods give `DEFAULT_MIN_PASSWORD_LENGTH`, both here and to
+ * `setPassword`.
  *
  * Returns a `SetPasswordUserError` for the first violation, or
  * `null` when the password is applicable.

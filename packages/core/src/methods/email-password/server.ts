@@ -428,7 +428,11 @@ export function setupEmailPassword<UsersTable extends string>(
 
             const setResult = await ctx.runMutation(
               passwordComponent.public.setPassword,
-              { userId, password },
+              {
+                userId,
+                password,
+                minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
+              },
             );
             if (!setResult.success) {
               // Unexpected: the password was validated above. Throw so the
@@ -597,7 +601,11 @@ export function setupEmailPassword<UsersTable extends string>(
 
             const setResult = await ctx.runMutation(
               passwordComponent.public.setPassword,
-              { userId, password: newPassword },
+              {
+                userId,
+                password: newPassword,
+                minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
+              },
             );
             if (!setResult.success) {
               return { success: false, userError: setResult.userError };
@@ -878,7 +886,11 @@ export function setupEmailPassword<UsersTable extends string>(
 
             const setResult = await ctx.runMutation(
               passwordComponent.public.setPassword,
-              { userId, password: newPassword },
+              {
+                userId,
+                password: newPassword,
+                minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
+              },
             );
             if (!setResult.success) {
               // Unexpected: the password was validated above. Throw so the

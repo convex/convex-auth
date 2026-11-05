@@ -8,6 +8,7 @@ import {
   registerEmail,
   registerResendStub,
 } from "@convex-dev/auth/components/email/test";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "@convex-dev/auth/methods/email-password";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -82,7 +83,7 @@ async function seedSignedUpUser(
   await t.run(async (ctx) => {
     const result = await ctx.runMutation(
       components.authPassword.public.setPassword,
-      { userId, password },
+      { userId, password, minimumLength: DEFAULT_MIN_PASSWORD_LENGTH },
     );
     if (!result.success) {
       throw new Error("Could not seed the password");
@@ -374,6 +375,7 @@ describe("completeSignUp", () => {
       await ctx.runMutation(components.authPassword.public.setPassword, {
         userId,
         password: PASSWORD,
+        minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
       });
     });
     await seedChallenge(t, {

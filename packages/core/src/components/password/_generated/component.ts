@@ -27,7 +27,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       setPassword: FunctionReference<
         "mutation",
         "internal",
-        { password: string; userId: string },
+        { minimumLength: number; password: string; userId: string },
         | { success: true }
         | {
             success: false;

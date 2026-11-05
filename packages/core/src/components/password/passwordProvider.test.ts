@@ -11,6 +11,7 @@ import {
 } from "hash-wasm";
 import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
+import { MIN_PASSWORD_LENGTH } from "./validation.ts";
 import { hashPassword, verifyPassword } from "argon2id-wasm";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -31,6 +32,7 @@ describe("setPassword + verifyPassword", () => {
     const setResult = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(setResult).toEqual({ success: true });
     const result = await t.mutation(api.public.verifyPassword, {
@@ -45,6 +47,7 @@ describe("setPassword + verifyPassword", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -71,11 +74,13 @@ describe("setPassword + verifyPassword", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const newPassword = "a whole new password here";
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: newPassword,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
 
     // Only one row exists for the user.
@@ -108,6 +113,7 @@ describe("password validation (setPassword)", () => {
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: "short",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({
       success: false,
@@ -121,6 +127,7 @@ describe("password validation (setPassword)", () => {
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: "kY7t-vQ2",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({ success: true });
     expect(
@@ -131,11 +138,40 @@ describe("password validation (setPassword)", () => {
     ).toEqual({ success: true });
   });
 
+  test("rejects a password that is shorter than minimumLength", async () => {
+    const t = setup();
+    const result = await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: "kY7t-vQ2m",
+      minimumLength: 10,
+    });
+    expect(result).toEqual({
+      success: false,
+      userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 10 },
+    });
+  });
+
+  // A minimumLength of less than MIN_PASSWORD_LENGTH is an error of the caller.
+  test("throws when minimumLength is less than MIN_PASSWORD_LENGTH", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.public.setPassword, {
+        userId: "alice",
+        password: "kY7t-vQ2m",
+        minimumLength: 4,
+      }),
+    ).rejects.toThrow("minimumLength must be 8 or more");
+    expect(await t.run((ctx) => ctx.db.query("passwords").collect())).toEqual(
+      [],
+    );
+  });
+
   test("rejects a frequent password of 8 characters", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: "12345678",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({
       success: false,
@@ -148,6 +184,7 @@ describe("password validation (setPassword)", () => {
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: " leadingspace123",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({
       success: false,
@@ -160,6 +197,7 @@ describe("password validation (setPassword)", () => {
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: "password123",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({
       success: false,
@@ -172,6 +210,7 @@ describe("password validation (setPassword)", () => {
     const result = await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: "Password123",
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     expect(result).toEqual({
       success: false,
@@ -186,6 +225,7 @@ describe("password validation (verifyPassword)", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -202,6 +242,7 @@ describe("password validation (verifyPassword)", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -218,6 +259,7 @@ describe("password validation (verifyPassword)", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -259,6 +301,7 @@ describe("Unicode normalization", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: composed,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -393,6 +436,7 @@ describe("rate limiting (verifyPassword only)", () => {
     await t.mutation(api.public.setPassword, {
       userId: "alice",
       password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
     });
 
     // Capacity is 5; the first five attempts (wrong password) are allowed, the
