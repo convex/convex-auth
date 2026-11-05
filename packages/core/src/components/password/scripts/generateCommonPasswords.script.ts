@@ -23,6 +23,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../../lib/password.ts";
 
 const SECLISTS_REPOSITORY = "https://github.com/danielmiessler/SecLists.git";
 
@@ -46,11 +47,8 @@ const SOURCE_PATH =
  */
 const MIN_LENGTH = 8;
 
-/**
- * The minimum length of a new password in the password methods
- * (`DEFAULT_MIN_PASSWORD_LENGTH`).
- */
-const METHOD_MIN_LENGTH = 10;
+/** The minimum length of a new password in the password methods. */
+const METHOD_MIN_LENGTH = DEFAULT_MIN_PASSWORD_LENGTH;
 
 /**
  * The quantity of passwords for each minimum length. The generated list

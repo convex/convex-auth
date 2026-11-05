@@ -5,18 +5,12 @@ import { isCommonPassword } from "./commonPasswords.ts";
 // https://auth.pilcrowonpaper.com/passwords: 10–100 characters, any printable
 // Unicode, no leading/trailing whitespace.
 
-// TODO: Make the minimum length an option of each method (for example
-// `setupUsernamePassword`). The component then enforces only an absolute
-// minimum of 8 characters, which it does not export. Today the component and
-// all methods enforce 10.
-export const MIN_PASSWORD_LENGTH = 10;
-
 /**
- * The minimum password length of the password methods. The methods export it
- * (`@convex-dev/auth/methods/username-password`), so that a sign-up form can
- * show the same limit as the backend.
+ * The minimum length of a password. The password methods have their own
+ * minimum for a new password (`DEFAULT_MIN_PASSWORD_LENGTH` of
+ * `lib/password.ts`).
  */
-export const DEFAULT_MIN_PASSWORD_LENGTH = MIN_PASSWORD_LENGTH;
+export const MIN_PASSWORD_LENGTH = 10;
 export const MAX_PASSWORD_LENGTH = 100;
 
 /**
