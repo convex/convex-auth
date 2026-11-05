@@ -57,8 +57,9 @@ type SetPasswordResult = Infer<typeof setPasswordResult>;
  * of the component by accident. The password methods give
  * `DEFAULT_MIN_PASSWORD_LENGTH`.
  *
- * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH}. This is
- * an error of the caller, not of the user.
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
+ * than `MAX_PASSWORD_LENGTH`. This is an error of the caller, not of the
+ * user.
  */
 export const setPassword = mutation({
   args: { userId: v.string(), password: v.string(), minimumLength: v.number() },

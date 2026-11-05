@@ -151,16 +151,20 @@ describe("password validation (setPassword)", () => {
     });
   });
 
-  // A minimumLength of less than MIN_PASSWORD_LENGTH is an error of the caller.
-  test("throws when minimumLength is less than MIN_PASSWORD_LENGTH", async () => {
+  // A minimumLength outside of MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH is an
+  // error of the caller.
+  test.each([
+    ["less than MIN_PASSWORD_LENGTH", 4],
+    ["more than MAX_PASSWORD_LENGTH", 101],
+  ])("throws when minimumLength is %s", async (_, minimumLength) => {
     const t = setup();
     await expect(
       t.mutation(api.public.setPassword, {
         userId: "alice",
         password: "kY7t-vQ2m",
-        minimumLength: 4,
+        minimumLength,
       }),
-    ).rejects.toThrow("minimumLength must be 8 or more");
+    ).rejects.toThrow("minimumLength must be between 8 and 100");
     expect(await t.run((ctx) => ctx.db.query("passwords").collect())).toEqual(
       [],
     );
