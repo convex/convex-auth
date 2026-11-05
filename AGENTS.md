@@ -15,7 +15,7 @@ This is a pnpm monorepo:
   - The sign-in methods, which the app wires up: `anonymous`,
     `username-password`, `email-password`, `username-passkey`, `oauth`,
     `google`, `apple`, and `github`.
-- `packages/argon2id-wasm` — the `argon2id-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
+- `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
@@ -81,7 +81,7 @@ component directory.
 ## Published output
 
 `@convex-dev/auth` ships **compiled** ESM plus declarations under `dist/`; its
-`exports` map points there, never at `src/` (`argon2id-wasm` does the same). This matters:
+`exports` map points there, never at `src/` (`password-hash-wasm` does the same). This matters:
 a package whose `exports` resolve to `.ts` gets typechecked by the consumer's
 `tsconfig.json`, so our source would have to satisfy _their_ `lib`, `types`,
 and `verbatimModuleSyntax` settings. Two rules follow from it:
@@ -121,7 +121,7 @@ Use `pnpm install` at the root. Common tasks:
 
 - `pnpm build` — compile `packages/core` to `dist/`. Runs automatically via
   `prepare` on install; run it by hand after changing its sources if you want
-  the examples to pick the change up. (`argon2id-wasm` is consumed from npm,
+  the examples to pick the change up. (`password-hash-wasm` is consumed from npm,
   so it isn't built here — see its `prepack`.)
 - `pnpm codegen` — regenerate every Convex `_generated` directory.
   Can also generate the codegen for a single demo or component

@@ -1,7 +1,7 @@
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
 
 [scripts]
-# Installs workspace dependencies. The argon2id-wasm package's `prepare` script also
+# Installs workspace dependencies. The password-hash-wasm package's `prepare` script also
 # builds the Rust/WASM hasher on install (requires `just` + a Rust toolchain).
 setup = "pnpm install"
 run_mode = "concurrent"

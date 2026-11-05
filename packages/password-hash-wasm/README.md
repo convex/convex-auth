@@ -1,4 +1,4 @@
-# argon2id-wasm
+# password-hash-wasm
 
 > [!WARNING]
 > This package exists for [Convex Auth](https://github.com/convex/convex-auth).
@@ -9,7 +9,7 @@ Argon2id password hashing for JavaScript. This is a thin wrapper around the Rust
 [`argon2`](https://docs.rs/argon2) crate, compiled to WebAssembly with `wasm-bindgen`.
 
 ```ts
-import { hashPassword, verifyPassword } from "argon2id-wasm";
+import { hashPassword, verifyPassword } from "password-hash-wasm";
 
 const phc = await hashPassword("correct horse battery staple");
 const ok = await verifyPassword("correct horse battery staple", phc);
@@ -17,5 +17,5 @@ const ok = await verifyPassword("correct horse battery staple", phc);
 
 `hashPassword` returns a PHC string with the salt and parameters embedded.
 
-See [rust/README.md](https://github.com/convex/convex-auth/blob/reboot/packages/argon2id-wasm/rust/README.md)
+See [rust/README.md](https://github.com/convex/convex-auth/blob/reboot/packages/password-hash-wasm/rust/README.md)
 to build the WASM bindings.

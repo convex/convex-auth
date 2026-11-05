@@ -41,21 +41,21 @@ pnpm typecheck
 pnpm test
 ```
 
-`pnpm typecheck` covers `packages/argon2id-wasm`, which needs the generated
+`pnpm typecheck` covers `packages/password-hash-wasm`, which needs the generated
 Rust bindings. On a fresh clone those don't exist yet, so either build them once
 (see below) or skip that package:
 
 ```sh
-pnpm -r --filter=!argon2id-wasm typecheck
+pnpm -r --filter=!password-hash-wasm typecheck
 ```
 
 ## Rust code
 
-Only `packages/argon2id-wasm` has Rust, and it changes rarely. You need a Rust
+Only `packages/password-hash-wasm` has Rust, and it changes rarely. You need a Rust
 toolchain and `just`.
 
 ```sh
-cd packages/argon2id-wasm/rust
+cd packages/password-hash-wasm/rust
 just build   # regenerates pkg/, which the TypeScript wrapper imports
 just test
 just lint
@@ -66,7 +66,7 @@ just lint
 
 ## Releasing
 
-Only `@convex-dev/auth` is released by script. `argon2id-wasm` is published by
+Only `@convex-dev/auth` is released by script. `password-hash-wasm` is published by
 hand, see below.
 
 ### Building a one-off package
@@ -101,16 +101,16 @@ For a standard (latest tag) release:
 pnpm release
 ```
 
-### Publishing argon2id-wasm
+### Publishing password-hash-wasm
 
 Only needed when the Rust changes. Its `prepack` builds the Rust and WASM
 output, so this needs the toolchain from the section above.
 
 ```sh
-cd packages/argon2id-wasm
+cd packages/password-hash-wasm
 # bump the version in package.json, then
 pnpm publish --tag alpha --publish-branch reboot
 ```
 
-Then update the exact `argon2id-wasm` version in `packages/core`'s dependencies
+Then update the exact `password-hash-wasm` version in `packages/core`'s dependencies
 and run `pnpm install`.

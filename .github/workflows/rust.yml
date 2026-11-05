@@ -7,7 +7,7 @@ concurrency:
 on:
   pull_request:
     paths:
-      - "packages/argon2id-wasm/rust/**"
+      - "packages/password-hash-wasm/rust/**"
       - ".github/workflows/rust.yml"
       - ".github/actions/rust-setup/**"
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: packages/argon2id-wasm/rust
+        working-directory: packages/password-hash-wasm/rust
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -59,8 +59,8 @@ jobs:
               '',
               'For these changes to take effect in the TypeScript code, you will need to:',
               '',
-              '1. Publish a new version of the `argon2id-wasm` package on npm.',
-              '2. Update the dependency on `argon2id-wasm` in the `core` component.',
+              '1. Publish a new version of the `password-hash-wasm` package on npm.',
+              '2. Update the dependency on `password-hash-wasm` in the `core` component.',
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({

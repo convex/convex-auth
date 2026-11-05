@@ -7,8 +7,8 @@ dist
 .context
 pnpm-lock.yaml
 .pnpm-store
-packages/argon2id-wasm/rust/pkg/
-packages/argon2id-wasm/rust/target/
+packages/password-hash-wasm/rust/pkg/
+packages/password-hash-wasm/rust/target/
 
 # Next.js output (examples)
 **/.next/
