@@ -2,6 +2,9 @@ set shell := ["bash", "-uc"]
 
 wasm-pack-version := "0.15.0"
 
+# The workspace crates. Each one builds to `pkg/<crate>/`.
+crates := "argon2id"
+
 _default:
     @just --list
 
@@ -9,27 +12,31 @@ _default:
 install-wasm-pack:
     cargo install wasm-pack --version {{ wasm-pack-version }} --locked --force
 
-# Regenerate the wasm-bindgen bindings in pkg/.
+# Regenerate the wasm-bindgen bindings of each crate in pkg/.
 build: install-wasm-pack
-    wasm-pack build --release --target web --out-dir pkg --out-name argon2_wasm
-    # wasm-pack writes a `.gitignore` (`*`) into pkg/; drop it so npm doesn't
-    # exclude the generated bindings when publishing (pkg/ is our shipped output).
-    rm -f pkg/.gitignore
+    for crate in {{ crates }}; do just _build-crate "$crate"; done
+
+_build-crate crate:
+    wasm-pack build {{ crate }} --release --target web --out-dir ../pkg/{{ crate }} --out-name {{ crate }}
+    # wasm-pack writes a `.gitignore` (`*`) into the output directory; drop it so
+    # npm doesn't exclude the generated bindings when publishing (pkg/ is our
+    # shipped output).
+    rm -f pkg/{{ crate }}/.gitignore
     # Our TypeScript wrapper imports the wasm module as a bundler-provided
     # default export. Keep wasm-pack's generated binding declarations, but drop
     # the raw `.wasm.d.ts` that declares low-level named exports and shadows
     # `src/wasm.d.ts` for downstream typecheckers.
-    rm -f pkg/argon2_wasm_bg.wasm.d.ts
+    rm -f pkg/{{ crate }}/{{ crate }}_bg.wasm.d.ts
 
 test:
-    cargo test --locked
+    cargo test --workspace --locked
 
 # Compile for the wasm32 target without regenerating bindings (fast syntax/type check).
 check:
-    cargo build --locked --release --target wasm32-unknown-unknown
+    cargo build --workspace --locked --release --target wasm32-unknown-unknown
 
 fmt:
-    cargo fmt --check
+    cargo fmt --all --check
 
 lint:
-    cargo clippy --locked --all-targets -- -D warnings
+    cargo clippy --workspace --locked --all-targets -- -D warnings

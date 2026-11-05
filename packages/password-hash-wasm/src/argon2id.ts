@@ -1,27 +1,11 @@
 import init, {
   hash_password,
   verify_password,
-} from "../rust/pkg/argon2_wasm.js";
-import wasmModule from "../rust/pkg/argon2_wasm_bg.wasm";
+} from "../rust/pkg/argon2id/argon2id.js";
+import wasmModule from "../rust/pkg/argon2id/argon2id_bg.wasm";
+import { lazyInit } from "./init.ts";
 
-// The wasm-bindgen module must be instantiated once before its exports can be
-// called. Memoize the promise so concurrent calls share a single init.
-//
-// (This component doesn’t do concurrent WASM calls at the moment, but it’s still safer to do so.)
-let ready: Promise<unknown> | null = null;
-function ensureReady() {
-  if (!ready) {
-    ready = init({ module_or_path: wasmModule }).catch((cause: unknown) => {
-      // Reset so a later call can retry, and surface a clear error instead of
-      // the raw wasm-bindgen failure.
-      ready = null;
-      throw new Error(`Failed to initialize the argon2 WASM module: ${cause}`, {
-        cause,
-      });
-    });
-  }
-  return ready;
-}
+const ensureReady = lazyInit("argon2id", init, wasmModule);
 
 /** Hash a password with argon2id, returning a PHC string (salt + params embedded). */
 export async function hashPassword(password: string): Promise<string> {

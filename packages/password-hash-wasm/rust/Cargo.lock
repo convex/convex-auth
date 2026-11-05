@@ -15,6 +15,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "argon2id"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "base64ct"
 version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -117,14 +125,6 @@ dependencies = [
  "base64ct",
  "rand_core",
  "subtle",
-]
-
-[[package]]
-name = "password-hash-wasm"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "wasm-bindgen",
 ]
 
 [[package]]
