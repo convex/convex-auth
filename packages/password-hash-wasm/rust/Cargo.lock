@@ -217,6 +217,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "scrypt-encode"
+version = "0.1.0"
+dependencies = [
+ "scrypt",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "scrypt-wasm"
 version = "0.1.0"
 dependencies = [

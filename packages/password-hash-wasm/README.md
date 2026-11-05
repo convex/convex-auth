@@ -42,6 +42,18 @@ before the call if the hash was made from a normalized password. The
 parameters must be in limits that keep one verification inside the memory and
 time limits of a Convex mutation (see the doc comment of `verifyPassword`).
 
+## `password-hash-wasm/scrypt-encode`
+
+```ts
+import { encodePHC } from "password-hash-wasm/scrypt-encode";
+
+const phc = await encodePHC({ ln: 14, r: 16, p: 1, salt, hash });
+```
+
+`encodePHC` encodes the scrypt parameters, the salt, and the derived key of a
+hash from another system as a PHC string. It does not run scrypt, so its
+module is small. Use it to import hashes, for example in a migration.
+
 ## Building
 
 See [rust/README.md](https://github.com/convex/convex-auth/blob/reboot/packages/password-hash-wasm/rust/README.md)
