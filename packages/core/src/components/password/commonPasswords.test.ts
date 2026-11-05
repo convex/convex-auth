@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { isCommonPassword } from "./commonPasswords.ts";
 import { COMMON_PASSWORDS_BY_LENGTH } from "./commonPasswords.generated.ts";
-import { DEFAULT_MIN_PASSWORD_LENGTH } from "./validation.ts";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 
 // The minimum length of a password in the list (`MIN_LENGTH` of the generator
 // script).

@@ -6,4 +6,4 @@
  * @module
  */
 
-export { DEFAULT_MIN_PASSWORD_LENGTH } from "../../components/password/validation.ts";
+export { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
