@@ -43,10 +43,6 @@ const SOURCE_PATH =
  * minimum length of the component (`MIN_PASSWORD_LENGTH`), so that the list is
  * ready for a component minimum of 8 characters. Passwords that are shorter
  * than 8 characters are not necessary in the list.
- *
- * TODO(nicolas) Support more than one minimum length. Applications that use a
- * different minimum length need a different list. Note that the source list
- * contains only 357 distinct passwords with 15 characters or more.
  */
 const MIN_LENGTH = 8;
 
