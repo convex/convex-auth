@@ -1,27 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Plugin } from "vite";
 import { configDefaults, defineConfig } from "vitest/config";
-
-// Handles loading .wasm modules.
-// In production, the bundler used by the Convex CLI does this automatically.
-function wasmModulePlugin(): Plugin {
-  return {
-    name: "wasm-as-webassembly-module",
-    // Run before Vite's built-in `.wasm` handling, which would otherwise try to
-    // ESM-resolve the module's wasm-bindgen imports (e.g. "wbg") and fail.
-    enforce: "pre",
-    load(id) {
-      if (!id.endsWith(".wasm")) return null;
-      const base64 = readFileSync(id).toString("base64");
-      return `const bytes = Uint8Array.from(atob(${JSON.stringify(
-        base64,
-      )}), (c) => c.charCodeAt(0));
-export default new WebAssembly.Module(bytes);`;
-    },
-  };
-}
+// The plugin that apps use (`@convex-dev/auth/test/vitest`), from source so
+// the tests don't depend on a build.
+import { convexAuthTest } from "./packages/core/src/vitest/index.ts";
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +14,7 @@ const projects = ["packages", "examples"].flatMap((group) =>
   readdirSync(join(rootDir, group), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => ({
-      plugins: [wasmModulePlugin()],
+      plugins: [convexAuthTest()],
       test: {
         name: entry.name,
         root: `${group}/${entry.name}`,
@@ -42,15 +25,6 @@ const projects = ["packages", "examples"].flatMap((group) =>
         include: ["src/**/*.test.{ts,tsx}", "convex/**/*.test.{ts,tsx}"],
         exclude: [...configDefaults.exclude, "**/target/**", "**/pkg/**"],
         passWithNoTests: true, // TODO(nicolas) remove?
-        server: {
-          deps: {
-            // convex-test loads function modules dynamically; inlining keeps
-            // that resolution working under Vitest's transform pipeline.
-            // `argon2id-wasm` is inlined so its `.wasm` import is handled
-            // by `wasmModulePlugin`.
-            inline: ["convex-test", "argon2id-wasm"],
-          },
-        },
       },
     })),
 );

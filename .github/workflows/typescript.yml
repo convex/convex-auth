@@ -59,6 +59,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Runs an example with the Vitest config of the testing docs, which
+      # imports the plugin from the built package, as an app does.
+      - name: Test with the documented Vitest config
+        run: pnpm --filter ./examples/react-password test:consumer
+
       # `tsc` does not compile the MDX content, thus a docs build is necessary
       # to find syntax errors in the documentation.
       - name: Build docs

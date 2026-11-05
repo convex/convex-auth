@@ -13,7 +13,8 @@
   "scripts": {
     "dev": "convex dev --start vite",
     "build": "vite build && tsc -p convex --noEmit",
-    "typecheck": "tsc --noEmit && tsc -p convex --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p convex --noEmit",
+    "test:consumer": "vitest run --config vitest.consumer.config.ts"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

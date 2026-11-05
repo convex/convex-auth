@@ -1,0 +1,96 @@
+---
+title: Testing
+description: Test your Convex Auth functions with convex-test and Vitest.
+---
+
+Convex Auth ships helpers that register its components with
+[`convex-test`](https://docs.convex.dev/testing/convex-test), so you can call
+your auth functions from Vitest without a deployment.
+
+## Install
+
+```sh
+npm i -D convex-test vitest @edge-runtime/vm
+```
+
+## Configure Vitest
+
+Add the `convexAuthTest` plugin to `vitest.config.ts`:
+
+```ts title="vitest.config.ts"
+import { defineConfig } from "vitest/config";
+import { convexAuthTest } from "@convex-dev/auth/test/vitest";
+
+export default defineConfig({
+  plugins: [convexAuthTest()],
+  test: {
+    environment: "edge-runtime",
+  },
+});
+```
+
+The password component hashes passwords with an argon2id WebAssembly module.
+The Convex CLI bundles that module for you when you deploy, but Vitest does
+not. The plugin does two things:
+
+- It loads each `.wasm` import as a `WebAssembly.Module`, the same as the
+  Convex CLI.
+- It adds `convex-test` and `argon2id-wasm` to `test.server.deps.inline`, so
+  that Vitest sends their imports through the plugin instead of handing them
+  to Node. Your own entries in `inline` stay.
+
+Without the plugin, each test that hashes a password fails with:
+
+```
+Error: Cannot find package 'wbg' imported from .../argon2id-wasm/rust/pkg/argon2_wasm_bg.wasm
+```
+
+## Configure TypeScript
+
+The test helpers ship as TypeScript source, and their relative imports keep
+the `.ts` extension. Set `allowImportingTsExtensions` in the `tsconfig.json`
+that covers your tests, usually `convex/tsconfig.json`, or `tsc` reports
+TS5097:
+
+```json title="convex/tsconfig.json"
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client"]
+  }
+}
+```
+
+## Write a test
+
+Register the core and each component that your app mounts, with the same
+names as in `convex/convex.config.ts`:
+
+```ts title="convex/auth.test.ts"
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { registerCore } from "@convex-dev/auth/test";
+import { registerPasswordProvider } from "@convex-dev/auth/components/password/test";
+import { registerUsername } from "@convex-dev/auth/components/username/test";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+
+test("signs up with a username and a password", async () => {
+  const t = convexTest(schema, modules);
+  registerCore(t);
+  registerPasswordProvider(t);
+  registerUsername(t);
+
+  const result = await t.mutation(api.auth.signUpWithUsernamePassword, {
+    username: "alice",
+    password: "correct horse battery staple",
+  });
+  expect(result).toMatchObject({ status: "complete" });
+});
+```
+
+Each component has a helper at `@convex-dev/auth/components/<name>/test`. See
+`examples/react-password/convex/password.test.ts` in the repository for a
+complete suite.
