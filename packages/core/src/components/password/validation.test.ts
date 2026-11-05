@@ -11,6 +11,10 @@ describe("minimumLength", () => {
       error: "PASSWORD_TOO_SHORT",
       minimumLength: 10,
     });
+  });
+
+  test("accepts a password that is as long as minimumLength or longer", () => {
+    expect(validatePasswordInputFormat("kY7t-vQ2m", 9)).toBe(null);
     expect(validatePasswordInputFormat("kY7t-vQ2m", MIN_PASSWORD_LENGTH)).toBe(
       null,
     );
