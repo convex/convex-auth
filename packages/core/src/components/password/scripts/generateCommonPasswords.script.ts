@@ -9,7 +9,8 @@
  *  1. It makes a clone of the SecLists repository in a temporary directory.
  *     The clone gets only one file, because a full clone is approximately 1 GB.
  *  2. It reads the password list. The list is in order of frequency.
- *  3. It keeps the most frequent passwords that are long enough.
+ *  3. It keeps the most frequent passwords that are long enough (see
+ *     `METHOD_PASSWORD_COUNT`).
  *  4. It writes the generated TypeScript file.
  *  5. It removes the temporary directory.
  *
@@ -38,18 +39,31 @@ const SOURCE_PATH =
   "Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt";
 
 /**
- * The minimum length of a password that this project accepts. Passwords that
- * are shorter are already rejected by `validatePasswordInputFormat`. Thus it is
- * not necessary to put them in the generated list.
+ * The minimum length of a password in the generated list. It is less than the
+ * minimum length of the component (`MIN_PASSWORD_LENGTH`), so that the list is
+ * ready for a component minimum of 8 characters. Passwords that are shorter
+ * than 8 characters are not necessary in the list.
  *
  * TODO(nicolas) Support more than one minimum length. Applications that use a
  * different minimum length need a different list. Note that the source list
  * contains only 357 distinct passwords with 15 characters or more.
  */
-const MIN_LENGTH = 10;
+const MIN_LENGTH = 8;
 
-/** The quantity of passwords to put in the generated list. */
-const PASSWORD_COUNT = 3000;
+/**
+ * The minimum length of a new password in the password methods
+ * (`DEFAULT_MIN_PASSWORD_LENGTH`).
+ */
+const METHOD_MIN_LENGTH = 10;
+
+/**
+ * The quantity of passwords with {@link METHOD_MIN_LENGTH} characters or more to
+ * put in the generated list. The list also contains all the passwords of
+ * {@link MIN_LENGTH} characters or more that are more frequent than the last
+ * of these passwords. Thus the password methods get the same protection as with
+ * a list of these passwords only.
+ */
+const METHOD_PASSWORD_COUNT = 3000;
 
 const OUTPUT_PATH = fileURLToPath(
   new URL("../commonPasswords.generated.ts", import.meta.url),
@@ -115,6 +129,7 @@ function run(command: string, args: string[]): void {
 function selectPasswords(sourceText: string): string[] {
   const selected: string[] = [];
   const seen = new Set<string>();
+  let methodPasswordCount = 0;
 
   for (const line of sourceText.split("\n")) {
     const password = line.replace(/\r$/, "");
@@ -135,15 +150,19 @@ function selectPasswords(sourceText: string): string[] {
     }
     seen.add(normalized);
     selected.push(normalized);
-    if (selected.length === PASSWORD_COUNT) {
-      break;
+    if ([...normalized].length >= METHOD_MIN_LENGTH) {
+      methodPasswordCount++;
+      if (methodPasswordCount === METHOD_PASSWORD_COUNT) {
+        break;
+      }
     }
   }
 
-  if (selected.length < PASSWORD_COUNT) {
+  if (methodPasswordCount < METHOD_PASSWORD_COUNT) {
     throw new Error(
-      `The source list contains only ${selected.length} applicable passwords, ` +
-        `but ${PASSWORD_COUNT} are necessary.`,
+      `The source list contains only ${methodPasswordCount} passwords with ` +
+        `${METHOD_MIN_LENGTH} characters or more, but ${METHOD_PASSWORD_COUNT} ` +
+        `are necessary.`,
     );
   }
   return selected;
@@ -174,7 +193,10 @@ function renderGeneratedFile(passwords: string[]): string {
 
   return `/* eslint-disable */
 /**
- * The ${PASSWORD_COUNT} most frequent passwords with ${MIN_LENGTH} characters or more.
+ * The most frequent passwords with ${MIN_LENGTH} characters or more. The list
+ * contains the ${METHOD_PASSWORD_COUNT} most frequent passwords with ${METHOD_MIN_LENGTH} characters or
+ * more, and all the shorter passwords that are more frequent than the last of
+ * them.
  *
  * THIS CODE IS AUTOMATICALLY GENERATED. DO NOT EDIT IT.
  * To make it again, run \`bun run generate:common-passwords\` from

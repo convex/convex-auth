@@ -1,18 +1,25 @@
 import { describe, expect, test } from "vitest";
 import { isCommonPassword } from "./commonPasswords.ts";
 import { COMMON_PASSWORDS_BY_LENGTH } from "./commonPasswords.generated.ts";
-import { MIN_PASSWORD_LENGTH } from "./validation.ts";
+import { DEFAULT_MIN_PASSWORD_LENGTH } from "./validation.ts";
+
+// The minimum length of a password in the list (`MIN_LENGTH` of the generator
+// script).
+const LIST_MIN_LENGTH = 8;
 
 const allPasswords = Object.values(COMMON_PASSWORDS_BY_LENGTH).flat();
 
 describe("the generated list", () => {
-  test("contains 3000 passwords", () => {
-    expect(allPasswords.length).toBe(3000);
+  test("contains 3000 passwords that the password methods accept", () => {
+    const methodPasswords = allPasswords.filter(
+      (password) => [...password].length >= DEFAULT_MIN_PASSWORD_LENGTH,
+    );
+    expect(methodPasswords.length).toBe(3000);
   });
 
   test("contains no password that is too short", () => {
     for (const password of allPasswords) {
-      expect([...password].length).toBeGreaterThanOrEqual(MIN_PASSWORD_LENGTH);
+      expect([...password].length).toBeGreaterThanOrEqual(LIST_MIN_LENGTH);
     }
   });
 
@@ -70,8 +77,13 @@ describe("isCommonPassword", () => {
     expect(isCommonPassword(decomposed)).toBe(false);
   });
 
+  test("finds a frequent password of 8 characters", () => {
+    expect(isCommonPassword("password")).toBe(true);
+    expect(isCommonPassword("12345678")).toBe(true);
+  });
+
   test("does not find a password that is too short for the list", () => {
-    expect(isCommonPassword("password")).toBe(false);
+    expect(isCommonPassword("passwor")).toBe(false);
     expect(isCommonPassword("")).toBe(false);
   });
 });
