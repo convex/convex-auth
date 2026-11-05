@@ -12,6 +12,7 @@ WebAssembly module:
 | Entry point                   | Rust crate                         |
 | ----------------------------- | ---------------------------------- |
 | `password-hash-wasm/argon2id` | [`argon2`](https://docs.rs/argon2) |
+| `password-hash-wasm/scrypt`   | [`scrypt`](https://docs.rs/scrypt) |
 
 ## `password-hash-wasm/argon2id`
 
@@ -23,6 +24,23 @@ const ok = await verifyPassword("correct horse battery staple", phc);
 ```
 
 `hashPassword` returns a PHC string with the salt and parameters embedded.
+
+## `password-hash-wasm/scrypt`
+
+```ts
+import { verifyPassword } from "password-hash-wasm/scrypt";
+
+const ok = await verifyPassword(
+  "correct horse battery staple",
+  "$scrypt$ln=14,r=16,p=1$<salt>$<hash>",
+);
+```
+
+`verifyPassword` verifies a password against a scrypt PHC string. The package
+does not make scrypt hashes. The password is hashed as given: normalize it
+before the call if the hash was made from a normalized password. The
+parameters must be in limits that keep one verification inside the memory and
+time limits of a Convex mutation (see the doc comment of `verifyPassword`).
 
 ## Building
 

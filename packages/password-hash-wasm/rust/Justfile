@@ -3,7 +3,7 @@ set shell := ["bash", "-uc"]
 wasm-pack-version := "0.15.0"
 
 # The workspace crates. Each one builds to `pkg/<crate>/`.
-crates := "argon2id"
+crates := "argon2id scrypt"
 
 _default:
     @just --list
