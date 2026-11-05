@@ -2,15 +2,21 @@ import { Infer, v } from "convex/values";
 import { isCommonPassword } from "./commonPasswords.ts";
 
 // Password requirements, following the NIST guidance summarized at
-// https://auth.pilcrowonpaper.com/passwords: 10–100 characters, any printable
-// Unicode, no leading/trailing whitespace.
+// https://auth.pilcrowonpaper.com/passwords: 8–100 characters, any printable
+// Unicode, no leading/trailing whitespace. The password methods require 10
+// characters or more for a new password (`DEFAULT_MIN_PASSWORD_LENGTH` of
+// `lib/password.ts`).
 
 /**
- * The minimum length of a password. The password methods have their own
- * minimum for a new password (`DEFAULT_MIN_PASSWORD_LENGTH` of
- * `lib/password.ts`).
+ * The absolute minimum length of a password. The component rejects a shorter
+ * password in `setPassword` and in `verifyPassword`.
+ *
+ * It is lower than the minimum of the password methods (10), so that the component
+ * can verify the passwords of other systems with this minimum (for example,
+ * Convex Auth v1 accepts passwords of 8 characters).
  */
-export const MIN_PASSWORD_LENGTH = 10;
+export const MIN_PASSWORD_LENGTH = 8;
+
 export const MAX_PASSWORD_LENGTH = 100;
 
 /**
@@ -60,19 +66,31 @@ export type VerifyPasswordUserError = Infer<typeof verifyPasswordUserError>;
  * Returns a `PasswordFormatUserError` describing the first violation, or `null` when the
  * password is valid.
  *
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH}. This is
+ * an error of the caller, not of the user.
+ *
  * This doesn’t check that the password is not of the list of most commonly-used password
  * (use {@link validateNewPassword} when this check is necessary).
  */
 export function validatePasswordInputFormat(
   password: string,
+  minimumLength: number,
 ): PasswordFormatUserError | null {
+  // Use a negation, so that the test also rejects `NaN`:
+  // `NaN < MIN_PASSWORD_LENGTH` is false.
+  if (!(minimumLength >= MIN_PASSWORD_LENGTH)) {
+    throw new Error(
+      `minimumLength must be ${MIN_PASSWORD_LENGTH} or more, but it is ${minimumLength}.`,
+    );
+  }
+
   // Length is measured in Unicode code points (`[...password].length`) rather
   // than UTF-16 units, so an astral character (e.g. an emoji) counts as one, per
   // NIST's "1 character" intent.
   const length = [...password].length;
 
-  if (length < MIN_PASSWORD_LENGTH) {
-    return { error: "PASSWORD_TOO_SHORT", minimumLength: MIN_PASSWORD_LENGTH };
+  if (length < minimumLength) {
+    return { error: "PASSWORD_TOO_SHORT", minimumLength };
   }
   if (length > MAX_PASSWORD_LENGTH) {
     return { error: "PASSWORD_TOO_LONG", maximumLength: MAX_PASSWORD_LENGTH };
@@ -94,13 +112,19 @@ export function validatePasswordInputFormat(
  * {@link validatePasswordInputFormat} and then rejects the most frequent
  * passwords.
  *
+ * The component gives {@link MIN_PASSWORD_LENGTH} as `minimumLength`. The
+ * password methods give a higher minimum (`DEFAULT_MIN_PASSWORD_LENGTH`).
+ *
  * Returns a `SetPasswordUserError` for the first violation, or
  * `null` when the password is applicable.
+ *
+ * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH}.
  */
 export function validateNewPassword(
   password: string,
+  minimumLength: number,
 ): SetPasswordUserError | null {
-  const formatError = validatePasswordInputFormat(password);
+  const formatError = validatePasswordInputFormat(password, minimumLength);
   if (formatError !== null) {
     return formatError;
   }

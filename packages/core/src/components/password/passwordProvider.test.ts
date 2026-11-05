@@ -111,7 +111,35 @@ describe("password validation (setPassword)", () => {
     });
     expect(result).toEqual({
       success: false,
-      userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 10 },
+      userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 8 },
+    });
+  });
+
+  // The password methods require 10 characters, but the component accepts 8.
+  test("accepts a password of 8 characters", async () => {
+    const t = setup();
+    const result = await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: "kY7t-vQ2",
+    });
+    expect(result).toEqual({ success: true });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: "kY7t-vQ2",
+      }),
+    ).toEqual({ success: true });
+  });
+
+  test("rejects a frequent password of 8 characters", async () => {
+    const t = setup();
+    const result = await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: "12345678",
+    });
+    expect(result).toEqual({
+      success: false,
+      userError: { error: "PASSWORD_TOO_COMMON" },
     });
   });
 
@@ -165,7 +193,7 @@ describe("password validation (verifyPassword)", () => {
     });
     expect(result).toEqual({
       success: false,
-      userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 10 },
+      userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 8 },
     });
   });
 

@@ -194,7 +194,8 @@ describe("setupUsernamePassword", () => {
 
   test("rejects a too-short password at sign-up without creating an account", async () => {
     const t = await setup();
-    const up = await signUp(t, "alice", "short");
+    // 9 characters: the password component accepts it, the method does not.
+    const up = await signUp(t, "alice", "kY7t-vQ2m");
     expect(up).toEqual({
       status: "error",
       userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 10 },

@@ -40,10 +40,10 @@ const SOURCE_PATH =
   "Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt";
 
 /**
- * The minimum length of a password in the generated list. It is less than the
- * minimum length of the component (`MIN_PASSWORD_LENGTH`), so that the list is
- * ready for a component minimum of 8 characters. Passwords that are shorter
- * than 8 characters are not necessary in the list.
+ * The minimum length of a password that the component accepts
+ * (`MIN_PASSWORD_LENGTH`). Passwords that are shorter are already rejected by
+ * `validatePasswordInputFormat`. Thus it is not necessary to put them in the
+ * generated list.
  */
 const MIN_LENGTH = 8;
 
