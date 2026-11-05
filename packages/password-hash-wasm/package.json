@@ -13,6 +13,7 @@
   "files": [
     "dist",
     "src/argon2id.ts",
+    "src/argon2id-encode.ts",
     "src/init.ts",
     "src/scrypt.ts",
     "src/scrypt-encode.ts",
@@ -26,6 +27,10 @@
     "./argon2id": {
       "types": "./dist/argon2id.d.ts",
       "default": "./dist/argon2id.js"
+    },
+    "./argon2id-encode": {
+      "types": "./dist/argon2id-encode.d.ts",
+      "default": "./dist/argon2id-encode.js"
     },
     "./scrypt": {
       "types": "./dist/scrypt.d.ts",

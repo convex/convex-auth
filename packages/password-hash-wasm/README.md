@@ -9,10 +9,11 @@ Password hashing for JavaScript. This is a thin wrapper around Rust crates,
 compiled to WebAssembly with `wasm-bindgen`. Each entry point loads its own
 WebAssembly module:
 
-| Entry point                   | Rust crate                         |
-| ----------------------------- | ---------------------------------- |
-| `password-hash-wasm/argon2id` | [`argon2`](https://docs.rs/argon2) |
-| `password-hash-wasm/scrypt`   | [`scrypt`](https://docs.rs/scrypt) |
+| Entry point                          | Rust crate                                             |
+| ------------------------------------ | ------------------------------------------------------ |
+| `password-hash-wasm/argon2id`        | [`argon2`](https://docs.rs/argon2)                     |
+| `password-hash-wasm/argon2id-encode` | [`argon2`](https://docs.rs/argon2) (PHC encoding only) |
+| `password-hash-wasm/scrypt`          | [`scrypt`](https://docs.rs/scrypt)                     |
 
 ## `password-hash-wasm/argon2id`
 
@@ -24,6 +25,18 @@ const ok = await verifyPassword("correct horse battery staple", phc);
 ```
 
 `hashPassword` returns a PHC string with the salt and parameters embedded.
+
+## `password-hash-wasm/argon2id-encode`
+
+```ts
+import { encodePHC } from "password-hash-wasm/argon2id-encode";
+
+const phc = await encodePHC({ m: 16384, t: 3, p: 1, salt, hash });
+```
+
+`encodePHC` encodes the argon2id parameters, the salt, and the derived key of a
+hash from another system as a PHC string. It does not run argon2, so its module
+is small. Use it to import hashes, for example in a migration.
 
 ## `password-hash-wasm/scrypt`
 

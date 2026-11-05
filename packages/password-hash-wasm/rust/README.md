@@ -8,6 +8,8 @@ Each crate builds to its own `.wasm` file in `pkg/<crate>/`, and each entry poin
 of the package loads one of them:
 
 - `argon2id/` wraps [`argon2`](https://docs.rs/argon2) (`password-hash-wasm/argon2id`).
+- `argon2id-encode/` uses the PHC encoding of [`argon2`](https://docs.rs/argon2)
+  (`password-hash-wasm/argon2id-encode`).
 - `scrypt/` wraps [`scrypt`](https://docs.rs/scrypt) (`password-hash-wasm/scrypt`).
 - `scrypt-encode/` uses the PHC encoding of [`scrypt`](https://docs.rs/scrypt)
   (`password-hash-wasm/scrypt-encode`).

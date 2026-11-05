@@ -2,7 +2,7 @@
 # an entry point of the package loads only the code that it uses.
 [workspace]
 resolver = "2"
-members = ["argon2id", "scrypt", "scrypt-encode"]
+members = ["argon2id", "argon2id-encode", "scrypt", "scrypt-encode"]
 
 [workspace.package]
 version = "0.1.0"
