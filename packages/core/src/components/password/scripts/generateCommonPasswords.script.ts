@@ -10,7 +10,7 @@
  *     The clone gets only one file, because a full clone is approximately 1 GB.
  *  2. It reads the password list. The list is in order of frequency.
  *  3. It keeps the most frequent passwords that are long enough (see
- *     `METHOD_PASSWORD_COUNT`).
+ *     `PASSWORD_COUNT`).
  *  4. It writes the generated TypeScript file.
  *  5. It removes the temporary directory.
  *
@@ -53,13 +53,16 @@ const MIN_LENGTH = 8;
 const METHOD_MIN_LENGTH = 10;
 
 /**
- * The quantity of passwords with {@link METHOD_MIN_LENGTH} characters or more to
- * put in the generated list. The list also contains all the passwords of
- * {@link MIN_LENGTH} characters or more that are more frequent than the last
- * of these passwords. Thus the password methods get the same protection as with
- * a list of these passwords only.
+ * The quantity of passwords for each minimum length. The generated list
+ * contains the union of two lists:
+ *  - The {@link PASSWORD_COUNT} most frequent passwords with
+ *    {@link MIN_LENGTH} characters or more.
+ *  - The {@link PASSWORD_COUNT} most frequent passwords with
+ *    {@link METHOD_MIN_LENGTH} characters or more.
+ *
+ * Thus an application with either minimum length gets a full list.
  */
-const METHOD_PASSWORD_COUNT = 3000;
+const PASSWORD_COUNT = 3000;
 
 const OUTPUT_PATH = fileURLToPath(
   new URL("../commonPasswords.generated.ts", import.meta.url),
@@ -125,6 +128,10 @@ function run(command: string, args: string[]): void {
 function selectPasswords(sourceText: string): string[] {
   const selected: string[] = [];
   const seen = new Set<string>();
+  // The quantity of distinct passwords with `MIN_LENGTH` characters or more
+  // before the current password, and with `METHOD_MIN_LENGTH` characters or
+  // more.
+  let listPasswordCount = 0;
   let methodPasswordCount = 0;
 
   for (const line of sourceText.split("\n")) {
@@ -145,19 +152,29 @@ function selectPasswords(sourceText: string): string[] {
       continue;
     }
     seen.add(normalized);
-    selected.push(normalized);
-    if ([...normalized].length >= METHOD_MIN_LENGTH) {
+    const isMethodPassword = [...normalized].length >= METHOD_MIN_LENGTH;
+    if (
+      listPasswordCount < PASSWORD_COUNT ||
+      (isMethodPassword && methodPasswordCount < PASSWORD_COUNT)
+    ) {
+      selected.push(normalized);
+    }
+    listPasswordCount++;
+    if (isMethodPassword) {
       methodPasswordCount++;
-      if (methodPasswordCount === METHOD_PASSWORD_COUNT) {
-        break;
-      }
+    }
+    if (
+      listPasswordCount >= PASSWORD_COUNT &&
+      methodPasswordCount >= PASSWORD_COUNT
+    ) {
+      break;
     }
   }
 
-  if (methodPasswordCount < METHOD_PASSWORD_COUNT) {
+  if (methodPasswordCount < PASSWORD_COUNT) {
     throw new Error(
       `The source list contains only ${methodPasswordCount} passwords with ` +
-        `${METHOD_MIN_LENGTH} characters or more, but ${METHOD_PASSWORD_COUNT} ` +
+        `${METHOD_MIN_LENGTH} characters or more, but ${PASSWORD_COUNT} ` +
         `are necessary.`,
     );
   }
@@ -189,10 +206,8 @@ function renderGeneratedFile(passwords: string[]): string {
 
   return `/* eslint-disable */
 /**
- * The most frequent passwords with ${MIN_LENGTH} characters or more. The list
- * contains the ${METHOD_PASSWORD_COUNT} most frequent passwords with ${METHOD_MIN_LENGTH} characters or
- * more, and all the shorter passwords that are more frequent than the last of
- * them.
+ * The ${PASSWORD_COUNT} most frequent passwords with ${MIN_LENGTH} characters or more, and
+ * the ${PASSWORD_COUNT} most frequent passwords with ${METHOD_MIN_LENGTH} characters or more.
  *
  * THIS CODE IS AUTOMATICALLY GENERATED. DO NOT EDIT IT.
  * To make it again, run \`bun run generate:common-passwords\` from
