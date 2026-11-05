@@ -9,7 +9,8 @@
     "serve": "docusaurus serve",
     "clear": "docusaurus clear",
     "typecheck": "tsc --noEmit",
-    "api": "node scripts/generate-api-reference.mjs"
+    "api": "node scripts/generate-api-reference.mjs",
+    "export-docs": "node scripts/export-docs.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "~3.10.1",

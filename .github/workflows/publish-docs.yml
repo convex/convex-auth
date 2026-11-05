@@ -1,0 +1,89 @@
+name: Publish docs
+# Attaches the docs of a release, with the code blocks inlined, to its GitHub
+# Release, for a site that publishes them without this repository.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The tag to export the docs of (such as v2.0.0-beta.0)"
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  export:
+    if: github.repository == 'convex/convex-auth'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+
+      - name: Use Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.x
+          # No cache: a cache that another workflow wrote could poison the
+          # release assets.
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter docs --filter @convex-dev/auth
+
+      - name: Generate the API reference
+        working-directory: packages/docs
+        run: pnpm run api
+
+      - name: Export the docs
+        working-directory: packages/docs
+        run: node scripts/export-docs.mjs "$RUNNER_TEMP/docs"
+
+      - name: Package the docs
+        run: |
+          tar -czf convex-auth-docs.tar.gz -C "$RUNNER_TEMP/docs" .
+          sha256sum convex-auth-docs.tar.gz > convex-auth-docs.tar.gz.sha256
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docs
+          path: |
+            convex-auth-docs.tar.gz
+            convex-auth-docs.tar.gz.sha256
+          if-no-files-found: error
+
+  upload:
+    needs: export
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: docs
+
+      - name: Upload to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            prerelease=()
+            if [[ "$TAG" == *-* ]]; then prerelease=(--prerelease); fi
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes "" "${prerelease[@]}"
+          fi
+          gh release upload "$TAG" --clobber convex-auth-docs.tar.gz convex-auth-docs.tar.gz.sha256
