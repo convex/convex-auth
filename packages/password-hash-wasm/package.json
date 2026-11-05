@@ -14,6 +14,7 @@
     "dist",
     "src/argon2id.ts",
     "src/init.ts",
+    "src/scrypt.ts",
     "src/wasm.d.ts",
     "rust/pkg"
   ],
@@ -24,6 +25,10 @@
     "./argon2id": {
       "types": "./dist/argon2id.d.ts",
       "default": "./dist/argon2id.js"
+    },
+    "./scrypt": {
+      "types": "./dist/scrypt.d.ts",
+      "default": "./dist/scrypt.js"
     }
   },
   "scripts": {

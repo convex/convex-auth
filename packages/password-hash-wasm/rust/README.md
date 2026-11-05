@@ -8,6 +8,7 @@ Each crate builds to its own `.wasm` file in `pkg/<crate>/`, and each entry poin
 of the package loads one of them:
 
 - `argon2id/` wraps [`argon2`](https://docs.rs/argon2) (`password-hash-wasm/argon2id`).
+- `scrypt/` wraps [`scrypt`](https://docs.rs/scrypt) (`password-hash-wasm/scrypt`).
 
 To add a crate, add it to `members` in `Cargo.toml` and to `crates` in the
 `Justfile`, then add its entry point in `src/` and in the `exports` of

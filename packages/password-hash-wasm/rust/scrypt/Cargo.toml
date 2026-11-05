@@ -1,0 +1,11 @@
+[package]
+name = "scrypt-wasm"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen.workspace = true
+scrypt = { version = "0.11", default-features = false, features = ["simple"] }
