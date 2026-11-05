@@ -1,6 +1,6 @@
 {
   "name": "password-hash-wasm",
-  "version": "0.0.0-alpha.0",
+  "version": "0.0.0",
   "description": "Password hashing in WASM",
   "homepage": "https://github.com/convex/convex-auth/tree/reboot/packages/password-hash-wasm#readme",
   "bugs": "https://github.com/convex/convex-auth/issues",

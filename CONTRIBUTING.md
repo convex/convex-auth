@@ -109,7 +109,7 @@ output, so this needs the toolchain from the section above.
 ```sh
 cd packages/password-hash-wasm
 # bump the version in package.json, then
-pnpm publish --tag alpha --publish-branch reboot
+pnpm publish --publish-branch reboot
 ```
 
 Then update the exact `password-hash-wasm` version in `packages/core`'s dependencies
