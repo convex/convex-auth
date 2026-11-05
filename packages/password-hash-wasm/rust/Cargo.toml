@@ -1,11 +1,12 @@
-[package]
-name = "password-hash-wasm"
+# One crate per WASM module. Each crate builds to its own `.wasm` file, so that
+# an entry point of the package loads only the code that it uses.
+[workspace]
+resolver = "2"
+members = ["argon2id"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-crate-type = ["cdylib"]
-
-[dependencies]
+[workspace.dependencies]
 wasm-bindgen = "0.2.100"
-argon2 = { version = "0.5", features = ["password-hash"] }

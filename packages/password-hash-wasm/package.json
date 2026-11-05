@@ -12,7 +12,8 @@
   },
   "files": [
     "dist",
-    "src/index.ts",
+    "src/argon2id.ts",
+    "src/init.ts",
     "src/wasm.d.ts",
     "rust/pkg"
   ],
@@ -20,9 +21,9 @@
   "sideEffects": false,
   "exports": {
     "./package.json": "./package.json",
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+    "./argon2id": {
+      "types": "./dist/argon2id.d.ts",
+      "default": "./dist/argon2id.js"
     }
   },
   "scripts": {

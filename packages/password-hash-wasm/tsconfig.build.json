@@ -10,11 +10,14 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    // `rust/pkg/argon2_wasm.js` is resolved through its checked-in `.d.ts`, so
+    // The relative imports in `src/` carry the `.ts` extension of the file on
+    // disk; the emitted JavaScript imports the `.js` file.
+    "rewriteRelativeImportExtensions": true,
+    // `rust/pkg/<crate>/<crate>.js` is resolved through its checked-in `.d.ts`, so
     // it stays out of the program (and out of `rootDir`) entirely.
     "allowJs": false,
     "types": []
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "rust/target"]
+  "exclude": ["node_modules", "dist", "rust/target", "src/**/*.test.ts"]
 }
