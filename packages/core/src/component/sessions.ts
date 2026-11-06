@@ -1,7 +1,10 @@
 // Sessions and the lifecycle of their refresh tokens: issuing, redeeming,
 // retiring, and erasing them. The public functions in public.ts build on these.
 
+import { v } from "convex/values";
+import { internal } from "./_generated/api.ts";
 import type { Doc, Id } from "./_generated/dataModel.ts";
+import { internalMutation } from "./_generated/server.ts";
 import type { MutationCtx, QueryCtx } from "./_generated/server.ts";
 import { generateRefreshToken } from "./crypto.ts";
 import { sha256Hex } from "../lib/crypto.ts";
@@ -124,7 +127,15 @@ export async function evictLeastRecentlyRefreshedSessions(
 }
 
 /**
- * Erase a session along with every refresh token that points at it.
+ * Erase a session, and schedule the erasure of every refresh token that points
+ * at it.
+ *
+ * The session ends when its row is gone: `refresh` refuses a token whose
+ * session is gone, thus no token can be added to it again. Its token rows only
+ * linger until `deleteSessionTokens` gets to them. That keeps this function at
+ * a few reads and writes however many rows the session holds, so a mutation
+ * can erase many sessions at once (e.g. revoking a user's other sessions on a
+ * password reset) without exceeding the transaction's limits.
  *
  * Idempotent, because callers can race: two replays of the same stolen token,
  * or a sign-out arriving alongside one, can both resolve the same session.
@@ -133,24 +144,46 @@ export async function deleteSession(
   ctx: MutationCtx,
   sessionId: Id<"sessions">,
 ): Promise<void> {
-  // Reads every token row the session has. That is fine at any plausible
-  // refresh rate — the horizon divided by the refresh interval, ~60 at the
-  // defaults — but it is unbounded in principle. A session refreshed
-  // pathologically often could exceed the transaction's limits and make the
-  // session unusable.
-  const tokens = await ctx.db
-    .query("refreshTokens")
-    .withIndex("by_session_state", (q) => q.eq("sessionId", sessionId))
-    .collect();
-  for (const row of tokens) {
-    await ctx.db.delete("refreshTokens", row._id);
-  }
   // `delete` throws on an id that is already gone, and the session may have
-  // been deleted by whoever we raced.
-  if ((await ctx.db.get("sessions", sessionId)) !== null) {
-    await ctx.db.delete("sessions", sessionId);
+  // been deleted by whoever we raced, which also scheduled its tokens.
+  if ((await ctx.db.get("sessions", sessionId)) === null) {
+    return;
   }
+  await ctx.db.delete("sessions", sessionId);
+  await ctx.scheduler.runAfter(0, internal.sessions.deleteSessionTokens, {
+    sessionId,
+  });
 }
+
+// How many token rows one run of `deleteSessionTokens` erases, well within the
+// transaction's limits.
+const TOKEN_DELETION_BATCH_SIZE = 1000;
+
+/**
+ * Erase the refresh tokens of a deleted session, one batch at a time, and
+ * schedule another run while more may remain.
+ *
+ * The session is gone, thus nothing adds a row to it, and the runs end.
+ */
+export const deleteSessionTokens = internalMutation({
+  args: { sessionId: v.id("sessions") },
+  returns: v.null(),
+  handler: async (ctx, { sessionId }) => {
+    const tokens = await ctx.db
+      .query("refreshTokens")
+      .withIndex("by_session_state", (q) => q.eq("sessionId", sessionId))
+      .take(TOKEN_DELETION_BATCH_SIZE);
+    for (const row of tokens) {
+      await ctx.db.delete("refreshTokens", row._id);
+    }
+    if (tokens.length === TOKEN_DELETION_BATCH_SIZE) {
+      await ctx.scheduler.runAfter(0, internal.sessions.deleteSessionTokens, {
+        sessionId,
+      });
+    }
+    return null;
+  },
+});
 
 /**
  * Erase this session's spent and dropped tokens that are past the detection

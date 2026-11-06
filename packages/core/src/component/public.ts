@@ -450,6 +450,11 @@ export const refresh = mutation({
     // anyone else out by presenting a made-up string, so an unknown token
     // reports no session and changes nothing.
     if (token === null) return { kind: "noSession" };
+    // A session's tokens are erased in the background after its row (see
+    // `deleteSession`), so a token can outlive its session for a moment. The
+    // session ended already, thus there is nothing to refresh or revoke.
+    const session = await ctx.db.get("sessions", token.sessionId);
+    if (session === null) return { kind: "noSession" };
 
     switch (token.state) {
       case "spent":
@@ -469,11 +474,6 @@ export const refresh = mutation({
         break;
     }
 
-    // Every refresh token row is deleted along with its session, so if we found
-    // the token, the session also exists. Note that a refresh never writes the
-    // session row: queries that read it (e.g. to check session liveness) stay
-    // cached across token refreshes.
-    const session = (await ctx.db.get("sessions", token.sessionId))!;
     // A redeemed token's session last refreshed when it issued its newest
     // token, so date inactivity from that one.
     const lastIssued =
