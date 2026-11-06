@@ -34,7 +34,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       createAccount: FunctionReference<
         "mutation",
         "internal",
-        { providerAccountId: string; providerName: string; userId: string },
+        { providerAccountId: string; userId: string },
         null,
         Name
       >;
@@ -56,7 +56,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       getUserIdByAccount: FunctionReference<
         "query",
         "internal",
-        { providerAccountId: string; providerName: string },
+        { providerAccountId: string },
         string | null,
         Name
       >;

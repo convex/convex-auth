@@ -1,7 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
-  accountFields,
+  accountsTable,
   authorizationRequestFields,
   ticketFields,
 } from "../../lib/oauth/schema.ts";
@@ -32,14 +32,5 @@ export default defineSchema({
     providerName: v.string(),
   }).index("ticketCodeHash", ["ticketCodeHash"]),
 
-  // One component instance can serve several providers, so an account is
-  // keyed by the provider's name as well as its account id: two providers
-  // may well both number their users from 1.
-  accounts: defineTable({
-    ...accountFields,
-    /** Provider the account belongs to, e.g. "acme". */
-    providerName: v.string(),
-  })
-    .index("providerAccountId", ["providerAccountId"])
-    .index("userId", ["userId"]),
+  accounts: accountsTable,
 });

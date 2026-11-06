@@ -203,39 +203,23 @@ export async function claimTicket<Doc extends TicketContract>(
 /**
  * Resolve a provider account id to the app user it belongs to, or `null`
  * when this component has never seen the identity. Redemption calls this to
- * pick between signing the user up and signing them in. `match` is an extra
- * check over the stored account, for a component that keeps more on it (the
- * custom-provider component also keys accounts by provider name).
+ * pick between signing the user up and signing them in.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
  * `findAccountUserId<Doc<"accounts">>(ctx, args)`.
  */
 export async function findAccountUserId<Doc extends AccountContract>(
   ctx: QueryCtx,
-  args: {
-    providerAccountId: string;
-    match?: (account: Doc) => boolean;
-  },
+  args: { providerAccountId: string },
 ): Promise<string | null> {
   // The same assertion as in claimAuthorizationRequest, for the same reason.
-  // A component that keeps more on the row can hold several rows with one
-  // provider account id (one per provider name), so this collects and
-  // filters rather than taking the unique row.
-  const accounts = (await ctx.db
+  const account = (await ctx.db
     .query("accounts")
     .withIndex("providerAccountId", (q) =>
       q.eq("providerAccountId", args.providerAccountId),
     )
-    .collect()) as (Doc & { _id: GenericId<"accounts"> })[];
-  const matching =
-    args.match === undefined ? accounts : accounts.filter(args.match);
-  if (matching.length > 1) {
-    throw new Error(
-      `Invariant violation: ${matching.length} accounts for provider account ` +
-        `id ${JSON.stringify(args.providerAccountId)}`,
-    );
-  }
-  return matching[0]?.userId ?? null;
+    .unique()) as Doc | null;
+  return account?.userId ?? null;
 }
 
 /**
@@ -249,7 +233,7 @@ export async function findAccountUserId<Doc extends AccountContract>(
  * have prevented it ran in this same transaction, so a hit here is a bug.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
- * `insertAccount<Doc<"accounts">>(ctx, account, userId, match)`.
+ * `insertAccount<Doc<"accounts">>(ctx, account, userId)`.
  */
 export async function insertAccount<Doc extends AccountContract>(
   ctx: MutationCtx,
@@ -259,11 +243,9 @@ export async function insertAccount<Doc extends AccountContract>(
     providerAccountId: string;
   },
   userId: string,
-  match?: (account: Doc) => boolean,
 ): Promise<null> {
   const existing = await findAccountUserId<Doc>(ctx, {
     providerAccountId: account.providerAccountId,
-    match,
   });
   if (existing !== null) {
     throw new Error(
