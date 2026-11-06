@@ -12,10 +12,13 @@ export default defineSchema({
     .index("by_provider_account", ["provider", "providerAccountId"])
     .index("by_user", ["userId"]),
 
-  // One row per active session. Its refresh tokens live in `refreshTokens`.
-  // A session expires once it goes `refreshInactivityTimeoutSeconds` without a
-  // refresh, or at the latest `sessionMaxLifetimeSeconds` after its
-  // `_creationTime`, under the values configured when it is checked.
+  // One row per live session. Its refresh tokens live in `refreshTokens`.
+  // Sign-out, revocation, and refresh-token reuse detection delete the row
+  // right away; an expired session's row is deleted by a background loop in
+  // cleanup.ts once it reaches its max lifetime. A session expires once it goes
+  // `refreshInactivityTimeoutSeconds` without a refresh, or at the latest
+  // `sessionMaxLifetimeSeconds` after its `_creationTime`, under the values
+  // configured when it is checked.
   // The row is only written when the session is created or deleted, so a query
   // reading it (e.g. to check session liveness) is not invalidated by token
   // refreshes.
@@ -71,8 +74,8 @@ export default defineSchema({
     .index("by_hash", ["hash"])
     .index("by_session_state", ["sessionId", "state", "retiredAt"]),
 
-  // The session lifetimes the app last passed in, so that background jobs,
-  // which run with no caller to pass them, know when a session expires. At
+  // The session lifetimes the app last passed in, so that the cleanup loop,
+  // which runs with no caller to pass them, know when a session expires. At
   // most one row. The functions that take the lifetimes as args (sign-in and
   // refresh) write it when the values they get differ from the stored ones,
   // which is rare, thus reading it on every refresh stays cheap.
