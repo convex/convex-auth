@@ -14,7 +14,7 @@ Schema and sign-in method API breaking changes - see below
   in before the upgrade get a new app user on their next sign-in unless their
   rows are copied into their component's `accounts` table first.
 - sign-in method API (`ctx.convexAuth`): `completeSignIn` takes the `userId`
-  the method resolved in its component, and `resolveUserId` is gone. The core's `getUserIdByAccount`
+  the sign-in method resolved in its component, and `resolveUserId` is gone. The core's `getUserIdByAccount`
   is gone; each OAuth component has its own.
 
 ## 2.0.0-beta.0

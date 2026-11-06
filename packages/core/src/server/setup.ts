@@ -128,10 +128,10 @@ export type AuthCore<UsersTable extends string = string> = {
    * Register a sign-in method with the core and get the function builders its
    * implementation uses.
    *
-   * `name` identifies the method to the app's user callbacks and on the
-   * sessions it signs in, so it must be unique among the methods bound to
-   * this core — a duplicate throws immediately (two methods sharing a name
-   * would be indistinguishable to the app).
+   * `name` identifies the sign-in method to the app's user callbacks and on
+   * the sessions it signs in, so it must be unique among the sign-in methods
+   * bound to this core — a duplicate throws immediately (two sign-in methods
+   * sharing a name would be indistinguishable to the app).
    *
    * `createUser` is the app's user-creating callback for this method and
    * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
@@ -286,7 +286,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
   // Names of methods bound to this core, for duplicate detection. Scoped to
   // this `setupConvexAuth` call (not module-global): the collision that matters is
-  // two methods on the same core, which the app could not tell apart.
+  // two sign-in methods on the same core, which the app could not tell apart.
   const boundMethodNames = new Set<string>();
 
   const bindProvider = <Provider extends string, Profile>({
@@ -303,8 +303,9 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     if (boundMethodNames.has(name)) {
       throw new Error(
         `A sign-in method named "${name}" is already bound to this auth core. ` +
-          `Method names identify the method to the app's callbacks and on ` +
-          `sessions, so each method must have a unique name.`,
+          `Sign-in method names identify the sign-in method to the app's ` +
+          `callbacks and on sessions, so each sign-in method must have a ` +
+          `unique name.`,
       );
     }
     boundMethodNames.add(name);
@@ -380,8 +381,8 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           ...ttl,
         });
       },
-      // Creates the app user without a session, for methods where the user
-      // must complete a step (e.g. an email validation) before the first
+      // Creates the app user without a session, for sign-in methods where the
+      // user must complete a step (e.g. an email validation) before the first
       // sign-in.
       signUpWithoutSession: async (args: {
         providerAccountId: string;

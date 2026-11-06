@@ -435,10 +435,11 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            // Create the app user without a session. The method's identity
-            // is the app user id itself (the email and password components
-            // key by it), which does not exist before this call mints it,
-            // hence the placeholder; sign-in passes the user id itself.
+            // Create the app user without a session. This sign-in method's
+            // identity is the app user id itself (the email and password
+            // components key by it), which does not exist before this call
+            // mints it, hence the placeholder; sign-in passes the user id
+            // itself.
             const { userId } = await ctx.convexAuth.signUpWithoutSession({
               providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
