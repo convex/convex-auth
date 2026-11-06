@@ -65,11 +65,15 @@ const signUp = authMutation({
     }),
 });
 
+// The test method keeps no component of its own, so it resolves the
+// identity the way the fixture's createUser minted it: the account id is the
+// user id.
 const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
+      userId: accountId,
       providerAccountId: accountId,
       profile: {},
     }),
@@ -112,6 +116,7 @@ const signInShortTtl = shortTtlAuthMutation({
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
+      userId: accountId,
       providerAccountId: accountId,
       profile: {},
     }),

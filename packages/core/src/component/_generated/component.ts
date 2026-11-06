@@ -31,13 +31,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { userId: string } | null,
         Name
       >;
-      getUserIdByAccount: FunctionReference<
-        "query",
-        "internal",
-        { provider: string; providerAccountId: string },
-        string | null,
-        Name
-      >;
       listSessions: FunctionReference<
         "query",
         "internal",
@@ -90,6 +83,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
           sessionMaxLifetimeSeconds: number;
+          userId: string;
         },
         {
           accessToken: string;
