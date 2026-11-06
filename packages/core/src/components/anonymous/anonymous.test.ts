@@ -11,9 +11,19 @@ function setup() {
 }
 
 describe("anonymous auth", () => {
-  test("createAnonymousAccount, returns ID", async () => {
+  test("createAnonymousAccount records the identity against its user", async () => {
     const t = setup();
-    const result = await t.mutation(api.provider.createAnonymousAccount, {});
-    expect(result).not.toBe(null);
+    await t.mutation(api.provider.createAnonymousAccount, {
+      anonymousId: "anon-1",
+      userId: "user-1",
+    });
+    const accounts = await t.run(
+      async (ctx) => await ctx.db.query("accounts").collect(),
+    );
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({
+      anonymousId: "anon-1",
+      userId: "user-1",
+    });
   });
 });
