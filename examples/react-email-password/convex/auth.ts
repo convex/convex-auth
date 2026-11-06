@@ -12,7 +12,7 @@ export const { signOut, refreshSession, isAuthenticated } = auth;
 
 export const {
   signUpWithEmailPassword,
-  completeSignUp,
+  completeSignUpWithEmailPassword,
   signInWithEmailPassword,
   changePassword,
   startChangeEmail,

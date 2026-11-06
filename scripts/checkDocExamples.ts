@@ -46,10 +46,10 @@ const PRELUDE = `
 declare const ctx: import("./convex/_generated/server").QueryCtx;
 declare const app: typeof import("./convex/convex.config").default;
 declare const t: import("convex-test").TestConvex<typeof import("./convex/schema").default>;
-declare const oauth: typeof import("@convex-dev/auth/components/oauth/convex.config").default;
-declare const google: typeof import("@convex-dev/auth/components/google/convex.config").default;
-declare const apple: typeof import("@convex-dev/auth/components/apple/convex.config").default;
-declare const github: typeof import("@convex-dev/auth/components/github/convex.config").default;
+declare const authOauth: typeof import("@convex-dev/auth/components/oauth/convex.config").default;
+declare const authGoogle: typeof import("@convex-dev/auth/components/google/convex.config").default;
+declare const authApple: typeof import("@convex-dev/auth/components/apple/convex.config").default;
+declare const authGithub: typeof import("@convex-dev/auth/components/github/convex.config").default;
 // react-router
 declare function Navigate(props: { to: string; replace?: boolean }): null;
 declare module "expo-secure-store" {

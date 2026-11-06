@@ -147,7 +147,7 @@ Register the Apple OAuth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-apple/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import apple from" highlight="app.use(apple, {...});" highlight="AUTH_APPLE_CLIENT_ID:...AUTH_APPLE_PRIVATE_KEY: v.string(),"
+```ts file="examples/react-apple/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authApple from" highlight="app.use(authApple, {...});" highlight="AUTH_APPLE_CLIENT_ID:...AUTH_APPLE_PRIVATE_KEY: v.string(),"
 ```
 
 </Step>
@@ -248,7 +248,7 @@ Register the Google oauth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-google/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import google from" highlight="app.use(google, {...});" highlight="AUTH_GOOGLE_CLIENT_ID:" highlight="AUTH_GOOGLE_CLIENT_SECRET:"
+```ts file="examples/react-google/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGoogle from" highlight="app.use(authGoogle, {...});" highlight="AUTH_GOOGLE_CLIENT_ID:" highlight="AUTH_GOOGLE_CLIENT_SECRET:"
 ```
 
 </Step>
@@ -348,7 +348,7 @@ Register the GitHub oauth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-github/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import github from" highlight="app.use(github, {...});" highlight="AUTH_GITHUB_CLIENT_ID:" highlight="AUTH_GITHUB_CLIENT_SECRET:"
+```ts file="examples/react-github/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGithub from" highlight="app.use(authGithub, {...});" highlight="AUTH_GITHUB_CLIENT_ID:" highlight="AUTH_GITHUB_CLIENT_SECRET:"
 ```
 
 </Step>

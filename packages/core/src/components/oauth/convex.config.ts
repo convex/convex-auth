@@ -10,7 +10,7 @@ import { v } from "convex/values";
  * `httpPrefix`. The callback is served at `<httpPrefix>/callback`.
  *
  * ```ts
- * app.use(oauth, {
+ * app.use(authOauth, {
  *   name: "authAcme",
  *   httpPrefix: "/oauth/acme",
  *   env: {

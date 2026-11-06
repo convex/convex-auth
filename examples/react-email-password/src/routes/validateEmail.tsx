@@ -1,4 +1,4 @@
-import { useCompleteSignUp } from "@convex-dev/auth/methods/email-password/react";
+import { useCompleteSignUpWithEmailPassword } from "@convex-dev/auth/methods/email-password/react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
@@ -18,7 +18,7 @@ export function ValidateEmail() {
 }
 
 function ValidateEmailWithCode({ emailCode }: { emailCode: string }) {
-  const state = useCompleteSignUp(api.auth, { emailCode });
+  const state = useCompleteSignUpWithEmailPassword(api.auth, { emailCode });
 
   if (state.status === "loading") {
     return <p>Validating your email…</p>;

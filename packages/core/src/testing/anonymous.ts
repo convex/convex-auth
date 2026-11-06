@@ -18,10 +18,10 @@ const modules = import.meta.glob("../components/anonymous/**/*.ts");
  * @param t - The test convex instance, e.g. from calling `convexTest`.
  * @param name - The name of the component, as registered in convex.config.ts.
  */
-export function registerAnonymousProvider(
+export function registerAnonymous(
   t: TestConvex<SchemaDefinition<GenericSchema, boolean>>,
   name: string = "authAnonymous",
 ) {
   t.registerComponent(name, schema, modules);
 }
-export default { registerAnonymousProvider, schema, modules };
+export default { registerAnonymous, schema, modules };

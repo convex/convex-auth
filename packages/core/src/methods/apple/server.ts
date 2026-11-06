@@ -89,7 +89,7 @@ export function normalizeAppleProfile(
 }
 
 /** App-defined config for setting up the `apple` method. */
-export type AppleProviderOptions = {
+export type AppleOptions = {
   /** The Apple oauth component instance, i.e. `components.authApple`. */
   component: ComponentApi;
   /**
@@ -129,7 +129,7 @@ export type AppleProviderOptions = {
  */
 export function setupApple<UsersTable extends string>(
   core: AuthCore<UsersTable>,
-  options: AppleProviderOptions,
+  options: AppleOptions,
 ) {
   // Validate the app-supplied options up front so mistakes fail at deploy
   // time.

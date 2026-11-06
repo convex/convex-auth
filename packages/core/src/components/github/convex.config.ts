@@ -6,7 +6,7 @@ import { v } from "convex/values";
  * callback is served under, and bind the OAuth app's credentials:
  *
  * ```ts
- * app.use(github, {
+ * app.use(authGithub, {
  *   httpPrefix: "/oauth/github",
  *   env: {
  *     CLIENT_ID: app.env.AUTH_GITHUB_CLIENT_ID,

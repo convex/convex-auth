@@ -16,7 +16,7 @@ import { stubSignInApi } from "../../react/testSignInApi.ts";
 import {
   useCompleteChangeEmail,
   useCompletePasswordRecovery,
-  useCompleteSignUp,
+  useCompleteSignUpWithEmailPassword,
   useSignInWithEmailPassword,
   useSignUpWithEmailPassword,
   useStartChangeEmail,
@@ -310,13 +310,13 @@ describe("useSignUpWithEmailPassword", () => {
   });
 });
 
-describe("useCompleteSignUp", () => {
+describe("useCompleteSignUpWithEmailPassword", () => {
   test("presents the link once as the page opens, adopts the session, clears the secret", async () => {
     secretStorage.set(SIGN_UP_SECRET_KEY, "secret-1");
     runSignInMutation.mockResolvedValue({ status: "complete", tokens: bundle });
     const { result } = renderWithProviders(() =>
-      useCompleteSignUp(
-        { completeSignUp: signInMutation },
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
         { emailCode: "code-1" },
       ),
     );
@@ -347,7 +347,10 @@ describe("useCompleteSignUp", () => {
     );
     let emailCode = "code-1";
     const { result, rerender } = renderWithProviders(() =>
-      useCompleteSignUp({ completeSignUp: signInMutation }, { emailCode }),
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
+        { emailCode },
+      ),
     );
     await waitFor(() => expect(runSignInMutation).toHaveBeenCalledTimes(1));
 
@@ -377,8 +380,8 @@ describe("useCompleteSignUp", () => {
       }),
     );
     const { result } = renderWithProviders(() =>
-      useCompleteSignUp(
-        { completeSignUp: signInMutation },
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
         { emailCode: "code-1" },
       ),
     );
@@ -404,8 +407,8 @@ describe("useCompleteSignUp", () => {
 
   test("is MISSING_SECRET when this browser did not start the flow", async () => {
     const { result } = renderWithProviders(() =>
-      useCompleteSignUp(
-        { completeSignUp: signInMutation },
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
         { emailCode: "code-1" },
       ),
     );
@@ -428,8 +431,8 @@ describe("useCompleteSignUp", () => {
       userError: { error: "INVALID_CHALLENGE" },
     });
     const { result } = renderWithProviders(() =>
-      useCompleteSignUp(
-        { completeSignUp: signInMutation },
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
         { emailCode: "code-1" },
       ),
     );
@@ -449,8 +452,8 @@ describe("useCompleteSignUp", () => {
     const cause = new Error("network blip");
     runSignInMutation.mockRejectedValue(cause);
     const { result } = renderWithProviders(() =>
-      useCompleteSignUp(
-        { completeSignUp: signInMutation },
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
         { emailCode: "code-1" },
       ),
     );
