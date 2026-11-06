@@ -225,6 +225,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    * exist: a session expires this long after its last refresh, under the
    * value configured when it is checked. Lowering it thus ends sessions that
    * have gone longer than the new value without refreshing.
+   *
+   * The core also stores the value, for the background loops that delete
+   * expired sessions. They pick up a changed value at the next sign-in or
+   * refresh after the deploy.
    */
   refreshInactivityTimeoutSeconds?: number;
   /**
@@ -237,11 +241,8 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
    *
    * Changes to this value apply to every session, including ones that already
    * exist: a session expires this long after it was created, under the value
-   * configured when it is checked.
-   *
-   * The core also stores the value, for the background loop that deletes
-   * expired sessions. It picks up a changed value at the next sign-in or
-   * refresh after the deploy.
+   * configured when it is checked. Like the inactivity timeout, the core stores
+   * it for the background loops.
    */
   sessionMaxLifetimeSeconds?: number;
 }): AuthCore<UsersTable> {
