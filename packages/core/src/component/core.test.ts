@@ -1,7 +1,8 @@
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createLocalJWKSet, decodeJwt, jwtVerify } from "jose";
-import { api } from "./_generated/api.ts";
+import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
+import { api, internal } from "./_generated/api.ts";
 import type { Doc, Id } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
 import * as testApp from "./testApp.fixture.ts";
@@ -19,6 +20,11 @@ import {
   SPENT_TOKEN_HORIZON_MS,
   MAX_SESSIONS_PER_USER,
 } from "./sessions.ts";
+import {
+  BATCH_INTERVAL_MS,
+  BATCH_SIZE,
+  MAX_LIFETIME_WORKER_NAME,
+} from "./cleanup.ts";
 
 /**
  * The component's modules, and the test-only `testApp` module. The fixture file
@@ -60,8 +66,15 @@ function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   };
 }
 
+/**
+ * Make a test instance of the component. The component mounts the batch
+ * worker (the session cleanup loop), so register it with the test instance
+ * too.
+ */
 function setup(options?: { transactionLimits?: boolean }) {
-  return convexTest({ schema, modules, ...options });
+  const t = convexTest({ schema, modules, ...options });
+  registerBatchWorker(t);
+  return t;
 }
 
 type ConvexTestApi = ReturnType<typeof setup>;
@@ -122,6 +135,31 @@ async function refresh(t: ConvexTestApi, refreshToken: string) {
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Let the scheduled functions that are due run to completion: the runs of the
+ * cleanup loop, and the polls of its cooldown. Moves the clock by a few
+ * seconds, which is past the cooldown of the batch worker (2s).
+ */
+async function settleScheduledFunctions(t: ConvexTestApi) {
+  for (let i = 0; i < 20; i++) {
+    await t.finishInProgressScheduledFunctions();
+    vi.advanceTimersByTime(250);
+  }
+  await t.finishInProgressScheduledFunctions();
+}
+
+/**
+ * Move the clock by `ms` in steps of at most a day, the longest the cleanup
+ * loop sleeps, and let the loop's runs that come due on the way complete.
+ */
+async function advanceWithCleanup(t: ConvexTestApi, ms: number) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    vi.advanceTimersByTime(Math.min(DAY_MS, end - Date.now()));
+    await settleScheduledFunctions(t);
+  }
+}
 
 /** How many sessions currently exist. */
 async function sessionCount(t: ConvexTestApi) {
@@ -1063,7 +1101,11 @@ describe("listSessions", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const bundle = await signUp(t, claims());
+    // Let the cleanup loops the sign-up started, and the monitors they
+    // schedule a minute out, finish, so their commits don't move the time of
+    // the refresh.
     vi.advanceTimersByTime(60_000);
+    await settleScheduledFunctions(t);
     const refreshedAt = Date.now();
     const rotated = expectRotated(await refresh(t, bundle.refreshToken));
 
@@ -1079,21 +1121,19 @@ describe("listSessions", () => {
     ]);
   });
 
-  test("includes a session whose refresh tokens have all expired", async () => {
+  test("leaves out a session once the cleanup loop erases it", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
-    const stale = await signUp(t, claims());
+    await signUp(t, claims());
     // Past the default 30-day inactivity timeout.
-    vi.advanceTimersByTime(31 * 24 * 60 * 60 * 1000);
+    await advanceWithCleanup(t, 31 * DAY_MS);
     const fresh = await signIn(t, claims());
 
     const sessions = await t.query(api.public.listSessions, {
-      userId: stale.userId,
+      userId: fresh.userId,
     });
-    expect(sessions.map((s) => s.sessionId)).toEqual(
-      [fresh, stale].map(sessionIdOf),
-    );
+    expect(sessions.map((s) => s.sessionId)).toEqual([sessionIdOf(fresh)]);
   });
 
   test("no token outlives one inactivity timeout past the session's lastRefreshedAt", async () => {
@@ -1105,9 +1145,13 @@ describe("listSessions", () => {
     // Redeem the sign-in token, then present it again twice, as a client whose
     // responses were lost would: the session has two issued siblings.
     expectRotated(await refresh(t, bundle.refreshToken));
+    // Let the cleanup loop finish, so its commits don't move the time of the
+    // next refresh.
+    await settleScheduledFunctions(t);
     vi.advanceTimersByTime(60_000);
     // Issued under the default 30-day inactivity timeout.
     const older = expectRotated(await refresh(t, bundle.refreshToken));
+    await settleScheduledFunctions(t);
     vi.advanceTimersByTime(60_000);
     // Issued after the timeout was lowered to an hour.
     expectRotated(
@@ -1693,5 +1737,246 @@ describe("session cleanup", () => {
       }),
     });
     expect(await storedTtl(t)).toEqual([[2 * 60 * 60, 3 * 60 * 60]]);
+  });
+
+  test("erases a session once it expires", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await settleScheduledFunctions(t);
+
+    await advanceWithCleanup(t, 29 * DAY_MS);
+    expect(await sessionCount(t)).toBe(1);
+
+    // Past the default 30-day inactivity timeout.
+    await advanceWithCleanup(t, 2 * DAY_MS);
+    expect(await sessionCount(t)).toBe(0);
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(bundle) }),
+    ).toBeNull();
+    // The session's tokens went with it.
+    expect(
+      await t.run(async (ctx) => ctx.db.query("refreshTokens").collect()),
+    ).toEqual([]);
+  });
+
+  test("keeps a session that keeps refreshing, until its max lifetime", async () => {
+    const t = setup();
+    const sessionMaxLifetimeSeconds = (90 * DAY_MS) / 1000;
+    const refreshWithMax = async (refreshToken: string) =>
+      await t.mutation(api.public.refresh, {
+        refreshToken,
+        ...ttl({ sessionMaxLifetimeSeconds }),
+      });
+    const bundle = await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({ sessionMaxLifetimeSeconds }),
+    });
+    await advanceWithCleanup(t, 20 * DAY_MS);
+    const rotated = expectRotated(await refreshWithMax(bundle.refreshToken));
+    // 40 days after the sign-in, 20 after the refresh: past the default
+    // 30-day max lifetime, not past this one.
+    await advanceWithCleanup(t, 20 * DAY_MS);
+    expect(await sessionCount(t)).toBe(1);
+    let latest = expectRotated(await refreshWithMax(rotated.refreshToken));
+
+    // Refreshing every 20 days, it reaches the 90-day max lifetime.
+    for (let i = 0; i < 2; i++) {
+      await advanceWithCleanup(t, 20 * DAY_MS);
+      latest = expectRotated(await refreshWithMax(latest.refreshToken));
+    }
+    // 80 days in, refreshed just now.
+    expect(await sessionCount(t)).toBe(1);
+    await advanceWithCleanup(t, 11 * DAY_MS);
+    expect(await sessionCount(t)).toBe(0);
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(bundle) }),
+    ).toBeNull();
+    expect(
+      await t.run(async (ctx) => ctx.db.query("refreshTokens").collect()),
+    ).toEqual([]);
+  });
+
+  test("a lowered max lifetime erases the sessions it expires", async () => {
+    const t = setup();
+    // Signed in under the default 30-day max lifetime.
+    const stale = await signUp(t, claims());
+    await advanceWithCleanup(t, 2 * HOUR_MS);
+    // Refreshed, so only the max lifetime expires it.
+    const rotated = expectRotated(await refresh(t, stale.refreshToken));
+
+    // The app is redeployed with a one-hour max lifetime, and someone signs
+    // in.
+    const fresh = await t.mutation(api.public.signUp, {
+      claims: claims({ providerAccountId: "bob" }),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({
+        sessionMaxLifetimeSeconds: 60 * 60,
+      }),
+    });
+    await settleScheduledFunctions(t);
+
+    expect(
+      await t.query(api.public.getSession, {
+        sessionId: sessionIdOf(rotated),
+      }),
+    ).toBeNull();
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(fresh) }),
+    ).toEqual({ userId: fresh.userId });
+  });
+
+  /** Sign up with a given max lifetime. */
+  async function signUpWithMaxLifetime(
+    t: ConvexTestApi,
+    c: AuthClaims,
+    sessionMaxLifetimeSeconds: number,
+  ) {
+    return await t.mutation(api.public.signUp, {
+      claims: c,
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({ sessionMaxLifetimeSeconds }),
+    });
+  }
+
+  async function sessions(t: ConvexTestApi) {
+    return await t.run(async (ctx) => ctx.db.query("sessions").collect());
+  }
+
+  describe("getSessionsPastMaxLifetime", () => {
+    test("goes idle with no timeout before any lifetimes are stored", async () => {
+      const t = setup();
+      expect(
+        await t.query(internal.cleanup.getSessionsPastMaxLifetime, {
+          name: MAX_LIFETIME_WORKER_NAME,
+        }),
+      ).toEqual({ kind: "idle" });
+    });
+
+    test("sleeps until the oldest session reaches the max lifetime", async () => {
+      const t = setup();
+      await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      // Let the cleanup loops the sign-up started, and the monitors they
+      // schedule a minute out, finish, so their commits don't move the time
+      // of the query.
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      await settleScheduledFunctions(t);
+      const result = await t.query(
+        internal.cleanup.getSessionsPastMaxLifetime,
+        {
+          name: MAX_LIFETIME_WORKER_NAME,
+        },
+      );
+      const [session] = await sessions(t);
+      expect(result).toEqual({
+        kind: "idle",
+        timeoutMs: session._creationTime + 60 * 60 * 1000 - Date.now(),
+      });
+    });
+
+    test("returns the sessions at or past the max lifetime", async () => {
+      const t = setup();
+      await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      const [session] = await sessions(t);
+      // convex-test gives `_creationTime` a fraction of a millisecond, thus
+      // the clock goes to the first whole millisecond at or past the max
+      // lifetime.
+      vi.setSystemTime(Math.ceil(session._creationTime + 60 * 60 * 1000));
+      const result = await t.query(
+        internal.cleanup.getSessionsPastMaxLifetime,
+        {
+          name: MAX_LIFETIME_WORKER_NAME,
+        },
+      );
+      expect(result).toEqual({
+        kind: "work",
+        batch: { events: [{ id: session._id }] },
+        cursor: session._creationTime,
+      });
+    });
+  });
+
+  describe("deleteSessionsPastMaxLifetime", () => {
+    test("keeps a session that a raised max lifetime no longer expires, and moves the cursor back to it", async () => {
+      const t = setup();
+      await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [session] = await sessions(t);
+      // The max lifetime was raised between the query and the mutation.
+      await t.run(async (ctx) => {
+        const row = (await ctx.db.query("ttlConfig").first())!;
+        await ctx.db.patch("ttlConfig", row._id, {
+          sessionMaxLifetimeSeconds: 30 * 24 * 60 * 60,
+        });
+      });
+
+      const result = await t.mutation(
+        internal.cleanup.deleteSessionsPastMaxLifetime,
+        { events: [{ id: session._id }] },
+      );
+      expect(result).toEqual({ cursor: session._creationTime });
+      expect(await sessionCount(t)).toBe(1);
+    });
+
+    test("skips a session that is gone since the query", async () => {
+      const t = setup();
+      const bundle = await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      const [session] = await sessions(t);
+      await t.mutation(api.public.signOut, {
+        refreshToken: bundle.refreshToken,
+      });
+      vi.advanceTimersByTime(2 * HOUR_MS);
+
+      const result = await t.mutation(
+        internal.cleanup.deleteSessionsPastMaxLifetime,
+        { events: [{ id: session._id }] },
+      );
+      expect(result).toBeNull();
+    });
+
+    test("erases a session past the max lifetime along with its tokens", async () => {
+      const t = setup();
+      await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [session] = await sessions(t);
+
+      const result = await t.mutation(
+        internal.cleanup.deleteSessionsPastMaxLifetime,
+        { events: [{ id: session._id }] },
+      );
+      expect(result).toBeNull();
+      expect(await sessionCount(t)).toBe(0);
+      await finishScheduledFunctions(t);
+      expect(
+        await t.run(async (ctx) => ctx.db.query("refreshTokens").collect()),
+      ).toEqual([]);
+    });
+
+    test("waits before the next batch after a full one, and still moves the cursor back", async () => {
+      const t = setup();
+      await signUpWithMaxLifetime(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [session] = await sessions(t);
+      // The max lifetime was raised between the query and the mutation.
+      await t.run(async (ctx) => {
+        const row = (await ctx.db.query("ttlConfig").first())!;
+        await ctx.db.patch("ttlConfig", row._id, {
+          sessionMaxLifetimeSeconds: 30 * 24 * 60 * 60,
+        });
+      });
+
+      const result = await t.mutation(
+        internal.cleanup.deleteSessionsPastMaxLifetime,
+        {
+          events: Array.from({ length: BATCH_SIZE }, () => ({
+            id: session._id,
+          })),
+        },
+      );
+      expect(result).toEqual({
+        cursor: session._creationTime,
+        debounceMs: BATCH_INTERVAL_MS,
+      });
+    });
   });
 });
