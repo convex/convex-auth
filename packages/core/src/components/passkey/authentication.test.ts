@@ -271,7 +271,9 @@ describe("finishAuthentication", () => {
             ),
           }),
         }),
-      "the client data JSON carries no challenge",
+      // The verifier reports this case, because the component does not
+      // read the challenge out of the client data.
+      "the assertion did not verify",
     );
   });
 

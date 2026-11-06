@@ -30,11 +30,6 @@ const startAuthenticationResult = v.object({
   allowCredentials: v.array(credentialDescriptor),
 });
 
-/** Encode ceremony bytes the way `@simplewebauthn/server` reads them. */
-function toBase64URL(bytes: ArrayBuffer): string {
-  return isoBase64URL.fromBuffer(new Uint8Array(bytes));
-}
-
 /**
  * Start an authentication ceremony.
  *
@@ -182,13 +177,11 @@ export const finishAuthentication = mutation({
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
 
-    // We need to parse the client data before we validate the signature
-    // to extract the challenge it contains, so that we can get the
-    // appropriate DB row.
-    // TODO(nicolas) After the wire format change, we’ll be able to avoid
-    //               the manual client data parsing by using the
-    //               callback variant of the `expectedChallenge`
-    //               argument of `verifyAuthenticationResponse`.`
+    // This read only supports the tailored diagnostics below and the
+    // component's stricter cross-origin policy. It does not extract the
+    // challenge: `verifyAuthenticationResponse` decodes the client data and
+    // gives the challenge to `expectedChallenge` below. The verifier checks
+    // the type and origin again over the signed bytes.
     const clientData = okOrNull(() =>
       decodeClientDataJSON(args.response.response.clientDataJSON),
     );
@@ -238,59 +231,80 @@ export const finishAuthentication = mutation({
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
-    const challenge = okOrNull(() =>
-      isoBase64URL.toBuffer(clientData.challenge),
-    );
-    if (challenge === null) {
-      console.warn(
-        `Rejected the passkey ceremony: the client data JSON carries no ` +
-          `challenge.`,
-      );
-      return { success: false, userError: { error: "PROTOCOL_ERROR" } };
-    }
-    const challengeRow = await consumeChallenge(
-      ctx,
-      "authentication",
-      challenge,
-    );
-    if (challengeRow === null) {
-      return { success: false, userError: { error: "CHALLENGE_EXPIRED" } };
-    }
-    if (challengeRow.purpose !== args.purpose) {
-      // A client that redeems an assertion in a flow other than the one
-      // that asked for it does not respect the protocol. The challenge is
-      // consumed at this point: a mismatch comes from the code of the app,
-      // so the same ceremony would fail again anyway.
-      console.warn(
-        `Rejected the passkey ceremony: the challenge was created for the ` +
-          `purpose ${JSON.stringify(challengeRow.purpose)}, but the ceremony ` +
-          `was finished for the purpose ${JSON.stringify(args.purpose)}.`,
-      );
-      return { success: false, userError: { error: "PROTOCOL_ERROR" } };
-    }
-    // A challenge with a `userId` (the identifier-first flow) must agree
-    // with the owner of the credential. A challenge without a `userId` is a
-    // discoverable-credential ceremony. In that flow, each registered
-    // passkey is acceptable, and the passkey identifies the user.
-    if (
-      challengeRow.userId !== undefined &&
-      challengeRow.userId !== passkey.userId
-    ) {
-      // A challenge with a `userId` always carries the passkeys of that user
-      // in `allowCredentials`, thus a compliant client cannot send an
-      // assertion from a passkey of a different user.
-      console.warn(
-        `Rejected the passkey ceremony: the challenge was created for a ` +
-          `different user than the owner of the credential.`,
-      );
-      return { success: false, userError: { error: "PROTOCOL_ERROR" } };
-    }
-
+    // The relying party ID hash, the user-presence and user-verification
+    // flags, and the assertion signature are all checked here. The stored
+    // key is a COSE key, which names its own algorithm, so there is no
+    // ES256/RS256 branch: `verifyAuthenticationResponse` reads the algorithm
+    // out of the key and picks the verifier.
+    //
+    // `expectedChallenge` runs during the verification and records here why
+    // it accepted or refused the challenge, because the verifier only
+    // reports that the challenge did not match.
+    type ChallengeOutcome =
+      // `expectedChallenge` did not run.
+      | "unchecked"
+      // The challenge belongs to a row that fits this ceremony.
+      | "accepted"
+      // No row matches: the challenge expired, or it was already redeemed.
+      | "expired"
+      // A row matches, but it does not fit this ceremony. The reason is
+      // already in the logs.
+      | "refused";
+    const challenge: { outcome: ChallengeOutcome } = { outcome: "unchecked" };
     let verification;
     try {
       verification = await verifyAuthenticationResponse({
         response: args.response,
-        expectedChallenge: toBase64URL(challengeRow.challenge),
+        // The callback form receives the challenge that the client data
+        // carries, which lets us look its row up while the verification
+        // runs. A challenge that is not valid Base64URL makes `toBuffer`
+        // throw, and the `catch` clause below reports it.
+        expectedChallenge: async (encodedChallenge) => {
+          const challengeRow = await consumeChallenge(
+            ctx,
+            "authentication",
+            isoBase64URL.toBuffer(encodedChallenge),
+          );
+          if (challengeRow === null) {
+            challenge.outcome = "expired";
+            return false;
+          }
+          if (challengeRow.purpose !== args.purpose) {
+            // A client that redeems an assertion in a flow other than the
+            // one that asked for it does not respect the protocol. The
+            // challenge is consumed at this point: a mismatch comes from
+            // the code of the app, so the same ceremony would fail again
+            // anyway.
+            console.warn(
+              `Rejected the passkey ceremony: the challenge was created for the ` +
+                `purpose ${JSON.stringify(challengeRow.purpose)}, but the ceremony ` +
+                `was finished for the purpose ${JSON.stringify(args.purpose)}.`,
+            );
+            challenge.outcome = "refused";
+            return false;
+          }
+          // A challenge with a `userId` (the identifier-first flow) must
+          // agree with the owner of the credential. A challenge without a
+          // `userId` is a discoverable-credential ceremony. In that flow,
+          // each registered passkey is acceptable, and the passkey
+          // identifies the user.
+          if (
+            challengeRow.userId !== undefined &&
+            challengeRow.userId !== passkey.userId
+          ) {
+            // A challenge with a `userId` always carries the passkeys of
+            // that user in `allowCredentials`, thus a compliant client
+            // cannot send an assertion from a passkey of a different user.
+            console.warn(
+              `Rejected the passkey ceremony: the challenge was created for a ` +
+                `different user than the owner of the credential.`,
+            );
+            challenge.outcome = "refused";
+            return false;
+          }
+          challenge.outcome = "accepted";
+          return true;
+        },
         expectedOrigin: args.expectedOrigin,
         expectedRPID: args.expectedRpId,
         credential: {
@@ -312,6 +326,13 @@ export const finishAuthentication = mutation({
         requireUserVerification: true,
       });
     } catch (cause) {
+      if (challenge.outcome === "expired") {
+        return { success: false, userError: { error: "CHALLENGE_EXPIRED" } };
+      }
+      if (challenge.outcome === "refused") {
+        // `expectedChallenge` already logged the reason.
+        return { success: false, userError: { error: "PROTOCOL_ERROR" } };
+      }
       // The message names the check that failed: a relying party ID hash
       // that does not match, a missing user verification, a bad signature,
       // and so on. It stays in the backend logs, and the client only learns
@@ -330,6 +351,12 @@ export const finishAuthentication = mutation({
           `match the public key of the credential.`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
+    }
+    if (challenge.outcome !== "accepted") {
+      // The verifier always asks `expectedChallenge` before it reports a
+      // verified assertion. If it does not, the ceremony runs without a
+      // challenge check, which allows replays.
+      throw new Error("The verified assertion did not check its challenge.");
     }
 
     // TODO(nicolas) Also record `lastUsedAt` here when the field exists.
