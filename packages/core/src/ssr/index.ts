@@ -59,6 +59,7 @@ export type {
   ClientView,
   ConvexAuthApi,
   IsAuthenticatedFn,
+  RefreshResult,
   RefreshSessionFn,
   SignInComplete,
   SignInEnvelope,

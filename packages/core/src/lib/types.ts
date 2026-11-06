@@ -152,10 +152,23 @@ export const vRefreshResult = v.union(
   v.object({ kind: v.literal("noSession") }),
 );
 
+/**
+ * The result of refreshing a session, returned by the app's `refreshSession`
+ * mutation and by `ServerAuthSession.refresh()`. Check `kind`:
+ *
+ *  * `{ kind: "rotated", tokens }`: `tokens` is the new {@link TokenBundle},
+ *    with a fresh access token and the refresh token that replaces the one
+ *    presented. Persist both. The presented refresh token stays valid until
+ *    its successor is first used, so a client that never receives this result
+ *    can retry with the token it already has.
+ *  * `{ kind: "noSession" }`: the refresh token is unknown, expired, or was
+ *    already replaced (presenting it again also revokes its session). Clear the
+ *    stored session and treat the user as signed out.
+ */
 export type RefreshResult = Infer<typeof vRefreshResult>;
 
 /** The app's `refreshSession` mutation reference: exchange a refresh token for
- * a fresh session. See {@link vRefreshResult} for the outcomes. */
+ * a fresh session. See {@link RefreshResult} for the outcomes. */
 export type RefreshSessionFn = FunctionReference<
   "mutation",
   "public",
