@@ -5,9 +5,10 @@ import { setupUsernamePassword } from "@convex-dev/auth/methods/username-passwor
 
 // The core owns sessions and JWT minting. Each sign-in method is wired to it
 // with its own setup function, and only hands back its functions once the app
-// attaches the callbacks that create its user rows. Each method exposes the
-// functions its client hooks call, like `signUpWithUsernamePassword` /
-// `signInWithUsernamePassword` for the password one.
+// attaches the callbacks that create its user rows. Each sign-in method
+// exposes the functions its client hooks call, like
+// `signUpWithUsernamePassword` / `signInWithUsernamePassword` for the password
+// one.
 // Under SSR those calls get proxied to Convex via the SSR host. The sign-in
 // functions exposed here are wired up to be proxied in src/lib/serverAuth.ts.
 const auth = setupConvexAuth({ component: components.auth });
