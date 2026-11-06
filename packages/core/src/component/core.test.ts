@@ -121,6 +121,7 @@ async function refresh(t: ConvexTestApi, refreshToken: string) {
 }
 
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 /** How many sessions currently exist. */
 async function sessionCount(t: ConvexTestApi) {
@@ -1629,5 +1630,68 @@ describe("getSession", () => {
     expect(
       await t.query(api.public.getSession, { sessionId: accountId }),
     ).toBeNull();
+  });
+});
+
+describe("session cleanup", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Sign up with a given inactivity timeout. */
+  async function signUpWithTtl(
+    t: ConvexTestApi,
+    c: AuthClaims,
+    refreshInactivityTimeoutSeconds: number,
+  ) {
+    return await t.mutation(api.public.signUp, {
+      claims: c,
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({ refreshInactivityTimeoutSeconds }),
+    });
+  }
+
+  async function storedTtl(t: ConvexTestApi) {
+    return await t.run(async (ctx) =>
+      (await ctx.db.query("ttlConfig").collect()).map((row) => [
+        row.refreshInactivityTimeoutSeconds,
+        row.sessionMaxLifetimeSeconds,
+      ]),
+    );
+  }
+
+  test("sign-in stores the session lifetimes for the loops", async () => {
+    const t = setup();
+    await signUpWithTtl(t, claims(), 60 * 60);
+    expect(await storedTtl(t)).toEqual([[60 * 60, (30 * DAY_MS) / 1000]]);
+  });
+
+  test("the inactivity timeout defaults to the max lifetime", async () => {
+    const t = setup();
+    await t.mutation(api.public.signUp, {
+      claims: claims(),
+      createUserHandle: CREATE_USER_HANDLE,
+      ...ttl({
+        sessionMaxLifetimeSeconds: 60 * 60,
+      }),
+    });
+    expect(await storedTtl(t)).toEqual([[60 * 60, 60 * 60]]);
+  });
+
+  test("a refresh with other lifetimes replaces the stored ones", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    await t.mutation(api.public.refresh, {
+      refreshToken: bundle.refreshToken,
+      ...ttl({
+        refreshInactivityTimeoutSeconds: 2 * 60 * 60,
+        sessionMaxLifetimeSeconds: 3 * 60 * 60,
+      }),
+    });
+    expect(await storedTtl(t)).toEqual([[2 * 60 * 60, 3 * 60 * 60]]);
   });
 });

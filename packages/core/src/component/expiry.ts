@@ -1,6 +1,9 @@
-// When refresh tokens and sessions expire under the configured lifetimes.
+// When refresh tokens and sessions expire, and the stored copy of the
+// lifetimes.
 
 import type { Doc } from "./_generated/dataModel.ts";
+import type { MutationCtx } from "./_generated/server.ts";
+import type { TtlConfig } from "../lib/ttl.ts";
 
 /**
  * Returns a timestamp for when a refresh token stops being able to refresh its
@@ -27,4 +30,42 @@ export function sessionMaxLifetimeExpiresAt(
   sessionMaxLifetimeSeconds: number,
 ): number {
   return session._creationTime + sessionMaxLifetimeSeconds * 1000;
+}
+
+/** The lifetimes that are stored in `ttlConfig`. */
+export type StoredTtlConfig = Pick<
+  TtlConfig,
+  "refreshInactivityTimeoutSeconds" | "sessionMaxLifetimeSeconds"
+>;
+
+/**
+ * Store the session lifetimes that a call was given, for code that runs with
+ * no caller to pass them (such as a background cleanup job).
+ *
+ * Returns `true` when a stored value changed (or none was stored yet). Writes
+ * nothing when the values are unchanged, which is the common case, so the
+ * read is all a refresh pays.
+ */
+export async function recordTtlConfig(
+  ctx: MutationCtx,
+  ttl: TtlConfig,
+): Promise<boolean> {
+  const values: StoredTtlConfig = {
+    refreshInactivityTimeoutSeconds: ttl.refreshInactivityTimeoutSeconds,
+    sessionMaxLifetimeSeconds: ttl.sessionMaxLifetimeSeconds,
+  };
+  const stored = await ctx.db.query("ttlConfig").first();
+  if (stored === null) {
+    await ctx.db.insert("ttlConfig", values);
+    return true;
+  }
+  if (
+    stored.refreshInactivityTimeoutSeconds ===
+      values.refreshInactivityTimeoutSeconds &&
+    stored.sessionMaxLifetimeSeconds === values.sessionMaxLifetimeSeconds
+  ) {
+    return false;
+  }
+  await ctx.db.patch("ttlConfig", stored._id, values);
+  return true;
 }
