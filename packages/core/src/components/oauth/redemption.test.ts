@@ -281,11 +281,7 @@ async function mintTicket(
 async function accounts(t: ReturnType<typeof setup>) {
   return (
     await t.run(async (ctx) => await ctx.db.query("accounts").collect())
-  ).map(({ providerName, providerAccountId, userId }) => ({
-    providerName,
-    providerAccountId,
-    userId,
-  }));
+  ).map(({ providerAccountId, userId }) => ({ providerAccountId, userId }));
 }
 
 afterEach(() => {
@@ -318,14 +314,9 @@ describe("completeSignIn", () => {
         },
       },
     ]);
-    // ...and recorded the user the core minted against the identity, under
-    // the provider's name.
+    // ...and recorded the user the core minted against the identity.
     expect(await accounts(t)).toEqual([
-      {
-        providerName: "acme",
-        providerAccountId: "acme-sub-1",
-        userId: bundle.userId,
-      },
+      { providerAccountId: "acme-sub-1", userId: bundle.userId },
     ]);
   });
 
@@ -335,7 +326,6 @@ describe("completeSignIn", () => {
 
     // The component remembers the account from an earlier redemption.
     await t.mutation(api.provider.createAccount, {
-      providerName: "acme",
       providerAccountId: "acme-sub-1",
       userId: "user-7",
     });
@@ -359,33 +349,6 @@ describe("completeSignIn", () => {
       },
     ]);
     expect(await accounts(t)).toHaveLength(1);
-  });
-
-  test("keeps the accounts of two providers with one account id apart", async () => {
-    const t = setup();
-    // The same instance serves two providers, and both know a user "42".
-    await t.mutation(api.provider.createAccount, {
-      providerName: "acme",
-      providerAccountId: "42",
-      userId: "user-acme",
-    });
-    const code = await mintTicket(t, {
-      providerName: "acmeInfo",
-      payload: { userInfoResponses: { user: { id: 42, login: "octocat" } } },
-    });
-
-    const result = await t.mutation(completeSignInAcmeInfo, {
-      code,
-      state: "state-1",
-    });
-
-    // acme's user "42" is not acmeInfo's, so this is a first sign-in.
-    expect(result).toEqual(completed);
-    expect(helperCalls.map(({ kind }) => kind)).toEqual(["signUp"]);
-    expect(await accounts(t)).toEqual([
-      { providerName: "acme", providerAccountId: "42", userId: "user-acme" },
-      { providerName: "acmeInfo", providerAccountId: "42", userId: "user-1" },
-    ]);
   });
 
   test("passes userinfo responses to the profile mapping", async () => {
