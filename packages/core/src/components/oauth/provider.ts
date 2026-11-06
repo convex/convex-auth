@@ -143,8 +143,8 @@ export const getUserIdByAccount = query({
 });
 
 /**
- * Record the app user the core minted for a new identity. Refuses an
- * identity that already has an account.
+ * Record the app user for a new identity. Refuses an identity that
+ * already has an account.
  */
 export const createAccount = mutation({
   args: accountFields,

@@ -66,11 +66,8 @@ export const ticketsTable = defineTable(ticketFields).index("ticketCodeHash", [
 ]);
 
 /**
- * An account maps the identity the provider attested (its `sub`, or the
- * profile `id` the provider's mapping produced) to the app user it belongs
- * to. The first redemption of an identity creates it, after the core has
- * minted the app user; every later redemption resolves it and signs that
- * user in.
+ * An account maps the identity a provider attested to the app user it
+ * belongs to.
  */
 export const accountFields = {
   /** The provider-scoped account id: the profile mapping's `id`. */

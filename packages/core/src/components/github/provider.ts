@@ -1,5 +1,5 @@
 /**
- * The functions GitHub's component registers over its own three tables.
+ * The functions GitHub's component registers over its own tables.
  *
  * @module
  */

@@ -5,7 +5,7 @@
  * written when sign-in starts and claimed by the provider callback, and a
  * ticket, minted by the callback and redeemed by the app. Redemption then
  * needs one durable document: the account, which maps the attested identity
- * to the app user. Every OAuth component keeps those same three tables, so
+ * to the app user. Every OAuth component keeps those same tables, so
  * the reads and writes live here, and each component's `provider.ts`
  * supplies its own argument validators and its own document types.
  *
@@ -43,10 +43,9 @@ export const TICKET_TTL_MS = 2 * 60 * 1000;
  */
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
 /**
- * The ctx the account lookup takes: a query's or a mutation's. Only `db.query`
- * is named, because `GenericDatabaseReader` as a whole is not bivariant the
- * way the writer is, so a component's own query ctx would not be accepted as
- * a `GenericQueryCtx<GenericDataModel>`.
+ * A query's or a mutation's ctx. Only `db.query` is named because a
+ * component's own query ctx is not assignable to
+ * `GenericQueryCtx<GenericDataModel>`.
  */
 type QueryCtx = { db: Pick<GenericDatabaseReader<GenericDataModel>, "query"> };
 
@@ -202,8 +201,7 @@ export async function claimTicket<Doc extends TicketContract>(
 
 /**
  * Resolve a provider account id to the app user it belongs to, or `null`
- * when this component has never seen the identity. Redemption calls this to
- * pick between signing the user up and signing them in.
+ * when this component has never seen the identity.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
  * `findAccountUserId<Doc<"accounts">>(ctx, args)`.
@@ -224,13 +222,8 @@ export async function findAccountUserId<Doc extends AccountContract>(
 
 /**
  * Record that the identity in `account` belongs to the app user `userId`.
- * Redemption calls this once the core has minted the user for an identity
- * `findAccountUserId` did not know, in the same mutation, so the two cannot
- * disagree.
- *
- * Refuses an identity that already has an account: minting a second user for
- * it would split one person in two, and the check in redemption that should
- * have prevented it ran in this same transaction, so a hit here is a bug.
+ * Throws if the identity already has an account, since one identity must
+ * never map to two users.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
  * `insertAccount<Doc<"accounts">>(ctx, account, userId)`.

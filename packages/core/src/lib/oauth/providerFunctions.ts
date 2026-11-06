@@ -1,10 +1,8 @@
 /**
- * The registered mutations behind a built-in provider's `provider.ts`.
+ * The registered functions behind a built-in provider's `provider.ts`.
  *
- * Each built-in provider has its own component with three tables and six
- * functions. Four mutations create and claim an authorization request, and
- * create and claim a ticket; a query resolves an account to its app user, and
- * a mutation creates one.
+ * Each built-in provider has its own component with the same tables and
+ * functions.
  * The database work lives in `dbHelpers.ts`. This module adds the
  * registration, meaning the argument and return validators and the functions
  * that wrap them.
@@ -76,11 +74,11 @@ const claimRequestResult = v.union(
 const createTicketArgs = v.object(ticketFields).omit("expiresAt");
 
 /**
- * Build the six functions a built-in provider's component registers. The
- * component's `provider.ts` destructures the result and exports the six
+ * Build the functions a built-in provider's component registers. The
+ * component's `provider.ts` destructures the result and exports them
  * under their own names, which is what Convex registers them as.
  *
- * The caller has to pass its own three document types, e.g.
+ * The caller has to pass its own document types, e.g.
  * `buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">, Doc<"accounts">>({...})`.
  * {@link OnlyTheFieldsOf} checks those types, and a call without them compiles
  * with no check. A component with extra table fields writes its own
@@ -92,11 +90,9 @@ export function buildProviderFunctions<
   AccountDoc extends OnlyTheFieldsOf<AccountDoc, SharedAccountDocument>,
 >(options: {
   /**
-   * The component's own `query` builder. A `QueryBuilder<GenericDataModel>`
-   * would not accept it: a query ctx is not assignable across data models
-   * the way a mutation ctx is (the writer's members are methods, which
-   * TypeScript compares bivariantly; the reader's are not all). The
-   * handler below only passes the ctx on to the data-model-agnostic helper.
+   * The component's own `query` builder. Typed `any` because a query ctx is
+   * not assignable across data models the way a mutation ctx is. Safe
+   * because the handler only passes the ctx to a data-model-agnostic helper.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: QueryBuilder<any, "public">;

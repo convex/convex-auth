@@ -1,5 +1,5 @@
 /**
- * The functions Apple's component registers over its own three tables.
+ * The functions Apple's component registers over its own tables.
  *
  * @module
  */

@@ -79,7 +79,7 @@ function setup(schema: ComponentSchema, modules: ComponentModules) {
 }
 
 /**
- * The six functions, by the names Convex registers them under. They are
+ * The functions, by the names Convex registers them under. They are
  * written out rather than taken from a generated `api`, because each
  * component generates its own and this runs against all of them.
  */
@@ -204,7 +204,6 @@ export function testProviderFunctionsContract(
     test("an account resolves to its user once recorded, and only once", async () => {
       const t = setup(schema, modules);
 
-      // Unknown before the first redemption records it.
       expect(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
       ).toBeNull();
