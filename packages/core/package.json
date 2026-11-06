@@ -117,6 +117,13 @@
       "default": "./dist/component/_generated/component.js"
     },
     "./test": "./src/testing/core.ts",
+    "./test/vitest": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/vitest/index.d.ts"
+      },
+      "types": "./dist/vitest/index.d.ts",
+      "default": "./dist/vitest/index.js"
+    },
     "./methods/anonymous/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/anonymous/server.d.ts"

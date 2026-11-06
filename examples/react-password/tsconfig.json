@@ -1,5 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["convex/**/*", "src/**/*", "vite.config.ts"],
+  "include": [
+    "convex/**/*",
+    "src/**/*",
+    "vite.config.ts",
+    "vitest.consumer.config.ts"
+  ],
   "exclude": ["node_modules", "convex/_generated"]
 }
