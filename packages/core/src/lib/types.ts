@@ -206,8 +206,11 @@ export type ConvexAuthApi = {
  * authenticate users and the *core* component.
  *
  * After a method authenticates a user it produces this plain payload; the app
- * forwards it to the core's `signIn`, which turns it into a session. Methods
- * never call the core directly, they only know how to produce these claims.
+ * forwards it to the core's `signUp` or `signIn`, which hands it to the app's
+ * user callbacks and records the method on the session. The core stores no
+ * account for it: the method's own component keeps the map from its identity
+ * to the app user id, and resolves it before calling the core. Methods never
+ * call the core directly, they only know how to produce these claims.
  */
 export const vAuthClaims = v.object({
   /**
@@ -227,11 +230,13 @@ export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
  * The `providerAccountId` a method sends to `completeSignUp` when it has no
- * identifier of its own. The core then keys the new account by the app user id
- * `createUser` returns, and later sign-ins send that user id as the account
- * identifier.
+ * identifier of its own (a password or passkey method, whose identity is the
+ * app user id its components key by). The core stores no account, so the
+ * value only reaches the app's `createUser` callback; later sign-ins send the
+ * user id as the account identifier.
  *
- * @TODO(nicolas) Consider replacing this mechanism
+ * @TODO(nicolas) Consider dropping `accountId` from the app callbacks for
+ * these methods, or making it optional, instead of sending a placeholder.
  */
 export const USE_USER_ID_AS_ACCOUNT_ID = "";
 
@@ -323,57 +328,53 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
-   * Exchange a *newly established* account identity for a session.
+   * Mint the app user for a *new* identity and exchange it for a session.
    *
-   * Call this when the method has just created the account. The core records
-   * the account, calls the app's `createUser` to mint the app user, then its
+   * Call this when the method has verified an identity it has never seen.
+   * The core calls the app's `createUser` to mint the app user, then its
    * `onSignIn` like any other sign-in, and returns the tokens a client needs to
-   * make authenticated calls.
+   * make authenticated calls. The bundle carries the new `userId`, which the
+   * method records against its identity in its own component, in the same
+   * mutation.
    *
-   * Throws if the identity already has an account. A method that cannot tell
-   * a first sign-in from a return visit should call
-   * {@link BoundAuthHelpers.resolveUserId} first and pick the right helper.
+   * The core keeps no accounts, so it cannot tell a first sign-in from a
+   * return visit: the method looks its identity up in its component first
+   * and picks this helper or {@link BoundAuthHelpers.completeSignIn}.
    */
   completeSignUp(args: {
     providerAccountId: string;
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Exchange a verified *existing* account identity for a session.
+   * Exchange a verified *existing* identity for a session.
    *
-   * Call this once the method has authenticated a known account its own way
-   * (checking a password, say). The core resolves the account to its app user,
-   * runs the app's `onSignIn` callback if one is attached, and returns the
-   * tokens a client needs to make authenticated calls.
+   * Call this once the method has authenticated a known identity its own way
+   * (checking a password, say) and resolved it to its app user in its own
+   * component. The core runs the app's `onSignIn` callback if one is
+   * attached, and returns the tokens a client needs to make authenticated
+   * calls.
    *
-   * Throws if the identity has no account: reaching this helper is the
-   * method's assertion that the account exists, so a miss is a bug rather
-   * than an authentication failure to report to the user.
+   * Reaching this helper is the method's assertion that `userId` is the user
+   * the identity belongs to; the core does not check it.
    */
   completeSignIn(args: {
+    userId: string;
     providerAccountId: string;
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Create the account and the app user for a verified identity, but do not
-   * mint a session.
+   * Mint the app user for a verified identity, but do not mint a session.
    *
    * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. Account creation follows the same
-   * rules as `completeSignUp`: the app's `createUser` mints the user, and an
-   * identity that already has an account is refused. `onSignIn` does not run.
-   * The method signs the user in later with `completeSignIn`.
+   * validation) before the first sign-in. The app's `createUser` mints the
+   * user, as for `completeSignUp`; `onSignIn` does not run. The method
+   * records the new `userId` against its identity in its component and signs
+   * the user in later with `completeSignIn`.
    */
   signUpWithoutSession(args: {
     providerAccountId: string;
     profile: Profile;
   }): Promise<{ userId: string }>;
-  /**
-   * Look up the app user id for a given `providerAccountId`.
-   *
-   * Returns `null` when no user id is found for the account.
-   */
-  resolveUserId(providerAccountId: string): Promise<string | null>;
   /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)

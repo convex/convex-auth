@@ -482,6 +482,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
             );
 
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
               providerAccountId: userId,
               profile: {},
             });

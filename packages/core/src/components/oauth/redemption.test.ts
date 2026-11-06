@@ -29,25 +29,24 @@ import type {
 /**
  * Tests for the app-side `completeSignIn` mutation that `setupOauth`
  * produces, run against the real component (real `claimTicket`, real ticket
- * crypto). The core helpers it uses (`ctx.convexAuth.completeSignUp` /
- * `completeSignIn`, plus the `resolveUserId` it picks between them with) are
- * faked and spied here. The real ones are covered by the core's own suite
- * (component/core.test.ts).
+ * crypto, and the real `accounts` table it resolves the identity in and
+ * records it to). The core helpers it uses (`ctx.convexAuth.completeSignUp` /
+ * `completeSignIn`) are faked and spied here. The real ones are covered by
+ * the core's own suite (component/core.test.ts).
  */
 
 /**
  * Claims recorded by the fake `ctx.convexAuth.completeSignUp` /
- * `completeSignIn`, tagged with which of the two redemption chose. The suite
- * runs in one process, so tests read and reset this directly.
+ * `completeSignIn`, tagged with which of the two redemption chose, and for a
+ * sign-in the user id the component resolved. The suite runs in one process,
+ * so tests read and reset this directly.
  */
-type HelperCall = { kind: "signUp" | "signIn"; claims: AuthClaims };
+type HelperCall = {
+  kind: "signUp" | "signIn";
+  claims: AuthClaims;
+  userId?: string;
+};
 const helperCalls: HelperCall[] = [];
-
-/**
- * What the fake `ctx.convexAuth.resolveUserId` reports. `null` (the default)
- * models an identity the core has never seen; a user id models a return visit.
- */
-const resolvedUserId = { value: null as string | null };
 
 /**
  * When set, the fake helpers throw this instead of returning a bundle, modeling
@@ -85,15 +84,18 @@ const fakeCore = {
     const record =
       (kind: HelperCall["kind"]) =>
       async ({
+        userId,
         providerAccountId,
         profile,
       }: {
+        userId?: string;
         providerAccountId: string;
         profile: Profile;
       }) => {
         helperCalls.push({
           kind,
           claims: { providerName: name, providerAccountId, profile },
+          ...(userId === undefined ? {} : { userId }),
         });
         if (helperFailure.error !== undefined) {
           throw helperFailure.error;
@@ -103,7 +105,6 @@ const fakeCore = {
     const convexAuth: BoundAuthHelpers<Profile> = {
       completeSignUp: record("signUp"),
       completeSignIn: record("signIn"),
-      resolveUserId: async () => resolvedUserId.value,
       signUpWithoutSession: async () => {
         throw new Error("signUpWithoutSession is not used by redemption");
       },
@@ -276,10 +277,20 @@ async function mintTicket(
   return ticketCode;
 }
 
+/** The accounts the component holds, without system fields. */
+async function accounts(t: ReturnType<typeof setup>) {
+  return (
+    await t.run(async (ctx) => await ctx.db.query("accounts").collect())
+  ).map(({ providerName, providerAccountId, userId }) => ({
+    providerName,
+    providerAccountId,
+    userId,
+  }));
+}
+
 afterEach(() => {
   vi.useRealTimers();
   helperCalls.length = 0;
-  resolvedUserId.value = null;
   helperFailure.error = undefined;
 });
 
@@ -295,8 +306,8 @@ describe("completeSignIn", () => {
 
     expect(result).toEqual(completed);
     // The decrypted payload flowed through the catalog's profile mapping
-    // into the fake helpers. The identity is unknown to the core, so
-    // redemption took the sign-up path.
+    // into the fake helpers. The identity is unknown to the component, so
+    // redemption took the sign-up path...
     expect(helperCalls).toEqual([
       {
         kind: "signUp",
@@ -307,29 +318,73 @@ describe("completeSignIn", () => {
         },
       },
     ]);
+    // ...and recorded the user the core minted against the identity, under
+    // the provider's name.
+    expect(await accounts(t)).toEqual([
+      {
+        providerName: "acme",
+        providerAccountId: "acme-sub-1",
+        userId: bundle.userId,
+      },
+    ]);
   });
 
   test("signs a returning identity in rather than signing it up again", async () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    // Only the core knows the account has been seen before.
-    resolvedUserId.value = "user-1";
+    // The component remembers the account from an earlier redemption.
+    await t.mutation(api.provider.createAccount, {
+      providerName: "acme",
+      providerAccountId: "acme-sub-1",
+      userId: "user-7",
+    });
     const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
     });
 
     expect(result).toEqual(completed);
+    // The core was handed the user the component resolved, and no second
+    // account was recorded.
     expect(helperCalls).toEqual([
       {
         kind: "signIn",
+        userId: "user-7",
         claims: {
           providerName: "acme",
           providerAccountId: "acme-sub-1",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
       },
+    ]);
+    expect(await accounts(t)).toHaveLength(1);
+  });
+
+  test("keeps the accounts of two providers with one account id apart", async () => {
+    const t = setup();
+    // The same instance serves two providers, and both know a user "42".
+    await t.mutation(api.provider.createAccount, {
+      providerName: "acme",
+      providerAccountId: "42",
+      userId: "user-acme",
+    });
+    const code = await mintTicket(t, {
+      providerName: "acmeInfo",
+      payload: { userInfoResponses: { user: { id: 42, login: "octocat" } } },
+    });
+
+    const result = await t.mutation(completeSignInWithAcmeInfo, {
+      code,
+      state: "state-1",
+    });
+
+    // acme's user "42" is not acmeInfo's, so this is a first sign-in.
+    expect(result).toEqual(completed);
+    expect(helperCalls.map(({ kind }) => kind)).toEqual(["signUp"]);
+    expect(await accounts(t)).toEqual([
+      { providerName: "acme", providerAccountId: "42", userId: "user-acme" },
+      { providerName: "acmeInfo", providerAccountId: "42", userId: "user-1" },
     ]);
   });
 
@@ -448,7 +503,9 @@ describe("completeSignIn", () => {
     ).rejects.toThrow("sign-ups are closed");
 
     // ...and the claim rolled back with the rest of the mutation, so the
-    // ticket is not burned by the failed attempt.
+    // ticket is not burned by the failed attempt, and no account was
+    // recorded for a user that was never minted.
+    expect(await accounts(t)).toEqual([]);
     helperFailure.error = undefined;
     const result = await t.mutation(completeSignInWithAcme, {
       code,
