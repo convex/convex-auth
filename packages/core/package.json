@@ -509,6 +509,7 @@
     "@babel/code-frame": "^7.29.7",
     "@convex-dev/batch-worker": "^0.3.2",
     "@convex-dev/rate-limiter": "^0.3.2",
+    "@noble/hashes": "^2.4.0",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.0",
     "argon2id-wasm": "0.0.0-alpha.2",
