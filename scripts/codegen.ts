@@ -9,28 +9,34 @@
 //     other than the component host below.
 //   - A component is any other directory that has a `convex.config.ts` file.
 //
-// Each app runs in its own lane, the components run in a lane of their own, and
-// the lanes run at the same time. An interactive terminal shows one live line
-// per lane; CI has no TTY, thus Listr writes a plain line for each event
-// instead.
+// `convex codegen` analyzes a deployment. Every app and every component
+// generates its code against one deployment that this script owns: the
+// anonymous local deployment of `scripts/codegen-host`. This script finds the
+// apps and the components, and runs `convex dev --once` in the host with
+// `scripts/codegenTasks.ts` as its `--start` command. That file passes the URL
+// and the admin key of the deployment to each `convex codegen`. With those two
+// flags, the CLI reads no environment variable and no `.env.local`, thus a
+// developer can point an example at any deployment (self-hosted, cloud, or one
+// that is not running) without breaking codegen.
 //
 // `tsx` runs this file, and `pnpm typecheck` checks it against
 // `scripts/tsconfig.json`: `tsx` strips the types, it does not check them.
 //
-// Usage: pnpm codegen [--list] [--serial] [filter ...]
+// Usage: pnpm codegen [--list] [filter ...]
 //
 // A filter is a substring of a path. Only the apps and the components whose
 // path contains one of the filters are regenerated.
 
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Listr } from "listr2";
+import type { CodegenTask } from "./codegenTasks.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-// The app that the components generate their code against, described in
+// The app that owns the deployment every codegen runs against, described in
 // `scripts/codegen-host/README.md`. It is a workspace package, thus discovery
 // finds it like any other app; it generates no code of its own, thus the app
 // list leaves it out.
@@ -103,7 +109,6 @@ const components = findComponentConfigs(root)
 
 const args = process.argv.slice(2);
 const list = args.includes("--list");
-const serial = args.includes("--serial");
 const filters = args.filter((arg) => !arg.startsWith("--"));
 const selected = (path: string) =>
   filters.length === 0 ||
@@ -120,179 +125,110 @@ if (list) {
   process.exit(0);
 }
 
-type Report = (line: string) => void;
-
-// A terminal redraws one line per lane, thus the live progress of a command is
-// worth showing. CI has no TTY, where Listr writes each report as its own line:
-// there, only the command itself is worth a line.
-const interactive = process.stdout.isTTY === true;
-
-// Runs a Convex command and reports its last output line as it goes. The whole
-// output is kept, because a failure has to show it: only the last line is
-// visible while the command runs.
-function convex(
-  cwd: string,
-  commandArgs: string[],
-  report: Report,
-): Promise<{ ok: boolean; output: string }> {
-  // The lane title already names the app in a terminal. The verbose renderer
-  // writes the lanes interleaved, thus there the line has to name it itself.
-  const label = interactive
-    ? `convex ${commandArgs.join(" ")}`
-    : `${relative(root, cwd)}$ convex ${commandArgs.join(" ")}`;
-  report(label);
-  return new Promise((resolve) => {
-    const child = spawn("pnpm", ["exec", "convex", ...commandArgs], {
-      cwd,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let output = "";
-    const collect = (chunk: Buffer) => {
-      const text = chunk.toString();
-      output += text;
-      if (!interactive) return;
-      const lastLine = text.trimEnd().split("\n").at(-1)?.trim();
-      if (lastLine) report(`${label} — ${lastLine}`);
-    };
-    child.stdout.on("data", collect);
-    child.stderr.on("data", collect);
-    child.on("close", (code) => resolve({ ok: code === 0, output }));
-  });
-}
-
-// The deployment that an app selects, or undefined if it selects none.
-function selectedDeployment(appDir: string): string | undefined {
-  if (process.env.CONVEX_DEPLOYMENT) return process.env.CONVEX_DEPLOYMENT;
-  for (const file of [".env.local", ".env"]) {
-    const path = join(appDir, file);
-    if (!existsSync(path)) continue;
-    const match = /^\s*CONVEX_DEPLOYMENT=(\S+)/m.exec(
-      readFileSync(path, "utf8"),
-    );
-    if (match) return match[1];
-  }
-  return undefined;
-}
-
-// Two `convex dev` runs that create an anonymous deployment at the same time
-// both pick the first free port, and the second one then fails with "A
-// different local backend is running on selected port". The lanes thus create
-// their deployments one at a time; only the creation is serialized, because the
-// commands that follow use the port that the deployment already holds.
-let deploymentSetup: Promise<unknown> = Promise.resolve();
-function serializeSetup<T>(run: () => Promise<T>): Promise<T> {
-  const next = deploymentSetup.then(run, run);
-  deploymentSetup = next.catch(() => {});
-  return next;
-}
-
-class CommandFailed extends Error {
-  constructor(label: string, output: string) {
-    super(`${label} failed:\n\n${output.trim()}`);
-    this.name = "CommandFailed";
-  }
-}
-
-// `convex codegen` analyzes a deployment, thus each app needs one. An app that
-// selects a deployment keeps it, because it is the deployment that somebody
-// develops against. An app that selects none, and an app whose anonymous
-// deployment is gone, gets an anonymous local deployment. Such a deployment
-// needs no credentials and no cloud project, which is what lets CI run this.
-async function codegen(
-  appDir: string,
-  report: Report,
-  ...commandArgs: string[]
-): Promise<void> {
-  const app = relative(root, appDir);
-  const args = ["codegen", "--typecheck", "disable", ...commandArgs];
-  const deployment = selectedDeployment(appDir);
-  let attempt = await convex(appDir, args, report);
-  if (attempt.ok) return;
-  if (deployment !== undefined && !deployment.startsWith("anonymous:")) {
-    throw new Error(
-      `${app} selects the deployment ${deployment}, and codegen failed against ` +
-        `it. Run \`npx convex dev\` in that directory to select a deployment you ` +
-        `have access to, or delete its .env.local to use an anonymous local ` +
-        `deployment.\n\n${attempt.output.trim()}`,
-    );
-  }
-  // No deployment, or an anonymous one that is gone: create it and retry.
-  const setup = await serializeSetup(() =>
-    convex(
-      appDir,
-      [
-        "dev",
-        "--once",
-        "--skip-push",
-        "--codegen",
-        "disable",
-        "--typecheck",
-        "disable",
-      ],
-      report,
-    ),
-  );
-  if (!setup.ok) throw new CommandFailed(`${app}: convex dev`, setup.output);
-  attempt = await convex(appDir, args, report);
-  if (!attempt.ok)
-    throw new CommandFailed(`${app}: convex codegen`, attempt.output);
-}
-
-// The components generate their code against `scripts/codegen-host`, an app
-// that exists only for this. Two reasons: codegen pushes to the deployment it
-// analyzes, and an empty app keeps that push away from the deployment that
-// somebody develops the examples against; and the components then need no
-// example app to exist, nor to be installed by one.
-//
-// The components share that one deployment, thus they run one after the other:
-// two pushes to the same deployment race, and one of them fails with an
-// OptimisticConcurrencyControlFailure.
-type Lane = { title: string; run: (report: Report) => Promise<void> };
-
-const lanes: Lane[] = selectedApps.map((app) => ({
-  title: relative(root, app.dir),
-  run: (report) => codegen(app.dir, report),
-}));
-
-if (selectedComponents.length > 0) {
-  lanes.push({
-    title: "components",
-    run: async (report) => {
-      for (const dir of selectedComponents) {
-        await codegen(
-          componentHost,
-          report,
-          "--component-dir",
-          relative(componentHost, dir),
-        );
-      }
-    },
-  });
-}
-
-const listr = new Listr(
-  lanes.map((lane) => ({
-    title: lane.title,
-    task: (_context: unknown, task: { output: string }) =>
-      lane.run((line) => {
-        task.output = line;
-      }),
+const tasks: CodegenTask[] = [
+  ...selectedApps.map((app) => ({
+    cwd: app.dir,
+    title: relative(root, app.dir),
   })),
-  {
-    concurrent: !serial,
-    exitOnError: false,
-    collectErrors: true,
-    // A terminal shows one live line per lane. CI has no TTY, thus Listr falls
-    // back to the verbose renderer, which writes each event as a plain line.
-    renderer: "default",
-    fallbackRenderer: "verbose",
-  },
+  // A component generates its code from the host directory, which is the app
+  // that `--component-dir` is relative to.
+  ...selectedComponents.map((dir) => ({
+    cwd: componentHost,
+    componentDir: relative(componentHost, dir),
+    title: relative(root, dir),
+  })),
+];
+
+if (tasks.length === 0) {
+  console.log("Nothing matches the filters.");
+  process.exit(0);
+}
+
+// The host runs `convex dev` with the CLI that it declares. Node runs the CLI
+// directly, not through `pnpm exec`, thus a Ctrl-C in the terminal reaches the
+// CLI once, from the terminal itself. A second SIGINT, half a second or more
+// after the first, would make the CLI exit without stopping its backend.
+function binOf(packageName: string, from: string, bin: string): string {
+  const require = createRequire(join(from, "package.json"));
+  const packageJsonPath = require.resolve(`${packageName}/package.json`);
+  const packageJson: { bin: string | Record<string, string> } = JSON.parse(
+    readFileSync(packageJsonPath, "utf8"),
+  );
+  const path =
+    typeof packageJson.bin === "string"
+      ? packageJson.bin
+      : packageJson.bin[bin];
+  return join(dirname(packageJsonPath), path);
+}
+const convexBin = binOf("convex", componentHost, "convex");
+const tsxBin = binOf("tsx", root, "tsx");
+
+// `--start` runs its command through a shell.
+const startCommand = [
+  process.execPath,
+  tsxBin,
+  join(root, "scripts", "codegenTasks.ts"),
+]
+  .map((arg) => JSON.stringify(arg))
+  .join(" ");
+
+// These variables select a deployment, and the environment wins over
+// `.env.local`. The host must use its own anonymous deployment whatever the
+// shell of the developer selects.
+const env: NodeJS.ProcessEnv = {
+  ...process.env,
+  CODEGEN_TASKS: JSON.stringify(tasks),
+};
+for (const name of [
+  "CONVEX_DEPLOYMENT",
+  "CONVEX_DEPLOY_KEY",
+  "CONVEX_SELF_HOSTED_URL",
+  "CONVEX_SELF_HOSTED_ADMIN_KEY",
+])
+  delete env[name];
+
+// `convex dev --once` starts the local backend of the host (and creates the
+// anonymous deployment if it does not exist: its stdin is not a TTY, thus the
+// CLI does not offer to log in), pushes the empty host app, and runs the
+// `--start` command. Once that command exits, or on a SIGINT, the CLI stops the
+// backend. The CLI owns the whole lifecycle, thus this script only waits.
+const child = spawn(
+  process.execPath,
+  [
+    convexBin,
+    "dev",
+    "--once",
+    "--codegen",
+    "disable",
+    "--typecheck",
+    "disable",
+    "--tail-logs",
+    "disable",
+    "--start",
+    startCommand,
+  ],
+  { cwd: componentHost, env, stdio: ["ignore", "inherit", "inherit"] },
 );
 
-await listr.run();
+// A Ctrl-C reaches the CLI from the terminal, thus this script waits for the
+// CLI to clean up. Another signal reaches only this script, thus it passes it
+// on as the SIGINT that makes the CLI stop its backend.
+let interrupted = false;
+process.on("SIGINT", () => {
+  interrupted = true;
+});
+for (const signal of ["SIGTERM", "SIGHUP"] as const) {
+  process.once(signal, () => {
+    interrupted = true;
+    child.kill("SIGINT");
+  });
+}
 
-// Listr has already written each failure, thus the exit code is all that is
-// left to report.
-if ((listr.errors ?? []).length > 0) process.exit(1);
+const code = await new Promise<number>((resolve) =>
+  child.on("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0))),
+);
+if (interrupted) process.exit(130);
+// The CLI has already written each failure.
+if (code !== 0) process.exit(code);
 
 console.log("\n✔ Codegen complete.");
