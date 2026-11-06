@@ -62,7 +62,8 @@ export type OauthCatalog<
    * Google's `https://accounts.google.com`. Some providers document more than
    * one form (Google also uses `accounts.google.com`); an array accepts any
    * of them. Present for OIDC providers; absent for plain-OAuth providers
-   * (e.g., GitHub), where identity comes from userinfo.
+   * (e.g., GitHub), where identity comes from userinfo. Without an issuer, an
+   * id_token the provider sends anyway is ignored.
    *
    * All values must name the same issuing authority (aliases, or an issuer
    * URL migration). Multiple values should only be used when a single provider
