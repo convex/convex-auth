@@ -160,6 +160,50 @@ describe("ServerAuthSession", () => {
     vi.restoreAllMocks();
   });
 
+  test("getToken returns null without touching the cookies when the refresh call fails", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(nowMs);
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const cookies = new FakeCookies();
+    cookies.set(AUTH_JWT_COOKIE, jwt(NOW - 5)); // already expired
+    cookies.set(AUTH_REFRESH_COOKIE, "refresh-1");
+    const { session } = newSession(async () => {
+      throw new TypeError("fetch failed");
+    }, cookies);
+
+    expect(await session.getToken()).toBeNull();
+    expect(cookies.get(AUTH_JWT_COOKIE)).toBe(jwt(NOW - 5));
+    expect(cookies.get(AUTH_REFRESH_COOKIE)).toBe("refresh-1");
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  test("getToken keeps a not-yet-expired token when the refresh call fails", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(nowMs);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const cookies = new FakeCookies();
+    cookies.set(AUTH_JWT_COOKIE, jwt(NOW + 5)); // within the 10s skew
+    cookies.set(AUTH_REFRESH_COOKIE, "refresh-1");
+    const { session } = newSession(async () => {
+      throw new TypeError("fetch failed");
+    }, cookies);
+
+    expect(await session.getToken()).toBe(jwt(NOW + 5));
+    vi.restoreAllMocks();
+  });
+
+  test("refresh rethrows a failed refresh call", async () => {
+    const cookies = new FakeCookies();
+    cookies.set(AUTH_REFRESH_COOKIE, "refresh-1");
+    const { session } = newSession(async () => {
+      throw new TypeError("fetch failed");
+    }, cookies);
+
+    await expect(session.refresh()).rejects.toThrow("fetch failed");
+    expect(cookies.get(AUTH_REFRESH_COOKIE)).toBe("refresh-1");
+  });
+
   test("getToken returns null when there is no refresh cookie", async () => {
     vi.spyOn(Date, "now").mockReturnValue(nowMs);
     const refreshSession = vi.fn(async () => rotated(newTokenBundle(2)));

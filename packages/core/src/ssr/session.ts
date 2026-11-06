@@ -75,13 +75,25 @@ export class ServerAuthSession {
    * The access token to authenticate SSR requests with. Returns the cookie's
    * token when it is still comfortably valid; otherwise refreshes (rotating the
    * refresh token and rewriting both cookies). `null` means no usable session.
+   *
+   * Never throws because of a failed refresh (e.g. the deployment is
+   * unreachable): it logs the error and returns the cookie's token if it hasn't
+   * expired yet, or `null` otherwise. The cookies are left untouched, so the
+   * next request retries the refresh. Call {@link refresh} to handle the error
+   * yourself.
    */
   async getToken(): Promise<string | null> {
     const token = (await this.#cookies.get(AUTH_JWT_COOKIE)) ?? null;
     if (token !== null && !isTokenExpiring(token, this.#refreshSkewSeconds)) {
       return token;
     }
-    const result = await this.refresh();
+    let result: RefreshResult;
+    try {
+      result = await this.refresh();
+    } catch (error) {
+      console.error("Convex Auth: failed to refresh the session.", error);
+      return token !== null && !isTokenExpiring(token, 0) ? token : null;
+    }
     return result.kind === "rotated" ? result.tokens.accessToken : null;
   }
 
@@ -91,6 +103,8 @@ export class ServerAuthSession {
    *
    *  * `rotated`: rewrite both cookies with the new bundle.
    *  * `noSession`: clear both.
+   *
+   * Throws if the refresh call fails, leaving the cookies untouched.
    */
   async refresh(): Promise<RefreshResult> {
     const refreshToken = (await this.#cookies.get(AUTH_REFRESH_COOKIE)) ?? null;
