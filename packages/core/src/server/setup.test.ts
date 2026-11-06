@@ -65,7 +65,7 @@ const signUp = authMutation({
     }),
 });
 
-// The test method keeps no component of its own, so it resolves the
+// The test sign-in method keeps no component of its own, so it resolves the
 // identity the way the fixture's createUser minted it: the account id is the
 // user id.
 const signIn = authMutation({

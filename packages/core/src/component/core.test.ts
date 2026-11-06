@@ -96,11 +96,7 @@ async function signUp(t: ConvexTestApi, c: AuthClaims) {
   });
 }
 
-/**
- * Sign a known user back in, as an app that attached an `onSignIn` does. The
- * method resolved the identity to `userId` in its own component; the core
- * keeps no accounts of its own.
- */
+/** Sign a known identity back in, as an app that attached an `onSignIn` does. */
 async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
   return await t.mutation(api.public.signIn, {
     claims: c,
@@ -183,8 +179,8 @@ describe("signUp", () => {
     );
     expect(session).not.toBeNull();
     const sessionId = session!._id;
-    // The session records the method that signed it in, and the user the
-    // app minted. The core stores nothing else about the identity.
+    // The session records the sign-in method that signed it in, and the user
+    // the app minted. The core stores nothing else about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
       provider: "password",
@@ -240,7 +236,7 @@ describe("signUp", () => {
     });
 
     // The bundle carries the id the app's createUser returned, which is what
-    // the method records against its identity.
+    // the sign-in method records against its identity.
     expect(bundle.userId).toBe("user1");
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
@@ -265,15 +261,15 @@ describe("signUp", () => {
     expect(await sessionCount(t)).toBe(0);
   });
 
-  test("mints a user on every call: telling a new identity from a known one is the method's job", async () => {
+  test("mints a new user on every call, even for the same claims", async () => {
     const t = setup();
     const first = await signUp(t, claims());
     const second = await signUp(t, claims());
 
     // The core keeps no accounts, so it cannot refuse a repeated sign-up of
-    // one identity. The method's component is where that check lives,
-    // which is why methods resolve the identity there before choosing
-    // between signUp and signIn.
+    // one identity. That check lives in the sign-in method's component,
+    // which is why sign-in methods resolve the identity there before
+    // choosing between signUp and signIn.
     expect(second.userId).not.toBe(first.userId);
     expect(await sessionCount(t)).toBe(2);
   });
@@ -291,7 +287,7 @@ describe("signIn", () => {
 
     expect(second.userId).toBe(first.userId);
     // A fresh session per sign-in, both for the one user and through the
-    // same method.
+    // same sign-in method.
     const sessions = await t.run(
       async (ctx) => await ctx.db.query("sessions").collect(),
     );
@@ -341,13 +337,13 @@ describe("signIn", () => {
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
   });
 
-  test("takes the method's word for the user: no app user has to exist", async () => {
+  test("takes the sign-in method's word for the user: no app user has to exist", async () => {
     const t = setup();
 
     // The core cannot check the user id against the app's users table, nor
-    // against accounts of its own. A method that passes a wrong id signs the
-    // caller in as that user, which is why methods only pass an id read from
-    // their own component after verifying the identity.
+    // against accounts of its own. A sign-in method that passes a wrong id
+    // signs the caller in as that user, which is why sign-in methods only
+    // pass an id read from their own component after verifying the identity.
     const bundle = await signIn(t, claims(), "someone");
     expect(bundle.userId).toBe("someone");
     expect(await sessionCount(t)).toBe(1);
@@ -356,8 +352,8 @@ describe("signIn", () => {
   test("refuses an empty user id", async () => {
     const t = setup();
 
-    // The placeholder a method without an identifier of its own sends as
-    // the account id must never reach here as the user id.
+    // The placeholder a sign-in method without an identifier of its own
+    // sends as the account id must never reach here as the user id.
     await expect(signIn(t, claims(), "")).rejects.toThrow(/no user id/i);
     expect(await sessionCount(t)).toBe(0);
   });

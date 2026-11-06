@@ -13,9 +13,9 @@ export default defineSchema({
   // The core keeps no account table: which identity (a Google `sub`, a
   // passkey, an email address) belongs to which app user is the business of
   // the component that authenticates it. The core only learns the app user
-  // id a method resolved, and the method's name, which it records on the
-  // session so an app can later revoke the sessions one sign-in method
-  // established (when the user unlinks it, say).
+  // id a sign-in method resolved, and the sign-in method's name, which it
+  // records on the session so an app can later revoke the sessions one
+  // sign-in method established (when the user unlinks it, say).
   sessions: defineTable({
     userId: v.string(),
     // The sign-in method the session was signed in through, by the name it
