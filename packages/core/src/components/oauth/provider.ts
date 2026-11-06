@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { env, internalMutation, mutation } from "./_generated/server.ts";
+import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import type { Doc } from "./_generated/dataModel.ts";
 import * as dbHelpers from "../../lib/oauth/dbHelpers.ts";
 
@@ -128,4 +128,45 @@ export const claimTicket = mutation({
       stateHash: args.stateHash,
       match: (ticket) => ticket.providerName === args.providerName,
     }),
+});
+
+/**
+ * Resolve a provider account id to the app user recorded for it, or `null`
+ * for an identity this provider has never signed in. The provider name must
+ * match too: two providers served by one instance may use the same ids.
+ */
+export const getUserIdByAccount = query({
+  args: {
+    providerName: v.string(),
+    providerAccountId: v.string(),
+  },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) =>
+    await dbHelpers.findAccountUserId<Doc<"accounts">>(ctx, {
+      providerAccountId: args.providerAccountId,
+      match: (account) => account.providerName === args.providerName,
+    }),
+});
+
+/**
+ * Record the app user the core minted for a new identity. Refuses an
+ * identity that already has an account under the same provider name.
+ */
+export const createAccount = mutation({
+  args: {
+    providerName: v.string(),
+    providerAccountId: v.string(),
+    userId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) =>
+    await dbHelpers.insertAccount<Doc<"accounts">>(
+      ctx,
+      {
+        providerName: args.providerName,
+        providerAccountId: args.providerAccountId,
+      },
+      args.userId,
+      (account) => account.providerName === args.providerName,
+    ),
 });

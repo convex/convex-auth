@@ -1,9 +1,10 @@
 /**
  * The registered mutations behind a built-in provider's `provider.ts`.
  *
- * Each built-in provider has its own component with two tables and four
- * mutations. The four create and claim an authorization request, and create
- * and claim a ticket.
+ * Each built-in provider has its own component with three tables and six
+ * functions. Four mutations create and claim an authorization request, and
+ * create and claim a ticket; a query resolves an account to its app user, and
+ * a mutation creates one.
  * The database work lives in `dbHelpers.ts`. This module adds the
  * registration, meaning the argument and return validators and the functions
  * that wrap them.
@@ -14,21 +15,31 @@ import type {
   GenericDataModel,
   IdField,
   MutationBuilder,
+  QueryBuilder,
   SystemFields,
 } from "convex/server";
 import { v } from "convex/values";
 import * as dbHelpers from "./dbHelpers.ts";
 import type {
+  AccountContract,
   AuthorizationRequestContract,
   TicketContract,
 } from "./dbHelpers.ts";
-import { authorizationRequestFields, ticketFields } from "./schema.ts";
+import {
+  accountFields,
+  authorizationRequestFields,
+  ticketFields,
+} from "./schema.ts";
 
 type SharedRequestDocument = AuthorizationRequestContract &
   IdField<"authorizationRequests"> &
   SystemFields;
 
 type SharedTicketDocument = TicketContract & IdField<"tickets"> & SystemFields;
+
+type SharedAccountDocument = AccountContract &
+  IdField<"accounts"> &
+  SystemFields;
 
 /**
  * Gives a compile time error at the {@link buildProviderFunctions} call when
@@ -65,20 +76,30 @@ const claimRequestResult = v.union(
 const createTicketArgs = v.object(ticketFields).omit("expiresAt");
 
 /**
- * Build the four mutations a built-in provider's component registers. The
- * component's `provider.ts` destructures the result and exports the four
+ * Build the six functions a built-in provider's component registers. The
+ * component's `provider.ts` destructures the result and exports the six
  * under their own names, which is what Convex registers them as.
  *
- * The caller has to pass its own two document types, e.g.
- * `buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">>({...})`.
+ * The caller has to pass its own three document types, e.g.
+ * `buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">, Doc<"accounts">>({...})`.
  * {@link OnlyTheFieldsOf} checks those types, and a call without them compiles
- * with no check. A component with extra table fields writes its own four
- * mutations.
+ * with no check. A component with extra table fields writes its own
+ * functions.
  */
 export function buildProviderFunctions<
   RequestDoc extends OnlyTheFieldsOf<RequestDoc, SharedRequestDocument>,
   TicketDoc extends OnlyTheFieldsOf<TicketDoc, SharedTicketDocument>,
+  AccountDoc extends OnlyTheFieldsOf<AccountDoc, SharedAccountDocument>,
 >(options: {
+  /**
+   * The component's own `query` builder. A `QueryBuilder<GenericDataModel>`
+   * would not accept it: a query ctx is not assignable across data models
+   * the way a mutation ctx is (the writer's members are methods, which
+   * TypeScript compares bivariantly; the reader's are not all). The
+   * handler below only passes the ctx on to the data-model-agnostic helper.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: QueryBuilder<any, "public">;
   mutation: MutationBuilder<GenericDataModel, "public">;
   internalMutation: MutationBuilder<GenericDataModel, "internal">;
   /**
@@ -142,10 +163,30 @@ export function buildProviderFunctions<
       await dbHelpers.claimTicket<SharedTicketDocument>(ctx, args),
   });
 
+  const getUserIdByAccount = options.query({
+    args: { providerAccountId: v.string() },
+    returns: v.union(v.string(), v.null()),
+    handler: async (ctx, args) =>
+      await dbHelpers.findAccountUserId<SharedAccountDocument>(ctx, args),
+  });
+
+  const createAccount = options.mutation({
+    args: accountFields,
+    returns: v.null(),
+    handler: async (ctx, args) =>
+      await dbHelpers.insertAccount<SharedAccountDocument>(
+        ctx,
+        { providerAccountId: args.providerAccountId },
+        args.userId,
+      ),
+  });
+
   return {
     createAuthorizationRequest,
     claimAuthorizationRequest,
     createTicket,
     claimTicket,
+    getUserIdByAccount,
+    createAccount,
   };
 }
