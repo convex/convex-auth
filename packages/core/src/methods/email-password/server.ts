@@ -400,10 +400,10 @@ export function setupEmailPassword<UsersTable extends string>(
 
       return {
         /**
-         * Create a new account: the app user, the account and the password are
-         * written immediately, but no session is minted. The user signs in for
-         * the first time through `completeSignUp`, after they open the
-         * challenge link.
+         * Create a new account: the app user and the password are written
+         * immediately, but no session is minted. The user signs in for the
+         * first time through `completeSignUp`, after they open the challenge
+         * link.
          *
          * Repeated sign-ups with one unvalidated address create separate
          * users; the first completed validation wins, and the others can never
@@ -435,10 +435,8 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            // Create the app user + account without a session. Accounts are
-            // keyed by the app user id, which does not exist before this call
-            // mints it, hence the placeholder; sign-in passes the user id
-            // itself.
+            // This sign-in method's identity is the app user id, which doesn't
+            // exist until this call mints it, hence the placeholder.
             const { userId } = await ctx.convexAuth.signUpWithoutSession({
               providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
@@ -507,6 +505,7 @@ export function setupEmailPassword<UsersTable extends string>(
               return { status: "error", userError: complete.userError };
             }
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId: complete.userId,
               providerAccountId: complete.userId,
               profile: {},
             });
@@ -552,6 +551,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
               providerAccountId: userId,
               profile: {},
             });
@@ -928,6 +928,7 @@ export function setupEmailPassword<UsersTable extends string>(
             await ctx.convexAuth.revokeAllSessions(userId);
 
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
               providerAccountId: userId,
               profile: {},
             });

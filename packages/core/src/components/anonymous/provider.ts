@@ -1,15 +1,14 @@
+import { v } from "convex/values";
 import { mutation } from "./_generated/server.ts";
 
 /**
- * Creates an anonymous account in the `accounts` table.
- *
- * Returns the `anonymousId` stored in the table.
+ * Create an account connecting an anonymous id to an app user id.
  */
 export const createAnonymousAccount = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const anonymousId = crypto.randomUUID();
-    await ctx.db.insert("accounts", { anonymousId });
-    return anonymousId;
+  args: { anonymousId: v.string(), userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("accounts", args);
+    return null;
   },
 });

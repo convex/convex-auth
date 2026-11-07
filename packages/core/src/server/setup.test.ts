@@ -65,11 +65,13 @@ const signUp = authMutation({
     }),
 });
 
+// The fixture's createUser returns the account id as the user id.
 const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
+      userId: accountId,
       providerAccountId: accountId,
       profile: {},
     }),
@@ -112,6 +114,7 @@ const signInShortTtl = shortTtlAuthMutation({
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
+      userId: accountId,
       providerAccountId: accountId,
       profile: {},
     }),

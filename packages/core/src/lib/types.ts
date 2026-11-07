@@ -198,8 +198,8 @@ export type ConvexAuthApi = {
  * Shared identity-claims contract between the *sign-in methods* that
  * authenticate users and the *core* component.
  *
- * After a method authenticates a user it produces this plain payload; the app
- * forwards it to the core's `signIn`, which turns it into a session. Methods
+ * After a sign-in method authenticates a user it produces this plain payload;
+ * the app forwards it to the core's `signUp` or `signIn`. Sign-in methods
  * never call the core directly, they only know how to produce these claims.
  */
 export const vAuthClaims = v.object({
@@ -219,12 +219,14 @@ export const vAuthClaims = v.object({
 export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
- * The `providerAccountId` a method sends to `completeSignUp` when it has no
- * identifier of its own. The core then keys the new account by the app user id
- * `createUser` returns, and later sign-ins send that user id as the account
- * identifier.
+ * The `providerAccountId` sent to `completeSignUp` by a sign-in method whose
+ * identity is the app user id, which doesn't exist yet (password and passkey
+ * methods). Only the app's `createUser` callback sees it; later sign-ins send
+ * the user id.
  *
- * @TODO(nicolas) Consider replacing this mechanism
+ * @TODO(nicolas) Consider dropping `accountId` from the app callbacks for
+ * these sign-in methods, or making it optional, instead of sending a
+ * placeholder.
  */
 export const USE_USER_ID_AS_ACCOUNT_ID = "";
 
@@ -316,57 +318,51 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
-   * Exchange a *newly established* account identity for a session.
+   * Mint the app user for a *new* identity and exchange it for a session.
    *
-   * Call this when the method has just created the account. The core records
-   * the account, calls the app's `createUser` to mint the app user, then its
-   * `onSignIn` like any other sign-in, and returns the tokens a client needs to
-   * make authenticated calls.
+   * Call this when the sign-in method has verified a new identity. The core
+   * calls the app's `createUser` to mint the app user, then its `onSignIn`
+   * like any other sign-in, and returns the tokens a client needs to make
+   * authenticated calls.
    *
-   * Throws if the identity already has an account. A method that cannot tell
-   * a first sign-in from a return visit should call
-   * {@link BoundAuthHelpers.resolveUserId} first and pick the right helper.
+   * The core can't tell a new identity from a returning one, so the sign-in
+   * method must look the identity up in its own component first (calling
+   * {@link BoundAuthHelpers.completeSignIn} if it's known), and record the
+   * returned `userId` there in the same mutation.
    */
   completeSignUp(args: {
     providerAccountId: string;
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Exchange a verified *existing* account identity for a session.
+   * Exchange a verified *existing* identity for a session.
    *
-   * Call this once the method has authenticated a known account its own way
-   * (checking a password, say). The core resolves the account to its app user,
+   * Call this once the sign-in method has authenticated a known identity its
+   * own way (checking a password, say) and looked up its user id. The core
    * runs the app's `onSignIn` callback if one is attached, and returns the
    * tokens a client needs to make authenticated calls.
    *
-   * Throws if the identity has no account: reaching this helper is the
-   * method's assertion that the account exists, so a miss is a bug rather
-   * than an authentication failure to report to the user.
+   * The core doesn't check `userId`: a wrong one signs the caller in as that
+   * user.
    */
   completeSignIn(args: {
+    userId: string;
     providerAccountId: string;
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Create the account and the app user for a verified identity, but do not
-   * mint a session.
+   * Mint the app user for a verified identity, but do not mint a session.
    *
    * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. Account creation follows the same
-   * rules as `completeSignUp`: the app's `createUser` mints the user, and an
-   * identity that already has an account is refused. `onSignIn` does not run.
-   * The method signs the user in later with `completeSignIn`.
+   * validation) before the first sign-in. The app's `createUser` mints the
+   * user, as for `completeSignUp`; `onSignIn` does not run. The sign-in method
+   * records the returned `userId` in its own component and signs the user in
+   * later with `completeSignIn`.
    */
   signUpWithoutSession(args: {
     providerAccountId: string;
     profile: Profile;
   }): Promise<{ userId: string }>;
-  /**
-   * Look up the app user id for a given `providerAccountId`.
-   *
-   * Returns `null` when no user id is found for the account.
-   */
-  resolveUserId(providerAccountId: string): Promise<string | null>;
   /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)
