@@ -3,21 +3,28 @@
  *
  * An OAuth flow needs two short-lived documents: an authorization request,
  * written when sign-in starts and claimed by the provider callback, and a
- * ticket, minted by the callback and redeemed by the app. Every OAuth
- * component keeps those same two tables, so the reads and writes live here,
- * and each component's `provider.ts` supplies its own argument validators and
- * its own document type.
+ * ticket, minted by the callback and redeemed by the app. Each component also
+ * keeps one durable document per identity: an account, connecting a provider
+ * account id to an app user id. Every OAuth component keeps those same
+ * tables, so the reads and writes live here, and each component's
+ * `provider.ts` supplies its own argument validators and its own document
+ * types.
  *
  * @module
  */
 import type {
+  GenericDatabaseReader,
   GenericDataModel,
   GenericMutationCtx,
   WithoutSystemFields,
 } from "convex/server";
 import type { GenericId, ObjectType } from "convex/values";
 import { CALLBACK_PATH } from "./constants.ts";
-import type { authorizationRequestFields, ticketFields } from "./schema.ts";
+import type {
+  accountFields,
+  authorizationRequestFields,
+  ticketFields,
+} from "./schema.ts";
 
 /** How long an authorization request stays claimable by the callback. */
 export const AUTHORIZATION_REQUEST_TTL_MS = 10 * 60 * 1000; // 10m
@@ -36,6 +43,12 @@ export const TICKET_TTL_MS = 2 * 60 * 1000;
  * The document types below are what carry the real contract.
  */
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
+/**
+ * A query's or a mutation's ctx. Only `db.query` is named because a
+ * component's own query ctx is not assignable to
+ * `GenericQueryCtx<GenericDataModel>`.
+ */
+type QueryCtx = { db: Pick<GenericDatabaseReader<GenericDataModel>, "query"> };
 
 /** What this code requires from an authorization request document. */
 export type AuthorizationRequestContract = ObjectType<
@@ -44,6 +57,9 @@ export type AuthorizationRequestContract = ObjectType<
 
 /** What this code requires from a ticket document. */
 export type TicketContract = ObjectType<typeof ticketFields>;
+
+/** What this code requires from an account document. */
+export type AccountContract = ObjectType<typeof accountFields>;
 
 /**
  * Record an in-flight authorization request and return the callback URL it
@@ -182,4 +198,48 @@ export async function claimTicket<Doc extends TicketContract>(
   }
   await ctx.db.delete("tickets", ticket._id);
   return { encryptedPayload: ticket.encryptedPayload };
+}
+
+/**
+ * Get the app user id connected to a given provider account id, or `null`
+ * if there is none.
+ *
+ * The caller writes out `Doc` as its own generated document type, e.g.
+ * `findAccountUserId<Doc<"accounts">>(ctx, args)`.
+ */
+export async function findAccountUserId<Doc extends AccountContract>(
+  ctx: QueryCtx,
+  args: { providerAccountId: string },
+): Promise<string | null> {
+  // The same assertion as in claimAuthorizationRequest, for the same reason.
+  const account = (await ctx.db
+    .query("accounts")
+    .withIndex("providerAccountId", (q) =>
+      q.eq("providerAccountId", args.providerAccountId),
+    )
+    .unique()) as Doc | null;
+  return account?.userId ?? null;
+}
+
+/**
+ * Create an account connecting `providerAccountId` to `userId`. Throws if
+ * that provider account id already has an account, since it must never map
+ * to two app users.
+ *
+ * The caller writes out `Doc` as its own generated document type, e.g.
+ * `insertAccount<Doc<"accounts">>(ctx, args)`.
+ */
+export async function insertAccount<Doc extends AccountContract>(
+  ctx: MutationCtx,
+  { providerAccountId, userId }: AccountContract,
+): Promise<null> {
+  const existing = await findAccountUserId<Doc>(ctx, { providerAccountId });
+  if (existing !== null) {
+    throw new Error(
+      `Invariant violation: an account for provider account id ` +
+        `${JSON.stringify(providerAccountId)} already exists`,
+    );
+  }
+  await ctx.db.insert("accounts", { providerAccountId, userId });
+  return null;
 }

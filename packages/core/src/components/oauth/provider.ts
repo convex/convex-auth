@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { env, internalMutation, mutation } from "./_generated/server.ts";
+import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import type { Doc } from "./_generated/dataModel.ts";
 import * as dbHelpers from "../../lib/oauth/dbHelpers.ts";
+import { accountFields } from "../../lib/oauth/schema.ts";
 
 /**
  * Record an in-flight authorization request. Called by the app-side
@@ -128,4 +129,26 @@ export const claimTicket = mutation({
       stateHash: args.stateHash,
       match: (ticket) => ticket.providerName === args.providerName,
     }),
+});
+
+/**
+ * Get the app user id connected to a given provider account id, or `null`
+ * if there is none.
+ */
+export const getUserIdByAccount = query({
+  args: { providerAccountId: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) =>
+    await dbHelpers.findAccountUserId<Doc<"accounts">>(ctx, args),
+});
+
+/**
+ * Create an account connecting a provider account id to an app user id.
+ * Throws if that provider account id already has one.
+ */
+export const createAccount = mutation({
+  args: accountFields,
+  returns: v.null(),
+  handler: async (ctx, args) =>
+    await dbHelpers.insertAccount<Doc<"accounts">>(ctx, args),
 });
