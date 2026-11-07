@@ -222,31 +222,24 @@ export async function findAccountUserId<Doc extends AccountContract>(
 }
 
 /**
- * Create an account connecting `account.providerAccountId` to `userId`.
- * Throws if that provider account id already has an account, since it must
- * never map to two app users.
+ * Create an account connecting `providerAccountId` to `userId`. Throws if
+ * that provider account id already has an account, since it must never map
+ * to two app users.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
- * `insertAccount<Doc<"accounts">>(ctx, account, userId)`.
+ * `insertAccount<Doc<"accounts">>(ctx, args)`.
  */
 export async function insertAccount<Doc extends AccountContract>(
   ctx: MutationCtx,
-  // `Omit` of a generic type hides the fields the contract promises, so the
-  // intersection names the one this code reads.
-  account: Omit<WithoutSystemFields<Doc>, "userId"> & {
-    providerAccountId: string;
-  },
-  userId: string,
+  { providerAccountId, userId }: AccountContract,
 ): Promise<null> {
-  const existing = await findAccountUserId<Doc>(ctx, {
-    providerAccountId: account.providerAccountId,
-  });
+  const existing = await findAccountUserId<Doc>(ctx, { providerAccountId });
   if (existing !== null) {
     throw new Error(
       `Invariant violation: an account for provider account id ` +
-        `${JSON.stringify(account.providerAccountId)} already exists`,
+        `${JSON.stringify(providerAccountId)} already exists`,
     );
   }
-  await ctx.db.insert("accounts", { ...account, userId });
+  await ctx.db.insert("accounts", { providerAccountId, userId });
   return null;
 }

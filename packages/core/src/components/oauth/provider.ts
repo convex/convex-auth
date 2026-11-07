@@ -150,9 +150,5 @@ export const createAccount = mutation({
   args: accountFields,
   returns: v.null(),
   handler: async (ctx, args) =>
-    await dbHelpers.insertAccount<Doc<"accounts">>(
-      ctx,
-      { providerAccountId: args.providerAccountId },
-      args.userId,
-    ),
+    await dbHelpers.insertAccount<Doc<"accounts">>(ctx, args),
 });

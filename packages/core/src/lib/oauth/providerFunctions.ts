@@ -169,11 +169,7 @@ export function buildProviderFunctions<
     args: accountFields,
     returns: v.null(),
     handler: async (ctx, args) =>
-      await dbHelpers.insertAccount<SharedAccountDocument>(
-        ctx,
-        { providerAccountId: args.providerAccountId },
-        args.userId,
-      ),
+      await dbHelpers.insertAccount<SharedAccountDocument>(ctx, args),
   });
 
   return {
