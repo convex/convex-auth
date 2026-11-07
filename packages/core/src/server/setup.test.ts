@@ -65,9 +65,7 @@ const signUp = authMutation({
     }),
 });
 
-// The test sign-in method keeps no component of its own, so it resolves the
-// identity the way the fixture's createUser minted it: the account id is the
-// user id.
+// The fixture's createUser returns the account id as the user id.
 const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),

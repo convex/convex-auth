@@ -10,16 +10,12 @@ export default defineSchema({
   // reading it (e.g. to check session liveness) is not invalidated by token
   // refreshes.
   //
-  // The core keeps no account table: which identity (a Google `sub`, a
-  // passkey, an email address) belongs to which app user is the business of
-  // the component that authenticates it. The core only learns the app user
-  // id a sign-in method resolved, and the sign-in method's name, which it
-  // records on the session so an app can later revoke the sessions one
-  // sign-in method established (when the user unlinks it, say).
+  // Which identity belongs to which app user is kept by the sign-in method's
+  // component, not here.
   sessions: defineTable({
     userId: v.string(),
-    // The sign-in method the session was signed in through, by the name it
-    // is bound to the core under (`bindProvider`'s `name`).
+    // The name of the sign-in method that signed the session in
+    // (`bindProvider`'s `name`).
     provider: v.string(),
   }).index("by_user", ["userId"]),
 

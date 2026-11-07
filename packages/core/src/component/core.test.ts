@@ -179,8 +179,8 @@ describe("signUp", () => {
     );
     expect(session).not.toBeNull();
     const sessionId = session!._id;
-    // The session records the sign-in method that signed it in, and the user
-    // the app minted. The core stores nothing else about the identity.
+    // The session holds the user id and the sign-in method, and nothing else
+    // about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
       provider: "password",
@@ -235,8 +235,7 @@ describe("signUp", () => {
       ...DEFAULT_TTL,
     });
 
-    // The bundle carries the id the app's createUser returned, which is what
-    // the sign-in method records against its identity.
+    // The bundle carries the id returned by the app's createUser.
     expect(bundle.userId).toBe("user1");
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
@@ -254,10 +253,7 @@ describe("signUp", () => {
       }),
     ).rejects.toThrow(/no sign-ins for you/);
 
-    // The app's own users row is a write of the same mutation, so it rolls
-    // back with it (the fixture's createUser keeps no rows, so the caller
-    // count stands in). The session was never reached, since onSignIn runs
-    // before it is minted.
+    // onSignIn runs before the session is minted, so none exists.
     expect(await sessionCount(t)).toBe(0);
   });
 
@@ -266,10 +262,8 @@ describe("signUp", () => {
     const first = await signUp(t, claims());
     const second = await signUp(t, claims());
 
-    // The core keeps no accounts, so it cannot refuse a repeated sign-up of
-    // one identity. That check lives in the sign-in method's component,
-    // which is why sign-in methods resolve the identity there before
-    // choosing between signUp and signIn.
+    // The core can't tell a repeated sign-up from a new one; sign-in methods
+    // check their own component before calling signUp.
     expect(second.userId).not.toBe(first.userId);
     expect(await sessionCount(t)).toBe(2);
   });
@@ -286,8 +280,6 @@ describe("signIn", () => {
     );
 
     expect(second.userId).toBe(first.userId);
-    // A fresh session per sign-in, both for the one user and through the
-    // same sign-in method.
     const sessions = await t.run(
       async (ctx) => await ctx.db.query("sessions").collect(),
     );
@@ -340,10 +332,9 @@ describe("signIn", () => {
   test("takes the sign-in method's word for the user: no app user has to exist", async () => {
     const t = setup();
 
-    // The core cannot check the user id against the app's users table, nor
-    // against accounts of its own. A sign-in method that passes a wrong id
-    // signs the caller in as that user, which is why sign-in methods only
-    // pass an id read from their own component after verifying the identity.
+    // The core can't verify the user id, so a wrong id signs the caller in
+    // as that user. Sign-in methods must pass only a user id they looked up
+    // after verifying the identity.
     const bundle = await signIn(t, claims(), "someone");
     expect(bundle.userId).toBe("someone");
     expect(await sessionCount(t)).toBe(1);
@@ -352,8 +343,8 @@ describe("signIn", () => {
   test("refuses an empty user id", async () => {
     const t = setup();
 
-    // The placeholder a sign-in method without an identifier of its own
-    // sends as the account id must never reach here as the user id.
+    // `USE_USER_ID_AS_ACCOUNT_ID` is an empty string, and must never be
+    // accepted as a user id.
     await expect(signIn(t, claims(), "")).rejects.toThrow(/no user id/i);
     expect(await sessionCount(t)).toBe(0);
   });
@@ -369,7 +360,7 @@ describe("signUpWithoutSession", () => {
       createUserHandle: CREATE_USER_HANDLE,
     });
 
-    // The id is the one the app's createUser returned.
+    // The id returned by the app's createUser.
     expect(userId).toBe("user1");
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     // No sign-in happened, so onSignIn does not run, and no session was

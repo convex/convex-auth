@@ -27,18 +27,18 @@ import type {
 } from "../../server/setup.ts";
 
 /**
- * Tests for the app-side `completeSignIn` mutation that `setupOauth`
- * produces, run against the real component (real `claimTicket`, real ticket
- * crypto, and the real `accounts` table it resolves the identity in and
- * records it to). The core helpers it uses (`ctx.convexAuth.completeSignUp` /
- * `completeSignIn`) are faked and spied here. The real ones are covered by
- * the core's own suite (component/core.test.ts).
+ * Tests for the app-side `completeSignIn` mutation produced by `setupOauth`,
+ * run against the real component (real `claimTicket`, ticket crypto and
+ * `accounts` table). The core helpers it uses
+ * (`ctx.convexAuth.completeSignUp` / `completeSignIn`) are faked and spied
+ * here. The real ones are covered by the core's own suite
+ * (component/core.test.ts).
  */
 
 /**
- * Claims recorded by the fake `ctx.convexAuth.completeSignUp` /
- * `completeSignIn`, tagged with which of the two redemption chose, and for a
- * sign-in the user id the component resolved. The suite runs in one process,
+ * Calls recorded by the fake `ctx.convexAuth.completeSignUp` /
+ * `completeSignIn`: which one redemption chose, its claims, and for a
+ * sign-in, the user id it passed. The suite runs in one process,
  * so tests read and reset this directly.
  */
 type HelperCall = {
@@ -314,7 +314,7 @@ describe("completeSignIn", () => {
         },
       },
     ]);
-    // ...and recorded the user the core minted against the identity.
+    // ...and recorded an account for the new user.
     expect(await accounts(t)).toEqual([
       { providerAccountId: "acme-sub-1", userId: bundle.userId },
     ]);
@@ -324,7 +324,7 @@ describe("completeSignIn", () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    // The component remembers the account from an earlier redemption.
+    // The identity already has an account.
     await t.mutation(api.provider.createAccount, {
       providerAccountId: "acme-sub-1",
       userId: "user-7",
@@ -335,8 +335,8 @@ describe("completeSignIn", () => {
     });
 
     expect(result).toEqual(completed);
-    // The core was handed the user the component resolved, and no second
-    // account was recorded.
+    // Redemption passed the account's user id to the core and recorded no
+    // second account.
     expect(helperCalls).toEqual([
       {
         kind: "signIn",
@@ -467,7 +467,7 @@ describe("completeSignIn", () => {
 
     // ...and the claim rolled back with the rest of the mutation, so the
     // ticket is not burned by the failed attempt, and no account was
-    // recorded for a user that was never minted.
+    // recorded.
     expect(await accounts(t)).toEqual([]);
     helperFailure.error = undefined;
     const result = await t.mutation(completeSignInAcme, {
