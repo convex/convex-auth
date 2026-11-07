@@ -15,7 +15,14 @@ if (rootElement === null) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ConvexAuthProvider client={convex} api={api.auth}>
+    <ConvexAuthProvider
+      client={convex}
+      api={{
+        refreshSession: api.auth.refreshSession,
+        signOut: api.auth.signOut,
+        isAuthenticated: api.auth.isAuthenticated,
+      }}
+    >
       <App />
     </ConvexAuthProvider>
   </StrictMode>,

@@ -106,7 +106,7 @@ the production domain before you deploy.
 <Step title="Set up the provider on the client">
 
 Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
-`signOut` mutations in `src/main.tsx`:
+`signOut` mutations and the `isAuthenticated` query in `src/main.tsx`:
 
 ```tsx file="examples/react-passkey-basic/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
 
