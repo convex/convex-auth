@@ -131,13 +131,11 @@ function asUserId(userId: string): GenericId<string> {
 }
 
 /**
- * Mint the app-level user for an identity the sign-in method has not seen
- * before.
+ * Mint the app-level user for a new identity.
  *
- * The app's `createUser` callback mints and returns the user id. The claims
- * are passed to it. The core records nothing: the sign-in method's component
- * keeps the map from its identity to this user id, and `signUp` and the
- * sessionless `signUpWithoutSession` both build on this.
+ * The app's `createUser` callback mints the user id from the claims. The
+ * sign-in method's component, not the core, records which identity it
+ * belongs to.
  */
 async function createAppUser(
   ctx: MutationCtx,
@@ -190,11 +188,9 @@ async function notifySignIn(
  * other sign-in. An `onSignIn` that throws therefore rolls back the user
  * `createUser` just made, since both are subtransactions of this one.
  *
- * The core keeps no account for the identity: the caller records the
- * returned `userId` against it in the sign-in method's own component, in the
- * same mutation, so the two cannot disagree. The core therefore cannot refuse
- * a repeated sign-up of one identity; the sign-in method checks its component
- * first.
+ * The core can't tell a repeated sign-up of one identity from a new one. The
+ * sign-in method must check its own component first, and record the returned
+ * `userId` there in the same mutation.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
@@ -231,11 +227,9 @@ export const signUp = mutation({
  * framework's `completeSignIn` helper. That function takes care of passing the
  * `onSignInHandle` app callback.
  *
- * The caller has resolved the identity in `claims` to `userId` in the
- * sign-in method's own component; the core takes its word for it and records
- * nothing but the session. Reaching this function with a wrong `userId`
- * signs the caller in as that user, so a sign-in method only calls it with a
- * user id read from its component after verifying the identity.
+ * The core trusts `userId` without checking it: a wrong `userId` signs the
+ * caller in as that user. Sign-in methods must pass only a user id they
+ * looked up after verifying the identity.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
@@ -269,8 +263,7 @@ export const signIn = mutation({
  * example, an email validation. The app's `createUser` mutation mints the user,
  * as for `signUp`, but no session is minted and `onSignIn` does not run: the
  * user cannot make authenticated calls until a later `signIn` succeeds. The
- * caller records the returned `userId` against its identity in its own
- * component.
+ * caller must record the returned `userId` in its own component.
  */
 export const signUpWithoutSession = mutation({
   args: {

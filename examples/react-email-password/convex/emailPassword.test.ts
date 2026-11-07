@@ -96,8 +96,8 @@ async function seedSignedUpUser(
  * Configure the passed in `T` with a session for `userId`.
  *
  * The access token's subject is a session id, and the core looks the user up
- * through the session, so this seeds a session for the user
- * `seedSignedUpUser` created.
+ * through the session, so this seeds a session for the user created by
+ * `seedSignedUpUser`.
  */
 async function asUser(t: T, userId: string) {
   const sessionId = await runInComponent(t, "auth", async (ctx) => {

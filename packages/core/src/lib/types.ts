@@ -199,12 +199,8 @@ export type ConvexAuthApi = {
  * authenticate users and the *core* component.
  *
  * After a sign-in method authenticates a user it produces this plain payload;
- * the app forwards it to the core's `signUp` or `signIn`, which hands it to
- * the app's user callbacks and records the sign-in method on the session. The
- * core stores no account for it: the sign-in method's own component keeps the
- * map from its identity to the app user id, and resolves it before calling
- * the core. Sign-in methods never call the core directly, they only know how
- * to produce these claims.
+ * the app forwards it to the core's `signUp` or `signIn`. Sign-in methods
+ * never call the core directly, they only know how to produce these claims.
  */
 export const vAuthClaims = v.object({
   /**
@@ -223,11 +219,10 @@ export const vAuthClaims = v.object({
 export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
- * The `providerAccountId` a sign-in method sends to `completeSignUp` when it
- * has no identifier of its own (a password or passkey method, whose identity
- * is the app user id its components key by). The core stores no account, so
- * the value only reaches the app's `createUser` callback; later sign-ins send
- * the user id as the account identifier.
+ * The `providerAccountId` sent to `completeSignUp` by a sign-in method whose
+ * identity is the app user id, which doesn't exist yet (password and passkey
+ * methods). Only the app's `createUser` callback sees it; later sign-ins send
+ * the user id.
  *
  * @TODO(nicolas) Consider dropping `accountId` from the app callbacks for
  * these sign-in methods, or making it optional, instead of sending a
@@ -325,16 +320,15 @@ export type BoundAuthHelpers<Profile> = {
   /**
    * Mint the app user for a *new* identity and exchange it for a session.
    *
-   * Call this when the sign-in method has verified an identity it has never
-   * seen. The core calls the app's `createUser` to mint the app user, then
-   * its `onSignIn` like any other sign-in, and returns the tokens a client
-   * needs to make authenticated calls. The bundle carries the new `userId`,
-   * which the sign-in method records against its identity in its own
-   * component, in the same mutation.
+   * Call this when the sign-in method has verified a new identity. The core
+   * calls the app's `createUser` to mint the app user, then its `onSignIn`
+   * like any other sign-in, and returns the tokens a client needs to make
+   * authenticated calls.
    *
-   * The core keeps no accounts, so it cannot tell a first sign-in from a
-   * return visit: the sign-in method looks its identity up in its component
-   * first and picks this helper or {@link BoundAuthHelpers.completeSignIn}.
+   * The core can't tell a new identity from a returning one, so the sign-in
+   * method must look the identity up in its own component first (calling
+   * {@link BoundAuthHelpers.completeSignIn} if it's known), and record the
+   * returned `userId` there in the same mutation.
    */
   completeSignUp(args: {
     providerAccountId: string;
@@ -344,13 +338,12 @@ export type BoundAuthHelpers<Profile> = {
    * Exchange a verified *existing* identity for a session.
    *
    * Call this once the sign-in method has authenticated a known identity its
-   * own way (checking a password, say) and resolved it to its app user in its
-   * own component. The core runs the app's `onSignIn` callback if one is
-   * attached, and returns the tokens a client needs to make authenticated
-   * calls.
+   * own way (checking a password, say) and looked up its user id. The core
+   * runs the app's `onSignIn` callback if one is attached, and returns the
+   * tokens a client needs to make authenticated calls.
    *
-   * Reaching this helper is the sign-in method's assertion that `userId` is
-   * the user the identity belongs to; the core does not check it.
+   * The core doesn't check `userId`: a wrong one signs the caller in as that
+   * user.
    */
   completeSignIn(args: {
     userId: string;
@@ -363,8 +356,8 @@ export type BoundAuthHelpers<Profile> = {
    * Call this when the user must complete a step (for example, an email
    * validation) before the first sign-in. The app's `createUser` mints the
    * user, as for `completeSignUp`; `onSignIn` does not run. The sign-in method
-   * records the new `userId` against its identity in its component and signs
-   * the user in later with `completeSignIn`.
+   * records the returned `userId` in its own component and signs the user in
+   * later with `completeSignIn`.
    */
   signUpWithoutSession(args: {
     providerAccountId: string;
