@@ -79,7 +79,7 @@ function setup(schema: ComponentSchema, modules: ComponentModules) {
 }
 
 /**
- * The functions, by the names Convex registers them under. They are
+ * The shared functions, referenced by their registered names. They are
  * written out rather than taken from a generated `api`, because each
  * component generates its own and this runs against all of them.
  */
@@ -128,11 +128,10 @@ const createAccount = makeFunctionReference<
 >("provider:createAccount");
 
 /**
- * Run the functions a component built with `buildProviderFunctions`
- * registers, start to finish: record an authorization request, claim it, mint
- * a ticket, redeem it, then record the account and resolve it. Every argument
- * and every returned field goes through the component's own validators, so a
- * validator that no longer matches the table it describes fails here.
+ * Define tests for the functions registered by a component built with
+ * `buildProviderFunctions`. Every argument and every returned field goes
+ * through the component's own validators, so a validator that no longer
+ * matches the table it describes fails here.
  */
 export function testProviderFunctionsContract(
   schema: ComponentSchema,
@@ -219,7 +218,7 @@ export function testProviderFunctionsContract(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-2" }),
       ).toBeNull();
 
-      // A second user for the same identity would split one person in two.
+      // A provider account id must never map to two app users.
       await expect(
         t.mutation(createAccount, {
           providerAccountId: "sub-1",

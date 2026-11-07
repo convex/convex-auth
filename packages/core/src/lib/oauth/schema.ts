@@ -66,13 +66,12 @@ export const ticketsTable = defineTable(ticketFields).index("ticketCodeHash", [
 ]);
 
 /**
- * An account maps the identity a provider attested to the app user it
- * belongs to.
+ * An account connects a provider account id to an app user id.
  */
 export const accountFields = {
   /** The provider-scoped account id: the profile mapping's `id`. */
   providerAccountId: v.string(),
-  /** The opaque app user id the app's `createUser` callback returned. */
+  /** The app user id returned by the app's `createUser` callback. */
   userId: v.string(),
 };
 

@@ -1,8 +1,7 @@
 /**
  * The registered functions behind a built-in provider's `provider.ts`.
  *
- * Each built-in provider has its own component with the same tables and
- * functions.
+ * Every built-in provider's component has the same tables and functions.
  * The database work lives in `dbHelpers.ts`. This module adds the
  * registration, meaning the argument and return validators and the functions
  * that wrap them.
@@ -74,9 +73,9 @@ const claimRequestResult = v.union(
 const createTicketArgs = v.object(ticketFields).omit("expiresAt");
 
 /**
- * Build the functions a built-in provider's component registers. The
- * component's `provider.ts` destructures the result and exports them
- * under their own names, which is what Convex registers them as.
+ * Build the functions registered by a built-in provider's component. The
+ * component's `provider.ts` destructures the result and exports each one;
+ * Convex registers it under its export name.
  *
  * The caller has to pass its own document types, e.g.
  * `buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">, Doc<"accounts">>({...})`.

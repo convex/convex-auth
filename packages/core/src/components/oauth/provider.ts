@@ -132,8 +132,8 @@ export const claimTicket = mutation({
 });
 
 /**
- * Resolve a provider account id to the app user recorded for it, or `null`
- * for an identity this provider has never signed in.
+ * Get the app user id connected to a given provider account id, or `null`
+ * if there is none.
  */
 export const getUserIdByAccount = query({
   args: { providerAccountId: v.string() },
@@ -143,8 +143,8 @@ export const getUserIdByAccount = query({
 });
 
 /**
- * Record the app user for a new identity. Refuses an identity that
- * already has an account.
+ * Create an account connecting a provider account id to an app user id.
+ * Throws if that provider account id already has one.
  */
 export const createAccount = mutation({
   args: accountFields,

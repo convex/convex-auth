@@ -3,11 +3,12 @@
  *
  * An OAuth flow needs two short-lived documents: an authorization request,
  * written when sign-in starts and claimed by the provider callback, and a
- * ticket, minted by the callback and redeemed by the app. Redemption then
- * needs one durable document: the account, which maps the attested identity
- * to the app user. Every OAuth component keeps those same tables, so
- * the reads and writes live here, and each component's `provider.ts`
- * supplies its own argument validators and its own document types.
+ * ticket, minted by the callback and redeemed by the app. Each component also
+ * keeps one durable document per identity: an account, connecting a provider
+ * account id to an app user id. Every OAuth component keeps those same
+ * tables, so the reads and writes live here, and each component's
+ * `provider.ts` supplies its own argument validators and its own document
+ * types.
  *
  * @module
  */
@@ -200,8 +201,8 @@ export async function claimTicket<Doc extends TicketContract>(
 }
 
 /**
- * Resolve a provider account id to the app user it belongs to, or `null`
- * when this component has never seen the identity.
+ * Get the app user id connected to a given provider account id, or `null`
+ * if there is none.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
  * `findAccountUserId<Doc<"accounts">>(ctx, args)`.
@@ -221,9 +222,9 @@ export async function findAccountUserId<Doc extends AccountContract>(
 }
 
 /**
- * Record that the identity in `account` belongs to the app user `userId`.
- * Throws if the identity already has an account, since one identity must
- * never map to two users.
+ * Create an account connecting `account.providerAccountId` to `userId`.
+ * Throws if that provider account id already has an account, since it must
+ * never map to two app users.
  *
  * The caller writes out `Doc` as its own generated document type, e.g.
  * `insertAccount<Doc<"accounts">>(ctx, account, userId)`.

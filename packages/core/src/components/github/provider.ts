@@ -1,8 +1,3 @@
-/**
- * The functions GitHub's component registers over its own tables.
- *
- * @module
- */
 import type { Doc } from "./_generated/dataModel.ts";
 import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import { buildProviderFunctions } from "../../lib/oauth/providerFunctions.ts";
