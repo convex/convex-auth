@@ -2,10 +2,8 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // One row per anonymous sign-in: the identity the sign-in method minted
-  // for it, and the app user the core created. Nothing resolves an anonymous
-  // identity back to its user today (there is no returning with a previous
-  // anonymous account), so the row is a record, not a lookup.
+  // Connects each anonymous id to its app user id. An anonymous identity is
+  // never signed in again, so nothing looks these rows up by anonymous id.
   accounts: defineTable({
     anonymousId: v.string(),
     userId: v.string(),

@@ -119,10 +119,9 @@ export type CompleteSignInResult = Infer<typeof completeSignInResult>;
  * they reach the component, which claims the matching ticket, and the
  * identity payload is decrypted with a key derived from the raw code. The
  * profile mapping then turns what the provider attested into the account
- * identity. The component resolves that identity to the app user it has
- * recorded for it, and the core signs that user in; for an identity the
- * component has never seen, the core mints the app user and the component
- * records it, all in this one mutation.
+ * identity. If the component has an account for the identity, the core signs
+ * that user in; otherwise the core mints a new app user and the component
+ * records an account for it, in this same mutation.
  *
  * Returns the shared sign-in envelope: the session token bundle, or an
  * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
@@ -149,14 +148,14 @@ export function buildCompleteSignIn<
     args: { ticketCodeHash: string; stateHash: string },
   ) => Promise<{ encryptedPayload: string } | null>;
   /**
-   * Resolve a provider account id to the app user this provider's component
-   * has recorded for it, or `null` for an identity it has never seen.
+   * Get the app user id connected to a given provider account id in this
+   * provider's component, or `null` if there is none.
    */
   getUserIdByAccount: (
     ctx: MutationCtx,
     args: { providerAccountId: string },
   ) => Promise<string | null>;
-  /** Record the app user the core minted for a new identity. */
+  /** Create an account connecting a provider account id to an app user id. */
   createAccount: (
     ctx: MutationCtx,
     args: { providerAccountId: string; userId: string },
@@ -193,10 +192,10 @@ export function buildCompleteSignIn<
       }
 
       // The same redemption flow serves a first sign-in and a return visit, so
-      // resolve the identity in the component to pick a path. This handler is
-      // a mutation, so the lookup and the writes it decides on are one
-      // transaction: two first redemptions of one identity cannot both mint a
-      // user, since the second one reruns and finds the account.
+      // look the identity up to pick a path. The lookup and the writes it
+      // decides on share one transaction, so two concurrent first redemptions
+      // of one identity can't both mint a user: the second reruns and finds
+      // the account.
       const existingUserId = await options.getUserIdByAccount(ctx, {
         providerAccountId: profile.id,
       });

@@ -2,8 +2,7 @@ import { v } from "convex/values";
 import { mutation } from "./_generated/server.ts";
 
 /**
- * Record an anonymous account: the identity the sign-in method minted for
- * this sign-in and the app user the core created for it.
+ * Create an account connecting an anonymous id to an app user id.
  */
 export const createAnonymousAccount = mutation({
   args: { anonymousId: v.string(), userId: v.string() },

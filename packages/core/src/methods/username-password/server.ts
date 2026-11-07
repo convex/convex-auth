@@ -264,8 +264,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             }
 
             // The username resolved to a user id and its password verified, so
-            // the account exists and `completeSignIn` (which throws otherwise)
-            // is the right helper.
+            // `completeSignIn` is the right helper.
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
               providerAccountId: userId,
