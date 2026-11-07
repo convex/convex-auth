@@ -159,6 +159,19 @@ describe("startSignIn", () => {
     expect(await storedRequest(t)).toBeNull();
   });
 
+  test("a component installed without an httpPrefix is rejected, naming the provider", async () => {
+    const t = setup();
+    // Without an httpPrefix (or with one another component already uses),
+    // the backend presents the bare site URL and mounts no callback route.
+    vi.stubEnv("CONVEX_SITE_URL", "https://test.convex.site");
+    await expect(
+      t.mutation(startSignInScoped, { redirectTo: REDIRECT_TO }),
+    ).rejects.toThrow(
+      /provider "scoped" is not served under an httpPrefix, so its callback URL would be https:\/\/test\.convex\.site\/callback/,
+    );
+    expect(await storedRequest(t)).toBeNull();
+  });
+
   test("the redirect carries the flow parameters and the component's callback URL", async () => {
     const t = setup();
     const { redirect, state } = await t.mutation(startSignInScoped, {

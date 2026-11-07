@@ -185,6 +185,7 @@ export function setupOauth<
   });
 
   const startSignIn = buildStartSignIn({
+    providerName,
     allowedOrigins,
     authorizationEndpoint: catalog.authorizationEndpoint,
     scopes: catalog.scopes,

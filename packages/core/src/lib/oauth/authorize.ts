@@ -17,6 +17,7 @@ import type {
 import { v } from "convex/values";
 import { sha256Hex } from "../crypto.ts";
 import { generateRandomToken, sha256Base64Url } from "./crypto.ts";
+import { CALLBACK_PATH } from "./constants.ts";
 import type { CallbackMethod } from "./http.ts";
 import { parseUrl } from "./redemption.ts";
 
@@ -52,6 +53,8 @@ type CreateAuthorizationRequestRef = FunctionReference<
  * nothing for the user to correct.
  */
 export function buildStartSignIn(options: {
+  /** The provider's name, used in error messages. */
+  providerName: string;
   /** Origins `redirectTo` may point at, already validated and normalized. */
   allowedOrigins: string[];
   /** The provider's authorization endpoint (a full URL). */
@@ -111,6 +114,7 @@ export function buildStartSignIn(options: {
               options.createAuthorizationRequest,
               requestArgs,
             );
+      assertCallbackUnderHttpPrefix(options.providerName, callbackUrl);
 
       const params: Record<string, string> = {
         response_type: "code",
@@ -137,4 +141,30 @@ export function buildStartSignIn(options: {
       return { redirect: url.toString(), state };
     },
   });
+}
+
+/**
+ * Refuse a callback URL with no `httpPrefix` in front of `/callback`.
+ *
+ * The component reads its callback URL from its own `CONVEX_SITE_URL`, which
+ * the backend presents with the component's `httpPrefix` applied. A component
+ * installed without an `httpPrefix`, or with one that another component
+ * already uses, has no HTTP routes mounted, so its callback URL is the bare
+ * `<site>/callback`, which 404s. Convex Auth cannot see the `httpPrefix` when
+ * the app deploys (`CONVEX_SITE_URL` has no prefix while modules load), so
+ * this is the earliest point the mistake shows.
+ */
+function assertCallbackUnderHttpPrefix(
+  providerName: string,
+  callbackUrl: string,
+): void {
+  if (new URL(callbackUrl).pathname !== CALLBACK_PATH) return;
+  throw new Error(
+    `The OAuth component of provider "${providerName}" is not served under ` +
+      `an httpPrefix, so its callback URL would be ${callbackUrl}, which ` +
+      `returns 404. In convex/convex.config.ts, install the component with ` +
+      `its own httpPrefix, e.g. \`app.use(component, { httpPrefix: ` +
+      `"/oauth/${providerName}", ... })\`. Each OAuth component needs a ` +
+      `different httpPrefix.`,
+  );
 }
