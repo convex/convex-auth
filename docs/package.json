@@ -33,7 +33,7 @@
     "react-hook-form": "^7.53.2",
     "tailwind-merge": "^3.0.0",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^3.23.8"
+    "zod": "^4.0.0"
   },
   "overrides": {
     "next-mdx-remote": "^6.0.0"
