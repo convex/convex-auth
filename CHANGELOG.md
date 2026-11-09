@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.98
+
+- The previous release (0.0.97) was mistakenly published without the TypeScript
+  build output. This release fixes this issue.
+
 ## 0.0.97
 
 - Fix for
