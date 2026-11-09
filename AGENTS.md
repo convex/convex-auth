@@ -26,8 +26,6 @@ check:doc-examples`). It is not an example to copy.
   for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
-  - `react-minimal` wires up the core and the anonymous component with the
-    `anonymous` method.
   - `react-password` wires up the core, password, and username components
     with the `usernamePassword` method.
   - `react-email-password` wires up the core, password, and email components

@@ -16,8 +16,7 @@ pnpm dev
 Each example is a self-contained Convex backend that mounts the auth components,
 so the first `pnpm dev` prompts you to pick or create a deployment.
 
-- `examples/react-minimal` uses the core component with the anonymous provider.
-- `examples/react-password` adds the password provider.
+- `examples/react-password` uses the core component with the password provider.
 - `examples/react-passkey-basic` adds the passkey provider.
 - `examples/react-github` adds the GitHub Oauth provider.
 - `examples/react-google` adds the Google OAuth provider.
