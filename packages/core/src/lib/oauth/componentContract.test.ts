@@ -131,7 +131,7 @@ const createAccount = makeFunctionReference<
  * Define tests for the functions registered by a component built with
  * `buildProviderFunctions`. Every argument and every returned field goes
  * through the component's own validators, so a validator that no longer
- * matches the table it describes fails here.
+ * matches what the app side passes or reads back fails here.
  */
 export function testProviderFunctionsContract(
   schema: ComponentSchema,
@@ -198,6 +198,24 @@ export function testProviderFunctionsContract(
           stateHash: await sha256Hex("someone-elses-state"),
         }),
       ).toBeNull();
+    });
+  });
+
+  testAccountsContract(schema, modules);
+}
+
+/**
+ * Define tests for a component's `getUserIdByAccount` and `createAccount`.
+ * `testProviderFunctionsContract` runs them; the oauth component defines its
+ * own account functions and runs them directly.
+ */
+export function testAccountsContract(
+  schema: ComponentSchema,
+  modules: ComponentModules,
+): void {
+  describe("account functions", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
     });
 
     test("an account resolves to its user once recorded, and only once", async () => {

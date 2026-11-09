@@ -7,6 +7,7 @@ import {
   generateRandomToken,
 } from "../../lib/oauth/crypto.ts";
 import schema from "./schema.ts";
+import { testAccountsContract } from "../../lib/oauth/componentContract.test.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -228,3 +229,5 @@ describe("oauth", () => {
     ).rejects.toThrow();
   });
 });
+
+testAccountsContract(schema, modules);
