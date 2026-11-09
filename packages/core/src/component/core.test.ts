@@ -253,7 +253,10 @@ describe("signUp", () => {
       }),
     ).rejects.toThrow(/no sign-ins for you/);
 
-    // onSignIn runs before the session is minted, so none exists.
+    // This can't check that the user rolls back: the fixture's createUser keeps
+    // no rows. An app's users row is a write of the same mutation, so it rolls
+    // back with it. What the core owns is checked here: onSignIn runs before
+    // the session is minted, so none exists.
     expect(await sessionCount(t)).toBe(0);
   });
 
