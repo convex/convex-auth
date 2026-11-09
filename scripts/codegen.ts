@@ -49,20 +49,22 @@ const workspaceRoots = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8")
   .map((line) => /^\s*-\s*"?([^"\s]+)\/\*"?\s*$/.exec(line)?.[1])
   .filter((dir) => dir !== undefined);
 
+// Dot-directories are skipped too, e.g. the docs build's `.api-entrypoints`.
 const skippedDirectories = new Set([
   "node_modules",
   "dist",
   "build",
   "_generated",
-  ".git",
-  ".next",
 ]);
 
 function directoriesIn(dir: string): string[] {
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter(
-      (entry) => entry.isDirectory() && !skippedDirectories.has(entry.name),
+      (entry) =>
+        entry.isDirectory() &&
+        !entry.name.startsWith(".") &&
+        !skippedDirectories.has(entry.name),
     )
     .map((entry) => join(dir, entry.name));
 }
