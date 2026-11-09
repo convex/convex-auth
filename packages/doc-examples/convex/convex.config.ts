@@ -25,7 +25,8 @@ const app = defineApp({
     AUTH_ACME_CLIENT_ID: v.string(),
     AUTH_ACME_CLIENT_SECRET: v.string(),
     RESEND_API_KEY: v.string(),
-    SITE_URL: v.string(),
+    // Defaults in auth.ts.
+    SITE_URL: v.optional(v.string()),
   },
 });
 
