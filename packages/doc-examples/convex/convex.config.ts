@@ -1,7 +1,6 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import anonymous from "@convex-dev/auth/components/anonymous/convex.config.js";
 import apple from "@convex-dev/auth/components/apple/convex.config.js";
 import email from "@convex-dev/auth/components/email/convex.config.js";
 import github from "@convex-dev/auth/components/github/convex.config.js";
@@ -32,7 +31,6 @@ const app = defineApp({
 app.use(auth);
 // A second core, for the examples that mount it under another name.
 app.use(auth, { name: "myAuth" });
-app.use(anonymous);
 app.use(password);
 app.use(username);
 app.use(email);
