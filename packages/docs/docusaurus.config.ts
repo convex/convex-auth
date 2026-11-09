@@ -86,14 +86,6 @@ const config: Config = {
     colorMode: {
       respectPrefersColorScheme: true,
     },
-    announcementBar: {
-      id: "convex-auth-v2-beta",
-      content:
-        'Convex Auth v2 <a href="/">is in beta</a>. APIs might still change, so do not use it in production projects yet.',
-      backgroundColor: "#fff3e0",
-      textColor: "#7c2d12",
-      isCloseable: false,
-    },
     docs: {
       sidebar: {
         autoCollapseCategories: false,
