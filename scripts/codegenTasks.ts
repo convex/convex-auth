@@ -13,7 +13,7 @@
 // has no TTY, thus Listr writes a plain line for each event instead.
 
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Listr } from "listr2";
@@ -133,4 +133,9 @@ await listr.run();
 
 // Listr has already written each failure, thus the exit code is all that is
 // left to report.
-process.exit((listr.errors ?? []).length > 0 ? 1 : 0);
+const succeeded = (listr.errors ?? []).length === 0;
+// TODO: remove CODEGEN_SUCCESS_FILE once the Convex CLI passes on the exit code
+// of the `--start` command (see scripts/codegen.ts). ETA convex === 1.50.0.
+if (succeeded && process.env.CODEGEN_SUCCESS_FILE)
+  writeFileSync(process.env.CODEGEN_SUCCESS_FILE, "");
+process.exit(succeeded ? 0 : 1);

@@ -28,8 +28,16 @@
 // path contains one of the filters are regenerated.
 
 import { spawn } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CodegenTask } from "./codegenTasks.ts";
@@ -177,9 +185,19 @@ const startCommand = [
 // These variables select a deployment, and the environment wins over
 // `.env.local`. The host must use its own anonymous deployment whatever the
 // shell of the developer selects.
+//
+// TODO: remove CODEGEN_SUCCESS_FILE once the Convex CLI passes on the exit code
+// of the `--start` command. Until then, the CLI can exit with code 0 when the
+// command fails, thus `scripts/codegenTasks.ts` creates this file on success. ETA
+// convex === 1.50.0.
+const successFile = join(
+  mkdtempSync(join(tmpdir(), "convex-auth-codegen-")),
+  "success",
+);
 const env: NodeJS.ProcessEnv = {
   ...process.env,
   CODEGEN_TASKS: JSON.stringify(tasks),
+  CODEGEN_SUCCESS_FILE: successFile,
 };
 for (const name of [
   "CONVEX_DEPLOYMENT",
@@ -229,8 +247,14 @@ for (const signal of ["SIGTERM", "SIGHUP"] as const) {
 const code = await new Promise<number>((resolve) =>
   child.on("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0))),
 );
+const succeeded = existsSync(successFile);
+rmSync(dirname(successFile), { recursive: true, force: true });
 if (interrupted) process.exit(130);
 // The CLI has already written each failure.
 if (code !== 0) process.exit(code);
+if (!succeeded) {
+  console.error("\n✖ Codegen failed.");
+  process.exit(1);
+}
 
 console.log("\n✔ Codegen complete.");
