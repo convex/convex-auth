@@ -28,7 +28,7 @@ export async function upsertUserAndAccount(
   args: CreateOrUpdateUserArgs,
   config: ConvexAuthConfig,
 ): Promise<{
-  userId: GenericId<"users">;
+  userId: string;
   accountId: GenericId<"authAccounts">;
 }> {
   const userId = await defaultCreateOrUpdateUser(
@@ -54,13 +54,23 @@ async function defaultCreateOrUpdateUser(
     existingSessionId,
     args: { ...args, provider: args.provider.id },
   });
-  const existingUserId = existingAccount?.userId ?? null;
+  const existingUserId = (existingAccount?.userId ??
+    null) as GenericId<"users"> | null;
   if (config.callbacks?.createOrUpdateUser !== undefined) {
     logWithLevel(LOG_LEVELS.DEBUG, "Using custom createOrUpdateUser callback");
     return await config.callbacks.createOrUpdateUser(ctx, {
       existingUserId,
       ...args,
     });
+  } else {
+    if (
+      existingUserId &&
+      ctx.db.normalizeId("users", existingUserId) === null
+    ) {
+      throw new Error(
+        `User ID \`${existingUserId}\` is not in the \`users\` table`,
+      );
+    }
   }
 
   const {
@@ -183,7 +193,7 @@ async function uniqueUserWithVerifiedPhone(ctx: QueryCtx, phone: string) {
 
 async function createOrUpdateAccount(
   ctx: MutationCtx,
-  userId: GenericId<"users">,
+  userId: string,
   account:
     | { existingAccount: Doc<"authAccounts"> }
     | {

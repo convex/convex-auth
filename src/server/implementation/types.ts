@@ -54,7 +54,7 @@ export const authTables = {
    * See [Session document lifecycle](https://labs.convex.dev/auth/advanced#session-document-lifecycle).
    */
   authSessions: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     expirationTime: v.number(),
   }).index("userId", ["userId"]),
   /**
@@ -63,7 +63,7 @@ export const authTables = {
    * A single user can have multiple accounts linked.
    */
   authAccounts: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     provider: v.string(),
     providerAccountId: v.string(),
     secret: v.optional(v.string()),
@@ -144,12 +144,12 @@ export type Doc<T extends TableNamesInDataModel<AuthDataModel>> = GenericDoc<
 
 export type Tokens = { token: string; refreshToken: string };
 export type SessionInfo = {
-  userId: GenericId<"users">;
+  userId: string;
   sessionId: GenericId<"authSessions">;
   tokens: Tokens | null;
 };
 export type SessionInfoWithTokens = {
-  userId: GenericId<"users">;
+  userId: string;
   sessionId: GenericId<"authSessions">;
   tokens: Tokens;
 };

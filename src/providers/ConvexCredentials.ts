@@ -60,7 +60,7 @@ export interface ConvexCredentialsUserConfig<
     credentials: Partial<Record<string, Value | undefined>>,
     ctx: GenericActionCtxWithAuthConfig<DataModel>,
   ) => Promise<{
-    userId: GenericId<"users">;
+    userId: string;
     sessionId?: GenericId<"authSessions">;
   } | null>;
   /**
@@ -97,7 +97,7 @@ export interface ConvexCredentialsUserConfig<
  */
 export function ConvexCredentials<DataModel extends GenericDataModel>(
   config: ConvexCredentialsUserConfig<DataModel>,
-): ConvexCredentialsConfig {
+): ConvexCredentialsConfig<DataModel> {
   return {
     id: "credentials",
     type: "credentials",

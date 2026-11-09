@@ -4,7 +4,7 @@ import { ActionCtx, MutationCtx } from "../types.js";
 import { LOG_LEVELS, logWithLevel } from "../utils.js";
 
 export const invalidateSessionsArgs = v.object({
-  userId: v.id("users"),
+  userId: v.string(),
   except: v.optional(v.array(v.id("authSessions"))),
 });
 

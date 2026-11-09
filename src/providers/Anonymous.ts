@@ -28,7 +28,13 @@ import { Value } from "convex/values";
 /**
  * The available options to an {@link Anonymous} provider for Convex Auth.
  */
-export interface AnonymousConfig<DataModel extends GenericDataModel> {
+export interface AnonymousConfig<
+  DataModel extends GenericDataModel,
+  UserDocument extends Record<string, Value> = DocumentByName<
+    DataModel,
+    "users"
+  >,
+> {
   /**
    * Uniquely identifies the provider, allowing to use
    * multiple different {@link Anonymous} providers.
@@ -48,7 +54,7 @@ export interface AnonymousConfig<DataModel extends GenericDataModel> {
      * the database.
      */
     ctx: GenericActionCtxWithAuthConfig<DataModel>,
-  ) => WithoutSystemFields<DocumentByName<DataModel, "users">> & {
+  ) => WithoutSystemFields<UserDocument> & {
     isAnonymous: true;
   };
 }
@@ -66,13 +72,13 @@ export function Anonymous<DataModel extends GenericDataModel>(
     id: "anonymous",
     authorize: async (params, ctx) => {
       const profile = config.profile?.(params, ctx) ?? { isAnonymous: true };
-      const { user } = await createAccount(ctx, {
+      const { account } = await createAccount(ctx, {
         provider,
         account: { id: crypto.randomUUID() },
         profile: profile as any,
       });
       // END
-      return { userId: user._id };
+      return { userId: account.userId as string };
     },
     ...config,
   });

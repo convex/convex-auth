@@ -26,7 +26,7 @@ export const verify = internalAction({
       console.error(status);
       throw new Error("Code could not be verified");
     }
-    const { user } = await createAccount(ctx, {
+    const { account } = await createAccount(ctx, {
       provider: "twilio",
       account: {
         id: phone,
@@ -36,7 +36,7 @@ export const verify = internalAction({
       },
       shouldLinkViaPhone: true,
     });
-    return { userId: user._id };
+    return { userId: account.userId };
   },
 });
 

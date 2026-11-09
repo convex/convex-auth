@@ -3,7 +3,7 @@ import { ActionCtx, MutationCtx } from "../types.js";
 import { deleteSession, getAuthSessionId } from "../sessions.js";
 
 type ReturnType = {
-  userId: GenericId<"users">;
+  userId: string;
   sessionId: GenericId<"authSessions">;
 } | null;
 

@@ -40,6 +40,7 @@ import {
 import {
   DocumentByName,
   GenericDataModel,
+  TableNamesInDataModel,
   WithoutSystemFields,
 } from "convex/server";
 import { Value } from "convex/values";
@@ -48,7 +49,10 @@ import { Scrypt } from "lucia";
 /**
  * The available options to a {@link Password} provider for Convex Auth.
  */
-export interface PasswordConfig<DataModel extends GenericDataModel> {
+export interface PasswordConfig<
+  DataModel extends GenericDataModel,
+  UsersTable extends TableNamesInDataModel<DataModel> = "users",
+> {
   /**
    * Uniquely identifies the provider, allowing to use
    * multiple different {@link Password} providers.
@@ -71,7 +75,7 @@ export interface PasswordConfig<DataModel extends GenericDataModel> {
      * the database.
      */
     ctx: GenericActionCtxWithAuthConfig<DataModel>,
-  ) => WithoutSystemFields<DocumentByName<DataModel, "users">> & {
+  ) => WithoutSystemFields<DocumentByName<DataModel, UsersTable>> & {
     email: string;
   };
   /**
@@ -112,9 +116,10 @@ export interface PasswordConfig<DataModel extends GenericDataModel> {
  * Email verification is not required unless you pass
  * an email provider to the `verify` option.
  */
-export function Password<DataModel extends GenericDataModel>(
-  config: PasswordConfig<DataModel> = {},
-) {
+export function Password<
+  DataModel extends GenericDataModel,
+  UsersTable extends TableNamesInDataModel<DataModel> = "users",
+>(config: PasswordConfig<DataModel, UsersTable> = {}) {
   const provider = config.id ?? "password";
   return ConvexCredentials<DataModel>({
     id: "password",
@@ -137,7 +142,6 @@ export function Password<DataModel extends GenericDataModel>(
       const { email } = profile;
       const secret = params.password as string;
       let account: GenericDoc<DataModel, "authAccounts">;
-      let user: GenericDoc<DataModel, "users">;
       if (flow === "signUp") {
         if (secret === undefined) {
           throw new Error("Missing `password` param for `signUp` flow");
@@ -149,7 +153,7 @@ export function Password<DataModel extends GenericDataModel>(
           shouldLinkViaEmail: config.verify !== undefined,
           shouldLinkViaPhone: false,
         });
-        ({ account, user } = created);
+        ({ account } = created);
       } else if (flow === "signIn") {
         if (secret === undefined) {
           throw new Error("Missing `password` param for `signIn` flow");
@@ -161,7 +165,7 @@ export function Password<DataModel extends GenericDataModel>(
         if (retrieved === null) {
           throw new Error("Invalid credentials");
         }
-        ({ account, user } = retrieved);
+        ({ account } = retrieved);
         // START: Optional, support password reset
       } else if (flow === "reset") {
         if (!config.reset) {
@@ -233,7 +237,7 @@ export function Password<DataModel extends GenericDataModel>(
         });
       }
       // END
-      return { userId: user._id };
+      return { userId: account.userId as string };
     },
     crypto: {
       async hashSecret(password: string) {

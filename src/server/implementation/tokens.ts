@@ -12,7 +12,7 @@ const RESERVED_CLAIMS = new Set(["sub", "iss", "aud", "iat", "exp", "nbf", "jti"
 export async function generateToken(
   ctx: MutationCtx,
   args: {
-    userId: GenericId<"users">;
+    userId: string;
     sessionId: GenericId<"authSessions">;
   },
   config: ConvexAuthConfig,

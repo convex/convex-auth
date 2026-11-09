@@ -21,7 +21,7 @@ const DEFAULT_SESSION_TOTAL_DURATION_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 export async function maybeGenerateTokensForSession(
   ctx: MutationCtx,
   config: ConvexAuthConfig,
-  userId: GenericId<"users">,
+  userId: string,
   sessionId: GenericId<"authSessions">,
   generateTokens: boolean,
 ): Promise<SessionInfo> {
@@ -42,7 +42,7 @@ export async function maybeGenerateTokensForSession(
 export async function createNewAndDeleteExistingSession(
   ctx: MutationCtx,
   config: ConvexAuthConfig,
-  userId: GenericId<"users">,
+  userId: string,
 ) {
   const existingSessionId = await getAuthSessionId(ctx);
   if (existingSessionId !== null) {
@@ -58,7 +58,7 @@ export async function generateTokensForSession(
   ctx: MutationCtx,
   config: ConvexAuthConfig,
   args: {
-    userId: GenericId<"users">;
+    userId: string;
     sessionId: GenericId<"authSessions">;
     issuedRefreshTokenId: GenericId<"authRefreshTokens"> | null;
     parentRefreshTokenId: GenericId<"authRefreshTokens"> | null;
@@ -86,7 +86,7 @@ export async function generateTokensForSession(
 
 async function createSession(
   ctx: MutationCtx,
-  userId: GenericId<"users">,
+  userId: string,
   config: ConvexAuthConfig,
 ) {
   await config.callbacks?.beforeSessionCreation?.(ctx, { userId });

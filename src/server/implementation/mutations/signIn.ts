@@ -8,7 +8,7 @@ import {
 import { LOG_LEVELS, logWithLevel } from "../utils.js";
 
 export const signInArgs = v.object({
-  userId: v.id("users"),
+  userId: v.string(),
   sessionId: v.optional(v.id("authSessions")),
   generateTokens: v.boolean(),
 });

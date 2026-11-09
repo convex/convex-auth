@@ -17,7 +17,7 @@ type ReturnType =
   | "InvalidAccountId"
   | "TooManyFailedAttempts"
   | "InvalidSecret"
-  | { account: Doc<"authAccounts">; user: Doc<"users"> };
+  | { account: Doc<"authAccounts"> };
 
 export async function retrieveAccountWithCredentialsImpl(
   ctx: MutationCtx,
@@ -60,8 +60,6 @@ export async function retrieveAccountWithCredentialsImpl(
   }
   return {
     account: existingAccount,
-    // TODO: Ian removed this
-    user: (await ctx.db.get(existingAccount.userId))!,
   };
 }
 
