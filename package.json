@@ -94,7 +94,7 @@
   "devDependencies": {
     "@commander-js/extra-typings": "^15.0.0",
     "@edge-runtime/vm": "^5.0.0",
-    "@types/inquirer": "^9.0.7",
+    "@types/inquirer": "^10.0.0",
     "@types/node": "24.12.4",
     "@types/react": "^18.3.12",
     "@typescript-eslint/eslint-plugin": "^6.18.1",
