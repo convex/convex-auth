@@ -11,9 +11,10 @@ This is a pnpm monorepo:
     `username`, `password`, `email`, `passkey`, `totp`, `anonymous`,
     `oauth`, `google`, `apple`, and `github`. Most of them key their data by
     an opaque user id. `totp` is a second factor, not part of a sign-in
-    method, and the package does not export it for now.
-  - The sign-in methods, which the app wires up: `anonymous`,
-    `username-password`, `email-password`, `username-passkey`, `oauth`,
+    method, and the package does not export it for now. The package does not
+    export `anonymous` for now either.
+  - The sign-in methods, which the app wires up: `anonymous` (not exported
+    for now), `username-password`, `email-password`, `username-passkey`, `oauth`,
     `google`, `apple`, and `github`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every

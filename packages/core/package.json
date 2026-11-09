@@ -117,20 +117,6 @@
       "default": "./dist/component/_generated/component.js"
     },
     "./test": "./src/testing/core.ts",
-    "./methods/anonymous/server": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/methods/anonymous/server.d.ts"
-      },
-      "types": "./dist/methods/anonymous/server.d.ts",
-      "default": "./dist/methods/anonymous/server.js"
-    },
-    "./methods/anonymous/react": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/methods/anonymous/react.d.ts"
-      },
-      "types": "./dist/methods/anonymous/react.d.ts",
-      "default": "./dist/methods/anonymous/react.js"
-    },
     "./methods/username-password": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-password/index.d.ts"
@@ -359,35 +345,6 @@
       "default": "./dist/components/passkey/_generated/component.js"
     },
     "./components/passkey/test": "./src/testing/passkey.ts",
-    "./components/anonymous/convex.config.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/anonymous/convex.config.d.ts"
-      },
-      "types": "./dist/components/anonymous/convex.config.d.ts",
-      "default": "./dist/components/anonymous/convex.config.js"
-    },
-    "./components/anonymous/convex.config": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/anonymous/convex.config.d.ts"
-      },
-      "types": "./dist/components/anonymous/convex.config.d.ts",
-      "default": "./dist/components/anonymous/convex.config.js"
-    },
-    "./components/anonymous/_generated/component.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/anonymous/_generated/component.d.ts"
-      },
-      "types": "./dist/components/anonymous/_generated/component.d.ts",
-      "default": "./dist/components/anonymous/_generated/component.js"
-    },
-    "./components/anonymous/_generated/component": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/anonymous/_generated/component.d.ts"
-      },
-      "types": "./dist/components/anonymous/_generated/component.d.ts",
-      "default": "./dist/components/anonymous/_generated/component.js"
-    },
-    "./components/anonymous/test": "./src/testing/anonymous.ts",
     "./components/oauth/convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/components/oauth/convex.config.d.ts"

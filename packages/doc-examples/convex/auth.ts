@@ -1,5 +1,4 @@
 import { setupConvexAuth } from "@convex-dev/auth/server";
-import { setupAnonymous } from "@convex-dev/auth/methods/anonymous/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
@@ -20,10 +19,6 @@ const allowedRedirectOrigins = ["http://localhost:5173"];
 
 const auth = setupConvexAuth({ component: components.auth });
 export const { signOut, refreshSession, isAuthenticated } = auth;
-
-export const { signInAnonymously } = setupAnonymous(auth, {
-  component: components.authAnonymous,
-}).attachUserCallbacks({ createUser: internal.users.createUserAnonymous });
 
 export const {
   signUpWithUsernamePassword,

@@ -1,3 +1,9 @@
+/**
+ * The `convex-test` helper of the anonymous component.
+ *
+ * @internal Not public until the anonymous sign-in method is ready.
+ * @module
+ */
 /// <reference types="vite/client" />
 // This helper ships as TypeScript, not as part of the compiled build: the
 // `import.meta.glob` below is a Vite macro that only works if the consumer's
