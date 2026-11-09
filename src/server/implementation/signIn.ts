@@ -109,6 +109,7 @@ async function handleEmailAndPhoneProvider(
     const result = await callVerifyCodeAndSignIn(ctx, {
       params: args.params,
       provider: provider.id,
+      accountId: args.accountId,
       generateTokens: options.generateTokens,
       allowExtraProviders: options.allowExtraProviders,
     });

@@ -19,11 +19,14 @@ export const verifyCodeAndSignInArgs = v.object({
   params: v.any(),
   provider: v.optional(v.string()),
   verifier: v.optional(v.string()),
+  accountId: v.optional(v.id("authAccounts")),
   generateTokens: v.boolean(),
   allowExtraProviders: v.boolean(),
 });
 
 type ReturnType = null | SessionInfo;
+
+const MIN_HIGH_ENTROPY_CODE_LENGTH = 20;
 
 export async function verifyCodeAndSignInImpl(
   ctx: MutationCtx,
@@ -102,6 +105,7 @@ async function verifyCodeOnly(
     params: any;
     verifier?: string;
     identifier?: string;
+    accountId?: GenericId<"authAccounts">;
   },
   /**
    * There are two providers at play:
@@ -118,6 +122,7 @@ async function verifyCodeOnly(
   sessionId: GenericId<"authSessions"> | null,
 ) {
   const { params, verifier } = args;
+  const identifier = params.email ?? params.phone;
   const codeHash = await sha256(params.code);
   const verificationCode = await ctx.db
     .query("authVerificationCodes")
@@ -141,6 +146,19 @@ async function verifyCodeOnly(
     await ctx.db.delete(verificationCode._id);
     return null;
   }
+  if (
+    args.accountId === undefined &&
+    identifier === undefined &&
+    verificationCode.verifier === undefined &&
+    params.code.length < MIN_HIGH_ENTROPY_CODE_LENGTH
+  ) {
+    logWithLevel(
+      LOG_LEVELS.ERROR,
+      `Low-entropy verification code used for provider "${verificationCode.provider}". ` +
+        "Modify its `generateVerificationToken` to generate codes with more entropy.",
+    );
+    return null;
+  }
   const { accountId, emailVerified, phoneVerified } = verificationCode;
   const account = await ctx.db.get(accountId);
   if (account === null) {
@@ -149,6 +167,16 @@ async function verifyCodeOnly(
       LOG_LEVELS.WARN,
       "Account associated with this email has been deleted",
     );
+    return null;
+  }
+  if (args.accountId !== undefined && args.accountId !== accountId) {
+    return null;
+  }
+  if (
+    args.accountId === undefined &&
+    identifier !== undefined &&
+    account.providerAccountId !== identifier
+  ) {
     return null;
   }
   if (
