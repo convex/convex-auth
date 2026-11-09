@@ -44,7 +44,7 @@ check:doc-examples`). It is not an example to copy.
   - `react-github` wires up the core and the github component with the
     `github` method.
   - `nextjs` is a Next.js (App Router) app with SSR sign-in. It wires up the
-    `anonymous`, `usernamePassword`, and `github` methods.
+    `usernamePassword` and `github` methods.
 
 ## Source layout of `packages/core/src`
 

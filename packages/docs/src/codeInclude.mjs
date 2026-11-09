@@ -5,7 +5,7 @@
 // Usage, as an empty code block whose meta names the file (relative to
 // `rootDir`):
 //
-//   ```ts file="examples/react-minimal/convex/auth.ts" title="convex/auth.ts" highlight="import { setupAnonymous }"
+//   ```ts file="examples/react-password/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePassword }"
 //   ```
 //
 //   highlight="single line anchor"          → highlights the line containing it
