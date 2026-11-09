@@ -1,0 +1,65 @@
+---
+sidebar_position: 5
+title: Best practices
+description: Recommended patterns for apps that use Convex Auth.
+---
+
+Unlike the guides that are specific to sign-in methods, the following advice
+applies more broadly to using Convex Auth in your application.
+
+## Access to the signed-in user
+
+Use the [`getAuthUserId`](./api/server/index.md#getauthuserid) function to
+return the ID of the user for the current session.
+
+That function is reactive and will return `null` if the user signs out or the
+session expires.
+
+```ts file="examples/react-password/convex/currentUser.ts" title="convex/currentUser.ts" highlight="const userId = await getAuthUserId(ctx);"
+
+```
+
+## Store user data in your own tables
+
+When a new user signs into your app via Convex Auth, a `createUser` function that
+you define will be called. This is where you can initialize a new user record
+and write data to any associated tables in your application.
+
+```ts file="examples/react-email-password/convex/users.ts" title="convex/users.ts" highlight="return await ctx.db.insert"
+
+```
+
+As users interact with your app, you can write data to any tables that you
+like. If you add an index on the user ID you'll be able to do fast lookups of
+the data later. You can also use the user ID to quickly reference back to your
+main `users` table (or whatever your application calls it).
+
+## Use components as the source of truth for data they manage
+
+The Convex Auth components should be treated as the authoritative source for
+authentication data, including username and verified email.
+
+Instead of copying those values into other tables, make lightweight component
+calls passing the current user ID (see `getAuthUserId`) as the argument.
+
+```ts file="examples/react-email-password/convex/currentUser.ts" title="convex/currentUser.ts" highlight="const email = await ctx.runQuery(...);"
+
+```
+
+Not only will you avoid data duplication, but you'll avoid drift (e.g. if a
+username is eventually updated or a verified email changes status).
+
+## Handle auth method errors in your client code
+
+All of the Convex Auth client hooks have functions that return typed error
+values when something goes wrong. These should be wired up to provide helpful
+information to a user in your sign-in UI.
+
+You can perform an exhaustive switch over the type to ensure that you're
+handling all possible error values. With `satisfies never` in the `default`
+case, TypeScript reports an error if a new error value is added that your code
+doesn't handle.
+
+```tsx file="examples/react-password/src/routes/logIn.tsx" title="src/routes/logIn.tsx" highlight="setError(() => {...});"
+
+```
