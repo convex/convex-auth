@@ -9,13 +9,10 @@ export default defineSchema({
   // The row is only written when the session is created or deleted, so a query
   // reading it (e.g. to check session liveness) is not invalidated by token
   // refreshes.
-  //
-  // Which identity belongs to which app user is kept by the sign-in method's
-  // component, not here.
   sessions: defineTable({
     userId: v.string(),
-    // The name of the sign-in method that signed the session in
-    // (`bindProvider`'s `name`).
+    // The `name` passed to `bindProvider` by the sign-in method that created
+    // this session.
     provider: v.string(),
   }).index("by_user", ["userId"]),
 

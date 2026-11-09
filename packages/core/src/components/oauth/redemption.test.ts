@@ -28,18 +28,13 @@ import type {
 
 /**
  * Tests for the app-side `completeSignIn` mutation produced by `setupOauth`,
- * run against the real component (real `claimTicket`, ticket crypto and
- * `accounts` table). The core helpers it uses
- * (`ctx.convexAuth.completeSignUp` / `completeSignIn`) are faked and spied
- * here. The real ones are covered by the core's own suite
- * (component/core.test.ts).
+ * run against the real OAuth component. The core helpers on `ctx.convexAuth`
+ * are fakes, and component/core.test.ts covers the real ones.
  */
 
 /**
- * Calls recorded by the fake `ctx.convexAuth.completeSignUp` /
- * `completeSignIn`: which one redemption chose, its claims, and for a
- * sign-in, the user id it passed. The suite runs in one process,
- * so tests read and reset this directly.
+ * Calls to the fake `ctx.convexAuth.completeSignUp` / `completeSignIn`. The
+ * suite runs in one process, so tests read and reset this directly.
  */
 type HelperCall = {
   kind: "signUp" | "signIn";
@@ -277,7 +272,7 @@ async function mintTicket(
   return ticketCode;
 }
 
-/** The accounts the component holds, without system fields. */
+/** Get the component's accounts without system fields. */
 async function accounts(t: ReturnType<typeof setup>) {
   return (
     await t.run(async (ctx) => await ctx.db.query("accounts").collect())
@@ -335,8 +330,6 @@ describe("completeSignIn", () => {
     });
 
     expect(result).toEqual(completed);
-    // Redemption passed the account's user id to the core and recorded no
-    // second account.
     expect(helperCalls).toEqual([
       {
         kind: "signIn",

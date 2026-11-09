@@ -219,10 +219,9 @@ export const vAuthClaims = v.object({
 export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
- * The `providerAccountId` sent to `completeSignUp` by a sign-in method whose
- * identity is the app user id, which doesn't exist yet (password and passkey
- * methods). Only the app's `createUser` callback sees it; later sign-ins send
- * the user id.
+ * Placeholder `providerAccountId` for sign-in methods whose identity is the
+ * app user id. The user id doesn't exist yet at sign-up, so these methods
+ * send this placeholder then, and the user id on later sign-ins.
  *
  * @TODO(nicolas) Consider dropping `accountId` from the app callbacks for
  * these sign-in methods, or making it optional, instead of sending a
@@ -232,9 +231,9 @@ export const USE_USER_ID_AS_ACCOUNT_ID = "";
 
 /**
  * The type of an app defined user-creating mutation: create the app's user
- * record for an identity the core has not seen before, and return its id. It
- * runs once per account, and {@link OnSignInFn} runs right after it, so this
- * one is only responsible for what is true at creation time.
+ * record for a new identity, and return its id. It runs once per account, and
+ * {@link OnSignInFn} runs right after it, so this one is only responsible for
+ * what is true at creation time.
  *
  * This is the core entrypoint for an application to integrate its user model
  * with Convex Auth. Apps install one per sign-in method, although the function that
@@ -318,17 +317,18 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
-   * Mint the app user for a *new* identity and exchange it for a session.
+   * Create the app user for a *new* identity and exchange it for a session.
    *
-   * Call this when the sign-in method has verified a new identity. The core
-   * calls the app's `createUser` to mint the app user, then its `onSignIn`
-   * like any other sign-in, and returns the tokens a client needs to make
-   * authenticated calls.
+   * Call this when the sign-in method has verified a new identity. The core:
+   * 1. calls the app's `createUser` to create the app user,
+   * 2. calls the app's `onSignIn`, like any other sign-in,
+   * 3. returns the tokens a client needs to make authenticated calls.
    *
-   * The core can't tell a new identity from a returning one, so the sign-in
-   * method must look the identity up in its own component first (calling
-   * {@link BoundAuthHelpers.completeSignIn} if it's known), and record the
-   * returned `userId` there in the same mutation.
+   * The core doesn't track identities, so the sign-in method must look the
+   * identity up in its own component first, and call
+   * {@link BoundAuthHelpers.completeSignIn} for a known one. After a sign-up,
+   * the sign-in method must record the returned `userId` in its component in
+   * the same mutation.
    */
   completeSignUp(args: {
     providerAccountId: string;
@@ -342,8 +342,8 @@ export type BoundAuthHelpers<Profile> = {
    * runs the app's `onSignIn` callback if one is attached, and returns the
    * tokens a client needs to make authenticated calls.
    *
-   * The core doesn't check `userId`: a wrong one signs the caller in as that
-   * user.
+   * The core doesn't check `userId`, so a wrong one signs the caller in as
+   * that user.
    */
   completeSignIn(args: {
     userId: string;
@@ -351,13 +351,13 @@ export type BoundAuthHelpers<Profile> = {
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Mint the app user for a verified identity, but do not mint a session.
+   * Create the app user for a verified identity without a session.
    *
    * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. The app's `createUser` mints the
-   * user, as for `completeSignUp`; `onSignIn` does not run. The sign-in method
-   * records the returned `userId` in its own component and signs the user in
-   * later with `completeSignIn`.
+   * validation) before the first sign-in. The app's `createUser` creates the
+   * user, as for `completeSignUp`, and `onSignIn` doesn't run. The sign-in
+   * method records the returned `userId` in its own component and signs the
+   * user in later with `completeSignIn`.
    */
   signUpWithoutSession(args: {
     providerAccountId: string;
