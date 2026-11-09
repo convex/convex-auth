@@ -400,10 +400,9 @@ export function setupEmailPassword<UsersTable extends string>(
 
       return {
         /**
-         * Create a new account: the app user and the password are written
-         * immediately, but no session is minted. The user signs in for the
-         * first time through `completeSignUpWithEmailPassword`, after they open
-         * the challenge link.
+         * Create the app user and password for a new account, without a
+         * session. The user signs in for the first time through
+         * `completeSignUpWithEmailPassword`, after opening the challenge link.
          *
          * Repeated sign-ups with one unvalidated address create separate
          * users; the first completed validation wins, and the others can never
@@ -435,8 +434,6 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            // This sign-in method's identity is the app user id, which doesn't
-            // exist until this call mints it, hence the placeholder.
             const { userId } = await ctx.convexAuth.signUpWithoutSession({
               providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},

@@ -389,9 +389,6 @@ export function setupUsernamePasskey<UsersTable extends string>(
               return { status: "error", userError };
             }
 
-            // Create the account + app user (via the app's createUser) and
-            // mint the session.
-            //
             // TODO(nicolas) The app's user callbacks should not receive a
             // provider account ID for this method at all: the value is an
             // internal key ("" at sign-up, the user id afterwards) with no

@@ -120,8 +120,8 @@ export type CompleteSignInResult = Infer<typeof completeSignInResult>;
  * identity payload is decrypted with a key derived from the raw code. The
  * profile mapping then turns what the provider attested into the account
  * identity. If the component has an account for the identity, the core signs
- * that user in; otherwise the core mints a new app user and the component
- * records an account for it, in this same mutation.
+ * that user in. Otherwise the core creates a new app user, and the component
+ * records an account for that user in the same mutation.
  *
  * Returns the shared sign-in envelope: the session token bundle, or an
  * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
@@ -192,10 +192,9 @@ export function buildCompleteSignIn<
       }
 
       // The same redemption flow serves a first sign-in and a return visit, so
-      // look the identity up to pick a path. The lookup and the writes it
-      // decides on share one transaction, so two concurrent first redemptions
-      // of one identity can't both mint a user: the second reruns and finds
-      // the account.
+      // look the identity up to pick a path. The lookup and the writes share
+      // one transaction, so concurrent first redemptions of one identity
+      // create only one user.
       const existingUserId = await options.getUserIdByAccount(ctx, {
         providerAccountId: profile.id,
       });
