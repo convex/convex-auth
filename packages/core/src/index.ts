@@ -9,6 +9,7 @@
 export type {
   ConvexAuthApi,
   IsAuthenticatedFn,
+  RefreshResult,
   RefreshSessionFn,
   SignInComplete,
   SignInEnvelope,
