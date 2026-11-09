@@ -19,13 +19,8 @@ export function Dashboard({
     <main style={{ padding: 24, maxWidth: 640 }}>
       <h1>Next.js SSR + Convex Auth</h1>
       <p>
-        Signed in as{" "}
-        <strong>
-          {user
-            ? (user.username ?? user.githubLogin ?? "an anonymous user")
-            : "(loading)"}
-        </strong>{" "}
-        (user <code>{user?.id ?? "…"}</code>).
+        Signed in as <strong>{user?.name ?? "(loading)"}</strong> (user{" "}
+        <code>{user?.id ?? "…"}</code>).
       </p>
       <p style={{ color: "#666" }}>
         Access token (JS-readable):{" "}

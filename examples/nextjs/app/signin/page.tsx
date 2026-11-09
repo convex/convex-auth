@@ -1,7 +1,6 @@
 "use client";
 
 import { useConvexAuth } from "convex/react";
-import { useSignInAnonymously } from "@convex-dev/auth/methods/anonymous/react";
 import {
   useOauth,
   useSignInWithGithub,
@@ -16,9 +15,8 @@ export default function SignIn() {
   // The method's own hook, with no SSR-specific variant. The surrounding
   // ConvexAuthNextjsProvider routes this call through the sign-in route, which
   // moves the minted refresh token into an httpOnly cookie so it never reaches
-  // JS. Both functions are listed in `signIn` in src/lib/serverAuth.ts.
+  // JS. Its function is listed in `signIn` in src/lib/serverAuth.ts.
   const { signIn, pending } = useSignInWithUsernamePassword(api.auth);
-  const { signIn: signInAnonymously } = useSignInAnonymously(api.auth);
   // GitHub sends the user back to this page, where the hook redeems the
   // callback code through the sign-in route. A failure to start comes back
   // from `signInWithGithub`, and a failure after the redirect shows up in
@@ -178,18 +176,6 @@ export default function SignIn() {
           }}
         >
           Continue with GitHub
-        </button>
-      </p>
-      <p>
-        Or skip the account:{" "}
-        <button
-          disabled={pending || isLoading}
-          onClick={async () => {
-            await signInAnonymously();
-            router.push("/");
-          }}
-        >
-          Sign in anonymously
         </button>
       </p>
     </main>

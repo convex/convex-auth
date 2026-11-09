@@ -1,7 +1,6 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import anonymous from "@convex-dev/auth/components/anonymous/convex.config.js";
 import github from "@convex-dev/auth/components/github/convex.config.js";
 import passwordProvider from "@convex-dev/auth/components/password/convex.config.js";
 import authUsername from "@convex-dev/auth/components/username/convex.config.js";
@@ -14,7 +13,6 @@ const app = defineApp({
 });
 
 app.use(auth);
-app.use(anonymous);
 app.use(passwordProvider);
 app.use(authUsername);
 

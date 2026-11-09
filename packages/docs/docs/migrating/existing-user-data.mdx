@@ -29,7 +29,7 @@ with ids from that table: `createUser` must return an `Id<"members">`, and
 export const createUser = internalMutation({
   args: {
     provider: v.object({
-      name: v.literal("anonymous"),
+      name: v.literal("password"),
       accountId: v.string(),
       profile: v.object({}),
     }),
