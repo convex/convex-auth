@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.97
+
+- Fix for
+  [GHSA-hmvv-g278-4x95](https://github.com/convex/convex-auth/security/advisories/GHSA-hmvv-g278-4x95).
+
 ## 0.0.96
 
 - fix: check ID tables for refresh tokens and verifiers (#665)
