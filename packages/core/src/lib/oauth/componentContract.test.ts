@@ -218,7 +218,6 @@ export function testProviderFunctionsContract(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-2" }),
       ).toBeNull();
 
-      // A provider account id must never map to two app users.
       await expect(
         t.mutation(createAccount, {
           providerAccountId: "sub-1",

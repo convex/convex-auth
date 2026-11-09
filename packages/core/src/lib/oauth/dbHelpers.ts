@@ -3,12 +3,11 @@
  *
  * An OAuth flow needs two short-lived documents: an authorization request,
  * written when sign-in starts and claimed by the provider callback, and a
- * ticket, minted by the callback and redeemed by the app. Each component also
- * keeps one durable document per identity: an account, connecting a provider
- * account id to an app user id. Every OAuth component keeps those same
- * tables, so the reads and writes live here, and each component's
- * `provider.ts` supplies its own argument validators and its own document
- * types.
+ * ticket, minted by the callback and redeemed by the app. Each OAuth
+ * component also keeps a durable account per identity, connecting a provider
+ * account id to an app user id. Every OAuth component keeps the same tables,
+ * so the reads and writes live here, and each component's `provider.ts`
+ * supplies its own argument validators and document types.
  *
  * @module
  */
@@ -44,8 +43,8 @@ export const TICKET_TTL_MS = 2 * 60 * 1000;
  */
 type MutationCtx = GenericMutationCtx<GenericDataModel>;
 /**
- * A query's or a mutation's ctx. Only `db.query` is named because a
- * component's own query ctx is not assignable to
+ * The ctx the read helpers take, from either a query or a mutation. It names
+ * only `db.query` because a component's own query ctx is not assignable to
  * `GenericQueryCtx<GenericDataModel>`.
  */
 type QueryCtx = { db: Pick<GenericDatabaseReader<GenericDataModel>, "query"> };

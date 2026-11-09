@@ -48,7 +48,8 @@ type OnlyTheFieldsOf<Doc, Shared> = Shared &
   Record<Exclude<keyof Doc, keyof Shared>, never>;
 
 // The validators below come off the schema fields, so a mutation and the
-// table it writes cannot disagree about what a request or a ticket holds.
+// table it writes cannot disagree about what a request, a ticket or an
+// account holds.
 
 /**
  * `createAuthorizationRequest` takes the request without the callback URL and
@@ -74,8 +75,8 @@ const createTicketArgs = v.object(ticketFields).omit("expiresAt");
 
 /**
  * Build the functions registered by a built-in provider's component. The
- * component's `provider.ts` destructures the result and exports each one;
- * Convex registers it under its export name.
+ * component's `provider.ts` destructures the result and exports each one,
+ * because Convex registers each function under its export name.
  *
  * The caller has to pass its own document types, e.g.
  * `buildProviderFunctions<Doc<"authorizationRequests">, Doc<"tickets">, Doc<"accounts">>({...})`.
@@ -89,9 +90,10 @@ export function buildProviderFunctions<
   AccountDoc extends OnlyTheFieldsOf<AccountDoc, SharedAccountDocument>,
 >(options: {
   /**
-   * The component's own `query` builder. Typed `any` because a query ctx is
-   * not assignable across data models the way a mutation ctx is. Safe
-   * because the handler only passes the ctx to a data-model-agnostic helper.
+   * The component's own `query` builder. It's typed `any` because a query
+   * ctx, unlike a mutation ctx, is not assignable across data models. `any`
+   * is safe here because the handler passes the ctx only to a helper that
+   * doesn't depend on the data model.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: QueryBuilder<any, "public">;
