@@ -2,6 +2,7 @@ import { mutation, query, QueryCtx } from "./_generated/server.ts";
 import { Doc } from "./_generated/dataModel.ts";
 import { Infer, v } from "convex/values";
 import {
+  isTooLong,
   normalizeUsername,
   setUsernameUserError,
   validateUsernameFormat,
@@ -75,6 +76,10 @@ export const getUserIdByUsername = query({
   args: { username: v.string() },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, { username }): Promise<string | null> => {
+    // `setUsername` never stores a username this long.
+    if (isTooLong(username)) {
+      return null;
+    }
     const row = await rowByNormalizedUsername(ctx, normalizeUsername(username));
     return row === null ? null : row.userId;
   },

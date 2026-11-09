@@ -1,7 +1,6 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import anonymous from "@convex-dev/auth/components/anonymous/convex.config.js";
 import apple from "@convex-dev/auth/components/apple/convex.config.js";
 import email from "@convex-dev/auth/components/email/convex.config.js";
 import github from "@convex-dev/auth/components/github/convex.config.js";
@@ -25,14 +24,14 @@ const app = defineApp({
     AUTH_ACME_CLIENT_ID: v.string(),
     AUTH_ACME_CLIENT_SECRET: v.string(),
     RESEND_API_KEY: v.string(),
-    SITE_URL: v.string(),
+    // Defaults in auth.ts.
+    SITE_URL: v.optional(v.string()),
   },
 });
 
 app.use(auth);
 // A second core, for the examples that mount it under another name.
 app.use(auth, { name: "myAuth" });
-app.use(anonymous);
 app.use(password);
 app.use(username);
 app.use(email);

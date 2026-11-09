@@ -25,7 +25,7 @@ method-specific differences.
 
 The code below comes from the
 [Next.js example](https://github.com/convex/convex-auth/tree/reboot/examples/nextjs),
-which supports username + password, anonymous, and GitHub sign-in.
+which supports username + password and GitHub sign-in.
 
 ## Setting up Convex Auth in a Next.js app
 
@@ -155,7 +155,7 @@ client-side `ConvexAuthNextjsProvider`, so the Convex client is ready to
 authenticate when the page loads. Use it in place of `ConvexAuthProvider` and
 `ConvexProvider`.
 
-```tsx file="examples/nextjs/app/layout.tsx" title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<ConvexAuthNextjsServerProvider>...</ConvexAuthNextjsServerProvider>"
+```tsx file="examples/nextjs/app/layout.tsx" title="app/layout.tsx" highlight="import { ConvexAuthNextjsServerProvider }" highlight="<Suspense>...</Suspense>"
 
 ```
 

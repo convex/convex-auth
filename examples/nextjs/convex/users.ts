@@ -7,7 +7,7 @@
  *
  * All sign-in methods in this example share one pair of callbacks. GitHub supplies
  * the user's GitHub profile, and `createUser` stores the login from it. The
- * others supply an empty profile. `lastSignedInAt` is maintained by the
+ * password method supplies an empty profile. `lastSignedInAt` is maintained by the
  * `onSignIn` hook.
  *
  * @module
@@ -20,11 +20,6 @@ import { internalMutation, query } from "./_generated/server";
 
 // The union shape of the configured sign-in methods.
 const vProvider = v.union(
-  v.object({
-    name: v.literal("anonymous"),
-    accountId: v.string(),
-    profile: v.object({}),
-  }),
   v.object({
     name: v.literal("password"),
     accountId: v.string(),
@@ -63,6 +58,9 @@ export const onSignIn = internalMutation({
 /**
  * The currently signed-in user, or null. Demonstrates an authenticated query
  * that works both when preloaded on the server and live on the client.
+ *
+ * Every user has a name: a GitHub user has the login that `createUser`
+ * stored, and a password user has a username in the username component.
  */
 export const loggedInUser = query({
   args: {},
@@ -75,10 +73,16 @@ export const loggedInUser = query({
     if (user === null) {
       return null;
     }
-    const username = await ctx.runQuery(
-      components.authUsername.public.getUsername,
-      { userId },
-    );
-    return { id: user._id, username, githubLogin: user.githubLogin ?? null };
+    const name =
+      user.githubLogin ??
+      (await ctx.runQuery(components.authUsername.public.getUsername, {
+        userId,
+      }));
+    if (name === null) {
+      throw new Error(
+        `User ${userId} has neither a GitHub login nor a username`,
+      );
+    }
+    return { id: user._id, name };
   },
 });

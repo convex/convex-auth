@@ -1,5 +1,4 @@
 import { setupConvexAuth } from "@convex-dev/auth/server";
-import { setupAnonymous } from "@convex-dev/auth/methods/anonymous/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
@@ -18,12 +17,13 @@ import { acmeCatalog, type AcmeProfile } from "./acme";
 
 const allowedRedirectOrigins = ["http://localhost:5173"];
 
+// `setupEmailPassword` checks its URLs when the module loads, and no deployment
+// sets SITE_URL for this app (codegen pushes it to a deployment with no
+// environment variables).
+const SITE_URL = env.SITE_URL ?? "http://localhost:5173";
+
 const auth = setupConvexAuth({ component: components.auth });
 export const { signOut, refreshSession, isAuthenticated } = auth;
-
-export const { signInAnonymously } = setupAnonymous(auth, {
-  component: components.authAnonymous,
-}).attachUserCallbacks({ createUser: internal.users.createUserAnonymous });
 
 export const {
   signUpWithUsernamePassword,
@@ -55,9 +55,9 @@ export const {
     from: "My App <auth@example.com>",
   },
   urls: {
-    signUp: `${env.SITE_URL}/validate-email`,
-    changeEmail: `${env.SITE_URL}/confirm-email-change`,
-    recovery: `${env.SITE_URL}/reset-password`,
+    signUp: `${SITE_URL}/validate-email`,
+    changeEmail: `${SITE_URL}/confirm-email-change`,
+    recovery: `${SITE_URL}/reset-password`,
   },
 }).attachUserCallbacks({ createUser: internal.users.createUserEmailPassword });
 

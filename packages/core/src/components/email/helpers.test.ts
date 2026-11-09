@@ -35,6 +35,18 @@ describe("buildLink", () => {
   test("rejects a URL that is not absolute", () => {
     expect(() => buildLink("/verify", "abc")).toThrow("not a full URL");
   });
+
+  test("rejects a URL that is missing its scheme", () => {
+    expect(() => buildLink("localhost:5173/verify", "abc")).toThrow(
+      'has no scheme ("localhost:" is read as the scheme)',
+    );
+  });
+
+  test("accepts an app link", () => {
+    expect(buildLink("myapp:///verify", "abc")).toBe(
+      "myapp:///verify?code=abc",
+    );
+  });
 });
 
 describe("challengeEmailText", () => {

@@ -137,25 +137,32 @@ export type ClientView<T> = T extends { tokens: TokenBundle }
   ? Omit<T, "tokens"> & { tokens: SlimTokenBundle }
   : T;
 
-/**
- * The result of refreshing a session. The `kind` will be one of:
- *
- *  * `rotated`: the presented token was valid and `tokens` carries a fresh
- *    access token and its successor refresh token. The client should persist both. The token
- *    presented stays valid until the successor is first used, so a client that
- *    never receives this result can retry with the token it already has.
- *  * `noSession`: the token is unknown, expired, or one that should be in
- *    nobody's hands any more (which also revokes its session). The client should clear any stored session, and treat the user as signed out.
- */
+/** Validator for {@link RefreshResult}, which documents the outcomes. */
 export const vRefreshResult = v.union(
   v.object({ kind: v.literal("rotated"), tokens: vTokenBundle }),
   v.object({ kind: v.literal("noSession") }),
 );
 
+/**
+ * The result of refreshing a session, returned by the app's `refreshSession`
+ * mutation and by `ServerAuthSession.refresh()`. Check `kind`:
+ *
+ *  * `{ kind: "rotated", tokens }`: `tokens` is the new {@link TokenBundle},
+ *    with a fresh access token and the refresh token that replaces the one
+ *    presented. Persist both. The presented refresh token stays valid until
+ *    its successor is first used, so a client that never receives this result
+ *    can retry with the token it already has.
+ *  * `{ kind: "noSession" }`: the refresh token is unknown, expired, or
+ *    superseded (a token issued after it has already been used). Only a
+ *    superseded token revokes anything: it is what a leaked token looks like,
+ *    so presenting it ends its session for every holder. An unknown or expired
+ *    token has no live session left to revoke. Clear the stored session and
+ *    treat the user as signed out.
+ */
 export type RefreshResult = Infer<typeof vRefreshResult>;
 
 /** The app's `refreshSession` mutation reference: exchange a refresh token for
- * a fresh session. See {@link vRefreshResult} for the outcomes. */
+ * a fresh session. See {@link RefreshResult} for the outcomes. */
 export type RefreshSessionFn = FunctionReference<
   "mutation",
   "public",

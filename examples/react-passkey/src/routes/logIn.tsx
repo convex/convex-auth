@@ -75,6 +75,8 @@ function errorMessage(
       return null;
     case "USERNAME_TOO_SHORT":
       return `The username must be at least ${userError.minimumLength} characters.`;
+    case "USERNAME_TOO_LONG":
+      return `The username must be at most ${userError.maximumLength} characters.`;
     case "USERNAME_HAS_SURROUNDING_WHITESPACE":
       return "The username can't start or end with whitespace.";
     case "USERNAME_HAS_INVALID_CHARACTERS":

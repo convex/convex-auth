@@ -7,18 +7,6 @@ import { vAcmeProfile } from "./acme";
 
 // The `createUser` callback of each sign-in method of `auth.ts`.
 
-export const createUserAnonymous = internalMutation({
-  args: {
-    provider: v.object({
-      name: v.literal("anonymous"),
-      accountId: v.string(),
-      profile: v.object({}),
-    }),
-  },
-  returns: v.id("users"),
-  handler: async (ctx) => await ctx.db.insert("users", {}),
-});
-
 export const createUserPassword = internalMutation({
   args: {
     provider: v.object({

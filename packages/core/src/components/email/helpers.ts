@@ -8,7 +8,7 @@ import type {
 } from "convex/server";
 import type { ComponentApi as ResendApi } from "@convex-dev/resend/_generated/component.js";
 import { RateLimiter, HOUR } from "@convex-dev/rate-limiter";
-import { EmailSenderConfig } from "./validation.ts";
+import { EmailSenderConfig, landingUrlProblem } from "./validation.ts";
 
 //------------------------------------------------------------------------------
 
@@ -160,15 +160,14 @@ export function challengeEmailText(
  * `location.search`.
  */
 export function buildLink(url: string, emailCode: string): string {
-  let landingUrl: URL;
-  try {
-    landingUrl = new URL(url);
-  } catch {
+  const problem = landingUrlProblem(url);
+  if (problem !== null) {
     throw new Error(
-      `The email link URL is not a full URL: ${url}. Give an absolute URL, ` +
-        `for example "https://example.com/verify".`,
+      `The email link URL ${problem}: ${url}. Give an absolute URL, for ` +
+        `example "https://example.com/verify".`,
     );
   }
+  const landingUrl = new URL(url);
   landingUrl.searchParams.set("code", emailCode);
   return landingUrl.toString();
 }

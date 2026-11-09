@@ -17,8 +17,6 @@ The `examples/` directory holds in-repo example apps. Each is a self-contained
 Convex backend that mounts the auth components, and is run from its own
 directory (see the example's own README):
 
-- `examples/react-minimal` — the core and anonymous components with the
-  `anonymous` method.
 - `examples/react-password` — the core, password, and username components
   with the `usernamePassword` method.
 - `examples/react-email-password` — the core, password, and email components

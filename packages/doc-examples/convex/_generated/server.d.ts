@@ -41,7 +41,7 @@ type Env = {
   readonly AUTH_GOOGLE_CLIENT_ID: string;
   readonly AUTH_GOOGLE_CLIENT_SECRET: string;
   readonly RESEND_API_KEY: string;
-  readonly SITE_URL: string;
+  readonly SITE_URL: string | undefined;
 };
 
 /**

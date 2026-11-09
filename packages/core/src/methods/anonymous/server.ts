@@ -18,7 +18,7 @@ const PROVIDER_NAME = "anonymous";
  * There is no support for allowing a user to return with a previously issued
  * anonymous account.
  *
- * ```ts
+ * ```ts skip-check
  * const auth = setupConvexAuth({ component: components.auth });
  * export const { signOut, refreshSession, isAuthenticated } = auth;
  *
@@ -26,6 +26,8 @@ const PROVIDER_NAME = "anonymous";
  *   component: components.authAnonymous,
  * }).attachUserCallbacks({ createUser: internal.users.createUserAnonymous });
  * ```
+ *
+ * @internal Not public until the anonymous sign-in method is ready.
  */
 export function setupAnonymous<UsersTable extends string>(
   core: AuthCore<UsersTable>,

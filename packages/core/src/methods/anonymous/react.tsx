@@ -10,6 +10,7 @@
  * It's useful as an example of the bare minimum a method needs on the
  * client: one hook, and no registration with the auth client at all.
  *
+ * @internal Not public until the anonymous sign-in method is ready.
  * @module
  */
 "use client";
@@ -43,7 +44,7 @@ export type SignInAnonymouslyMutation = FunctionReference<
  * client authenticates. Passing a `TokenBundle` to `setSession` is the general
  * pattern that every sign-in method should follow.
  *
- * ```tsx
+ * ```tsx skip-check
  * import { useSignInAnonymously } from "@convex-dev/auth/methods/anonymous/react";
  * import { api } from "../convex/_generated/api";
  *

@@ -17,8 +17,8 @@ have already followed [Setting up Next.js](./setup.mdx).
   [Setting up Next.js](./setup.mdx)).
 - **The hooks of the methods.** Your sign-in and sign-up pages call the same hooks
   as in a single-page app, like `useSignInWithUsernamePassword` from
-  `@convex-dev/auth/methods/username-password/react` or `useSignInAnonymously` from
-  `@convex-dev/auth/methods/anonymous/react`. There are no Next.js versions of
+  `@convex-dev/auth/methods/username-password/react` or `useSignInWithGithub` from
+  `@convex-dev/auth/methods/github/react`. There are no Next.js versions of
   these hooks. Inside `ConvexAuthNextjsProvider`, the hooks send their sign-in
   calls to your `/auth/signin` route. The route calls your deployment and moves
   the refresh token into the `httpOnly` cookie before it returns the result.
@@ -44,7 +44,6 @@ sign-in method:
 | ---------------- | ----------------------------------------------------------------------- |
 | Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`              |
 | Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`    |
-| Anonymous        | `signInAnonymously`                                                     |
 | Email + password | `signInWithEmailPassword`, `completeSignUp`, `completePasswordRecovery` |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`         |
 
@@ -67,7 +66,7 @@ in a Next.js app:
   `useConvexAuth`, `Authenticated`, and `Unauthenticated` from `convex/react`.
 
 For example, this sign-in page from the Next.js example uses the password and
-anonymous hooks unchanged:
+GitHub hooks unchanged:
 
 ```tsx file="examples/nextjs/app/signin/page.tsx" title="app/signin/page.tsx"
 
