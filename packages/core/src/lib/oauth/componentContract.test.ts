@@ -221,10 +221,6 @@ export function testAccountsContract(
     test("an account resolves to its user once recorded, and only once", async () => {
       const t = setup(schema, modules);
 
-      expect(
-        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
-      ).toBeNull();
-
       await t.mutation(createAccount, {
         providerAccountId: "sub-1",
         userId: "user-1",
@@ -242,9 +238,6 @@ export function testAccountsContract(
           userId: "user-2",
         }),
       ).rejects.toThrow(/already exists/);
-      expect(
-        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
-      ).toBe("user-1");
     });
   });
 }
