@@ -12,7 +12,7 @@ import {
 import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
 import { MIN_PASSWORD_LENGTH } from "./validation.ts";
-import { hashPassword, verifyPassword } from "argon2id-wasm";
+import { hashPassword, verifyPassword } from "password-hash-wasm/argon2id";
 
 const modules = import.meta.glob("./**/*.ts");
 

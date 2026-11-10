@@ -12,6 +12,6 @@ minimumReleaseAge: 10080
 # Packages listed here skip the wait above. Avoid adding third party packages
 # to this list.
 minimumReleaseAgeExclude:
-  - argon2id-wasm
+  - password-hash-wasm
   - convex
   - convex-test

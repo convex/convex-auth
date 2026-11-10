@@ -6,7 +6,7 @@ import { RateLimiter, MINUTE } from "@convex-dev/rate-limiter";
 import {
   hashPassword,
   verifyPassword as verifyPasswordHash,
-} from "argon2id-wasm";
+} from "password-hash-wasm/argon2id";
 import {
   validatePasswordInputFormat,
   validateNewPassword,
