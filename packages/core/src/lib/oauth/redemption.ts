@@ -201,13 +201,11 @@ export function buildCompleteSignIn<
       if (existingUserId !== null) {
         const tokens = await ctx.convexAuth.completeSignIn({
           userId: existingUserId,
-          providerAccountId: profile.id,
           profile,
         });
         return { status: "complete", tokens };
       }
       const tokens = await ctx.convexAuth.completeSignUp({
-        providerAccountId: profile.id,
         profile,
       });
       await options.createAccount(ctx, {

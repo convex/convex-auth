@@ -14,7 +14,6 @@ import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
   vSignInError,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -435,7 +434,6 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const { userId } = await ctx.convexAuth.signUpWithoutSession({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
             });
 
@@ -503,7 +501,6 @@ export function setupEmailPassword<UsersTable extends string>(
             }
             const tokens = await ctx.convexAuth.completeSignIn({
               userId: complete.userId,
-              providerAccountId: complete.userId,
               profile: {},
             });
             return { status: "complete", tokens };
@@ -549,7 +546,6 @@ export function setupEmailPassword<UsersTable extends string>(
 
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
-              providerAccountId: userId,
               profile: {},
             });
             return { status: "complete", tokens };
@@ -926,7 +922,6 @@ export function setupEmailPassword<UsersTable extends string>(
 
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
-              providerAccountId: userId,
               profile: {},
             });
 

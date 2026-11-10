@@ -28,19 +28,18 @@ const components = componentsGeneric() as unknown as {
 
 /**
  * Stand-in for the app's user-creating callback. Like a minimal real app it
- * owns no users table, and just echoes the provider-scoped account id back as
- * the app user id (the same contract as the component suite's fixture).
+ * owns no users table, and just echoes the `id` of the profile back as the app
+ * user id, so a test chooses the user id of a sign-up.
  */
 const createUser = internalMutationGeneric({
   args: {
     provider: v.object({
       name: v.string(),
-      accountId: v.string(),
       profile: v.any(),
     }),
   },
   returns: v.string(),
-  handler: async (_ctx, args) => args.provider.accountId,
+  handler: async (_ctx, args) => args.provider.profile.id,
 });
 
 const core = setupConvexAuth({ component: components.auth });
@@ -60,19 +59,17 @@ const signUp = authMutation({
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignUp({
-      providerAccountId: accountId,
-      profile: {},
+      profile: { id: accountId },
     }),
 });
 
-// The fixture's createUser returns the account id as the user id.
+// The fixture's createUser returns the `id` of the profile as the user id.
 const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
       userId: accountId,
-      providerAccountId: accountId,
       profile: {},
     }),
 });
@@ -115,7 +112,6 @@ const signInShortTtl = shortTtlAuthMutation({
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
       userId: accountId,
-      providerAccountId: accountId,
       profile: {},
     }),
 });

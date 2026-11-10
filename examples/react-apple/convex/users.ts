@@ -14,7 +14,6 @@ export const createUser = internalMutation({
   args: {
     provider: v.object({
       name: v.literal("apple"),
-      accountId: v.string(),
       profile: vAppleProfile,
     }),
   },
@@ -39,7 +38,6 @@ export const onSignIn = internalMutation({
   args: {
     provider: v.object({
       name: v.literal("apple"),
-      accountId: v.string(),
       profile: vAppleProfile,
     }),
     userId: v.id("users"),

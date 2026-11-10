@@ -11,7 +11,6 @@ export const createUser = internalMutation({
   args: {
     provider: v.object({
       name: v.literal("google"),
-      accountId: v.string(),
       profile: vGoogleProfile,
     }),
   },

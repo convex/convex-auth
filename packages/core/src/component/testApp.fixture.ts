@@ -3,7 +3,6 @@ import { Infer, v } from "convex/values";
 
 const vProvider = v.object({
   name: v.string(),
-  accountId: v.string(),
   profile: v.any(),
 });
 

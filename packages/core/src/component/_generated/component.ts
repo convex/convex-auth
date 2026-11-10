@@ -75,11 +75,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
+          claims: { profile: any; providerName: string };
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
           sessionMaxLifetimeSeconds: number;
@@ -105,11 +101,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
+          claims: { profile: any; providerName: string };
           createUserHandle: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
@@ -127,11 +119,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
+          claims: { profile: any; providerName: string };
           createUserHandle: string;
         },
         { userId: string },
