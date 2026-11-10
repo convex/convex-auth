@@ -46,9 +46,9 @@ const projects = ["packages", "examples"].flatMap((group) =>
           deps: {
             // convex-test loads function modules dynamically; inlining keeps
             // that resolution working under Vitest's transform pipeline.
-            // `argon2id-wasm` is inlined so its `.wasm` import is handled
+            // `password-hash-wasm` is inlined so its `.wasm` import is handled
             // by `wasmModulePlugin`.
-            inline: ["convex-test", "argon2id-wasm"],
+            inline: ["convex-test", "password-hash-wasm"],
           },
         },
       },

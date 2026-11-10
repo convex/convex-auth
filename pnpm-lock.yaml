@@ -385,15 +385,15 @@ importers:
       '@simplewebauthn/server':
         specifier: ^14.0.0
         version: 14.0.0
-      argon2id-wasm:
-        specifier: 0.0.0-alpha.2
-        version: 0.0.0-alpha.2
       cookie:
         specifier: 1.1.1
         version: 1.1.1
       jose:
         specifier: ^5.2.2
         version: 5.10.0
+      password-hash-wasm:
+        specifier: 0.0.0
+        version: 0.0.0
     devDependencies:
       '@convex-dev/passkey-test-authenticator':
         specifier: workspace:*
@@ -3712,9 +3712,6 @@ packages:
   arg@5.0.2:
     resolution: {integrity: sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg==}
 
-  argon2id-wasm@0.0.0-alpha.2:
-    resolution: {integrity: sha512-Bxa3aVWUbpg/hKTyHdjeLT68mJXNLftm1W3tXVXu/X83vmpTJ3zzgOhNMzu33Th2iNDxMU1kU4/MEGgW5udMgQ==}
-
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -6063,6 +6060,9 @@ packages:
 
   pascal-case@3.1.2:
     resolution: {integrity: sha512-uWlGT3YSnK9x3BQJaOdcZwrnV6hPpd8jFH1/ucpiLRPh/2zCVJKS19E4GvYHvaCcACn3foXZ0cLB9Wrx1KGe5g==}
+
+  password-hash-wasm@0.0.0:
+    resolution: {integrity: sha512-SpVGWB4mMf8VuHM1LqrZWLPtH7B4K2vVqAZ6pAnL/eeTLtPqewwnt0DD7428xUPSDrEWd2SDoLoU4z61gj9sYw==}
 
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
@@ -12059,8 +12059,6 @@ snapshots:
 
   arg@5.0.2: {}
 
-  argon2id-wasm@0.0.0-alpha.2: {}
-
   argparse@2.0.1: {}
 
   aria-query@5.3.0:
@@ -14879,6 +14877,8 @@ snapshots:
     dependencies:
       no-case: 3.0.4
       tslib: 2.8.1
+
+  password-hash-wasm@0.0.0: {}
 
   path-exists@4.0.0: {}
 

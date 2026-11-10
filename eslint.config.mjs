@@ -16,9 +16,8 @@ export default defineConfig([
       ".agents/**",
       ".context/**",
       ".pnpm-store/**",
-      "packages/password-hash-wasm/rust/pkg/**",
       // Generated wasm-bindgen output.
-      "packages/argon2id/src/argon2-wasm/pkg/**",
+      "packages/password-hash-wasm/rust/pkg/**",
       // Generated output in the docs package (Docusaurus).
       "packages/docs/.docusaurus/**",
       "packages/docs/build/**",
