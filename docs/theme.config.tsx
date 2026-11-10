@@ -6,6 +6,15 @@ const config: DocsThemeConfig = {
   logo: (
     <span style={{ fontWeight: "bold", fontSize: "1.5rem" }}>Convex Auth</span>
   ),
+  banner: {
+    key: "v2-docs",
+    text: (
+      // TODO: Change the link to docs.convex.dev when the v2 docs are out.
+      <a href="https://auth-v2.previews.convex.dev" target="_blank">
+        These are the docs for Convex Auth v1. See the v2 docs →
+      </a>
+    ),
+  },
   project: {
     link: "https://github.com/convex/convex-auth",
   },
