@@ -176,6 +176,7 @@ export function setupUsernamePassword<UsersTable extends string>(
 
             const tokens = await ctx.convexAuth.completeSignUp({
               profile: {},
+              verifiedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
@@ -254,6 +255,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
               profile: {},
+              verifiedBy: component,
             });
             return { status: "complete", tokens };
           },

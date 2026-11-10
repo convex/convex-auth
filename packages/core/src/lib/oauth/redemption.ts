@@ -142,6 +142,11 @@ export function buildCompleteSignIn<
   providerName: string;
   /** The core's method-bound mutation builder. */
   authMutation: AuthMutationBuilder<Profile>;
+  /**
+   * The component of the provider, for example `components.authGoogle`. The
+   * sessions record its path.
+   */
+  component: object;
   /** Claim the ticket in this provider's component instance. */
   claimTicket: (
     ctx: MutationCtx,
@@ -202,11 +207,13 @@ export function buildCompleteSignIn<
         const tokens = await ctx.convexAuth.completeSignIn({
           userId: existingUserId,
           profile,
+          verifiedBy: options.component,
         });
         return { status: "complete", tokens };
       }
       const tokens = await ctx.convexAuth.completeSignUp({
         profile,
+        verifiedBy: options.component,
       });
       await options.createAccount(ctx, {
         providerAccountId: profile.id,
