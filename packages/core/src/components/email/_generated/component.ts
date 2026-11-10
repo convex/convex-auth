@@ -38,7 +38,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         complete: FunctionReference<
           "mutation",
           "internal",
-          { browserSecret: string; emailCode: string; userId: string },
+          { browserSecret: string; currentUser: string; emailCode: string },
           | { email: string; success: true; userId: string }
           | {
               success: false;
@@ -54,6 +54,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "mutation",
           "internal",
           {
+            currentUser: string;
             email: string;
             emailSender: {
               apiKey: string;
@@ -64,7 +65,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               sendEmailHandle: string;
             };
             url: string;
-            userId: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
           | {
@@ -91,7 +91,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         complete: FunctionReference<
           "mutation",
           "internal",
-          { browserSecret: string; emailCode: string; userId: string },
+          { browserSecret: string; currentUser: string; emailCode: string },
           | {
               email: string;
               previousEmail: string | null;

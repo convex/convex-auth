@@ -6,6 +6,7 @@ import {
 } from "../../../testing/resend.ts";
 import { api } from "../_generated/api.ts";
 import {
+  currentUser,
   seedEmail,
   seedChallenge,
   setup as setupComponent,
@@ -28,7 +29,7 @@ async function startArgs(t: ReturnType<typeof setup>) {
     email: "alice@example.com",
     url: URL,
     emailSender: await stubEmailSender(t),
-    userId: "user1",
+    currentUser: await currentUser(t, "user1"),
   };
 }
 
@@ -58,7 +59,7 @@ describe("challenge.addEmail.complete", () => {
     const result = await t.mutation(api.challenge.addEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toEqual({
       success: true,
@@ -85,7 +86,7 @@ describe("challenge.addEmail.complete", () => {
     const result = await t.mutation(api.challenge.addEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toMatchObject({ success: true });
     const emails = await t.query(api.verifiedEmails.getEmails, {
@@ -115,7 +116,7 @@ describe("challenge.addEmail.complete", () => {
     const result = await t.mutation(api.challenge.addEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toEqual({
       success: false,
@@ -140,7 +141,7 @@ describe("challenge.addEmail.complete", () => {
     const result = await t.mutation(api.challenge.addEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toMatchObject({
       success: true,
@@ -171,7 +172,7 @@ describe("challenge.addEmail.complete", () => {
       await t.mutation(api.challenge.addEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toEqual({ success: false, userError: { error: "EMAIL_TAKEN" } });
   });
@@ -191,7 +192,7 @@ describe("the userId of an addEmail challenge", () => {
       await t.mutation(api.challenge.addEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user2",
+        currentUser: await currentUser(t, "user2"),
       }),
     ).toEqual({ success: false, userError: { error: "WRONG_USER" } });
     // Nothing was recorded for either user, and the right user still works.
@@ -200,7 +201,7 @@ describe("the userId of an addEmail challenge", () => {
       await t.mutation(api.challenge.addEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toMatchObject({ success: true, userId: "user1" });
   });
@@ -240,9 +241,13 @@ describe("challenge.addEmail.start", () => {
       await t.mutation(api.challenge.addEmail.complete, {
         emailCode: emailCodeInLink(sent[0].text),
         browserSecret: result.browserSecret,
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
-    ).toEqual({ success: true, userId: "user1", email: "alice@example.com" });
+    ).toMatchObject({
+      success: true,
+      userId: "user1",
+      email: "alice@example.com",
+    });
     expect(
       await t.query(api.verifiedEmails.getEmails, { userId: "user1" }),
     ).toEqual([{ email: "alice@example.com", isPrimary: true }]);

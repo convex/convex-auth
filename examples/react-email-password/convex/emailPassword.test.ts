@@ -2,7 +2,11 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { AnyDataModel, GenericMutationCtx } from "convex/server";
 import { api, components } from "./_generated/api";
-import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
+import {
+  registerCore,
+  sessionIdentity,
+  withSession,
+} from "@convex-dev/auth/test";
 import { registerPassword } from "@convex-dev/auth/components/password/test";
 import {
   registerEmail,
@@ -125,6 +129,21 @@ async function asUser(t: T, userId: string) {
     });
   });
   return t.withIdentity({ subject: sessionId });
+}
+
+/**
+ * Sign in as the seeded user, and configure the passed in `T` with the real
+ * access token of the session. The functions that need the signed-in user
+ * from the core (`attestCurrentUser`) verify that token.
+ */
+async function signedIn(t: T, email = EMAIL) {
+  const result = await t
+    .withRequestMetadata({ ip: IP })
+    .mutation(api.auth.signInWithEmailPassword, { email, password: PASSWORD });
+  if (result.status !== "complete") {
+    throw new Error("Could not sign in the seeded user");
+  }
+  return withSession(t, result.tokens);
 }
 
 /**
@@ -753,8 +772,21 @@ describe("completeChangeEmail", () => {
       userError: { error: "NOT_LOGGED_IN" },
     });
 
-    const result = await (
+    // A token that the deployment did not sign does not identify a user to
+    // the core.
+    const unsigned = await (
       await asUser(t, userId)
+    ).mutation(api.auth.completeChangeEmail, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    expect(unsigned).toEqual({
+      success: false,
+      userError: { error: "NOT_LOGGED_IN" },
+    });
+
+    const result = await (
+      await signedIn(t)
     ).mutation(api.auth.completeChangeEmail, {
       emailCode: "code1",
       browserSecret: "secret1",
@@ -790,9 +822,9 @@ describe("completeChangeEmail", () => {
 
   test("rejects an unknown secret with INVALID_CHALLENGE", async () => {
     const t = await setup();
-    const userId = await seedSignedUpUser(t);
+    await seedSignedUpUser(t);
     const result = await (
-      await asUser(t, userId)
+      await signedIn(t)
     ).mutation(api.auth.completeChangeEmail, {
       emailCode: "unknown",
       browserSecret: "whatever",

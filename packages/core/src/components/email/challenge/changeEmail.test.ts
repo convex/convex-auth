@@ -7,6 +7,7 @@ import {
 import { api } from "../_generated/api.ts";
 import {
   userAttestation,
+  currentUser,
   seedEmail,
   seedChallenge,
   setup as setupComponent,
@@ -46,7 +47,7 @@ describe("challenge.changeEmail.complete", () => {
     const result = await t.mutation(api.challenge.changeEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toEqual({
       success: true,
@@ -73,7 +74,7 @@ describe("challenge.changeEmail.complete", () => {
     const result = await t.mutation(api.challenge.changeEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(result).toEqual({
       success: true,
@@ -101,7 +102,7 @@ describe("challenge.changeEmail.complete", () => {
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toEqual({ success: false, userError: { error: "EMAIL_TAKEN" } });
     // The old primary stays in place.
@@ -127,7 +128,7 @@ describe("the userId of a changeEmail challenge", () => {
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user2",
+        currentUser: await currentUser(t, "user2"),
       }),
     ).toEqual({ success: false, userError: { error: "WRONG_USER" } });
     // The primary address of each user stays in place.
@@ -142,7 +143,7 @@ describe("the userId of a changeEmail challenge", () => {
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toMatchObject({ success: true, userId: "user1" });
   });
@@ -168,7 +169,7 @@ describe("concurrent challenges for one address", () => {
     const first = await t.mutation(api.challenge.changeEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(first).toMatchObject({ success: true, userId: "user1" });
 
@@ -180,7 +181,7 @@ describe("concurrent challenges for one address", () => {
     const second = await t.mutation(api.challenge.changeEmail.complete, {
       emailCode: "code2",
       browserSecret: "secret2",
-      userId: "user2",
+      currentUser: await currentUser(t, "user2"),
     });
     expect(second).toEqual({
       success: false,
@@ -207,14 +208,14 @@ describe("concurrent challenges for one address", () => {
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toMatchObject({ success: true, userId: "user1" });
     expect(
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: "code2",
         browserSecret: "secret2",
-        userId: "user2",
+        currentUser: await currentUser(t, "user2"),
       }),
     ).toEqual({ success: false, userError: { error: "EMAIL_TAKEN" } });
   });
@@ -254,7 +255,7 @@ describe("challenge.changeEmail.start", () => {
       await t.mutation(api.challenge.changeEmail.complete, {
         emailCode: emailCodeInLink(sent[0].text),
         browserSecret: result.browserSecret,
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).toEqual({
       success: true,

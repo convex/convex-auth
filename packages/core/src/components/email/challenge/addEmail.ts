@@ -3,6 +3,7 @@
 // becomes primary; a later address is secondary.
 
 import { Infer, v } from "convex/values";
+import { verifyCurrentUser } from "../../custom.ts";
 import { mutation } from "../_generated/server.ts";
 import {
   ADD_EMAIL_TTL_MS,
@@ -38,13 +39,15 @@ export const check = mutation({
 });
 
 /**
- * Start an `addEmail` challenge for `userId`. Fails with `EMAIL_TAKEN` when
- * a user has already verified the address.
+ * Start an `addEmail` challenge for the signed-in user. `currentUser` is the
+ * current-user attestation of the core (`attestCurrentUser`). Fails with
+ * `EMAIL_TAKEN` when a user has already verified the address.
  */
 export const start = mutation({
-  args: { ...vStartArgs, userId: v.string() },
+  args: { ...vStartArgs, currentUser: v.string() },
   returns: startFreeAddressResult,
   handler: async (ctx, args): Promise<StartFreeAddressResult> => {
+    const { userId } = await verifyCurrentUser(args.currentUser);
     const error = await startFreeAddressPreconditions(
       ctx,
       args.email,
@@ -55,7 +58,7 @@ export const start = mutation({
     }
     const created = await createChallengeAndSendEmail(ctx, {
       email: args.email,
-      purpose: { kind: "addEmail", userId: args.userId },
+      purpose: { kind: "addEmail", userId },
       ttlMs: ADD_EMAIL_TTL_MS,
       url: args.url,
       emailSender: args.emailSender,
@@ -76,16 +79,18 @@ const completeResult = v.union(
 type CompleteResult = Infer<typeof completeResult>;
 
 /**
- * Complete an `addEmail` challenge: record the address for the user. The
- * `userId` must be the one given at start; another user fails with
+ * Complete an `addEmail` challenge: record the address for the user.
+ * `currentUser` is the current-user attestation of the core
+ * (`attestCurrentUser`). The signed-in user must be the one of the start;
+ * another user fails with
  * `WRONG_USER`, and the challenge stays. Fails with `EMAIL_TAKEN` when
  * another user verified the address after the start.
  */
 export const complete = mutation({
-  args: { ...vClaimArgs, userId: v.string() },
+  args: { ...vClaimArgs, currentUser: v.string() },
   returns: completeResult,
   handler: async (ctx, args): Promise<CompleteResult> => {
-    const { userId } = args;
+    const { userId } = await verifyCurrentUser(args.currentUser);
     const claim = await claimChallenge(ctx, {
       emailCode: args.emailCode,
       browserSecret: args.browserSecret,

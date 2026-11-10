@@ -12,6 +12,7 @@ import { emailByNormalizedEmail } from "./email/helpers.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 import { registerAttestationSigner } from "../lib/attestationSigner.fixture.ts";
 import {
+  CURRENT_USER_ATTESTATION,
   NEW_USER_ATTESTATION,
   USER_ATTESTATION,
 } from "../lib/attestationKinds.ts";
@@ -151,4 +152,9 @@ export async function seedChallenge(
       expiresAt: args.expiresAt ?? Date.now() + 60_000,
     });
   });
+}
+
+/** A current-user attestation of the core for `userId`. */
+export async function currentUser(t: object, userId: string): Promise<string> {
+  return await signersOf(t).core.attest(CURRENT_USER_ATTESTATION, { userId });
 }
