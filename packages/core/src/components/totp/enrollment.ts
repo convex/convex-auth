@@ -153,7 +153,7 @@ export const confirmTotp = mutation({
       return { success: false, userError: { error: "TOO_MANY_TOTPS" } };
     }
     if (!(await activate(ctx, pending, code))) {
-      return { success: false, userError: { error: "INVALID_CODE" } };
+      return { success: false, userError: { error: "INCORRECT_CODE" } };
     }
     if (active.length > 0) {
       return { success: true, totpId: pending._id };

@@ -11,7 +11,7 @@ import { Infer, v } from "convex/values";
 export const confirmSingleTotpUserError = v.union(
   // The code is not the code that the pending secret gives at this moment.
   // Usually the user typed it wrong, or the clock of their device is off.
-  v.object({ error: v.literal("INVALID_CODE") }),
+  v.object({ error: v.literal("INCORRECT_CODE") }),
   // The user has no pending secret: `createTotp` was not called, the
   // enrollment was confirmed already, or it expired.
   v.object({ error: v.literal("NO_PENDING_ENROLLMENT") }),

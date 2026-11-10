@@ -32,7 +32,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         | {
             success: false;
             userError:
-              | { error: "INVALID_CODE" }
+              | { error: "INCORRECT_CODE" }
               | { error: "NO_PENDING_ENROLLMENT" }
               | { error: "TOO_MANY_TOTPS" };
           },
