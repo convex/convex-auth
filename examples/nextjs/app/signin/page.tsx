@@ -125,13 +125,6 @@ export default function SignIn() {
                   return "That sign-in took too long. Please try again.";
                 case "INVALID_FLOW":
                   return "This sign-in can't be completed here. Please try again.";
-                case "REJECTED":
-                  // Your backend rejected the sign-in with a ConvexError,
-                  // and `data` is its data. Show it when it's text for the
-                  // user.
-                  return typeof flowError.data === "string"
-                    ? flowError.data
-                    : "Sign-in was declined.";
                 case "OTHER_ERROR":
                   // The details are on `cause` if you want to log them.
                   return "Something went wrong during sign-in. Please try again.";

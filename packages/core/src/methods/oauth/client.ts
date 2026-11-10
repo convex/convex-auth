@@ -18,7 +18,6 @@ import {
   getFunctionName,
   makeFunctionReference,
 } from "convex/server";
-import { ConvexError } from "convex/values";
 import type { AmbientSignInClient } from "../../browser/ambientSignInClient.ts";
 import { retryOnNetworkError } from "../../browser/retry.ts";
 import type { SignInStorage } from "../../browser/storage.ts";
@@ -63,17 +62,16 @@ export type OauthProviderRefs = {
  * - `"EXPIRED"`: the flow took too long, or the code was already redeemed.
  * - `"INVALID_FLOW"`: the callback arrived but this client has no saved flow,
  *   so it never started this sign-in or already finished it.
- * - `"REJECTED"`: the app's own backend turned the sign-in down by throwing a
- *   `ConvexError`. `data` is that error's `data`.
  * - `"OTHER_ERROR"`: anything else, like the identity provider failing the
  *   handshake or the redemption throwing. `cause` is the thrown value, or the
- *   error the callback URL carried.
+ *   error the callback URL carried. When the app's own backend turns the
+ *   sign-in down by throwing a `ConvexError` (from `onSignIn`, say), `cause`
+ *   is that `ConvexError`, as with the other sign-in methods.
  */
 export type OauthFlowError =
   | { error: "ACCESS_DENIED" }
   | { error: "EXPIRED" }
   | { error: "INVALID_FLOW" }
-  | { error: "REJECTED"; data: unknown }
   | { error: "OTHER_ERROR"; cause: unknown };
 
 /**
@@ -151,17 +149,6 @@ function callbackFlowError(param: string): OauthFlowError {
     default:
       return { error: "OTHER_ERROR", cause: param };
   }
-}
-
-/**
- * The flow error for a redemption that threw. A `ConvexError` means the
- * app's backend rejected the sign-in. Anything else is unexpected.
- */
-function thrownFlowError(error: unknown): OauthFlowError {
-  if (error instanceof ConvexError) {
-    return { error: "REJECTED", data: error.data };
-  }
-  return { error: "OTHER_ERROR", cause: error };
 }
 
 /** Storage key for the saved sign-in flow. */
@@ -299,7 +286,10 @@ export function oauth(): AmbientSignInClient {
         await client.setSession(result.tokens);
         return { status: "complete" };
       } catch (error) {
-        return { status: "error", userError: thrownFlowError(error) };
+        return {
+          status: "error",
+          userError: { error: "OTHER_ERROR", cause: error },
+        };
       }
     };
 
