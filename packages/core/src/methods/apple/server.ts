@@ -9,7 +9,7 @@ import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
-  buildCompleteSignIn,
+  buildAttestedCompleteSignIn,
   validateAllowedRedirectOrigins,
   type OidcClaims,
 } from "../../lib/oauth/redemption.ts";
@@ -168,19 +168,16 @@ export function setupApple<UsersTable extends string>(
        * Complete an Apple sign-in by redeeming the one-time `code` from the
        * callback redirect together with the state held since `startSignIn`.
        */
-      const completeSignIn = buildCompleteSignIn<
+      const completeSignIn = buildAttestedCompleteSignIn<
         AppleProfile,
         { claims?: OidcClaims; callbackParams?: { user?: SanitizedAppleUser } }
       >({
         providerName: PROVIDER_NAME,
         authMutation,
-        component: options.component,
-        claimTicket: (ctx, args) =>
-          ctx.runMutation(options.component.provider.claimTicket, args),
-        getUserIdByAccount: (ctx, args) =>
-          ctx.runQuery(options.component.provider.getUserIdByAccount, args),
-        createAccount: (ctx, args) =>
-          ctx.runMutation(options.component.provider.createAccount, args),
+        redeemTicket: (ctx, args) =>
+          ctx.runMutation(options.component.provider.redeemTicket, args),
+        linkAccount: (ctx, args) =>
+          ctx.runMutation(options.component.provider.linkAccount, args),
         profile: (payload) => {
           if (payload.claims === undefined) {
             throw new Error(

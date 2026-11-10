@@ -111,6 +111,114 @@ const completeSignInResult = v.union(
  */
 export type CompleteSignInResult = Infer<typeof completeSignInResult>;
 
+/** The result of a component's `redeemTicket`. */
+export type RedeemedTicket =
+  | null
+  | {
+      kind: "existing";
+      payload: string;
+      providerAccountId: string;
+      attestation: string;
+    }
+  | { kind: "new"; payload: string; providerAccountId: string };
+
+/**
+ * Build a provider's `completeSignIn` mutation.
+ *
+ * The client presents the one-time code from the callback redirect together
+ * with the state it has held since sign-in started. The component of the
+ * provider redeems the ticket: it decrypts the identity that the provider
+ * attested and derives the provider account id with its own fixed rule. The
+ * code of the app does not choose the account.
+ *
+ * - If the component has an account for the identity, it attests the user of
+ *   the account, and the core creates a session from that attestation.
+ * - If not, the core creates a new user, the component links the identity to
+ *   it and attests it, and the core creates a session.
+ *
+ * The profile mapping runs on the decrypted identity only to build the
+ * profile that the app's `createUser` and `onSignIn` callbacks receive.
+ *
+ * Returns the shared sign-in envelope: the session token bundle, or an
+ * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
+ * the state doesn't match: all indistinguishable to the caller.
+ *
+ * The component calls are subtransactions of this mutation, so a failure
+ * anywhere (including the app rejecting the sign-in from `createUser` /
+ * `onSignIn`) rolls back the ticket claim and the account. Only a successful
+ * redemption consumes the ticket.
+ *
+ * @internal Not public until the API for custom methods is stable.
+ */
+export function buildAttestedCompleteSignIn<
+  Profile extends { id: string },
+  Payload extends TicketPayload = TicketPayload,
+>(options: {
+  /** The provider's name, for the error message when a mapping returns no id. */
+  providerName: string;
+  /** The core's method-bound mutation builder. */
+  authMutation: AuthMutationBuilder<Profile>;
+  /** Redeem the ticket in this provider's component instance. */
+  redeemTicket: (
+    ctx: MutationCtx,
+    args: { ticketCode: string; state: string },
+  ) => Promise<RedeemedTicket>;
+  /** Link the identity of the redeemed ticket to a new user. */
+  linkAccount: (
+    ctx: MutationCtx,
+    args: { ticketCode: string; newUser: string },
+  ) => Promise<{ attestation: string }>;
+  /** Map what the provider attested to the account profile. */
+  profile: (payload: Payload) => Profile;
+}) {
+  return options.authMutation({
+    args: {
+      code: v.string(),
+      state: v.string(),
+    },
+    returns: completeSignInResult,
+    handler: async (ctx, args): Promise<CompleteSignInResult> => {
+      const redeemed = await options.redeemTicket(ctx, {
+        ticketCode: args.code,
+        state: args.state,
+      });
+      if (redeemed === null) {
+        return { status: "error", userError: { error: "INVALID_CODE" } };
+      }
+
+      const profile = options.profile(JSON.parse(redeemed.payload) as Payload);
+      if (profile.id !== redeemed.providerAccountId) {
+        // The mapping and the rule of the component must agree, or the app's
+        // callbacks would see a different account than the component keeps.
+        throw new Error(
+          `Profile mapping for provider "${options.providerName}" returned ` +
+            `an id that is not the account id of the component`,
+        );
+      }
+
+      if (redeemed.kind === "existing") {
+        const tokens = await ctx.convexAuth.createSession({
+          attestation: redeemed.attestation,
+          profile,
+        });
+        return { status: "complete", tokens };
+      }
+      const { newUser } = await ctx.convexAuth.createUser({
+        profile,
+      });
+      const { attestation } = await options.linkAccount(ctx, {
+        ticketCode: args.code,
+        newUser,
+      });
+      const tokens = await ctx.convexAuth.createSession({
+        attestation,
+        profile,
+      });
+      return { status: "complete", tokens };
+    },
+  });
+}
+
 /**
  * Build a provider's `completeSignIn` mutation.
  *

@@ -71,7 +71,24 @@ const claimRequestResult = v.union(
 );
 
 /** `createTicket` takes the ticket without the deadline, which it sets itself. */
-const createTicketArgs = v.object(ticketFields).omit("expiresAt");
+const createTicketArgs = v
+  .object(ticketFields)
+  .omit("expiresAt", "pendingProviderAccountId");
+
+const redeemTicketResult = v.union(
+  v.null(),
+  v.object({
+    kind: v.literal("existing"),
+    payload: v.string(),
+    providerAccountId: v.string(),
+    attestation: v.string(),
+  }),
+  v.object({
+    kind: v.literal("new"),
+    payload: v.string(),
+    providerAccountId: v.string(),
+  }),
+);
 
 /**
  * Build the functions registered by a built-in provider's component. The
@@ -104,6 +121,8 @@ export function buildProviderFunctions<
    * so the value is read when the mutation runs, not when the module loads.
    */
   clientId: () => string;
+  /** The fixed rule that derives the provider account id from a payload. */
+  accountId: dbHelpers.AccountIdRule;
 }) {
   const createAuthorizationRequest = options.mutation({
     args: createRequestArgs,
@@ -160,6 +179,35 @@ export function buildProviderFunctions<
       await dbHelpers.claimTicket<SharedTicketDocument>(ctx, args),
   });
 
+  /**
+   * Redeem a ticket: claim it, derive the provider account id from the
+   * identity that the provider attested, and attest the user of the account.
+   * See `dbHelpers.redeemTicket`.
+   */
+  const redeemTicket = options.mutation({
+    args: { ticketCode: v.string(), state: v.string() },
+    returns: redeemTicketResult,
+    handler: async (ctx, args) =>
+      await dbHelpers.redeemTicket<SharedTicketDocument, SharedAccountDocument>(
+        ctx,
+        { ...args, accountId: options.accountId },
+      ),
+  });
+
+  /**
+   * Connect the identity of a redeemed ticket to a new user, and attest the
+   * user. See `dbHelpers.linkAccount`.
+   */
+  const linkAccount = options.mutation({
+    args: { ticketCode: v.string(), newUser: v.string() },
+    returns: v.object({ attestation: v.string() }),
+    handler: async (ctx, args) =>
+      await dbHelpers.linkAccount<SharedTicketDocument, SharedAccountDocument>(
+        ctx,
+        args,
+      ),
+  });
+
   const getUserIdByAccount = options.query({
     args: { providerAccountId: v.string() },
     returns: v.union(v.string(), v.null()),
@@ -179,6 +227,8 @@ export function buildProviderFunctions<
     claimAuthorizationRequest,
     createTicket,
     claimTicket,
+    redeemTicket,
+    linkAccount,
     getUserIdByAccount,
     createAccount,
   };

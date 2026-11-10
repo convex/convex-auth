@@ -19,6 +19,9 @@ import type {
 } from "convex/server";
 import type { GenericId, ObjectType } from "convex/values";
 import { CALLBACK_PATH } from "./constants.ts";
+import { decryptTicketPayload } from "./crypto.ts";
+import { sha256Hex } from "../crypto.ts";
+import { attestUser, verifyNewUser } from "../../components/custom.ts";
 import type {
   accountFields,
   authorizationRequestFields,
@@ -189,7 +192,10 @@ export async function claimTicket<Doc extends TicketContract>(
     await ctx.db.delete("tickets", ticket._id);
     return null;
   }
-  if (ticket.stateHash !== args.stateHash) {
+  if (
+    ticket.stateHash !== args.stateHash ||
+    ticket.pendingProviderAccountId !== undefined
+  ) {
     return null;
   }
   if (args.match !== undefined && !args.match(ticket)) {
@@ -241,4 +247,181 @@ export async function insertAccount<Doc extends AccountContract>(
   }
   await ctx.db.insert("accounts", { providerAccountId, userId });
   return null;
+}
+
+/**
+ * Derive the provider account id from the identity that the provider
+ * attested (the decrypted ticket payload). Each component has a fixed rule,
+ * thus the code of the app cannot choose the account.
+ *
+ * Throws when the payload has no usable id.
+ */
+export type AccountIdRule = (payload: Record<string, unknown>) => string;
+
+/** The result of {@link redeemTicket}. */
+export type RedeemTicketResult =
+  | null
+  | {
+      kind: "existing";
+      /** The decrypted payload, as JSON, for the profile mapping. */
+      payload: string;
+      providerAccountId: string;
+      /** A user attestation for the user of the account. */
+      attestation: string;
+    }
+  | {
+      kind: "new";
+      /** The decrypted payload, as JSON, for the profile mapping. */
+      payload: string;
+      providerAccountId: string;
+    };
+
+/**
+ * Redeem a ticket with its raw code and the raw state of the flow.
+ *
+ * The function claims the ticket, decrypts its payload, and derives the
+ * provider account id with `accountId`. If an account has that id, it deletes
+ * the ticket and attests the user of the account. If not, it keeps the ticket
+ * for {@link linkAccount}, which the caller calls in the same transaction
+ * after the core creates the user.
+ *
+ * Returns `null` when the code is unknown, already redeemed, expired, or the
+ * state does not match.
+ */
+export async function redeemTicket<
+  TicketDoc extends TicketContract,
+  AccountDoc extends AccountContract,
+>(
+  ctx: MutationCtx,
+  args: {
+    ticketCode: string;
+    state: string;
+    accountId: AccountIdRule;
+    match?: (ticket: TicketDoc) => boolean;
+  },
+): Promise<RedeemTicketResult> {
+  const ticketCodeHash = await sha256Hex(args.ticketCode);
+  const stateHash = await sha256Hex(args.state);
+  // The same assertion as in claimAuthorizationRequest, for the same reason.
+  const ticket = (await ctx.db
+    .query("tickets")
+    .withIndex("ticketCodeHash", (q) => q.eq("ticketCodeHash", ticketCodeHash))
+    .unique()) as (TicketDoc & { _id: GenericId<"tickets"> }) | null;
+  if (ticket === null) {
+    return null;
+  }
+  if (ticket.expiresAt < Date.now()) {
+    await ctx.db.delete("tickets", ticket._id);
+    return null;
+  }
+  if (
+    ticket.stateHash !== stateHash ||
+    ticket.pendingProviderAccountId !== undefined
+  ) {
+    return null;
+  }
+  if (args.match !== undefined && !args.match(ticket)) {
+    return null;
+  }
+
+  // Finding the ticket by hash proves that `ticketCode` is the value the
+  // payload was encrypted under, thus decryption only fails on corruption.
+  const payload = await decryptTicketPayload(
+    args.ticketCode,
+    ticket.encryptedPayload,
+  );
+  const providerAccountId = args.accountId(
+    JSON.parse(payload) as Record<string, unknown>,
+  );
+  if (typeof providerAccountId !== "string" || providerAccountId === "") {
+    throw new Error("The provider attested no account id.");
+  }
+
+  const userId = await findAccountUserId<AccountDoc>(ctx, {
+    providerAccountId,
+  });
+  if (userId === null) {
+    await ctx.db.patch("tickets", ticket._id, {
+      pendingProviderAccountId: providerAccountId,
+    });
+    return { kind: "new", payload, providerAccountId };
+  }
+  await ctx.db.delete("tickets", ticket._id);
+  return {
+    kind: "existing",
+    payload,
+    providerAccountId,
+    attestation: await attestUser(ctx, { verifiedUserId: userId }),
+  };
+}
+
+/**
+ * Connect the identity of a redeemed ticket to a user that the core just
+ * created, delete the ticket, and attest the user.
+ *
+ * `newUser` is the new-user attestation that the core's `createUser`
+ * returned. The ticket must be one that {@link redeemTicket} kept because no
+ * account had its identity.
+ *
+ * Throws when `newUser` is not a valid new-user attestation of the core, or
+ * when no ticket waits for a link.
+ */
+export async function linkAccount<
+  TicketDoc extends TicketContract,
+  AccountDoc extends AccountContract,
+>(
+  ctx: MutationCtx,
+  args: { ticketCode: string; newUser: string },
+): Promise<{ attestation: string }> {
+  const { userId } = await verifyNewUser(args.newUser);
+  const ticketCodeHash = await sha256Hex(args.ticketCode);
+  // The same assertion as in claimAuthorizationRequest, for the same reason.
+  const ticket = (await ctx.db
+    .query("tickets")
+    .withIndex("ticketCodeHash", (q) => q.eq("ticketCodeHash", ticketCodeHash))
+    .unique()) as (TicketDoc & { _id: GenericId<"tickets"> }) | null;
+  const providerAccountId = ticket?.pendingProviderAccountId;
+  if (ticket === null || providerAccountId === undefined) {
+    throw new Error(
+      "No redeemed ticket waits for an account link. Call redeemTicket " +
+        "first, in the same mutation.",
+    );
+  }
+  await insertAccount<AccountDoc>(ctx, { providerAccountId, userId });
+  await ctx.db.delete("tickets", ticket._id);
+  return { attestation: await attestUser(ctx, { verifiedUserId: userId }) };
+}
+
+/** The account id rule of an OIDC provider: the `sub` claim of the id_token. */
+export const subClaimAccountId: AccountIdRule = (payload) => {
+  const claims = payload.claims as { sub?: unknown } | undefined;
+  if (typeof claims?.sub !== "string" || claims.sub === "") {
+    throw new Error("The id_token of the provider has no `sub` claim.");
+  }
+  return claims.sub;
+};
+
+/**
+ * The account id rule of a provider without an id_token: a field of one of
+ * its userinfo responses, for example the `id` field of the `user` response.
+ * A number becomes its decimal string.
+ */
+export function userInfoFieldAccountId(
+  endpoint: string,
+  field: string,
+): AccountIdRule {
+  return (payload) => {
+    const responses = payload.userInfoResponses as
+      Record<string, Record<string, unknown> | undefined> | undefined;
+    const value = responses?.[endpoint]?.[field];
+    if (typeof value === "number" && Number.isSafeInteger(value)) {
+      return String(value);
+    }
+    if (typeof value === "string" && value !== "") {
+      return value;
+    }
+    throw new Error(
+      `The userinfo response \`${endpoint}\` of the provider has no \`${field}\` field.`,
+    );
+  };
 }

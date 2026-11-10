@@ -9,7 +9,7 @@ import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
-  buildCompleteSignIn,
+  buildAttestedCompleteSignIn,
   validateAllowedRedirectOrigins,
   type OidcClaims,
 } from "../../lib/oauth/redemption.ts";
@@ -131,19 +131,16 @@ export function setupGoogle<UsersTable extends string>(
           options.component.provider.createAuthorizationRequest,
       });
 
-      const completeSignIn = buildCompleteSignIn<
+      const completeSignIn = buildAttestedCompleteSignIn<
         GoogleProfile,
         { claims?: OidcClaims }
       >({
         providerName: PROVIDER_NAME,
         authMutation,
-        component: options.component,
-        claimTicket: (ctx, args) =>
-          ctx.runMutation(options.component.provider.claimTicket, args),
-        getUserIdByAccount: (ctx, args) =>
-          ctx.runQuery(options.component.provider.getUserIdByAccount, args),
-        createAccount: (ctx, args) =>
-          ctx.runMutation(options.component.provider.createAccount, args),
+        redeemTicket: (ctx, args) =>
+          ctx.runMutation(options.component.provider.redeemTicket, args),
+        linkAccount: (ctx, args) =>
+          ctx.runMutation(options.component.provider.linkAccount, args),
         profile: (payload) => normalizeGoogleProfile(payload.claims),
       });
 
