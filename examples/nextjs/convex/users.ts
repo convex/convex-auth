@@ -22,12 +22,10 @@ import { internalMutation, query } from "./_generated/server";
 const vProvider = v.union(
   v.object({
     name: v.literal("password"),
-    accountId: v.string(),
     profile: v.object({}),
   }),
   v.object({
     name: v.literal("github"),
-    accountId: v.string(),
     profile: vGithubProfile,
   }),
 );

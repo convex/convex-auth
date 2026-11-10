@@ -1,5 +1,4 @@
 import {
-  USE_USER_ID_AS_ACCOUNT_ID,
   vSignInComplete,
   type SignInComplete,
   type UserCallbacks,
@@ -70,10 +69,8 @@ export function setupAnonymous<UsersTable extends string>(
           returns: vSignInComplete,
           handler: async (ctx): Promise<SignInComplete> => {
             // Every anonymous sign-in is a new identity, so there is nothing
-            // to look up. An anonymous user has no identifier other than its
-            // app user id, hence the placeholder.
+            // to look up.
             const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
             });
             await ctx.runMutation(component.provider.createAnonymousAccount, {

@@ -53,7 +53,6 @@ async function verifyAccessToken(t: ConvexTestApi, token: string) {
 function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   return {
     providerName: "password",
-    providerAccountId: "alice",
     profile: { name: "Alice" },
     ...overrides,
   };
@@ -204,7 +203,6 @@ describe("signUp", () => {
       {
         provider: {
           name: "password",
-          accountId: "alice",
           profile: { name: "Alice" },
         },
       },
@@ -215,7 +213,6 @@ describe("signUp", () => {
       {
         provider: {
           name: "password",
-          accountId: "alice",
           profile: { name: "Alice" },
         },
         userId: bundle.userId,
@@ -293,7 +290,6 @@ describe("signIn", () => {
     expect(testApp.getOnSignInCalls()[1]).toEqual({
       provider: {
         name: "password",
-        accountId: "alice",
         profile: { name: "Alice 2.0" },
       },
       userId: first.userId,
@@ -319,8 +315,7 @@ describe("signIn", () => {
   test("refuses an empty user id", async () => {
     const t = setup();
 
-    // `USE_USER_ID_AS_ACCOUNT_ID` is an empty string, and must never be
-    // accepted as a user id.
+    // An empty string must never be accepted as a user id.
     await expect(signIn(t, claims(), "")).rejects.toThrow(/no user id/i);
     expect(await sessionCount(t)).toBe(0);
   });
@@ -970,7 +965,7 @@ describe("listSessions", () => {
   test("lists only the sessions of the given user", async () => {
     const t = setup();
     const aliceBundle = await signUp(t, claims());
-    await signUp(t, claims({ providerAccountId: "bob" }));
+    await signUp(t, claims({ profile: { name: "Bob" } }));
 
     const sessions = await t.query(api.public.listSessions, {
       userId: aliceBundle.userId,
@@ -1195,7 +1190,7 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
 
   test("counts only the user's own sessions", async () => {
     const t = setup();
-    const bob = await signUp(t, claims({ providerAccountId: "bob" }));
+    const bob = await signUp(t, claims({ profile: { name: "Bob" } }));
     const [first] = await signInUntil(t, MAX_SESSIONS_PER_USER);
     await signIn(t, claims(), first.userId);
 
@@ -1230,7 +1225,7 @@ describe("revokeSessions", () => {
   test("revokes the sessions of any user", async () => {
     const t = setup();
     const alice = await signUp(t, claims());
-    const bob = await signUp(t, claims({ providerAccountId: "bob" }));
+    const bob = await signUp(t, claims({ profile: { name: "Bob" } }));
 
     const revoked = await t.mutation(api.public.revokeSessions, {
       sessionIds: [sessionIdOf(alice), sessionIdOf(bob)],
