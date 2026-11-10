@@ -1,7 +1,7 @@
 // The `signUp` challenge: prove that an address belongs to a new user, then
 // record it as the primary email address of the user. The user has no
 // session yet, thus `complete` does not take a `userId`: the user is the one
-// given at start.
+// that the new-user attestation at start gave. `complete` attests that user.
 
 import { Infer, v } from "convex/values";
 import { mutation } from "../_generated/server.ts";
@@ -11,6 +11,7 @@ import {
   userHasEmail,
 } from "../helpers.ts";
 import { normalizeEmail, startFreeAddressUserError } from "../validation.ts";
+import { attestUser, verifyNewUser } from "../../custom.ts";
 import {
   vStartArgs,
   vClaimArgs,
@@ -39,18 +40,19 @@ export const check = mutation({
 });
 
 /**
- * Start a `signUp` challenge for `userId`, a user that the sign-up has just
- * created. Fails with `EMAIL_TAKEN` when a user has already verified the
- * address.
+ * Start a `signUp` challenge for a user that the sign-up has just created.
+ * `newUser` is the new-user attestation that the core's `createUser` returned.
+ * Fails with `EMAIL_TAKEN` when a user has already verified the address.
  *
- * Throws when the user already has an email address: it is an application
- * bug. Give only a user that the same mutation has just created.
+ * Throws when `newUser` is not a valid new-user attestation of the core, or
+ * when the user already has an email address.
  */
 export const start = mutation({
-  args: { ...vStartArgs, userId: v.string() },
+  args: { ...vStartArgs, newUser: v.string() },
   returns: startFreeAddressResult,
   handler: async (ctx, args): Promise<StartFreeAddressResult> => {
-    if (await userHasEmail(ctx, args.userId)) {
+    const { userId } = await verifyNewUser(args.newUser);
+    if (await userHasEmail(ctx, userId)) {
       throw new Error(
         "Cannot start a signUp challenge: the user already has an email " +
           "address. Use addEmail or changeEmail for an existing user.",
@@ -66,7 +68,7 @@ export const start = mutation({
     }
     const created = await createChallengeAndSendEmail(ctx, {
       email: args.email,
-      purpose: { kind: "signUp", userId: args.userId },
+      purpose: { kind: "signUp", userId },
       ttlMs: ADD_EMAIL_TTL_MS,
       url: args.url,
       emailSender: args.emailSender,
@@ -81,6 +83,9 @@ const completeResult = v.union(
     success: v.literal(true),
     userId: v.string(),
     email: v.string(),
+    // A user attestation for `userId`: the user proved control of the
+    // address. The sign-in method exchanges it for a session.
+    attestation: v.string(),
   }),
   completeFreeAddressFailure,
 );
@@ -88,7 +93,8 @@ type CompleteResult = Infer<typeof completeResult>;
 
 /**
  * Complete a `signUp` challenge: record the address for the user that the
- * challenge was started for, and return that user.
+ * challenge was started for, and return that user and a user attestation for
+ * it.
  *
  * Fails with `EMAIL_TAKEN` when another user verified the address after the start.
  *
@@ -137,6 +143,11 @@ export const complete = mutation({
       userId,
       isPrimary: true,
     });
-    return { success: true, userId, email: row.email };
+    return {
+      success: true,
+      userId,
+      email: row.email,
+      attestation: await attestUser(ctx, { verifiedUserId: userId }),
+    };
   },
 });

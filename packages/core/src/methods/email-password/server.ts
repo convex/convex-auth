@@ -433,14 +433,16 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            const { userId } = await ctx.convexAuth.signUpWithoutSession({
+            // Create the user without a session: the session comes in
+            // `completeSignUp`, when the email component attests the user.
+            const { newUser } = await ctx.convexAuth.createUser({
               profile: {},
             });
 
             const setResult = await ctx.runMutation(
-              passwordComponent.public.setPassword,
+              passwordComponent.public.setPasswordForNewUser,
               {
-                userId,
+                newUser,
                 password,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
@@ -460,7 +462,7 @@ export function setupEmailPassword<UsersTable extends string>(
               {
                 email,
                 // The user is new, so this first address becomes primary.
-                userId,
+                newUser,
                 url: urls.signUp,
                 emailSender: await senderConfig(),
               },
@@ -499,10 +501,11 @@ export function setupEmailPassword<UsersTable extends string>(
             if (!complete.success) {
               return { status: "error", userError: complete.userError };
             }
-            const tokens = await ctx.convexAuth.completeSignIn({
-              userId: complete.userId,
+            // The email component attested the user: the user proved
+            // control of the address.
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: complete.attestation,
               profile: {},
-              verifiedBy: component,
             });
             return { status: "complete", tokens };
           },
@@ -545,10 +548,9 @@ export function setupEmailPassword<UsersTable extends string>(
               return { status: "error", userError: verifyResult.userError };
             }
 
-            const tokens = await ctx.convexAuth.completeSignIn({
-              userId,
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: verifyResult.attestation,
               profile: {},
-              verifiedBy: passwordComponent,
             });
             return { status: "complete", tokens };
           },
@@ -612,10 +614,11 @@ export function setupEmailPassword<UsersTable extends string>(
               };
             }
 
+            // `verifyPassword` attested the user with the current password.
             const setResult = await ctx.runMutation(
               passwordComponent.public.setPassword,
               {
-                userId,
+                user: verifyResult.attestation,
                 password: newPassword,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
@@ -687,7 +690,9 @@ export function setupEmailPassword<UsersTable extends string>(
               component.challenge.changeEmail.start,
               {
                 email: newEmail,
-                userId,
+                // `verifyPassword` attested the user with the current
+                // password.
+                user: verifyResult.attestation,
                 url: urls.changeEmail,
                 emailSender: await senderConfig(),
               },
@@ -890,17 +895,23 @@ export function setupEmailPassword<UsersTable extends string>(
             // the password, because each of them passed the same ownership
             // challenge.
             const userId = complete.emailOwnerId;
-            if (userId === null) {
+            const attestation = complete.attestation;
+            if (
+              userId === null ||
+              attestation === null ||
+              attestation === undefined
+            ) {
               return {
                 status: "error",
                 userError: { error: "INVALID_CHALLENGE" },
               };
             }
 
+            // The email component attested the owner of the address.
             const setResult = await ctx.runMutation(
               passwordComponent.public.setPassword,
               {
-                userId,
+                user: attestation,
                 password: newPassword,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
@@ -922,10 +933,9 @@ export function setupEmailPassword<UsersTable extends string>(
             // minting the new session, so it survives.
             await ctx.convexAuth.revokeAllSessions(userId);
 
-            const tokens = await ctx.convexAuth.completeSignIn({
-              userId,
+            const tokens = await ctx.convexAuth.createSession({
+              attestation,
               profile: {},
-              verifiedBy: component,
             });
 
             // The notification goes to the primary address, which can be

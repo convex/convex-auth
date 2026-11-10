@@ -6,6 +6,7 @@ import {
 } from "../../../testing/resend.ts";
 import { api } from "../_generated/api.ts";
 import {
+  userAttestation,
   seedEmail,
   seedChallenge,
   setup as setupComponent,
@@ -229,7 +230,7 @@ describe("challenge.changeEmail.start", () => {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
-        userId: "user1",
+        user: await userAttestation(t, "user1"),
       });
     expect(result).toMatchObject({ success: true });
     if (!result.success) {
@@ -275,7 +276,7 @@ describe("challenge.changeEmail.start", () => {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
-        userId: "user1",
+        user: await userAttestation(t, "user1"),
       });
     expect(result).toEqual({
       success: false,
@@ -306,7 +307,7 @@ describe("challenge.changeEmail.check", () => {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
-        userId: "user1",
+        user: await userAttestation(t, "user1"),
       });
     expect(start).toMatchObject({ success: true });
   });

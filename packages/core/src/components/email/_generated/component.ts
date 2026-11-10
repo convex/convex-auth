@@ -122,7 +122,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               sendEmailHandle: string;
             };
             url: string;
-            userId: string;
+            user: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
           | {
@@ -154,7 +154,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             emailCode: string;
             purpose: string;
           },
-          | { email: string; emailOwnerId: string | null; success: true }
+          | {
+              attestation?: string | null;
+              email: string;
+              emailOwnerId: string | null;
+              success: true;
+            }
           | {
               success: false;
               userError:
@@ -173,7 +178,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             emailCode: string;
             purpose: string;
           },
-          | { email: string; emailOwnerId: string | null; success: true }
+          | {
+              attestation?: string | null;
+              email: string;
+              emailOwnerId: string | null;
+              success: true;
+            }
           | {
               success: false;
               userError:
@@ -228,7 +238,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           "mutation",
           "internal",
           { browserSecret: string; emailCode: string },
-          | { email: string; success: true; userId: string }
+          | {
+              attestation: string;
+              email: string;
+              success: true;
+              userId: string;
+            }
           | {
               success: false;
               userError:
@@ -251,8 +266,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               retryAttempts: number;
               sendEmailHandle: string;
             };
+            newUser: string;
             url: string;
-            userId: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
           | {
