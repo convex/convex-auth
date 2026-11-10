@@ -14,6 +14,9 @@ import {
   componentsGeneric,
   internalMutationGeneric,
   makeFunctionReference,
+  type FunctionReference,
+  type GenericDataModel,
+  type GenericMutationCtx,
 } from "convex/server";
 import { v } from "convex/values";
 import { describe, expect, test, vi } from "vitest";
@@ -21,10 +24,36 @@ import type { ComponentApi } from "../component/_generated/component.ts";
 import type { CreateUserFn, TokenBundle } from "../lib/types.ts";
 import { registerCore, sessionIdentity } from "../testing/core.ts";
 import { setupConvexAuth } from "./setup.ts";
+import { registerAttestationSigner } from "../lib/attestationSigner.fixture.ts";
+import { USER_ATTESTATION } from "../lib/attestationKinds.ts";
 
 const components = componentsGeneric() as unknown as {
   auth: ComponentApi<"auth">;
+  authTest: {
+    signer: {
+      sign: FunctionReference<
+        "mutation",
+        "internal",
+        { claims: unknown; expiresInSeconds: number },
+        string
+      >;
+    };
+  };
 };
+
+/**
+ * Attest `userId` with the test signer at `authTest`, which stands for the
+ * component of a sign-in method.
+ */
+async function attest(
+  ctx: GenericMutationCtx<GenericDataModel>,
+  userId: string,
+) {
+  return await ctx.runMutation(components.authTest.signer.sign, {
+    claims: { aud: USER_ATTESTATION.audience, userId },
+    expiresInSeconds: 1,
+  });
+}
 
 /**
  * Stand-in for the app's user-creating callback. Like a minimal real app it
@@ -44,13 +73,6 @@ const createUser = internalMutationGeneric({
 
 const core = setupConvexAuth({ component: components.auth });
 
-/**
- * The component that verifies the users of the test method. The sessions
- * record its path.
- */
-const verifiedBy = (componentsGeneric() as unknown as { authTest: object })
-  .authTest;
-
 const { authMutation } = core.bindMethod({
   name: "testMethod",
   // The runtime value `bindMethod` needs is a reference it can turn into a
@@ -64,11 +86,15 @@ const { authMutation } = core.bindMethod({
 const signUp = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
-  handler: async (ctx, { accountId }) =>
-    await ctx.convexAuth.completeSignUp({
+  handler: async (ctx, { accountId }) => {
+    const { userId } = await ctx.convexAuth.createUser({
       profile: { id: accountId },
-      verifiedBy,
-    }),
+    });
+    return await ctx.convexAuth.createSession({
+      attestation: await attest(ctx, userId),
+      profile: {},
+    });
+  },
 });
 
 // The fixture's createUser returns the `id` of the profile as the user id.
@@ -76,10 +102,9 @@ const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
-    await ctx.convexAuth.completeSignIn({
-      userId: accountId,
+    await ctx.convexAuth.createSession({
+      attestation: await attest(ctx, accountId),
       profile: {},
-      verifiedBy,
     }),
 });
 
@@ -119,10 +144,9 @@ const signInShortTtl = shortTtlAuthMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
-    await ctx.convexAuth.completeSignIn({
-      userId: accountId,
+    await ctx.convexAuth.createSession({
+      attestation: await attest(ctx, accountId),
       profile: {},
-      verifiedBy,
     }),
 });
 
@@ -158,6 +182,7 @@ const modules = {
 function setup() {
   const t = convexTest(undefined, modules);
   registerCore(t);
+  registerAttestationSigner(t, "authTest");
   return t;
 }
 

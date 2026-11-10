@@ -9,7 +9,6 @@ import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
 import { testCallbackMethods } from "../../lib/oauth/componentContract.test.ts";
-import { decryptTicketPayload } from "../../lib/oauth/crypto.ts";
 import { sha256Hex } from "../../lib/crypto.ts";
 import { OAUTH_CODE_PARAM, OAUTH_ERROR_PARAM } from "../../lib/oauthParams.ts";
 
@@ -156,14 +155,12 @@ async function redeem(
   code: string,
   state: string,
 ): Promise<Record<string, unknown>> {
-  const ticket = await t.mutation(api.provider.claimTicket, {
-    ticketCodeHash: await sha256Hex(code),
-    stateHash: await sha256Hex(state),
+  const redeemed = await t.mutation(api.provider.redeemTicket, {
+    ticketCode: code,
+    state,
   });
-  expect(ticket).not.toBeNull();
-  return JSON.parse(
-    await decryptTicketPayload(code, ticket!.encryptedPayload),
-  ) as Record<string, unknown>;
+  expect(redeemed).not.toBeNull();
+  return JSON.parse(redeemed!.payload) as Record<string, unknown>;
 }
 
 function spyConsoleError() {

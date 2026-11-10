@@ -22,11 +22,7 @@ import type {
   AuthorizationRequestContract,
   TicketContract,
 } from "./dbHelpers.ts";
-import {
-  accountFields,
-  authorizationRequestFields,
-  ticketFields,
-} from "./schema.ts";
+import { authorizationRequestFields, ticketFields } from "./schema.ts";
 
 type SharedRequestDocument = AuthorizationRequestContract &
   IdField<"authorizationRequests"> &
@@ -169,16 +165,6 @@ export function buildProviderFunctions<
       await dbHelpers.insertTicket<SharedTicketDocument>(ctx, args),
   });
 
-  const claimTicket = options.mutation({
-    args: {
-      ticketCodeHash: v.string(),
-      stateHash: v.string(),
-    },
-    returns: v.union(v.null(), v.object({ encryptedPayload: v.string() })),
-    handler: async (ctx, args) =>
-      await dbHelpers.claimTicket<SharedTicketDocument>(ctx, args),
-  });
-
   /**
    * Redeem a ticket: claim it, derive the provider account id from the
    * identity that the provider attested, and attest the user of the account.
@@ -215,21 +201,12 @@ export function buildProviderFunctions<
       await dbHelpers.findAccountUserId<SharedAccountDocument>(ctx, args),
   });
 
-  const createAccount = options.mutation({
-    args: accountFields,
-    returns: v.null(),
-    handler: async (ctx, args) =>
-      await dbHelpers.insertAccount<SharedAccountDocument>(ctx, args),
-  });
-
   return {
     createAuthorizationRequest,
     claimAuthorizationRequest,
     createTicket,
-    claimTicket,
     redeemTicket,
     linkAccount,
     getUserIdByAccount,
-    createAccount,
   };
 }

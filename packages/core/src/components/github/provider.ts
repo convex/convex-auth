@@ -7,11 +7,9 @@ export const {
   createAuthorizationRequest,
   claimAuthorizationRequest,
   createTicket,
-  claimTicket,
   redeemTicket,
   linkAccount,
   getUserIdByAccount,
-  createAccount,
 } = buildProviderFunctions<
   Doc<"authorizationRequests">,
   Doc<"tickets">,

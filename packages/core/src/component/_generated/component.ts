@@ -103,58 +103,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Array<string>,
         Name
       >;
-      signIn: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          accessTokenTtlSeconds: number;
-          claims: { method: string; profile: any };
-          componentPath: string;
-          onSignInHandle?: string;
-          refreshInactivityTimeoutSeconds: number;
-          sessionMaxLifetimeSeconds: number;
-          userId: string;
-        },
-        {
-          accessToken: string;
-          refreshToken: string;
-          refreshTokenExpiresAt: number;
-          userId: string;
-        },
-        Name
-      >;
       signOut: FunctionReference<
         "mutation",
         "internal",
         { refreshToken: string },
         null,
-        Name
-      >;
-      signUp: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          accessTokenTtlSeconds: number;
-          claims: { method: string; profile: any };
-          componentPath: string;
-          createUserHandle: string;
-          onSignInHandle?: string;
-          refreshInactivityTimeoutSeconds: number;
-          sessionMaxLifetimeSeconds: number;
-        },
-        {
-          accessToken: string;
-          refreshToken: string;
-          refreshTokenExpiresAt: number;
-          userId: string;
-        },
-        Name
-      >;
-      signUpWithoutSession: FunctionReference<
-        "mutation",
-        "internal",
-        { claims: { method: string; profile: any }; createUserHandle: string },
-        { userId: string },
         Name
       >;
     };

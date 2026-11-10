@@ -22,7 +22,10 @@ import type { AuthCore } from "../../server/setup.ts";
 import { sha256Hex } from "../crypto.ts";
 import type { buildStartSignIn } from "./authorize.ts";
 import { CALLBACK_PATH } from "./constants.ts";
-import { sha256Base64Url } from "./crypto.ts";
+import { encryptTicketPayload, sha256Base64Url } from "./crypto.ts";
+import { registerAttestationSigner } from "../attestationSigner.fixture.ts";
+import { NEW_USER_ATTESTATION, USER_ATTESTATION } from "../attestationKinds.ts";
+import { decodeJwt } from "jose";
 import type { CallbackMethod } from "./http.ts";
 
 type ComponentSchema = SchemaDefinition<GenericSchema, boolean>;
@@ -36,7 +39,16 @@ const CLIENT_ID = "test-client-id";
 const SITE_URL = "https://test.convex.site/oauth/test-provider";
 const CALLBACK_URL = `${SITE_URL}${CALLBACK_PATH}`;
 const CODE_VERIFIER = "verifier-1";
-const ENCRYPTED_PAYLOAD = "encrypted-payload-1";
+const TICKET_CODE = "ticket-code-1";
+const STATE = "state-raw-1";
+/**
+ * An identity that every built-in rule reads as `sub-1`: the `sub` claim
+ * (Google, Apple) and the `id` of the `user` userinfo response (GitHub).
+ */
+const IDENTITY = {
+  claims: { sub: "sub-1" },
+  userInfoResponses: { user: { id: "sub-1" } },
+};
 
 const ALLOWED_ORIGIN = "https://app.example.com";
 
@@ -109,23 +121,30 @@ const createTicket = makeFunctionReference<
   null
 >("provider:createTicket");
 
-const claimTicket = makeFunctionReference<
+const redeemTicket = makeFunctionReference<
   "mutation",
-  { ticketCodeHash: string; stateHash: string },
-  null | { encryptedPayload: string }
->("provider:claimTicket");
+  { ticketCode: string; state: string },
+  | null
+  | {
+      kind: "existing";
+      payload: string;
+      providerAccountId: string;
+      attestation: string;
+    }
+  | { kind: "new"; payload: string; providerAccountId: string }
+>("provider:redeemTicket");
+
+const linkAccount = makeFunctionReference<
+  "mutation",
+  { ticketCode: string; newUser: string },
+  { attestation: string }
+>("provider:linkAccount");
 
 const getUserIdByAccount = makeFunctionReference<
   "query",
   { providerAccountId: string },
   string | null
 >("provider:getUserIdByAccount");
-
-const createAccount = makeFunctionReference<
-  "mutation",
-  { providerAccountId: string; userId: string },
-  null
->("provider:createAccount");
 
 /**
  * Define tests for the functions registered by a component built with
@@ -142,10 +161,11 @@ export function testProviderFunctionsContract(
       vi.unstubAllEnvs();
     });
 
-    test("a flow runs from recorded request to redeemed ticket", async () => {
+    test("a flow runs from recorded request to redeemed ticket, then links and attests a new user", async () => {
       const t = setup(schema, modules);
-      const stateHash = await sha256Hex("state-raw-1");
-      const ticketCodeHash = await sha256Hex("ticket-code-1");
+      const core = registerAttestationSigner(t, "auth");
+      const stateHash = await sha256Hex(STATE);
+      const ticketCodeHash = await sha256Hex(TICKET_CODE);
 
       expect(
         await t.mutation(createAuthorizationRequest, {
@@ -168,17 +188,37 @@ export function testProviderFunctionsContract(
       await t.mutation(createTicket, {
         stateHash,
         ticketCodeHash,
-        encryptedPayload: ENCRYPTED_PAYLOAD,
+        encryptedPayload: await encryptTicketPayload(
+          TICKET_CODE,
+          JSON.stringify(IDENTITY),
+        ),
+      });
+      const redeemed = await t.mutation(redeemTicket, {
+        ticketCode: TICKET_CODE,
+        state: STATE,
+      });
+      expect(redeemed).toEqual({
+        kind: "new",
+        payload: JSON.stringify(IDENTITY),
+        providerAccountId: "sub-1",
+      });
+
+      const { attestation } = await t.mutation(linkAccount, {
+        ticketCode: TICKET_CODE,
+        newUser: await core.attest(NEW_USER_ATTESTATION, { userId: "user-1" }),
+      });
+      expect(decodeJwt(attestation)).toMatchObject({
+        aud: USER_ATTESTATION.audience,
+        userId: "user-1",
       });
       expect(
-        await t.mutation(claimTicket, { ticketCodeHash, stateHash }),
-      ).toEqual({ encryptedPayload: ENCRYPTED_PAYLOAD });
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-1");
     });
 
     test("a ticket does not redeem against a different state", async () => {
       const t = setup(schema, modules);
-      const stateHash = await sha256Hex("state-raw-1");
-      const ticketCodeHash = await sha256Hex("ticket-code-1");
+      const stateHash = await sha256Hex(STATE);
 
       await t.mutation(createAuthorizationRequest, {
         stateHash,
@@ -188,14 +228,17 @@ export function testProviderFunctionsContract(
       await t.mutation(claimAuthorizationRequest, { stateHash });
       await t.mutation(createTicket, {
         stateHash,
-        ticketCodeHash,
-        encryptedPayload: ENCRYPTED_PAYLOAD,
+        ticketCodeHash: await sha256Hex(TICKET_CODE),
+        encryptedPayload: await encryptTicketPayload(
+          TICKET_CODE,
+          JSON.stringify(IDENTITY),
+        ),
       });
 
       expect(
-        await t.mutation(claimTicket, {
-          ticketCodeHash,
-          stateHash: await sha256Hex("someone-elses-state"),
+        await t.mutation(redeemTicket, {
+          ticketCode: TICKET_CODE,
+          state: "someone-elses-state",
         }),
       ).toBeNull();
     });
@@ -205,7 +248,7 @@ export function testProviderFunctionsContract(
 }
 
 /**
- * Define tests for a component's `getUserIdByAccount` and `createAccount`.
+ * Define tests for a component's `getUserIdByAccount`.
  * `testProviderFunctionsContract` runs them; the oauth component defines its
  * own account functions and runs them directly.
  */
@@ -218,12 +261,14 @@ export function testAccountsContract(
       vi.unstubAllEnvs();
     });
 
-    test("an account resolves to its user once recorded, and only once", async () => {
+    test("an account resolves to its user", async () => {
       const t = setup(schema, modules);
 
-      await t.mutation(createAccount, {
-        providerAccountId: "sub-1",
-        userId: "user-1",
+      await t.run(async (ctx) => {
+        await ctx.db.insert("accounts", {
+          providerAccountId: "sub-1",
+          userId: "user-1",
+        });
       });
       expect(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
@@ -231,13 +276,6 @@ export function testAccountsContract(
       expect(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-2" }),
       ).toBeNull();
-
-      await expect(
-        t.mutation(createAccount, {
-          providerAccountId: "sub-1",
-          userId: "user-2",
-        }),
-      ).rejects.toThrow(/already exists/);
     });
   });
 }

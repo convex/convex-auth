@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import type { Doc } from "./_generated/dataModel.ts";
 import * as dbHelpers from "../../lib/oauth/dbHelpers.ts";
-import { accountFields } from "../../lib/oauth/schema.ts";
 import { providerConfig } from "./config.ts";
 
 /**
@@ -98,31 +97,6 @@ export const createTicket = internalMutation({
     await dbHelpers.insertTicket<Doc<"tickets">>(ctx, args),
 });
 
-/**
- * Claim a ticket. The ticket code hash, state hash, and provider name must
- * all match the stored ticket, so a misconfigured or renamed provider
- * instance can't redeem a ticket into the wrong account namespace.
- */
-export const claimTicket = mutation({
-  args: {
-    providerName: v.string(),
-    ticketCodeHash: v.string(),
-    stateHash: v.string(),
-  },
-  returns: v.union(
-    v.null(),
-    v.object({
-      encryptedPayload: v.string(),
-    }),
-  ),
-  handler: async (ctx, args) =>
-    await dbHelpers.claimTicket<Doc<"tickets">>(ctx, {
-      ticketCodeHash: args.ticketCodeHash,
-      stateHash: args.stateHash,
-      match: (ticket) => ticket.providerName === args.providerName,
-    }),
-});
-
 const redeemTicketResult = v.union(
   v.null(),
   v.object({
@@ -141,8 +115,10 @@ const redeemTicketResult = v.union(
 /**
  * Redeem a ticket: claim it, derive the provider account id from the
  * identity that the provider attested (with `ACCOUNT_ID_FIELD`), and attest
- * the user of the account. See `dbHelpers.redeemTicket`. The provider name
- * must match the stored ticket, like for `claimTicket`.
+ * the user of the account. See `dbHelpers.redeemTicket`. The ticket code,
+ * the state, and the provider name must all match the stored ticket, so a
+ * misconfigured or renamed provider instance can't redeem a ticket into the
+ * wrong account namespace.
  */
 export const redeemTicket = mutation({
   args: {
@@ -181,15 +157,4 @@ export const getUserIdByAccount = query({
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) =>
     await dbHelpers.findAccountUserId<Doc<"accounts">>(ctx, args),
-});
-
-/**
- * Create an account connecting a provider account id to an app user id.
- * Throws if that provider account id already has one.
- */
-export const createAccount = mutation({
-  args: accountFields,
-  returns: v.null(),
-  handler: async (ctx, args) =>
-    await dbHelpers.insertAccount<Doc<"accounts">>(ctx, args),
 });

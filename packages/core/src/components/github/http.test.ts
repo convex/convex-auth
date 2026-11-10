@@ -3,7 +3,6 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
 import { testCallbackMethods } from "../../lib/oauth/componentContract.test.ts";
-import { decryptTicketPayload } from "../../lib/oauth/crypto.ts";
 import { sha256Hex } from "../../lib/crypto.ts";
 import { OAUTH_CODE_PARAM, OAUTH_ERROR_PARAM } from "../../lib/oauthParams.ts";
 
@@ -121,13 +120,13 @@ describe("github callback", () => {
       expect(headers["User-Agent"]).toBeDefined();
     }
 
-    const ticket = await t.mutation(api.provider.claimTicket, {
-      ticketCodeHash: await sha256Hex(code!),
-      stateHash: await sha256Hex(state),
+    const redeemed = await t.mutation(api.provider.redeemTicket, {
+      ticketCode: code!,
+      state,
     });
-    const payload = JSON.parse(
-      await decryptTicketPayload(code!, ticket!.encryptedPayload),
-    ) as { userInfoResponses: { user: { id: number }; emails: unknown[] } };
+    const payload = JSON.parse(redeemed!.payload) as {
+      userInfoResponses: { user: { id: number }; emails: unknown[] };
+    };
     expect(payload.userInfoResponses.user.id).toBe(42);
     expect(payload.userInfoResponses.emails).toHaveLength(1);
   });

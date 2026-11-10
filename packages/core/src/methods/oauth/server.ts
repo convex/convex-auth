@@ -11,7 +11,7 @@ import type { ComponentApi } from "../../components/oauth/_generated/component.t
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import type { CallbackMethod } from "../../lib/oauth/http.ts";
 import {
-  buildAttestedCompleteSignIn,
+  buildCompleteSignIn,
   parseUrl,
   validateAllowedRedirectOrigins,
   type OidcClaims,
@@ -173,10 +173,7 @@ export function setupOauth<
    * Complete an OAuth sign-in by redeeming the one-time `code` from the
    * callback redirect together with the state held since `startSignIn`.
    */
-  const completeSignIn = buildAttestedCompleteSignIn<
-    Profile,
-    TicketPayload<UserInfo>
-  >({
+  const completeSignIn = buildCompleteSignIn<Profile, TicketPayload<UserInfo>>({
     providerName,
     authMutation,
     redeemTicket: (ctx, args) =>

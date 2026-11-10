@@ -46,8 +46,6 @@ const ISSUER =
   process.env.CONVEX_CLOUD_URL ?? "https://some-deployment.convex.cloud";
 const AUDIENCE = "convex-auth";
 const CREATE_USER_HANDLE = "testApp:createUser";
-/** The path of the component that verified the users of the tests. */
-const COMPONENT_PATH = "authPassword";
 const ON_SIGN_IN_HANDLE = "testApp:onSignIn";
 const THROWING_ON_SIGN_IN_HANDLE = "testApp:onSignInThatThrows";
 
@@ -65,8 +63,22 @@ function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   };
 }
 
+const signers = new WeakMap<
+  object,
+  ReturnType<typeof registerAttestationSigner>
+>();
+
+/**
+ * Make a test instance of the core, with the test signer of a sign-in method
+ * (`authPassword`). Register every component before the test runs a
+ * function: convex-test does not add a component that it registers later to
+ * a transaction that is open, for example a scheduled erasure of refresh
+ * tokens that runs in the background.
+ */
 function setup(options?: { transactionLimits?: boolean }) {
-  return convexTest({ schema, modules, ...options });
+  const t = convexTest({ schema, modules, ...options });
+  signers.set(t, registerAttestationSigner(t, "authPassword"));
+  return t;
 }
 
 type ConvexTestApi = ReturnType<typeof setup>;
@@ -92,25 +104,46 @@ async function finishScheduledFunctions(t: ConvexTestApi) {
   });
 }
 
-/** Establish a brand new identity: its app user and a session. */
+/**
+ * A user attestation for `userId`, from the test signer that stands for the
+ * component of a sign-in method.
+ */
+async function attest(t: ConvexTestApi, userId: string) {
+  const signer = signers.get(t);
+  if (signer === undefined) {
+    throw new Error("Make the test instance with `setup`.");
+  }
+  return await signer.attest(USER_ATTESTATION, { userId });
+}
+
+/** Create a new app user and a session for it, as a sign-up does. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
-  return await t.mutation(api.public.signUp, {
+  const { userId } = await t.mutation(api.public.createUser, {
     claims: c,
-    componentPath: COMPONENT_PATH,
     createUserHandle: CREATE_USER_HANDLE,
+  });
+  return await signIn(t, c, userId);
+}
+
+/** Sign a known user back in, as an app that attached an `onSignIn` does. */
+async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
+  return await t.mutation(api.public.createSession, {
+    attestation: await attest(t, userId),
+    claims: c,
     onSignInHandle: ON_SIGN_IN_HANDLE,
     ...DEFAULT_TTL,
   });
 }
 
-/** Sign a known identity back in, as an app that attached an `onSignIn` does. */
-async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
-  return await t.mutation(api.public.signIn, {
-    claims: c,
-    componentPath: COMPONENT_PATH,
-    userId,
-    onSignInHandle: ON_SIGN_IN_HANDLE,
-    ...DEFAULT_TTL,
+/** Create a session for `user1` with the given lifetimes. */
+async function createSessionWithTtl(
+  t: ConvexTestApi,
+  lifetimes: ReturnType<typeof ttl>,
+) {
+  return await t.mutation(api.public.createSession, {
+    attestation: await attest(t, "user1"),
+    claims: claims(),
+    ...lifetimes,
   });
 }
 
@@ -336,234 +369,6 @@ describe("markUserIdCreated", () => {
   });
 });
 
-describe("sessions and created user IDs", () => {
-  async function createdUserIds(t: ConvexTestApi) {
-    return (
-      await t.run(async (ctx) => ctx.db.query("createdUserIds").collect())
-    ).map((row) => row.userId);
-  }
-
-  test("a session records the path of the component that verified the user", async () => {
-    const t = setup();
-    const bundle = await signUp(t, claims());
-    const { payload } = await verifyAccessToken(t, bundle.accessToken);
-    const session = await t.run(async (ctx) =>
-      ctx.db.get(payload.sub as Id<"sessions">),
-    );
-    expect(session).toMatchObject({ component: COMPONENT_PATH });
-  });
-
-  test("signUp, signIn, and signUpWithoutSession record the user ID once", async () => {
-    const t = setup();
-    const { userId } = await signUp(t, claims());
-    await signIn(t, claims(), userId);
-    await signIn(t, claims(), "someone");
-    const { userId: pending } = await t.mutation(
-      api.public.signUpWithoutSession,
-      { claims: claims(), createUserHandle: CREATE_USER_HANDLE },
-    );
-    expect((await createdUserIds(t)).sort()).toEqual(
-      [userId, "someone", pending].sort(),
-    );
-  });
-});
-
-describe("signUp", () => {
-  test("creates a session and mints a verifiable JWT", async () => {
-    const t = setup();
-    const bundle = await signUp(t, claims());
-
-    expect(bundle.userId).toBeTruthy();
-    expect(bundle.refreshToken).toBeTruthy();
-
-    const session = await t.run(
-      async (ctx) => await ctx.db.query("sessions").unique(),
-    );
-    expect(session).not.toBeNull();
-    const sessionId = session!._id;
-    // The session holds the user id and the path of the component that
-    // verified the user, and nothing else about the identity.
-    expect(session).toMatchObject({
-      userId: bundle.userId,
-      component: COMPONENT_PATH,
-    });
-
-    // The access token verifies against the deployment JWKS with the right
-    // claims.
-    const { payload } = await verifyAccessToken(t, bundle.accessToken);
-    // The subject is the session, not the user: the app resolves the user
-    // through the session.
-    expect(payload.sub).toBe(sessionId);
-    expect(payload.exp! * 1000).toBeGreaterThan(Date.now());
-    expect(bundle.refreshTokenExpiresAt).toBeGreaterThan(payload.exp! * 1000);
-  });
-
-  test("invokes the app's createUser with the claims, then onSignIn", async () => {
-    const t = setup();
-    testApp.resetUserCallbackCalls();
-
-    const bundle = await signUp(t, claims({ profile: { name: "Alice" } }));
-
-    expect(testApp.getCreateUserCalls()).toEqual([
-      {
-        method: {
-          name: "usernamePassword",
-          profile: { name: "Alice" },
-        },
-      },
-    ]);
-    // A first sign-in is still a sign-in, so onSignIn runs too, with the id
-    // createUser just returned. Per-sign-in work has one home.
-    expect(testApp.getOnSignInCalls()).toEqual([
-      {
-        method: {
-          name: "usernamePassword",
-          profile: { name: "Alice" },
-        },
-        userId: bundle.userId,
-      },
-    ]);
-  });
-
-  test("creates the user without an onSignIn attached", async () => {
-    const t = setup();
-    testApp.resetUserCallbackCalls();
-
-    const bundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...DEFAULT_TTL,
-    });
-
-    // The bundle carries the id returned by the app's createUser.
-    expect(bundle.userId).toBe("user1");
-    expect(testApp.getCreateUserCalls()).toHaveLength(1);
-    expect(testApp.getOnSignInCalls()).toHaveLength(0);
-  });
-
-  test("an onSignIn that throws rolls back the user it just created", async () => {
-    const t = setup();
-
-    await expect(
-      t.mutation(api.public.signUp, {
-        claims: claims(),
-        componentPath: COMPONENT_PATH,
-        createUserHandle: CREATE_USER_HANDLE,
-        onSignInHandle: THROWING_ON_SIGN_IN_HANDLE,
-        ...DEFAULT_TTL,
-      }),
-    ).rejects.toThrow(/no sign-ins for you/);
-
-    // This can't check that the user rolls back: the fixture's createUser keeps
-    // no rows. An app's users row is a write of the same mutation, so it rolls
-    // back with it. What the core owns is checked here: onSignIn runs before
-    // the session is minted, so none exists.
-    expect(await sessionCount(t)).toBe(0);
-  });
-});
-
-describe("signIn", () => {
-  test("mints a fresh session for the given user", async () => {
-    const t = setup();
-    const first = await signUp(t, claims({ profile: { name: "Alice" } }));
-    const second = await signIn(
-      t,
-      claims({ profile: { name: "Alice 2.0" } }),
-      first.userId,
-    );
-
-    expect(second.userId).toBe(first.userId);
-    const sessions = await t.run(
-      async (ctx) => await ctx.db.query("sessions").collect(),
-    );
-    expect(sessions).toHaveLength(2);
-    expect(
-      sessions.map(({ userId, component }) => ({ userId, component })),
-    ).toEqual([
-      { userId: first.userId, component: COMPONENT_PATH },
-      { userId: first.userId, component: COMPONENT_PATH },
-    ]);
-  });
-
-  test("invokes the app's onSignIn with the resolved user id and latest claims", async () => {
-    const t = setup();
-    testApp.resetUserCallbackCalls();
-
-    const first = await signUp(t, claims({ profile: { name: "Alice" } }));
-    await signIn(t, claims({ profile: { name: "Alice 2.0" } }), first.userId);
-
-    // The app gets the known id and the fresh profile to sync from. createUser
-    // ran once, for the sign-up; onSignIn ran for both.
-    expect(testApp.getCreateUserCalls()).toHaveLength(1);
-    expect(testApp.getOnSignInCalls()).toHaveLength(2);
-    expect(testApp.getOnSignInCalls()[1]).toEqual({
-      method: {
-        name: "usernamePassword",
-        profile: { name: "Alice 2.0" },
-      },
-      userId: first.userId,
-    });
-  });
-
-  test("mints the session without notifying an app that attached no onSignIn", async () => {
-    const t = setup();
-    const first = await signUp(t, claims());
-    testApp.resetUserCallbackCalls();
-
-    // No `onSignInHandle` is what an app that left `onSignIn` out sends.
-    const bundle = await t.mutation(api.public.signIn, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      userId: first.userId,
-      ...DEFAULT_TTL,
-    });
-
-    expect(bundle.userId).toBe(first.userId);
-    expect(testApp.getOnSignInCalls()).toHaveLength(0);
-  });
-
-  test("refuses an empty user id", async () => {
-    const t = setup();
-
-    // An empty string must never be accepted as a user id.
-    await expect(signIn(t, claims(), "")).rejects.toThrow(/no user id/i);
-    expect(await sessionCount(t)).toBe(0);
-  });
-});
-
-describe("signUpWithoutSession", () => {
-  test("creates the user, but no session", async () => {
-    const t = setup();
-    testApp.resetUserCallbackCalls();
-
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
-      claims: claims(),
-      createUserHandle: CREATE_USER_HANDLE,
-    });
-
-    // The id returned by the app's createUser.
-    expect(userId).toBe("user1");
-    expect(testApp.getCreateUserCalls()).toHaveLength(1);
-    // No sign-in happened, so onSignIn does not run, and no session was
-    // minted.
-    expect(testApp.getOnSignInCalls()).toHaveLength(0);
-    expect(await sessionCount(t)).toBe(0);
-  });
-
-  test("a later signIn with the user id mints a session", async () => {
-    const t = setup();
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
-      claims: claims(),
-      createUserHandle: CREATE_USER_HANDLE,
-    });
-
-    const bundle = await signIn(t, claims(), userId);
-    expect(bundle.userId).toBe(userId);
-    expect(await sessionCount(t)).toBe(1);
-  });
-});
-
 describe("refresh", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -749,12 +554,7 @@ describe("refresh", () => {
       refreshInactivityTimeoutSeconds: 60 * 60,
       sessionMaxLifetimeSeconds: 2 * 60 * 60,
     });
-    let bundle: TokenBundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...lifetimes,
-    });
+    let bundle: TokenBundle = await createSessionWithTtl(t, { ...lifetimes });
     // Refresh every half hour, well within the inactivity timeout, until the
     // session is just short of its max lifetime.
     for (let i = 0; i < 3; i++) {
@@ -804,12 +604,7 @@ describe("refresh", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const lifetimes = ttl({ refreshInactivityTimeoutSeconds: 60 * 60 });
-    const bundle: TokenBundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...lifetimes,
-    });
+    const bundle: TokenBundle = await createSessionWithTtl(t, { ...lifetimes });
     // The refresh commits, but the client never gets the response.
     vi.advanceTimersByTime(50 * 60 * 1000);
     expectRotated(
@@ -1548,10 +1343,7 @@ describe("token lifetime configuration", () => {
   test("honors a custom access-token TTL on sign-up", async () => {
     const t = setup();
     const before = Date.now();
-    const bundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
+    const bundle = await createSessionWithTtl(t, {
       ...ttl({
         accessTokenTtlSeconds: 300, // 5 minutes
       }),
@@ -1568,10 +1360,7 @@ describe("token lifetime configuration", () => {
     const oneHourMs = oneHourSeconds * 1000;
 
     const before = Date.now();
-    const bundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
+    const bundle = await createSessionWithTtl(t, {
       ...ttl({
         refreshInactivityTimeoutSeconds: oneHourSeconds,
       }),
@@ -1605,12 +1394,7 @@ describe("token lifetime configuration", () => {
       refreshInactivityTimeoutSeconds: 2 * 60 * 60,
       sessionMaxLifetimeSeconds: 3 * 60 * 60,
     });
-    const bundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...lifetimes,
-    });
+    const bundle = await createSessionWithTtl(t, { ...lifetimes });
     const [session] = await t.run(async (ctx) =>
       ctx.db.query("sessions").collect(),
     );
@@ -1633,10 +1417,7 @@ describe("token lifetime configuration", () => {
   test("rejects a configuration where the access TTL is not shorter than the inactivity timeout", async () => {
     const t = setup();
     await expect(
-      t.mutation(api.public.signUp, {
-        claims: claims(),
-        componentPath: COMPONENT_PATH,
-        createUserHandle: CREATE_USER_HANDLE,
+      createSessionWithTtl(t, {
         ...DEFAULT_TTL,
         accessTokenTtlSeconds: 100,
         refreshInactivityTimeoutSeconds: 1, // 1s — shorter than the 100s access token
@@ -1647,10 +1428,7 @@ describe("token lifetime configuration", () => {
   test("rejects a configuration where the inactivity timeout is longer than the max lifetime", async () => {
     const t = setup();
     await expect(
-      t.mutation(api.public.signUp, {
-        claims: claims(),
-        componentPath: COMPONENT_PATH,
-        createUserHandle: CREATE_USER_HANDLE,
+      createSessionWithTtl(t, {
         ...DEFAULT_TTL,
         refreshInactivityTimeoutSeconds: 2 * 60 * 60,
         sessionMaxLifetimeSeconds: 60 * 60,
@@ -1660,10 +1438,7 @@ describe("token lifetime configuration", () => {
 
   test("accepts an inactivity timeout equal to the max lifetime", async () => {
     const t = setup();
-    const bundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
+    const bundle = await createSessionWithTtl(t, {
       ...ttl({
         refreshInactivityTimeoutSeconds: 60 * 60,
         sessionMaxLifetimeSeconds: 60 * 60,

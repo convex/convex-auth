@@ -107,9 +107,6 @@ export const setPasswordForNewUser = mutation({
  * (for example `verifyPassword` with the current password, or the email
  * component with a password-recovery link).
  *
- * `userId` is the older form, with no proof of the user. It will be removed.
- * Give exactly one of `user` and `userId`.
- *
  * `minimumLength` is the minimum length of the new password. Each caller must
  * set it, so that the caller decides the minimum and does not get the minimum
  * of the component by accident. The password methods give
@@ -121,21 +118,13 @@ export const setPasswordForNewUser = mutation({
  */
 export const setPassword = mutation({
   args: {
-    user: v.optional(v.string()),
-    /** @deprecated Give `user` instead. */
-    userId: v.optional(v.string()),
+    user: v.string(),
     password: v.string(),
     minimumLength: v.number(),
   },
   returns: setPasswordResult,
   handler: async (ctx, args): Promise<SetPasswordResult> => {
-    if ((args.user === undefined) === (args.userId === undefined)) {
-      throw new Error("Give exactly one of `user` and `userId`.");
-    }
-    const userId =
-      args.user !== undefined
-        ? (await verifyUser(args.user)).userId
-        : args.userId!;
+    const { userId } = await verifyUser(args.user);
     const { password, minimumLength } = args;
     const userError = validateNewPassword(password, minimumLength);
     if (userError !== null) {

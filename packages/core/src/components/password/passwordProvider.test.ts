@@ -24,11 +24,32 @@ const modules = import.meta.glob("./**/*.ts");
 
 const PASSWORD = "correct horse battery staple"; // 28 chars, valid
 
+const signers = new WeakMap<
+  object,
+  ReturnType<typeof registerAttestationSigner>
+>();
+
+/**
+ * A user attestation for `userId`, as if a different component verified the
+ * user (for example the email component with a password-recovery link).
+ */
+async function userAttestation(t: ReturnType<typeof setup>, userId: string) {
+  const signer = signers.get(t);
+  if (signer === undefined) {
+    throw new Error("Make the test instance with `setup`.");
+  }
+  return await signer.attest(USER_ATTESTATION, { userId });
+}
+
 function setup() {
   const t = convexTest(schema, modules);
   // The component mounts the rate limiter; register it with the test instance
   // so `verifyPassword`'s throttle has a backing component.
   registerRateLimiter(t);
+  // Register the test signer before the test runs a function: convex-test
+  // does not add a component that it registers later to a transaction that
+  // is open.
+  signers.set(t, registerAttestationSigner(t, "authVerifier"));
   return t;
 }
 
@@ -36,7 +57,7 @@ describe("setPassword + verifyPassword", () => {
   test("verifies the correct password after setting it", async () => {
     const t = setup();
     const setResult = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -51,7 +72,7 @@ describe("setPassword + verifyPassword", () => {
   test("rejects a wrong password", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -78,13 +99,13 @@ describe("setPassword + verifyPassword", () => {
   test("upserts: setting a new password replaces the old one", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
     const newPassword = "a whole new password here";
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: newPassword,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -117,7 +138,7 @@ describe("password validation (setPassword)", () => {
   test("rejects a too-short password", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "short",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -131,7 +152,7 @@ describe("password validation (setPassword)", () => {
   test("accepts a password of 8 characters", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "kY7t-vQ2",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -147,7 +168,7 @@ describe("password validation (setPassword)", () => {
   test("rejects a password that is shorter than minimumLength", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "kY7t-vQ2m",
       minimumLength: 10,
     });
@@ -166,7 +187,7 @@ describe("password validation (setPassword)", () => {
     const t = setup();
     await expect(
       t.mutation(api.public.setPassword, {
-        userId: "alice",
+        user: await userAttestation(t, "alice"),
         password: "kY7t-vQ2m",
         minimumLength,
       }),
@@ -179,7 +200,7 @@ describe("password validation (setPassword)", () => {
   test("rejects a frequent password of 8 characters", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "12345678",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -192,7 +213,7 @@ describe("password validation (setPassword)", () => {
   test("rejects a password with leading whitespace", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: " leadingspace123",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -205,7 +226,7 @@ describe("password validation (setPassword)", () => {
   test("rejects one of the most frequent passwords", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "password123",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -218,7 +239,7 @@ describe("password validation (setPassword)", () => {
   test("rejects a frequent password that has a different case", async () => {
     const t = setup();
     const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: "Password123",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -233,7 +254,7 @@ describe("password validation (verifyPassword)", () => {
   test("rejects a too-short password without touching the stored password", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -250,7 +271,7 @@ describe("password validation (verifyPassword)", () => {
   test("rejects a too-long password", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -267,7 +288,7 @@ describe("password validation (verifyPassword)", () => {
   test("rejects a password with surrounding whitespace", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -309,7 +330,7 @@ describe("Unicode normalization", () => {
     expect(composed.normalize("NFC")).toBe(decomposed.normalize("NFC"));
 
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: composed,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -444,7 +465,7 @@ describe("rate limiting (verifyPassword only)", () => {
   test("returns RATE_LIMITED once the per-user bucket is exhausted", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -475,7 +496,7 @@ describe("attestations", () => {
   test("verifyPassword attests the user on success", async () => {
     const t = setup();
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -539,7 +560,7 @@ describe("attestations", () => {
     const t = setup();
     const core = registerAttestationSigner(t, "auth");
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -556,7 +577,7 @@ describe("attestations", () => {
     const t = setup();
     const email = registerAttestationSigner(t, "authEmail");
     await t.mutation(api.public.setPassword, {
-      userId: "alice",
+      user: await userAttestation(t, "alice"),
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
@@ -586,15 +607,5 @@ describe("attestations", () => {
         minimumLength: MIN_PASSWORD_LENGTH,
       }),
     ).rejects.toThrow("Invalid attestation");
-  });
-
-  test("setPassword requires exactly one of user and userId", async () => {
-    const t = setup();
-    await expect(
-      t.mutation(api.public.setPassword, {
-        password: PASSWORD,
-        minimumLength: MIN_PASSWORD_LENGTH,
-      }),
-    ).rejects.toThrow("exactly one");
   });
 });
