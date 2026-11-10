@@ -9,7 +9,7 @@
 import { convexTest, type TestConvex } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { registerCore, sessionIdentity } from "@convex-dev/auth/test";
-import { registerPasskeyProvider } from "@convex-dev/auth/components/passkey/test";
+import { registerPasskey } from "@convex-dev/auth/components/passkey/test";
 // The software authenticator is a private package of this repository, not a
 // part of the public API of `@convex-dev/auth`. An app writes an authenticator
 // of its own, or it drives a real one.
@@ -45,7 +45,7 @@ async function setup(): Promise<T> {
   const t = convexTest(schema, modules);
   registerCore(t);
   registerUsername(t);
-  registerPasskeyProvider(t);
+  registerPasskey(t);
   return t;
 }
 

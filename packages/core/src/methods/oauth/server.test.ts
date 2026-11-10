@@ -4,11 +4,7 @@ import {
   fakeCallbacks,
   fakeCore,
 } from "../../lib/oauth/componentContract.test.ts";
-import {
-  setupOauth,
-  type OauthCatalog,
-  type OauthProviderOptions,
-} from "./server.ts";
+import { setupOauth, type OauthCatalog, type OauthOptions } from "./server.ts";
 
 /**
  * A minimal plain-OAuth catalog: no issuer and no openid scope. Tests
@@ -27,7 +23,7 @@ const minimalCatalog: OauthCatalog = {
  * fakes suffice.
  */
 function setup(
-  options: Partial<OauthProviderOptions> = {},
+  options: Partial<OauthOptions> = {},
   catalog: OauthCatalog = minimalCatalog,
 ) {
   return setupOauth(fakeCore, "acme", catalog, fakeCallbacks, {

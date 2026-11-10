@@ -275,7 +275,7 @@ describe("OAuth React client", () => {
     expect(readFlow(storage)).toEqual({
       providerName: "acme",
       state: "state-3",
-      completeSignIn: "auth:completeSignInAcme",
+      completeSignIn: "auth:completeSignInWithAcme",
     });
   });
 

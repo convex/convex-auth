@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import github from "@convex-dev/auth/components/github/convex.config.js";
+import authGithub from "@convex-dev/auth/components/github/convex.config.js";
 
 const app = defineApp({
   env: {
@@ -19,7 +19,7 @@ app.use(auth);
 // The full redirect URI will be something like:
 //
 // https://happy-animal-123.convex.site/oauth/github/callback
-app.use(github, {
+app.use(authGithub, {
   httpPrefix: "/oauth/github",
   env: {
     CLIENT_ID: app.env.AUTH_GITHUB_CLIENT_ID,

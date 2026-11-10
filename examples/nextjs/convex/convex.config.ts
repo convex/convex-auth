@@ -1,8 +1,8 @@
 import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
-import github from "@convex-dev/auth/components/github/convex.config.js";
-import passwordProvider from "@convex-dev/auth/components/password/convex.config.js";
+import authGithub from "@convex-dev/auth/components/github/convex.config.js";
+import authPassword from "@convex-dev/auth/components/password/convex.config.js";
 import authUsername from "@convex-dev/auth/components/username/convex.config.js";
 
 const app = defineApp({
@@ -13,13 +13,13 @@ const app = defineApp({
 });
 
 app.use(auth);
-app.use(passwordProvider);
+app.use(authPassword);
 app.use(authUsername);
 
 // The callback route is mounted at `httpPrefix` on the deployment's site URL,
 // e.g. https://happy-animal-123.convex.site/oauth/github/callback. Register
 // that URL as the callback on the GitHub OAuth app.
-app.use(github, {
+app.use(authGithub, {
   httpPrefix: "/oauth/github",
   env: {
     CLIENT_ID: app.env.AUTH_GITHUB_CLIENT_ID,
