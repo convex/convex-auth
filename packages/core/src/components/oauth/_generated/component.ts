@@ -43,12 +43,9 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           codeVerifier: string;
-          issuers?: Array<string>;
           providerName: string;
           redirectTo: string;
           stateHash: string;
-          tokenEndpoint: string;
-          userInfoEndpoints?: Record<string, string>;
         },
         { callbackUrl: string; clientId: string },
         Name
@@ -58,6 +55,27 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { providerAccountId: string },
         string | null,
+        Name
+      >;
+      linkAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { newUser: string; ticketCode: string },
+        { attestation: string },
+        Name
+      >;
+      redeemTicket: FunctionReference<
+        "mutation",
+        "internal",
+        { providerName: string; state: string; ticketCode: string },
+        | null
+        | {
+            attestation: string;
+            kind: "existing";
+            payload: string;
+            providerAccountId: string;
+          }
+        | { kind: "new"; payload: string; providerAccountId: string },
         Name
       >;
     };
