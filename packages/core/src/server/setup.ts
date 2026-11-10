@@ -78,8 +78,8 @@ export type AuthCore<UsersTable extends string = string> = {
   /**
    * The core component, as passed to {@link setupConvexAuth}.
    *
-   * The sign-in methods pass it to `getAuthUserId`, so they work when the app
-   * mounts the core under a name other than `auth`.
+   * The sign-in methods pass it to `getAuthUserId`. The app must mount the
+   * core as `auth`.
    *
    * @internal
    */

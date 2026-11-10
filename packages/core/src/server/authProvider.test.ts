@@ -17,14 +17,6 @@ describe("convexAuthProvider", () => {
     });
   });
 
-  test("names the component the app mounts the auth component under", () => {
-    vi.stubEnv("CONVEX_CLOUD_URL", "https://happy-otter-123.convex.cloud");
-    expect(convexAuthProvider({ componentName: "myAuth" })).toMatchObject({
-      issuer: "https://happy-otter-123.convex.cloud/components/myAuth",
-      jwks: "https://happy-otter-123.convex.cloud/.well-known/jwks.json",
-    });
-  });
-
   test("throws without CONVEX_CLOUD_URL", () => {
     vi.stubEnv("CONVEX_CLOUD_URL", "");
     expect(() => convexAuthProvider()).toThrow("CONVEX_CLOUD_URL");
