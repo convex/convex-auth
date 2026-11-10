@@ -333,6 +333,14 @@ export type BoundAuthHelpers<Profile> = {
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
+   * Attest the user that is signed in to this request, or return `null` when
+   * no user is signed in (or the session no longer exists).
+   *
+   * Give the attestation to the components that change the data of the
+   * signed-in user, for example to add a passkey.
+   */
+  attestCurrentUser(): Promise<string | null>;
+  /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)
    * sessions revoked; returns 0 when not authenticated. Expired sessions are

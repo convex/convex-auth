@@ -139,9 +139,14 @@ type DeploymentJwk = {
 
 /**
  * Verify the ES256 signature of a JWT against the deployment's public keys
- * and return its payload. This function does not check the claims.
+ * and return its payload. This function does not check the claims: the
+ * caller checks the issuer, the audience, and the expiry.
+ *
+ * Throws when the token is not a JWT that the deployment signed.
+ *
+ * @internal
  */
-async function verifyDeploymentJwt(
+export async function verifyDeploymentJwt(
   token: string,
 ): Promise<Record<string, unknown>> {
   const parts = token.split(".");

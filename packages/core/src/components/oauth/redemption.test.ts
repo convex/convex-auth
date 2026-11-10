@@ -123,6 +123,9 @@ const fakeCore = {
         });
         return bundle;
       },
+      attestCurrentUser: async () => {
+        throw new Error("attestCurrentUser is not used by redemption");
+      },
       revokeOtherSessions: async () => {
         throw new Error("revokeOtherSessions is not used by redemption");
       },

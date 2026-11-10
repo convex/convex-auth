@@ -22,10 +22,14 @@ import { v } from "convex/values";
 import { describe, expect, test, vi } from "vitest";
 import type { ComponentApi } from "../component/_generated/component.ts";
 import type { CreateUserFn, TokenBundle } from "../lib/types.ts";
-import { registerCore, sessionIdentity } from "../testing/core.ts";
+import { registerCore, sessionIdentity, withSession } from "../testing/core.ts";
+import { decodeJwt } from "jose";
 import { setupConvexAuth } from "./setup.ts";
 import { registerAttestationSigner } from "../lib/attestationSigner.fixture.ts";
-import { USER_ATTESTATION } from "../lib/attestationKinds.ts";
+import {
+  CURRENT_USER_ATTESTATION,
+  USER_ATTESTATION,
+} from "../lib/attestationKinds.ts";
 
 const components = componentsGeneric() as unknown as {
   auth: ComponentApi<"auth">;
@@ -156,8 +160,15 @@ const revokeOtherSessionsShortTtl = shortTtlAuthMutation({
   handler: async (ctx) => await ctx.convexAuth.revokeOtherSessions(),
 });
 
+const attestCurrentUser = authMutation({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => await ctx.convexAuth.attestCurrentUser(),
+});
+
 const testApp = {
   createUser,
+  attestCurrentUser,
   signUp,
   signIn,
   revokeOtherSessions,
@@ -241,6 +252,53 @@ const revokeOtherSessionsShortTtlRef = makeFunctionReference<
   Record<string, never>,
   number
 >("testApp:revokeOtherSessionsShortTtl");
+
+const attestCurrentUserRef = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  string | null
+>("testApp:attestCurrentUser");
+
+describe("ctx.convexAuth.attestCurrentUser", () => {
+  test("attests the user of the session of the real access token", async () => {
+    const t = setup();
+    const tokens = await t.mutation(signUpRef, { accountId: "alice" });
+    const attestation = await withSession(t, tokens).mutation(
+      attestCurrentUserRef,
+      {},
+    );
+    expect(decodeJwt(attestation!)).toMatchObject({
+      aud: CURRENT_USER_ATTESTATION.audience,
+      iss: `${process.env.CONVEX_CLOUD_URL}/components/auth`,
+      userId: "alice",
+    });
+  });
+
+  test("returns null for a session that no longer exists", async () => {
+    const t = setup();
+    const tokens = await t.mutation(signUpRef, { accountId: "alice" });
+    await t.mutation(signOutRef, { refreshToken: tokens.refreshToken });
+    expect(
+      await withSession(t, tokens).mutation(attestCurrentUserRef, {}),
+    ).toBeNull();
+  });
+
+  test("returns null with no auth token", async () => {
+    const t = setup();
+    expect(await t.mutation(attestCurrentUserRef, {})).toBeNull();
+  });
+
+  test("returns null for a token that the deployment did not sign", async () => {
+    const t = setup();
+    const tokens = await t.mutation(signUpRef, { accountId: "alice" });
+    // convex-test does not sign the token of `withIdentity`.
+    expect(
+      await t
+        .withIdentity(sessionIdentity(tokens))
+        .mutation(attestCurrentUserRef, {}),
+    ).toBeNull();
+  });
+});
 
 describe("ctx.convexAuth.revokeOtherSessions", () => {
   test("revokes every session of the user but the caller's", async () => {

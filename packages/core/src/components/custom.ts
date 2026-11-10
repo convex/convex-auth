@@ -14,6 +14,7 @@
 import type { MutationAuth } from "convex/server";
 import { signAttestation, verifyAttestation } from "../lib/attestation.ts";
 import {
+  CURRENT_USER_ATTESTATION,
   NEW_USER_ATTESTATION,
   USER_ATTESTATION,
 } from "../lib/attestationKinds.ts";
@@ -82,4 +83,29 @@ export async function verifyUser(
     attestation,
   );
   return { userId: claims.userId, componentPath };
+}
+
+/**
+ * Verify a current-user attestation of the core and return the ID of the
+ * signed-in user.
+ *
+ * Call this function before the component changes the data of the signed-in
+ * user, for example to add a passkey. It throws unless the core (the
+ * component at `auth`) signed the attestation.
+ *
+ * @internal
+ */
+export async function verifyCurrentUser(
+  currentUser: string,
+): Promise<{ userId: string }> {
+  const { componentPath, claims } = await verifyAttestation(
+    CURRENT_USER_ATTESTATION,
+    currentUser,
+  );
+  if (componentPath !== CORE_COMPONENT_PATH) {
+    throw new Error(
+      `Invalid attestation: the core did not sign it (it came from "${componentPath}").`,
+    );
+  }
+  return { userId: claims.userId };
 }
