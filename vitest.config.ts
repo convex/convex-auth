@@ -20,6 +20,9 @@ const projects = ["packages", "examples"].flatMap((group) =>
         root: `${group}/${entry.name}`,
         // Convex functions run in an edge-like runtime; convex-test relies on it.
         environment: "edge-runtime",
+        // The deployment sets this variable. The core needs it to check the
+        // issuer of a token, and convex-test signs tokens under it.
+        env: { CONVEX_CLOUD_URL: "https://some-deployment.convex.cloud" },
         // Tests live under src/ (packages) or convex/ (examples). Scoping the
         // include keeps the globber out of heavy dirs (e.g. Rust `target/`).
         include: ["src/**/*.test.{ts,tsx}", "convex/**/*.test.{ts,tsx}"],
