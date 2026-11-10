@@ -147,6 +147,7 @@ export function setupGithub<UsersTable extends string>(
       >({
         providerName: PROVIDER_NAME,
         authMutation,
+        component: options.component,
         claimTicket: (ctx, args) =>
           ctx.runMutation(options.component.provider.claimTicket, args),
         getUserIdByAccount: (ctx, args) =>

@@ -19,6 +19,7 @@ import {
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
+import { componentPathOf } from "../lib/componentPath.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -352,12 +353,14 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
         profile: Profile;
+        verifiedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signUp, {
           claims: {
             providerName: name,
             profile: args.profile,
           },
+          componentPath: componentPathOf(args.verifiedBy),
           createUserHandle: await createFunctionHandle(createUser),
           onSignInHandle: await onSignInHandle(),
           ...ttl,
@@ -366,12 +369,14 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
+        verifiedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signIn, {
           claims: {
             providerName: name,
             profile: args.profile,
           },
+          componentPath: componentPathOf(args.verifiedBy),
           userId: args.userId,
           onSignInHandle: await onSignInHandle(),
           ...ttl,

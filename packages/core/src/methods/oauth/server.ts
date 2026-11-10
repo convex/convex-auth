@@ -209,6 +209,7 @@ export function setupOauth<
   const completeSignIn = buildCompleteSignIn<Profile, TicketPayload<UserInfo>>({
     providerName,
     authMutation,
+    component: options.component,
     claimTicket: (ctx, args) =>
       ctx.runMutation(options.component.provider.claimTicket, {
         providerName,

@@ -83,6 +83,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           accessTokenTtlSeconds: number;
           claims: { profile: any; providerName: string };
+          componentPath: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
           sessionMaxLifetimeSeconds: number;
@@ -109,6 +110,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         {
           accessTokenTtlSeconds: number;
           claims: { profile: any; providerName: string };
+          componentPath: string;
           createUserHandle: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
