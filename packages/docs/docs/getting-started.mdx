@@ -51,18 +51,54 @@ build from NPM.
 
 </Step>
 
-<Step title="Run the setup command">
+<Step title="Install the core component">
 
-Run the Convex Auth CLI to configure your project. This command:
+Register the Convex Auth component in `convex/convex.config.ts`. The guide of
+each sign-in method adds more components to this file.
 
-- Verifies you have `@convex-dev/auth` installed.
-- Initializes the following files in `convex/`: `auth.config.ts`, `convex.config.ts`, `auth.ts`.
+```ts title="convex/convex.config.ts"
+import { defineApp } from "convex/server";
+import auth from "@convex-dev/auth/convex.config.js";
 
-Access tokens are signed with your deployment's own key, so there are no
+const app = defineApp();
+
+app.use(auth);
+
+export default app;
+```
+
+</Step>
+
+<Step title="Configure the authentication provider">
+
+Create `convex/auth.config.ts`. This file tells your deployment to accept the
+access tokens of Convex Auth:
+
+```ts title="convex/auth.config.ts"
+import type { AuthConfig } from "convex/server";
+import { convexAuthProvider } from "@convex-dev/auth/server";
+
+export default {
+  providers: [convexAuthProvider()],
+} satisfies AuthConfig;
+```
+
+Your deployment signs the access tokens with its own key, thus you do not have
 secrets to configure.
 
-```sh
-npx @convex-dev/auth
+</Step>
+
+<Step title="Set up Convex Auth">
+
+Create `convex/auth.ts`, and export the functions of the core from it. The
+guide of each sign-in method adds its functions to this file.
+
+```ts title="convex/auth.ts"
+import { components } from "./_generated/api";
+import { setupConvexAuth } from "@convex-dev/auth/server";
+
+const auth = setupConvexAuth({ component: components.auth });
+export const { signOut, refreshSession, isAuthenticated } = auth;
 ```
 
 </Step>

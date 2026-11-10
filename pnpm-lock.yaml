@@ -373,9 +373,6 @@ importers:
 
   packages/core:
     dependencies:
-      '@babel/code-frame':
-        specifier: ^7.29.7
-        version: 7.29.7
       '@convex-dev/batch-worker':
         specifier: ^0.3.2
         version: 0.3.4(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
@@ -391,12 +388,6 @@ importers:
       argon2id-wasm:
         specifier: 0.0.0-alpha.2
         version: 0.0.0-alpha.2
-      chalk:
-        specifier: ^5.6.2
-        version: 5.6.2
-      commander:
-        specifier: ^14.0.2
-        version: 14.0.3
       cookie:
         specifier: 1.1.1
         version: 1.1.1
@@ -4030,10 +4021,6 @@ packages:
   commander@10.0.1:
     resolution: {integrity: sha512-y4Mg2tXshplEbSGzx7amzPwKKOCGuoSRP/CjEdwwk0FOGlUbq6lKuoyDZTNZkmxHdJtp54hdfY/JUrdL7Xfdug==}
     engines: {node: '>=14'}
-
-  commander@14.0.3:
-    resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
-    engines: {node: '>=20'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -12404,8 +12391,6 @@ snapshots:
   comma-separated-tokens@2.0.3: {}
 
   commander@10.0.1: {}
-
-  commander@14.0.3: {}
 
   commander@2.20.3: {}
 
