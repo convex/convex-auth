@@ -1,13 +1,12 @@
 /**
- * React client for the generic OAuth method, exported at
+ * React client for the shared OAuth state, exported at
  * `@convex-dev/auth/methods/oauth/react`.
  *
  * OAuth is registered by default in `ConvexAuthProvider` and
- * `ConvexAuthNextjsProvider`. {@link useOauthSignIn} runs the flow of an
- * identity provider from its function references. The Google, Apple and
- * GitHub methods have their own hooks, at
- * `@convex-dev/auth/methods/<provider>/react`. {@link useOauth} returns the
- * state that isn't tied to one provider.
+ * `ConvexAuthNextjsProvider`. If you set their `ambientSignIns` prop, include
+ * {@link oauth} yourself. The Google, Apple and GitHub methods have their own
+ * hooks, at `@convex-dev/auth/methods/<provider>/react`. {@link useOauth}
+ * returns the state that isn't tied to one provider.
  *
  * Under Next.js, add each provider's `completeSignIn*` function to the auth
  * proxy's `signIn` allowlist. Its `startSignIn*` function runs on the Convex
@@ -18,18 +17,7 @@
  * the redirect back shows up in {@link useOauth}'s `flowError`.
  *
  * ```tsx
- * const { signIn } = useOauthSignIn({
- *   providerName: "acme",
- *   startSignIn: api.auth.startSignInWithAcme,
- *   completeSignIn: api.auth.completeSignInWithAcme,
- * });
  * const { flowError } = useOauth();
- * const result = await signIn();
- * if (result.status === "error") {
- *   switch (result.userError.error) {
- *     case "OTHER_ERROR": // ...
- *   }
- * }
  * ```
  *
  * @module
@@ -97,7 +85,7 @@ export function useOauth(): UseOauthReturn {
   return { flowError };
 }
 
-/** What {@link useOauthSignIn} returns. */
+/** What the sign-in hooks of the OAuth providers return. */
 export type UseOauthSignInReturn = {
   /**
    * Start the provider's OAuth flow (or, with `options.code`, complete one
@@ -126,6 +114,22 @@ export type UseOauthSignInReturn = {
  * A failure while starting the flow comes back in the result. Failures after
  * the redirect back have no caller left to return to, so they are reported
  * through {@link useOauth}'s `flowError`.
+ *
+ * ```tsx skip-check
+ * const { signIn } = useOauthSignIn({
+ *   providerName: "acme",
+ *   startSignIn: api.auth.startSignInWithAcme,
+ *   completeSignIn: api.auth.completeSignInWithAcme,
+ * });
+ * const result = await signIn();
+ * if (result.status === "error") {
+ *   switch (result.userError.error) {
+ *     case "OTHER_ERROR": // ...
+ *   }
+ * }
+ * ```
+ *
+ * @internal Not public until the API for custom OAuth providers is stable.
  */
 export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
   const actions = useAmbientSignInValue<OauthActions>(

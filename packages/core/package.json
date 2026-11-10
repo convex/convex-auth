@@ -170,13 +170,6 @@
       "types": "./dist/methods/username-passkey/react.d.ts",
       "default": "./dist/methods/username-passkey/react.js"
     },
-    "./methods/oauth/server": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/methods/oauth/server.d.ts"
-      },
-      "types": "./dist/methods/oauth/server.d.ts",
-      "default": "./dist/methods/oauth/server.js"
-    },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/oauth/react.d.ts"
@@ -342,35 +335,6 @@
       "default": "./dist/components/passkey/_generated/component.js"
     },
     "./components/passkey/test": "./src/testing/passkey.ts",
-    "./components/oauth/convex.config.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/oauth/convex.config.d.ts"
-      },
-      "types": "./dist/components/oauth/convex.config.d.ts",
-      "default": "./dist/components/oauth/convex.config.js"
-    },
-    "./components/oauth/convex.config": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/oauth/convex.config.d.ts"
-      },
-      "types": "./dist/components/oauth/convex.config.d.ts",
-      "default": "./dist/components/oauth/convex.config.js"
-    },
-    "./components/oauth/_generated/component.js": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/oauth/_generated/component.d.ts"
-      },
-      "types": "./dist/components/oauth/_generated/component.d.ts",
-      "default": "./dist/components/oauth/_generated/component.js"
-    },
-    "./components/oauth/_generated/component": {
-      "convex-auth-internal-types": {
-        "types": "./dist/internal-types/components/oauth/_generated/component.d.ts"
-      },
-      "types": "./dist/components/oauth/_generated/component.d.ts",
-      "default": "./dist/components/oauth/_generated/component.js"
-    },
-    "./components/oauth/test": "./src/testing/oauth.ts",
     "./components/google/convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/components/google/convex.config.d.ts"

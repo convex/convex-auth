@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as acme from "../acme.js";
 import type * as auth from "../auth.js";
 import type * as users from "../users.js";
 
@@ -19,7 +18,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  acme: typeof acme;
   auth: typeof auth;
   users: typeof users;
 }>;
@@ -60,6 +58,5 @@ export declare const components: {
   authGoogle: import("@convex-dev/auth/components/google/_generated/component.js").ComponentApi<"authGoogle">;
   authApple: import("@convex-dev/auth/components/apple/_generated/component.js").ComponentApi<"authApple">;
   authGithub: import("@convex-dev/auth/components/github/_generated/component.js").ComponentApi<"authGithub">;
-  authAcme: import("@convex-dev/auth/components/oauth/_generated/component.js").ComponentApi<"authAcme">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };

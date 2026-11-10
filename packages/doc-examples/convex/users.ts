@@ -3,7 +3,6 @@ import { vAppleProfile } from "@convex-dev/auth/methods/apple/server";
 import { vGithubProfile } from "@convex-dev/auth/methods/github/server";
 import { vGoogleProfile } from "@convex-dev/auth/methods/google/server";
 import { internalMutation } from "./_generated/server";
-import { vAcmeProfile } from "./acme";
 
 // The `createUser` callback of each sign-in method of `auth.ts`.
 
@@ -73,18 +72,6 @@ export const createUserGithub = internalMutation({
       name: v.literal("github"),
       accountId: v.string(),
       profile: vGithubProfile,
-    }),
-  },
-  returns: v.id("users"),
-  handler: async (ctx) => await ctx.db.insert("users", {}),
-});
-
-export const createUserAcme = internalMutation({
-  args: {
-    provider: v.object({
-      name: v.literal("acme"),
-      accountId: v.string(),
-      profile: vAcmeProfile,
     }),
   },
   returns: v.id("users"),

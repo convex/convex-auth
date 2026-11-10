@@ -1,3 +1,9 @@
+/**
+ * The generic oauth component.
+ *
+ * @internal Not public until the API for custom OAuth providers is stable.
+ * @module
+ */
 import { defineComponent } from "convex/server";
 import { v } from "convex/values";
 
@@ -9,7 +15,7 @@ import { v } from "convex/values";
  * Install it once per identity provider, each with its own name and
  * `httpPrefix`. The callback is served at `<httpPrefix>/callback`.
  *
- * ```ts
+ * ```ts skip-check
  * app.use(authOauth, {
  *   name: "authAcme",
  *   httpPrefix: "/oauth/acme",
