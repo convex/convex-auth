@@ -69,13 +69,18 @@ export function setupAnonymous<UsersTable extends string>(
           returns: vSignInComplete,
           handler: async (ctx): Promise<SignInComplete> => {
             // Every anonymous sign-in is a new identity, so there is nothing
-            // to look up.
-            const tokens = await ctx.convexAuth.completeSignUp({
+            // to look up. The component records the account after the core
+            // creates the user.
+            const { newUser } = await ctx.convexAuth.createUser({
               profile: {},
-              verifiedBy: component,
             });
-            await ctx.runMutation(component.provider.createAnonymousAccount, {
-              userId: tokens.userId,
+            const { attestation } = await ctx.runMutation(
+              component.provider.createAnonymousAccount,
+              { newUser },
+            );
+            const tokens = await ctx.convexAuth.createSession({
+              attestation,
+              profile: {},
             });
             return { status: "complete", tokens };
           },
