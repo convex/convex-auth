@@ -2,6 +2,7 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { anyApi, makeFunctionReference } from "convex/server";
+import { ConvexError } from "convex/values";
 import { ReactNode, StrictMode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthClient } from "../../browser/sessionManager.ts";
@@ -191,6 +192,25 @@ describe("useSignInWithEmailPassword", () => {
     expect(result.current.hook.pending).toBe(false);
   });
 
+  test("a thrown ConvexError folds into REJECTED with its data", async () => {
+    runSignInMutation.mockRejectedValue(new ConvexError("Account suspended"));
+    const { result } = renderWithProviders(() =>
+      useSignInWithEmailPassword({ signInWithEmailPassword: signInMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<ReturnType<typeof result.current.hook.signIn>>;
+    await act(async () => {
+      returned = await result.current.hook.signIn(credentials);
+    });
+
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "REJECTED", data: "Account suspended" },
+    });
+    expect(result.current.auth.isAuthenticated).toBe(false);
+  });
+
   test("stays pending until the last overlapping call ends", async () => {
     const failure = {
       status: "error",
@@ -307,6 +327,25 @@ describe("useSignUpWithEmailPassword", () => {
       userError: { error: "OTHER_ERROR", cause },
     });
     expect(result.current.hook.pending).toBe(false);
+  });
+
+  test("a thrown ConvexError stays OTHER_ERROR: starting a sign-up signs no one in", async () => {
+    const cause = new ConvexError("nope");
+    stubConvexMutation().mockRejectedValue(cause);
+    const { result } = renderWithProviders(() =>
+      useSignUpWithEmailPassword({ signUpWithEmailPassword: convexMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<ReturnType<typeof result.current.hook.signUp>>;
+    await act(async () => {
+      returned = await result.current.hook.signUp(credentials);
+    });
+
+    expect(returned).toEqual({
+      success: false,
+      userError: { error: "OTHER_ERROR", cause },
+    });
   });
 });
 
@@ -463,6 +502,24 @@ describe("useCompleteSignUpWithEmailPassword", () => {
         userError: { error: "OTHER_ERROR", cause },
       }),
     );
+  });
+
+  test("a thrown ConvexError becomes a REJECTED state with its data", async () => {
+    secretStorage.set(SIGN_UP_SECRET_KEY, "secret-1");
+    runSignInMutation.mockRejectedValue(new ConvexError("Account suspended"));
+    const { result } = renderWithProviders(() =>
+      useCompleteSignUpWithEmailPassword(
+        { completeSignUpWithEmailPassword: signInMutation },
+        { emailCode: "code-1" },
+      ),
+    );
+    await waitFor(() =>
+      expect(result.current.hook).toEqual({
+        status: "error",
+        userError: { error: "REJECTED", data: "Account suspended" },
+      }),
+    );
+    expect(result.current.auth.isAuthenticated).toBe(false);
   });
 });
 

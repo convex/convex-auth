@@ -10,6 +10,12 @@ import { FunctionReference } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useRef, useContext, useEffect, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
+import {
+  foldSignInThrow,
+  type OtherError,
+  type RejectedError,
+} from "../../lib/thrownError.ts";
+export type { OtherError, RejectedError } from "../../lib/thrownError.ts";
 import { AuthClientContext, useAuth } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
@@ -62,12 +68,6 @@ type SignInError<Result> = Result extends {
   : never;
 
 /**
- * The mutation threw rather than resolving to a `userError`. The thrown value
- * is preserved on `cause`.
- */
-type OtherError = { error: "OTHER_ERROR"; cause: unknown };
-
-/**
  * A link was opened in a browser that did not start the flow: the flow's
  * secret is not in this browser's storage, so completion cannot proceed. Tell
  * the user to open the link in the browser they started from.
@@ -85,7 +85,15 @@ type WithoutSecret<Result> = Result extends { success: true }
   ? Omit<Result, "browserSecret">
   : Result;
 
-type SignInUnexpectedFailure = { status: "error"; userError: OtherError };
+/**
+ * A mutation that signs the user in threw rather than resolving to a
+ * `userError`: `REJECTED` when the app's backend turned the sign-in down with a
+ * `ConvexError` (usually from `onSignIn`), `OTHER_ERROR` otherwise.
+ */
+type SignInUnexpectedFailure = {
+  status: "error";
+  userError: RejectedError | OtherError;
+};
 
 type SignUpMutation = FunctionReference<
   "mutation",
@@ -188,6 +196,7 @@ export type LinkFlowState<UserError> =
 export type CompleteSignUpState = LinkFlowState<
   | SignInError<ClientView<CompleteSignUpResult>>
   | MissingSecretError
+  | RejectedError
   | OtherError
 >;
 
@@ -289,14 +298,19 @@ function usePending() {
   return { pending, track };
 }
 
+const foldOtherError = (cause: unknown): OtherError => ({
+  error: "OTHER_ERROR",
+  cause,
+});
+
 const foldError = (cause: unknown): UnexpectedFailure => ({
   success: false,
-  userError: { error: "OTHER_ERROR", cause },
+  userError: foldOtherError(cause),
 });
 
 const foldSignInError = (cause: unknown): SignInUnexpectedFailure => ({
   status: "error",
-  userError: { error: "OTHER_ERROR", cause },
+  userError: foldSignInThrow(cause),
 });
 
 /**
@@ -309,16 +323,18 @@ const foldSignInError = (cause: unknown): SignInUnexpectedFailure => ({
  * acceptable: since we use browser secrets, we don’t need an additional
  * user confirmation.
  */
-function useLinkFlow<UserError>(
+function useLinkFlow<UserError, ThrownError>(
   flow: EmailLinkFlow,
   complete: (
     browserSecret: string,
   ) => Promise<{ done: true } | { done: false; userError: UserError }>,
-): LinkFlowState<UserError | MissingSecretError | OtherError> {
+  // Must keep its identity across renders, like a module-level function.
+  foldThrow: (cause: unknown) => ThrownError,
+): LinkFlowState<UserError | MissingSecretError | ThrownError> {
   const { isLoading } = useAuth();
   const storage = useSecretStorage();
   const [state, setState] = useState<
-    LinkFlowState<UserError | MissingSecretError | OtherError>
+    LinkFlowState<UserError | MissingSecretError | ThrownError>
   >({ status: "loading" });
 
   // Make sure it’s the first useEffect run to avoid issues in React strict mode
@@ -344,13 +360,10 @@ function useLinkFlow<UserError>(
           setState({ status: "error", userError: result.userError });
         }
       } catch (cause) {
-        setState({
-          status: "error",
-          userError: { error: "OTHER_ERROR", cause },
-        });
+        setState({ status: "error", userError: foldThrow(cause) });
       }
     })();
-  }, [isLoading, storage, flow, complete]);
+  }, [isLoading, storage, flow, complete, foldThrow]);
 
   return state;
 }
@@ -602,10 +615,10 @@ export function useCompleteSignUpWithEmailPassword(
     ],
   );
 
-  return useLinkFlow<SignInError<ClientView<CompleteSignUpResult>>>(
-    "signUp",
-    complete,
-  );
+  return useLinkFlow<
+    SignInError<ClientView<CompleteSignUpResult>>,
+    RejectedError | OtherError
+  >("signUp", complete, foldSignInThrow);
 }
 
 //------------------------------------------------------------------------------
@@ -888,8 +901,9 @@ export function useCompleteChangeEmail(
     [runCompleteChangeEmail, emailCode],
   );
 
-  return useLinkFlow<ExtractError<CompleteChangeEmailResult>>(
+  return useLinkFlow<ExtractError<CompleteChangeEmailResult>, OtherError>(
     "changeEmail",
     complete,
+    foldOtherError,
   );
 }

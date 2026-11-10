@@ -65,6 +65,16 @@ function ValidateEmailWithCode({ emailCode }: { emailCode: string }) {
           This email address is already in use. Sign in instead.
         </ValidateEmailError>
       );
+    case "REJECTED":
+      // Your backend rejected the sign-in with a ConvexError, and `data` is
+      // its data. Show it when it's text for the user.
+      return (
+        <ValidateEmailError>
+          {typeof state.userError.data === "string"
+            ? state.userError.data
+            : "Sign-in was declined."}
+        </ValidateEmailError>
+      );
     case "OTHER_ERROR":
       console.error("Validation failed:", state.userError.cause);
       return (

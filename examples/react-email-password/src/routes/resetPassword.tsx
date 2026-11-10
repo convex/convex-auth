@@ -93,6 +93,13 @@ function ResetPasswordWithCode({ emailCode }: { emailCode: string }) {
               return "Password can't start or end with whitespace.";
             case "PASSWORD_TOO_COMMON":
               return "This password is one of the most commonly used passwords. Please choose a different one.";
+            case "REJECTED":
+              // Your backend rejected the sign-in with a ConvexError,
+              // and `data` is its data. Show it when it's text for the
+              // user.
+              return typeof result.userError.data === "string"
+                ? result.userError.data
+                : "Sign-in was declined.";
             case "OTHER_ERROR":
               console.error("Password reset failed:", result.userError.cause);
               return "Something went wrong. Please try again.";

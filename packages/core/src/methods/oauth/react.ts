@@ -52,6 +52,7 @@ import {
 } from "./client.ts";
 
 export { oauth } from "./client.ts";
+export type { OtherError, RejectedError } from "../../lib/thrownError.ts";
 export type {
   OauthActions,
   OauthCompleteResult,

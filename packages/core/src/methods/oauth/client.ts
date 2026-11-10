@@ -18,12 +18,16 @@ import {
   getFunctionName,
   makeFunctionReference,
 } from "convex/server";
-import { ConvexError } from "convex/values";
 import type { AmbientSignInClient } from "../../browser/ambientSignInClient.ts";
 import { retryOnNetworkError } from "../../browser/retry.ts";
 import type { SignInStorage } from "../../browser/storage.ts";
 import { OAUTH_CODE_PARAM, OAUTH_ERROR_PARAM } from "../../lib/oauthParams.ts";
 import type { ClientView } from "../../lib/types.ts";
+import {
+  foldSignInThrow,
+  type OtherError,
+  type RejectedError,
+} from "../../lib/thrownError.ts";
 import type { CompleteSignInResult } from "../../lib/oauth/redemption.ts";
 
 /**
@@ -64,7 +68,8 @@ export type OauthProviderRefs = {
  * - `"INVALID_FLOW"`: the callback arrived but this client has no saved flow,
  *   so it never started this sign-in or already finished it.
  * - `"REJECTED"`: the app's own backend turned the sign-in down by throwing a
- *   `ConvexError`. `data` is that error's `data`.
+ *   `ConvexError`, usually from `onSignIn`. `data` is that error's `data`.
+ *   The other sign-in methods report it the same way.
  * - `"OTHER_ERROR"`: anything else, like the identity provider failing the
  *   handshake or the redemption throwing. `cause` is the thrown value, or the
  *   error the callback URL carried.
@@ -73,8 +78,8 @@ export type OauthFlowError =
   | { error: "ACCESS_DENIED" }
   | { error: "EXPIRED" }
   | { error: "INVALID_FLOW" }
-  | { error: "REJECTED"; data: unknown }
-  | { error: "OTHER_ERROR"; cause: unknown };
+  | RejectedError
+  | OtherError;
 
 /**
  * What starting a flow resolves to. A failure comes back as `OTHER_ERROR`
@@ -88,7 +93,7 @@ export type OauthFlowError =
  */
 export type OauthStartResult =
   | { status: "redirect"; redirect: URL }
-  | { status: "error"; userError: { error: "OTHER_ERROR"; cause: unknown } };
+  | { status: "error"; userError: OtherError };
 
 /**
  * What finishing a saved flow with a callback `code` resolves to. It never
@@ -151,17 +156,6 @@ function callbackFlowError(param: string): OauthFlowError {
     default:
       return { error: "OTHER_ERROR", cause: param };
   }
-}
-
-/**
- * The flow error for a redemption that threw. A `ConvexError` means the
- * app's backend rejected the sign-in. Anything else is unexpected.
- */
-function thrownFlowError(error: unknown): OauthFlowError {
-  if (error instanceof ConvexError) {
-    return { error: "REJECTED", data: error.data };
-  }
-  return { error: "OTHER_ERROR", cause: error };
 }
 
 /** Storage key for the saved sign-in flow. */
@@ -299,7 +293,7 @@ export function oauth(): AmbientSignInClient {
         await client.setSession(result.tokens);
         return { status: "complete" };
       } catch (error) {
-        return { status: "error", userError: thrownFlowError(error) };
+        return { status: "error", userError: foldSignInThrow(error) };
       }
     };
 

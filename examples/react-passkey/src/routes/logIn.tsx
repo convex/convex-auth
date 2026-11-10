@@ -105,6 +105,13 @@ function errorMessage(
       return "Sign-in was cancelled. Please try again.";
     case "WEBAUTHN_UNSUPPORTED":
       return "This browser does not support passkeys.";
+    case "REJECTED":
+      // Your backend rejected the sign-in with a ConvexError,
+      // and `data` is its data. Show it when it's text for the
+      // user.
+      return typeof userError.data === "string"
+        ? userError.data
+        : "Sign-in was declined.";
     case "OTHER_ERROR":
       // The mutation threw unexpectedly; the original error is available
       // on `cause` if you want to log or inspect it.

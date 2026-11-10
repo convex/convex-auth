@@ -32,6 +32,13 @@ export function LogIn() {
                 return "Password can't start or end with whitespace.";
               case "RATE_LIMITED":
                 return `Too many attempts. Try again in ${Math.ceil(result.userError.retryAfterMs / 1000)} seconds.`;
+              case "REJECTED":
+                // Your backend rejected the sign-in with a ConvexError,
+                // and `data` is its data. Show it when it's text for the
+                // user.
+                return typeof result.userError.data === "string"
+                  ? result.userError.data
+                  : "Sign-in was declined.";
               case "OTHER_ERROR":
                 // The mutation threw unexpectedly; the original error is
                 // available on `cause` if you want to log or inspect it.

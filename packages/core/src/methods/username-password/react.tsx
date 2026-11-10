@@ -20,6 +20,12 @@
 import { FunctionReference } from "convex/server";
 import { useCallback, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
+import {
+  foldSignInThrow,
+  type OtherError,
+  type RejectedError,
+} from "../../lib/thrownError.ts";
+export type { OtherError, RejectedError } from "../../lib/thrownError.ts";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
@@ -54,15 +60,19 @@ type SignUpWithUsernamePasswordMutation = FunctionReference<
 
 /**
  * A failure the client produces that the server never returns: the mutation
- * threw (a network blip, a bug, an unexpected server error) rather than
- * resolving to a `userError`. The flow hooks fold that into the result as
- * `OTHER_ERROR` so callers handle *every* failure through the one `userError`
- * switch and never need their own `try`/`catch`. The thrown value is preserved
- * on `cause` for callers that want to inspect or log it.
+ * threw rather than resolving to a `userError`. The flow hooks fold that into
+ * the result so callers handle *every* failure through the one `userError`
+ * switch and never need their own `try`/`catch`:
+ *
+ * - `REJECTED`: the app's backend turned the sign-in down by throwing a
+ *   `ConvexError`, usually from `onSignIn`. `data` is that error's `data`.
+ * - `OTHER_ERROR`: anything else thrown (a network blip, a bug, an unexpected
+ *   server error). The thrown value is preserved on `cause` for callers that
+ *   want to inspect or log it.
  */
 type UnexpectedFailure = {
   status: "error";
-  userError: { error: "OTHER_ERROR"; cause: unknown };
+  userError: RejectedError | OtherError;
 };
 
 /** The result of the `signIn` callback from {@link useSignInWithUsernamePassword}. */
@@ -243,10 +253,10 @@ function usePasswordFlow<
         return result;
       } catch (cause) {
         // The mutation threw instead of resolving to a `userError`. Fold it into
-        // the same discriminated result as `OTHER_ERROR`, preserving the thrown
-        // value on `cause`, so the caller handles it alongside every other
-        // failure and can still inspect or log the original error if it wants.
-        return { status: "error", userError: { error: "OTHER_ERROR", cause } };
+        // the same discriminated result, as `REJECTED` for the app's own
+        // `ConvexError` and `OTHER_ERROR` otherwise, so the caller handles it
+        // alongside every other failure.
+        return { status: "error", userError: foldSignInThrow(cause) };
       } finally {
         // Reset even when the mutation throws.
         setPending(false);

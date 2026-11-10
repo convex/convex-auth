@@ -2,6 +2,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { ConvexProvider, type ConvexReactClient } from "convex/react";
 import { anyApi, getFunctionName, type FunctionReference } from "convex/server";
+import { ConvexError } from "convex/values";
 import { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { AuthClient } from "../../browser/sessionManager.ts";
@@ -415,6 +416,51 @@ describe("useSignInWithUsernamePasskey signIn", () => {
     expect(result.current.auth.isAuthenticated).toBe(false);
   });
 
+  test("a ConvexError from the finishing mutation folds into REJECTED", async () => {
+    mutations.startSignInWithUsernamePasskey.mockResolvedValue(
+      authenticateStart,
+    );
+    ceremonyGet.mockResolvedValue(authenticationResponse);
+    mutations.finishSignInWithUsernamePasskey.mockRejectedValue(
+      new ConvexError("Account suspended"),
+    );
+    const { result } = renderPasskey();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: SignInWithUsernamePasskeyResult;
+    await act(async () => {
+      returned = await result.current.passkey.signIn({ username: "alice" });
+    });
+
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "REJECTED", data: "Account suspended" },
+    });
+    expect(result.current.auth.isAuthenticated).toBe(false);
+    expect(result.current.passkey.pending).toBe(false);
+  });
+
+  test("another throw from the finishing mutation folds into OTHER_ERROR", async () => {
+    mutations.startSignInWithUsernamePasskey.mockResolvedValue(
+      authenticateStart,
+    );
+    ceremonyGet.mockResolvedValue(authenticationResponse);
+    const cause = new Error("network blip");
+    mutations.finishSignInWithUsernamePasskey.mockRejectedValue(cause);
+    const { result } = renderPasskey();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: SignInWithUsernamePasskeyResult;
+    await act(async () => {
+      returned = await result.current.passkey.signIn({ username: "alice" });
+    });
+
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "OTHER_ERROR", cause },
+    });
+  });
+
   test("NotAllowedError folds into CEREMONY_ABORTED", async () => {
     mutations.startSignInWithUsernamePasskey.mockResolvedValue(
       authenticateStart,
@@ -563,6 +609,28 @@ describe("useSignInWithUsernamePasskey autofill", () => {
     });
     expect(result.current.auth.isAuthenticated).toBe(true);
     expect(result.current.passkey.autofill.lastError).toBe(null);
+
+    unmount();
+    await act(async () => {});
+  });
+
+  test("a ConvexError from the finishing mutation sets a REJECTED lastError", async () => {
+    mutations.startAutofillSignInWithUsernamePasskey.mockResolvedValue({
+      options: requestOptions,
+    });
+    conditionalGet.mockResolvedValue(conditionalCredential);
+    mutations.finishSignInWithUsernamePasskey.mockRejectedValue(
+      new ConvexError("Account suspended"),
+    );
+    const { result, unmount } = renderPasskey();
+
+    await waitFor(() =>
+      expect(result.current.passkey.autofill.lastError).toEqual({
+        error: "REJECTED",
+        data: "Account suspended",
+      }),
+    );
+    expect(result.current.auth.isAuthenticated).toBe(false);
 
     unmount();
     await act(async () => {});

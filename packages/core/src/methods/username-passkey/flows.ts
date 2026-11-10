@@ -14,6 +14,7 @@ import type {
   SlimTokenBundle,
   TokenBundle,
 } from "../../lib/types.ts";
+import { asRejectedError, type RejectedError } from "../../lib/thrownError.ts";
 import {
   authenticate,
   register,
@@ -110,12 +111,33 @@ export type SignInFlowResult =
     })
   | Extract<ClientView<FinishSignUpResult>, { status: "error" }>
   | Extract<ClientView<FinishSignInResult>, { status: "error" }>
-  | SignInError<ProtocolUserError>;
+  | SignInError<ProtocolUserError | RejectedError>;
 
 /** The errors the autofill sign-in flow reports. */
 export type UsernamePasskeyAutofillError =
   | Extract<FinishSignInResult, { status: "error" }>["userError"]
+  | RejectedError
   | PasskeyClientError;
+
+/**
+ * Run a finishing mutation, the one that signs the user in, and turn the
+ * app's `ConvexError` (usually from `onSignIn`) into a `REJECTED` error arm.
+ * Anything else it throws propagates, and the ceremony slot folds it into
+ * `OTHER_ERROR`.
+ */
+export async function runFinishMutation<Result>(
+  call: () => Promise<Result>,
+): Promise<Result | SignInError<RejectedError>> {
+  try {
+    return await call();
+  } catch (cause) {
+    const rejected = asRejectedError(cause);
+    if (rejected === null) {
+      throw cause;
+    }
+    return { status: "error", userError: rejected };
+  }
+}
 
 /**
  * The identifier-first sign-in flow: the start mutation tells whether the
@@ -146,12 +168,11 @@ export async function runSignInOrSignUpFlow(
     if (!ceremony.success) {
       return { status: "error", userError: ceremony.userError };
     }
-    const result = await signInApi.mutation(
-      api.finishSignUpWithUsernamePasskey,
-      {
+    const result = await runFinishMutation(() =>
+      signInApi.mutation(api.finishSignUpWithUsernamePasskey, {
         username,
         response: ceremony.response,
-      },
+      }),
     );
     if (result.status !== "complete") {
       return result;
@@ -164,9 +185,11 @@ export async function runSignInOrSignUpFlow(
   if (!ceremony.success) {
     return { status: "error", userError: ceremony.userError };
   }
-  const result = await signInApi.mutation(api.finishSignInWithUsernamePasskey, {
-    response: ceremony.response,
-  });
+  const result = await runFinishMutation(() =>
+    signInApi.mutation(api.finishSignInWithUsernamePasskey, {
+      response: ceremony.response,
+    }),
+  );
   if (result.status !== "complete") {
     return result;
   }

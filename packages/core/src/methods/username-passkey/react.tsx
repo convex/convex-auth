@@ -24,6 +24,7 @@ import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import {
+  runFinishMutation,
   runSignInOrSignUpFlow,
   type UsernamePasskeyApi,
   type UsernamePasskeyAutofillError,
@@ -39,6 +40,7 @@ import { PasskeyClientError, PasskeyClientFailure } from "./client.ts";
 import { SignInError } from "../../lib/types.ts";
 
 export type { RenamePasskeyResult } from "./management/rename.ts";
+export type { OtherError, RejectedError } from "../../lib/thrownError.ts";
 export {
   useAddPasskey,
   useRemovePasskey,
@@ -186,7 +188,9 @@ export function useSignInWithUsernamePasskey(
       return options;
     },
     onAssertion: async (response) => {
-      const result = await signInApi.mutation(finishSignIn, { response });
+      const result = await runFinishMutation(() =>
+        signInApi.mutation(finishSignIn, { response }),
+      );
       if (result.status !== "complete") {
         // The autofill loop takes its own `success` boolean, not the
         // envelope: it retries on a failed assertion rather than handing

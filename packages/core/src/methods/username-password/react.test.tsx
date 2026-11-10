@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { anyApi } from "convex/server";
+import { ConvexError } from "convex/values";
 import { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthClient } from "../../browser/sessionManager.ts";
@@ -133,6 +134,23 @@ describe.each(flows)("$name", ({ useFlow }) => {
     expect(returned).toEqual({
       status: "error",
       userError: { error: "OTHER_ERROR", cause },
+    });
+    expect(result.current.auth.isAuthenticated).toBe(false);
+  });
+
+  test("a thrown ConvexError folds into REJECTED with its data", async () => {
+    runMutation.mockRejectedValue(new ConvexError("Account suspended"));
+    const { result } = renderFlow(useFlow);
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Result;
+    await act(async () => {
+      returned = await result.current.flow.run(credentials);
+    });
+
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "REJECTED", data: "Account suspended" },
     });
     expect(result.current.auth.isAuthenticated).toBe(false);
   });
