@@ -61,7 +61,7 @@ describe("createTotp", () => {
         userId: "alice",
         code: await codeFor(first.secret),
       }),
-    ).toEqual({ success: false, userError: { error: "INVALID_CODE" } });
+    ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
         userId: "alice",
@@ -227,7 +227,7 @@ describe("confirmTotp", () => {
           code: await codeFor(secret, Date.now() + offset),
         }),
         `offset ${offset}`,
-      ).toEqual({ success: false, userError: { error: "INVALID_CODE" } });
+      ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     }
   });
 
@@ -241,7 +241,7 @@ describe("confirmTotp", () => {
       expect(
         await t.mutation(api.enrollment.confirmTotp, { userId: "alice", code }),
         JSON.stringify(code),
-      ).toEqual({ success: false, userError: { error: "INVALID_CODE" } });
+      ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     }
   });
 
@@ -272,7 +272,7 @@ describe("confirmTotp", () => {
         userId: "alice",
         code: stale,
       }),
-    ).toEqual({ success: false, userError: { error: "INVALID_CODE" } });
+    ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     expect(
       await t.query(api.enrollment.getStatus, { userId: "alice" }),
     ).toEqual({
