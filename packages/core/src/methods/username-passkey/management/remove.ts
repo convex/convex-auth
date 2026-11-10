@@ -31,7 +31,7 @@ import { toBase64URL } from "../base64url.ts";
 import {
   deletePasskeyUserError,
   finishAuthenticationUserError,
-  notSignedInUserError,
+  notLoggedInUserError,
   vAuthenticationResponseJSON,
   vPublicKeyCredentialRequestOptionsJSON,
 } from "../../../components/passkey/validation.ts";
@@ -59,7 +59,7 @@ const startRemovePasskeyResult = v.union(
   v.object({
     success: v.literal(false),
     userError: v.union(
-      notSignedInUserError,
+      notLoggedInUserError,
       deletePasskeyUserError,
       lastPasskeyUserError,
     ),
@@ -73,7 +73,7 @@ const finishRemovePasskeyResult = v.union(
   v.object({
     success: v.literal(false),
     userError: v.union(
-      notSignedInUserError,
+      notLoggedInUserError,
       finishAuthenticationUserError,
       deletePasskeyUserError,
     ),
@@ -93,7 +93,7 @@ export function startRemovePasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx, { passkeyId }): Promise<StartRemovePasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
 
       const passkeys = await ctx.runQuery(
@@ -143,7 +143,7 @@ export function finishRemovePasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx, args): Promise<FinishRemovePasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
 
       const authenticationResult = await ctx.runMutation(

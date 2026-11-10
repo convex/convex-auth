@@ -123,7 +123,7 @@ function errorMessage(
       return "Your new password can't start or end with whitespace.";
     case "PASSWORD_TOO_COMMON":
       return "Your new password is one of the most commonly used passwords. Please choose a different one.";
-    case "NOT_SIGNED_IN":
+    case "NOT_LOGGED_IN":
       return "Your session has ended. Please log in again.";
     default:
       userError satisfies never;

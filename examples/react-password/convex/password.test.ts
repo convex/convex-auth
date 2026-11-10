@@ -299,7 +299,7 @@ describe("changePassword", () => {
     });
     expect(result).toEqual({
       success: false,
-      userError: { error: "NOT_SIGNED_IN" },
+      userError: { error: "NOT_LOGGED_IN" },
     });
   });
 

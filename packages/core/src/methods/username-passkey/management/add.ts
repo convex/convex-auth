@@ -35,7 +35,7 @@ import type { UsernamePasskeyConfig } from "../server.ts";
 import {
   finishAuthenticationUserError,
   finishRegistrationUserError,
-  notSignedInUserError,
+  notLoggedInUserError,
   vAuthenticationResponseJSON,
   vPublicKeyCredentialCreationOptionsJSON,
   vPublicKeyCredentialRequestOptionsJSON,
@@ -77,7 +77,7 @@ const startAddPasskeyResult = v.union(
   }),
   v.object({
     success: v.literal(false),
-    userError: v.union(notSignedInUserError, tooManyPasskeysUserError),
+    userError: v.union(notLoggedInUserError, tooManyPasskeysUserError),
   }),
 );
 
@@ -92,7 +92,7 @@ const verifyAddPasskeyResult = v.union(
     success: v.literal(false),
     // `PROTOCOL_ERROR` also covers an assertion that authenticates a
     // different user than the caller. See the check in `verifyAddPasskey`.
-    userError: v.union(notSignedInUserError, finishAuthenticationUserError),
+    userError: v.union(notLoggedInUserError, finishAuthenticationUserError),
   }),
 );
 
@@ -103,7 +103,7 @@ const finishAddPasskeyResult = v.union(
   v.object({
     success: v.literal(false),
     userError: v.union(
-      notSignedInUserError,
+      notLoggedInUserError,
       finishRegistrationUserError,
       tooManyPasskeysUserError,
     ),
@@ -119,7 +119,7 @@ export function startAddPasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx): Promise<StartAddPasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
       const passkeys = await ctx.runQuery(
         config.component.registration.listPasskeys,
@@ -161,7 +161,7 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx, args): Promise<VerifyAddPasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
 
       const authenticationResult = await ctx.runMutation(
@@ -237,7 +237,7 @@ export function finishAddPasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx, args): Promise<FinishAddPasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
       const passkeys = await ctx.runQuery(
         config.component.registration.listPasskeys,
