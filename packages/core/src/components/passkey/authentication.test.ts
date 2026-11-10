@@ -139,7 +139,7 @@ describe("finishAuthentication", () => {
       ...EXPECTED,
       ...assertion,
     });
-    expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+    expect(result).toMatchObject({ success: true, userId: "user1", passkeyId });
 
     const [row] = await t.run((ctx) => ctx.db.query("passkeys").collect());
     expect(row.counter).toBe(7);
@@ -192,7 +192,7 @@ describe("finishAuthentication", () => {
       ...EXPECTED,
       ...assertion,
     });
-    expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+    expect(result).toMatchObject({ success: true, userId: "user1", passkeyId });
   });
 
   test("identifies the user in the discoverable flow", async () => {
@@ -207,7 +207,7 @@ describe("finishAuthentication", () => {
       ...EXPECTED,
       ...assertion,
     });
-    expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+    expect(result).toMatchObject({ success: true, userId: "user1", passkeyId });
   });
 
   test("returns UNKNOWN_CREDENTIAL without consuming the challenge", async () => {
@@ -708,6 +708,6 @@ describe("finishAuthentication", () => {
       ...EXPECTED,
       ...(await buildAssertion(credential, signIn.challenge)),
     });
-    expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+    expect(result).toMatchObject({ success: true, userId: "user1", passkeyId });
   });
 });

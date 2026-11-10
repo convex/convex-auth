@@ -66,6 +66,7 @@
  */
 
 import { Infer, v } from "convex/values";
+import { attestUser, verifyNewUser } from "../custom.ts";
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server.ts";
 import { Doc, Id } from "./_generated/dataModel.ts";
 import { verifyRegistrationResponse } from "@simplewebauthn/server";
@@ -285,12 +286,30 @@ const finishRegistrationResult = v.union(
 );
 type FinishRegistrationResult = Infer<typeof finishRegistrationResult>;
 
+const finishRegistrationForNewUserResult = v.union(
+  v.object({
+    success: v.literal(true),
+    passkeyId: v.string(),
+    // A user attestation for the new user: the user registered a passkey.
+    // The sign-in method exchanges it for a session.
+    attestation: v.string(),
+  }),
+  v.object({
+    success: v.literal(false),
+    userError: v.union(finishRegistrationUserError, invalidNameUserError),
+  }),
+);
+type FinishRegistrationForNewUserResult = Infer<
+  typeof finishRegistrationForNewUserResult
+>;
+
 /**
- * Finish a registration ceremony that `startRegistrationForNewUser` started.
+ * Finish a registration ceremony that `startRegistrationForNewUser` started,
+ * and attest the new user.
  *
- * `newUserId` is the user that the caller creates in the same transaction.
- * The function links the handle of the ceremony to that user and stores the
- * credential.
+ * `newUser` is the new-user attestation that the core's `createUser`
+ * returned in the same transaction. The function links the handle of the
+ * ceremony to that user and stores the credential.
  *
  * Each failure comes back as a `userError`. A client that does not respect
  * the WebAuthn protocol gets `PROTOCOL_ERROR`, and the backend logs say
@@ -298,11 +317,13 @@ type FinishRegistrationResult = Infer<typeof finishRegistrationResult>;
  *
  * A caller that wants to be sure that this call succeeds before it creates
  * data can call {@link checkRegistrationForNewUser} first, in the same mutation.
+ *
+ * Throws when `newUser` is not a valid new-user attestation of the core.
  */
 export const finishRegistrationForNewUser = mutation({
-  args: { ...finishRegistrationArgs, newUserId: v.string() },
-  returns: finishRegistrationResult,
-  handler: async (ctx, args): Promise<FinishRegistrationResult> => {
+  args: { ...finishRegistrationArgs, newUser: v.string() },
+  returns: finishRegistrationForNewUserResult,
+  handler: async (ctx, args): Promise<FinishRegistrationForNewUserResult> => {
     if (args.name !== undefined && !passkeyNameIsValid(args.name)) {
       return { success: false, userError: { error: "INVALID_NAME" } };
     }
@@ -310,9 +331,12 @@ export const finishRegistrationForNewUser = mutation({
     if (result.userError !== null) {
       return { success: false, userError: result.userError };
     }
+    // After the ceremony, which can fail for the user. An invalid attestation
+    // throws, thus the transaction does not commit the consumed challenge.
+    const { userId: newUserId } = await verifyNewUser(args.newUser);
     const existingHandle = await ctx.db
       .query("handles")
-      .withIndex("by_userId", (q) => q.eq("userId", args.newUserId))
+      .withIndex("by_userId", (q) => q.eq("userId", newUserId))
       .first();
     if (existingHandle !== null) {
       // Invariant: the new-user flow only runs for a brand-new user, which
@@ -322,17 +346,21 @@ export const finishRegistrationForNewUser = mutation({
       );
     }
     await ctx.db.patch("handles", result.handle._id, {
-      userId: args.newUserId,
+      userId: newUserId,
     });
     const passkeyId = await ctx.db.insert("passkeys", {
-      userId: args.newUserId,
+      userId: newUserId,
       name: args.name,
       transports: args.response.response.transports,
       credentialId: result.credential.credentialId,
       publicKey: result.credential.publicKey,
       counter: result.credential.counter,
     });
-    return { success: true, passkeyId };
+    return {
+      success: true,
+      passkeyId,
+      attestation: await attestUser(ctx, { verifiedUserId: newUserId }),
+    };
   },
 });
 

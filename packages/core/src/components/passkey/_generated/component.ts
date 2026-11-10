@@ -44,7 +44,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             type: "public-key";
           };
         },
-        | { passkeyId: string; success: true; userId: string }
+        | {
+            attestation: string;
+            passkeyId: string;
+            success: true;
+            userId: string;
+          }
         | {
             success: false;
             userError:
@@ -150,7 +155,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
-          newUserId: string;
+          newUser: string;
           response: {
             clientExtensionResults: {};
             id: string;
@@ -163,7 +168,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             type: "public-key";
           };
         },
-        | { passkeyId: string; success: true }
+        | { attestation: string; passkeyId: string; success: true }
         | {
             success: false;
             userError:
