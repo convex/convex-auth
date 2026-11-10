@@ -95,6 +95,12 @@ const fakeCore = {
       signUpWithoutSession: async () => {
         throw new Error("signUpWithoutSession is not used by redemption");
       },
+      createUser: async () => {
+        throw new Error("createUser is not used by redemption");
+      },
+      createSession: async () => {
+        throw new Error("createSession is not used by redemption");
+      },
       revokeOtherSessions: async () => {
         throw new Error("revokeOtherSessions is not used by redemption");
       },

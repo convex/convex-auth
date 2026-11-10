@@ -2,8 +2,9 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // The IDs of the app users that the core created or signed in, or that the
-  // app marked as created (`markUserIdCreated`).
+  // The IDs of the app users that the core created, signed in, or that the app
+  // marked as created (`markUserIdCreated`). `createUser` refuses these IDs,
+  // thus the core never attests that an existing user is new.
   createdUserIds: defineTable({
     userId: v.string(),
   }).index("by_userId", ["userId"]),

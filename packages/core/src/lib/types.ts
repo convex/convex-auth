@@ -307,6 +307,32 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
+   * Create a new user with the app's `createUser` callback, without a
+   * session, and return its ID and a new-user attestation for it.
+   *
+   * Give `newUser` to the components that connect their data to the new user
+   * (for example `setPasswordForNewUser`). They return a user attestation,
+   * which {@link BoundAuthHelpers.createSession} exchanges for a session.
+   *
+   * The core refuses a user ID that it already knows, thus `createUser` must
+   * create a new user. `profile` goes to `createUser` as it is.
+   */
+  createUser(args: {
+    profile: Profile;
+  }): Promise<{ userId: string; newUser: string }>;
+  /**
+   * Exchange a user attestation for a session.
+   *
+   * A component signs the attestation when it verifies the user, for example
+   * when it checks a password. The core runs the app's `onSignIn` callback, if
+   * one is attached, with `profile`, and returns the
+   * tokens a client needs to make authenticated calls.
+   */
+  createSession(args: {
+    attestation: string;
+    profile: Profile;
+  }): Promise<TokenBundle>;
+  /**
    * Create the app user for a *new* identity and exchange it for a session.
    *
    * Call this when the sign-in method has verified a new identity. The core:
