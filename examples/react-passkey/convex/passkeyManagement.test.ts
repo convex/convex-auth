@@ -181,7 +181,7 @@ describe("listPasskeys", () => {
     await signUp(t, "alice");
     expect(await t.query(api.auth.listPasskeys, {})).toEqual({
       success: false,
-      userError: { error: "NOT_SIGNED_IN" },
+      userError: { error: "NOT_LOGGED_IN" },
     });
   });
 });
@@ -401,18 +401,18 @@ describe("adding a passkey", () => {
   test("refuses a signed-out caller", async () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
-    const notSignedIn = {
+    const notLoggedIn = {
       success: false,
-      userError: { error: "NOT_SIGNED_IN" },
+      userError: { error: "NOT_LOGGED_IN" },
     };
 
-    expect(await t.mutation(api.auth.startAddPasskey, {})).toEqual(notSignedIn);
+    expect(await t.mutation(api.auth.startAddPasskey, {})).toEqual(notLoggedIn);
     expect(
       await t.mutation(
         api.auth.verifyAddPasskey,
         await assertWith(alice.credential, toBase64URL(new ArrayBuffer(32))),
       ),
-    ).toEqual(notSignedIn);
+    ).toEqual(notLoggedIn);
     expect(
       await t.mutation(
         api.auth.finishAddPasskey,
@@ -421,7 +421,7 @@ describe("adding a passkey", () => {
           await generateES256Credential(),
         ),
       ),
-    ).toEqual(notSignedIn);
+    ).toEqual(notLoggedIn);
   });
 });
 
@@ -465,7 +465,7 @@ describe("renaming a passkey", () => {
     ).toEqual({ success: false, userError: { error: "PASSKEY_NOT_FOUND" } });
     expect(
       await t.mutation(api.auth.renamePasskey, { passkeyId, name: "Mine" }),
-    ).toEqual({ success: false, userError: { error: "NOT_SIGNED_IN" } });
+    ).toEqual({ success: false, userError: { error: "NOT_LOGGED_IN" } });
   });
 });
 
@@ -629,16 +629,16 @@ describe("removing a passkey", () => {
     const t = await setup();
     const alice = await signUp(t, "alice");
     const second = await addPasskey(t, alice, alice.credential);
-    const notSignedIn = {
+    const notLoggedIn = {
       success: false,
-      userError: { error: "NOT_SIGNED_IN" },
+      userError: { error: "NOT_LOGGED_IN" },
     };
 
     expect(
       await t.mutation(api.auth.startRemovePasskey, {
         passkeyId: second.passkeyId,
       }),
-    ).toEqual(notSignedIn);
+    ).toEqual(notLoggedIn);
     expect(
       await t.mutation(api.auth.finishRemovePasskey, {
         passkeyId: second.passkeyId,
@@ -647,6 +647,6 @@ describe("removing a passkey", () => {
           toBase64URL(new ArrayBuffer(32)),
         )),
       }),
-    ).toEqual(notSignedIn);
+    ).toEqual(notLoggedIn);
   });
 });

@@ -74,7 +74,7 @@ const changePasswordResult = v.union(
   v.object({
     success: v.literal(false),
     userError: v.union(
-      v.object({ error: v.literal("NOT_SIGNED_IN") }),
+      v.object({ error: v.literal("NOT_LOGGED_IN") }),
       v.object({ error: v.literal("INVALID_CREDENTIALS") }),
       v.object({ error: v.literal("RATE_LIMITED"), retryAfterMs: v.number() }),
       setPasswordUserError,
@@ -292,7 +292,7 @@ export function setupUsernamePassword<UsersTable extends string>(
           ): Promise<ChangePasswordResult> => {
             const userId = await getAuthUserId(ctx, core.component);
             if (userId === null) {
-              return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+              return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
 
             // Validate the new password before verifying the current one, so

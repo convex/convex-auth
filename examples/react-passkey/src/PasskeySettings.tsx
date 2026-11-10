@@ -15,7 +15,7 @@ export function PasskeySettings() {
   const [error, setError] = useState<string | null>(null);
 
   if (query !== undefined && !query.success) {
-    query.userError.error satisfies "NOT_SIGNED_IN";
+    query.userError.error satisfies "NOT_LOGGED_IN";
     return <p role="alert">You are not signed in.</p>;
   }
   if (query === undefined) {
@@ -156,7 +156,7 @@ function errorMessage(
       return "The passkey dialog stayed open for too long. Please try again.";
     case "UNKNOWN_CREDENTIAL":
       return "This passkey is not registered here.";
-    case "NOT_SIGNED_IN":
+    case "NOT_LOGGED_IN":
       return "Your session has ended. Please log in again.";
     case "WEBAUTHN_UNSUPPORTED":
       return "This browser does not support passkeys.";

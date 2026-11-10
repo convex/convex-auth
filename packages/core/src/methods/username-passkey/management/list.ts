@@ -8,7 +8,7 @@ import { queryGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../../server/userId.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
-import { notSignedInUserError } from "../../../components/passkey/validation.ts";
+import { notLoggedInUserError } from "../../../components/passkey/validation.ts";
 
 /**
  * The passkey metadata shown to the user when managing their passkeys.
@@ -22,7 +22,7 @@ const passkeyMetadata = v.object({
 
 const listPasskeysResult = v.union(
   v.object({ success: v.literal(true), passkeys: v.array(passkeyMetadata) }),
-  v.object({ success: v.literal(false), userError: notSignedInUserError }),
+  v.object({ success: v.literal(false), userError: notLoggedInUserError }),
 );
 
 export type ListPasskeysResult = Infer<typeof listPasskeysResult>;
@@ -34,7 +34,7 @@ export function listPasskeys(config: UsernamePasskeyConfig) {
     handler: async (ctx): Promise<ListPasskeysResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
       const passkeys = await ctx.runQuery(
         config.component.registration.listPasskeys,

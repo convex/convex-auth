@@ -12,7 +12,7 @@ import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../../server/userId.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
 import {
-  notSignedInUserError,
+  notLoggedInUserError,
   renamePasskeyUserError,
 } from "../../../components/passkey/validation.ts";
 
@@ -20,7 +20,7 @@ const renamePasskeyResult = v.union(
   v.object({ success: v.literal(true) }),
   v.object({
     success: v.literal(false),
-    userError: v.union(notSignedInUserError, renamePasskeyUserError),
+    userError: v.union(notLoggedInUserError, renamePasskeyUserError),
   }),
 );
 
@@ -38,7 +38,7 @@ export function renamePasskey(config: UsernamePasskeyConfig) {
     handler: async (ctx, args): Promise<RenamePasskeyResult> => {
       const userId = await getAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
-        return { success: false, userError: { error: "NOT_SIGNED_IN" } };
+        return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
       return await ctx.runMutation(
         config.component.registration.renamePasskey,
