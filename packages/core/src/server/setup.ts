@@ -350,6 +350,31 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
     // The helpers close over the live ctx.
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
+      createUser: async (args: {
+        profile: Profile;
+      }): Promise<{ userId: string; newUser: string }> => {
+        return await ctx.runMutation(component.public.createUser, {
+          claims: {
+            method: name,
+            profile: args.profile,
+          },
+          createUserHandle: await createFunctionHandle(createUser),
+        });
+      },
+      createSession: async (args: {
+        attestation: string;
+        profile: Profile;
+      }): Promise<TokenBundle> => {
+        return await ctx.runMutation(component.public.createSession, {
+          attestation: args.attestation,
+          claims: {
+            method: name,
+            profile: args.profile,
+          },
+          onSignInHandle: await onSignInHandle(),
+          ...ttl,
+        });
+      },
       completeSignUp: async (args: {
         profile: Profile;
         verifiedBy: object;

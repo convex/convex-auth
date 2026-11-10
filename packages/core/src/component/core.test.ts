@@ -12,6 +12,11 @@ import {
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
+import { registerAttestationSigner } from "../lib/attestationSigner.fixture.ts";
+import {
+  NEW_USER_ATTESTATION,
+  USER_ATTESTATION,
+} from "../lib/attestationKinds.ts";
 import {
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
@@ -169,6 +174,168 @@ async function redeemedHash(t: ConvexTestApi) {
   return redeemed[0]?.hash;
 }
 
+describe("createUser", () => {
+  async function createUser(t: ConvexTestApi, handle = CREATE_USER_HANDLE) {
+    return await t.mutation(api.public.createUser, {
+      claims: claims(),
+      createUserHandle: handle,
+    });
+  }
+
+  test("creates the user and attests that it is new, with no session", async () => {
+    testApp.resetUserCallbackCalls();
+    const t = setup();
+    const { userId, newUser } = await createUser(t);
+    expect(testApp.getCreateUserCalls()).toEqual([
+      {
+        method: {
+          name: "usernamePassword",
+          profile: { name: "Alice" },
+        },
+      },
+    ]);
+    expect(decodeJwt(newUser)).toMatchObject({
+      aud: NEW_USER_ATTESTATION.audience,
+      userId,
+    });
+    expect(testApp.getOnSignInCalls()).toEqual([]);
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("refuses a user ID that createUser already returned", async () => {
+    const t = setup();
+    await createUser(t, "testApp:createUserReturningFixedId");
+    await expect(
+      createUser(t, "testApp:createUserReturningFixedId"),
+    ).rejects.toThrow("returned the ID of a user that already exists");
+  });
+
+  test("refuses a user ID that was marked as created", async () => {
+    const t = setup();
+    await t.mutation(api.public.markUserIdCreated, { userId: "fixedUser" });
+    await expect(
+      createUser(t, "testApp:createUserReturningFixedId"),
+    ).rejects.toThrow("returned the ID of a user that already exists");
+  });
+
+  test("refuses a user ID that signed in before", async () => {
+    const t = setup();
+    const signer = registerAttestationSigner(t, "authPassword");
+    await t.mutation(api.public.createSession, {
+      attestation: await signer.attest(USER_ATTESTATION, {
+        userId: "fixedUser",
+      }),
+      claims: claims(),
+      ...DEFAULT_TTL,
+    });
+    await expect(
+      createUser(t, "testApp:createUserReturningFixedId"),
+    ).rejects.toThrow("returned the ID of a user that already exists");
+  });
+});
+
+describe("createSession", () => {
+  async function createSession(
+    t: ConvexTestApi,
+    attestation: string,
+    onSignInHandle?: string,
+  ) {
+    return await t.mutation(api.public.createSession, {
+      attestation,
+      claims: claims(),
+      onSignInHandle,
+      ...DEFAULT_TTL,
+    });
+  }
+
+  test("creates a session for the attested user, and records the component that attested the user", async () => {
+    testApp.resetUserCallbackCalls();
+    const t = setup();
+    const signer = registerAttestationSigner(t, "authPassword");
+    const tokens = await createSession(
+      t,
+      await signer.attest(USER_ATTESTATION, { userId: "user1" }),
+      ON_SIGN_IN_HANDLE,
+    );
+    expect(tokens.userId).toBe("user1");
+    const { payload } = await verifyAccessToken(t, tokens.accessToken);
+    const session = await t.run(async (ctx) =>
+      ctx.db.get(payload.sub as Id<"sessions">),
+    );
+    expect(session).toMatchObject({
+      userId: "user1",
+      component: "authPassword",
+    });
+    expect(testApp.getOnSignInCalls()).toEqual([
+      {
+        method: {
+          name: "usernamePassword",
+          profile: { name: "Alice" },
+        },
+        userId: "user1",
+      },
+    ]);
+  });
+
+  test("refuses a new-user attestation", async () => {
+    const t = setup();
+    const signer = registerAttestationSigner(t, "auth");
+    await expect(
+      createSession(
+        t,
+        await signer.attest(NEW_USER_ATTESTATION, { userId: "user1" }),
+      ),
+    ).rejects.toThrow("Invalid attestation");
+    expect(await sessionCount(t)).toBe(0);
+  });
+
+  test("refuses a token that the app signed", async () => {
+    const t = setup();
+    const token = await t.run(
+      async (ctx) =>
+        await ctx.auth.signJwt({
+          claims: { aud: USER_ATTESTATION.audience, userId: "user1" },
+          expiresInSeconds: 1,
+        }),
+    );
+    await expect(createSession(t, token)).rejects.toThrow(
+      "Invalid attestation",
+    );
+  });
+
+  test("an onSignIn that throws rolls back the session", async () => {
+    const t = setup();
+    const signer = registerAttestationSigner(t, "authPassword");
+    await expect(
+      createSession(
+        t,
+        await signer.attest(USER_ATTESTATION, { userId: "user1" }),
+        THROWING_ON_SIGN_IN_HANDLE,
+      ),
+    ).rejects.toThrow("no sign-ins for you");
+    expect(await sessionCount(t)).toBe(0);
+  });
+});
+
+describe("markUserIdCreated", () => {
+  test("is idempotent", async () => {
+    const t = setup();
+    await t.mutation(api.public.markUserIdCreated, { userId: "user1" });
+    await t.mutation(api.public.markUserIdCreated, { userId: "user1" });
+    const rows = await t.run(async (ctx) =>
+      ctx.db.query("createdUserIds").collect(),
+    );
+    expect(rows.map((row) => row.userId)).toEqual(["user1"]);
+  });
+
+  test("refuses an empty user ID", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.public.markUserIdCreated, { userId: "" }),
+    ).rejects.toThrow("empty user ID");
+  });
+});
+
 describe("sessions and created user IDs", () => {
   async function createdUserIds(t: ConvexTestApi) {
     return (
@@ -198,16 +365,6 @@ describe("sessions and created user IDs", () => {
     expect((await createdUserIds(t)).sort()).toEqual(
       [userId, "someone", pending].sort(),
     );
-  });
-
-  test("markUserIdCreated records a user ID once, and refuses an empty one", async () => {
-    const t = setup();
-    await t.mutation(api.public.markUserIdCreated, { userId: "imported" });
-    await t.mutation(api.public.markUserIdCreated, { userId: "imported" });
-    expect(await createdUserIds(t)).toEqual(["imported"]);
-    await expect(
-      t.mutation(api.public.markUserIdCreated, { userId: "" }),
-    ).rejects.toThrow("empty user ID");
   });
 });
 

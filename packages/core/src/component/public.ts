@@ -1,5 +1,5 @@
-import { mutation, query, MutationCtx } from "./_generated/server.ts";
-import { Id } from "./_generated/dataModel.ts";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.ts";
+import { Doc, Id } from "./_generated/dataModel.ts";
 import { GenericId, v } from "convex/values";
 import {
   FunctionArgs,
@@ -18,6 +18,11 @@ import {
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
 import { assertMountedAsCore } from "../lib/coreComponent.ts";
+import { signAttestation, verifyAttestation } from "../lib/attestation.ts";
+import {
+  NEW_USER_ATTESTATION,
+  USER_ATTESTATION,
+} from "../lib/attestationKinds.ts";
 import {
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
@@ -143,12 +148,27 @@ async function createAppUser(
   claims: AuthClaims,
   createUser: CreateUserFunctionHandle,
 ): Promise<string> {
-  return await ctx.runMutation(createUser, {
+  const userId = await ctx.runMutation(createUser, {
     method: {
       name: claims.method,
       profile: claims.profile,
     },
   });
+  if (userId === "") {
+    throw new Error("The app's createUser callback returned an empty user ID.");
+  }
+  return userId;
+}
+
+/** Find the row of `createdUserIds` for the given user, if any. */
+async function createdUserIdRow(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<Doc<"createdUserIds"> | null> {
+  return await ctx.db
+    .query("createdUserIds")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
 }
 
 /** Add the user to `createdUserIds`, if it is not there yet. */
@@ -156,11 +176,7 @@ async function recordCreatedUserId(
   ctx: MutationCtx,
   userId: string,
 ): Promise<void> {
-  const existing = await ctx.db
-    .query("createdUserIds")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-  if (existing === null) {
+  if ((await createdUserIdRow(ctx, userId)) === null) {
     await ctx.db.insert("createdUserIds", { userId });
   }
 }
@@ -187,6 +203,109 @@ async function notifySignIn(
 }
 
 // --- Component API ------------------------------------------------------------
+
+/**
+ * Create a user with the app's `createUser` callback, and return its ID and a
+ * new-user attestation (`NEW_USER_ATTESTATION`) for it.
+ *
+ * This function does not create a session. The sign-in method gives the
+ * attestation to its components, which connect their data to the new user
+ * (for example a password) and then attest the user (`USER_ATTESTATION`).
+ * {@link createSession} creates the session from that attestation.
+ *
+ * The core keeps the IDs of all the users that it created or signed in
+ * (`createdUserIds`). If the callback returns one of these IDs, this function
+ * throws: the user is not new, thus the core must not attest that it is.
+ * Use {@link markUserIdCreated} for users that the app creates in a
+ * different way, for example users that it imports.
+ *
+ * The core does not check `claims`. It only gives them to the callback.
+ */
+export const createUser = mutation({
+  args: {
+    claims: vAuthClaims,
+    createUserHandle: v.string(),
+  },
+  returns: v.object({ userId: v.string(), newUser: v.string() }),
+  handler: async (ctx, args): Promise<{ userId: string; newUser: string }> => {
+    const userId = await createAppUser(
+      ctx,
+      args.claims,
+      args.createUserHandle as CreateUserFunctionHandle,
+    );
+    if ((await createdUserIdRow(ctx, userId)) !== null) {
+      throw new Error(
+        `The app's createUser callback returned the ID of a user that already ` +
+          `exists (${JSON.stringify(userId)}). createUser must create a new user.`,
+      );
+    }
+    await ctx.db.insert("createdUserIds", { userId });
+    const newUser = await signAttestation(ctx, NEW_USER_ATTESTATION, {
+      userId,
+    });
+    return { userId, newUser };
+  },
+});
+
+/**
+ * Create a session for the user of a user attestation (`USER_ATTESTATION`),
+ * and return its tokens.
+ *
+ * A component signs the attestation when it verifies the user, for example
+ * when it checks a password. The session records the path of that component
+ * as its `component`.
+ *
+ * The core does not check `claims`. It only gives them to the app's
+ * `onSignIn` callback.
+ *
+ * The JWT accessToken in the return value is signed by the deployment, with
+ * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
+ * are the app's configuration, which `setupConvexAuth` resolves and passes in.
+ */
+export const createSession = mutation({
+  args: {
+    attestation: v.string(),
+    claims: vAuthClaims,
+    onSignInHandle: v.optional(v.string()),
+    ...vTtlConfigFields,
+  },
+  returns: vTokenBundle,
+  handler: async (ctx, args): Promise<TokenBundle> => {
+    const ttl = validateTtlConfig(args);
+    const { componentPath, claims } = await verifyAttestation(
+      USER_ATTESTATION,
+      args.attestation,
+    );
+    const { userId } = claims;
+    await recordCreatedUserId(ctx, userId);
+    await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
+    return await issueSession(ctx, userId, componentPath, ttl);
+  },
+});
+
+/**
+ * Record that a user exists, thus {@link createUser} refuses its ID from now
+ * on.
+ *
+ * The core records the users that it creates and signs in. Call this function
+ * for the other users: users that the app imports or creates without the core,
+ * and the users that existed before the app upgraded to this version. Their
+ * IDs are not known to the core until their next sign-in.
+ *
+ * Any code of the app can call this function. That is safe: it can only make
+ * `createUser` refuse an ID.
+ */
+export const markUserIdCreated = mutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    if (userId === "") {
+      throw new Error("Cannot mark an empty user ID as created.");
+    }
+    await recordCreatedUserId(ctx, userId);
+    return null;
+  },
+});
 
 /**
  * Performs an app-integrated new user sign-up.
@@ -303,28 +422,6 @@ export const signUpWithoutSession = mutation({
     );
     await recordCreatedUserId(ctx, userId);
     return { userId };
-  },
-});
-
-/**
- * Record that a user exists.
- *
- * The core records the users that it creates and signs in. Call this function
- * for the other users: the users that the app imports or creates without the
- * core, and the users that existed before the app upgraded to this version.
- *
- * Any code of the app can call this function. That is safe: it only records
- * that an ID is in use.
- */
-export const markUserIdCreated = mutation({
-  args: { userId: v.string() },
-  returns: v.null(),
-  handler: async (ctx, { userId }) => {
-    if (userId === "") {
-      throw new Error("Cannot mark an empty user ID as created.");
-    }
-    await recordCreatedUserId(ctx, userId);
-    return null;
   },
 });
 
