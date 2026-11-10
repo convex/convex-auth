@@ -110,8 +110,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -156,8 +156,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -196,8 +196,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -236,8 +236,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -285,8 +285,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -365,8 +365,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3(vite@8.1.2(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -397,6 +397,9 @@ importers:
       password-hash-wasm:
         specifier: 0.0.0
         version: 0.0.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@convex-dev/passkey-test-authenticator':
         specifier: workspace:*
@@ -426,8 +429,8 @@ importers:
         specifier: 1.48.0
         version: 1.48.0(react@19.2.7)
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       hash-wasm:
         specifier: ^4.12.0
         version: 4.12.0
@@ -484,8 +487,8 @@ importers:
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.17)
       convex-test:
-        specifier: ^0.0.65
-        version: 0.0.65(convex@1.48.0(react@19.2.7))
+        specifier: https://pkg.pr.new/convex-test@190
+        version: https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -4125,8 +4128,9 @@ packages:
       zod:
         optional: true
 
-  convex-test@0.0.65:
-    resolution: {integrity: sha512-2FgHlLGraM2O3tEVpOfvoHSleK0x92J8xjQ/qClWzNJX3NcmgvuNeWBrmma7sLJ8lB3ENPxx6ykJTfvZmWg3BQ==}
+  convex-test@https://pkg.pr.new/convex-test@190:
+    resolution: {tarball: https://pkg.pr.new/convex-test@190}
+    version: 0.0.69
     peerDependencies:
       convex: ^1.43.0
 
@@ -12488,7 +12492,7 @@ snapshots:
       typescript: 6.0.3
       zod: 4.4.3
 
-  convex-test@0.0.65(convex@1.48.0(react@19.2.7)):
+  convex-test@https://pkg.pr.new/convex-test@190(convex@1.48.0(react@19.2.7)):
     dependencies:
       convex: 1.48.0(react@19.2.7)
 
@@ -16894,7 +16898,6 @@ snapshots:
 
   yocto-queue@1.2.2: {}
 
-  zod@4.4.3:
-    optional: true
+  zod@4.4.3: {}
 
   zwitch@2.0.4: {}
