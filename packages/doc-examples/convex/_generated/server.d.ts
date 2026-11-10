@@ -30,8 +30,6 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
-  readonly AUTH_ACME_CLIENT_ID: string;
-  readonly AUTH_ACME_CLIENT_SECRET: string;
   readonly AUTH_APPLE_CLIENT_ID: string;
   readonly AUTH_APPLE_KEY_ID: string;
   readonly AUTH_APPLE_PRIVATE_KEY: string;

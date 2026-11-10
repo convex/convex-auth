@@ -1,3 +1,10 @@
+/**
+ * The generic `oauth` sign-in method, for identity providers without a
+ * built-in method.
+ *
+ * @internal Not public until the API for custom OAuth providers is stable.
+ * @module
+ */
 import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/oauth/_generated/component.ts";
@@ -121,6 +128,8 @@ export type OauthOptions = {
  * 3. `completeSignIn` (here): the client presents the one-time code from the
  *    callback redirect plus its original state, and gets back the session
  *    token bundle.
+ *
+ * @internal Not public until the API for custom OAuth providers is stable.
  */
 export function setupOauth<
   Provider extends string,

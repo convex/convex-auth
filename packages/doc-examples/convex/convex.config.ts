@@ -5,7 +5,6 @@ import authApple from "@convex-dev/auth/components/apple/convex.config.js";
 import authEmail from "@convex-dev/auth/components/email/convex.config.js";
 import authGithub from "@convex-dev/auth/components/github/convex.config.js";
 import authGoogle from "@convex-dev/auth/components/google/convex.config.js";
-import authOauth from "@convex-dev/auth/components/oauth/convex.config.js";
 import authPasskey from "@convex-dev/auth/components/passkey/convex.config.js";
 import authPassword from "@convex-dev/auth/components/password/convex.config.js";
 import authUsername from "@convex-dev/auth/components/username/convex.config.js";
@@ -21,8 +20,6 @@ const app = defineApp({
     AUTH_APPLE_PRIVATE_KEY: v.string(),
     AUTH_GITHUB_CLIENT_ID: v.string(),
     AUTH_GITHUB_CLIENT_SECRET: v.string(),
-    AUTH_ACME_CLIENT_ID: v.string(),
-    AUTH_ACME_CLIENT_SECRET: v.string(),
     RESEND_API_KEY: v.string(),
     // Defaults in auth.ts.
     SITE_URL: v.optional(v.string()),
@@ -57,14 +54,6 @@ app.use(authGithub, {
   env: {
     CLIENT_ID: app.env.AUTH_GITHUB_CLIENT_ID,
     CLIENT_SECRET: app.env.AUTH_GITHUB_CLIENT_SECRET,
-  },
-});
-app.use(authOauth, {
-  name: "authAcme",
-  httpPrefix: "/oauth/acme",
-  env: {
-    CLIENT_ID: app.env.AUTH_ACME_CLIENT_ID,
-    CLIENT_SECRET: app.env.AUTH_ACME_CLIENT_SECRET,
   },
 });
 app.use(resend);
