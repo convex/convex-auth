@@ -142,7 +142,6 @@ async function createAppUser(
   return await ctx.runMutation(createUser, {
     provider: {
       name: claims.providerName,
-      accountId: claims.providerAccountId,
       profile: claims.profile,
     },
   });
@@ -163,7 +162,6 @@ async function notifySignIn(
   await ctx.runMutation(onSignInHandle as OnSignInFunctionHandle, {
     provider: {
       name: claims.providerName,
-      accountId: claims.providerAccountId,
       profile: claims.profile,
     },
     userId: asUserId(userId),

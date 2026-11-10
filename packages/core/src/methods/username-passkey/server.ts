@@ -3,7 +3,6 @@ import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
   vSignInError,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -383,13 +382,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
               return { status: "error", userError };
             }
 
-            // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for this method at all: the value is an
-            // internal key ("" at sign-up, the user id afterwards) with no
-            // meaning to the app. We will probably improve this when
-            // methods support typesafe profiles.
             const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
             });
 
@@ -474,7 +467,6 @@ export function setupUsernamePasskey<UsersTable extends string>(
 
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
-              providerAccountId: userId,
               profile: {},
             });
             return { status: "complete", tokens, username };

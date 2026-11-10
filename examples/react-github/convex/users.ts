@@ -11,7 +11,6 @@ export const createUser = internalMutation({
   args: {
     provider: v.object({
       name: v.literal("github"),
-      accountId: v.string(),
       profile: vGithubProfile,
     }),
   },
