@@ -430,7 +430,8 @@
     "@simplewebauthn/server": "^14.0.0",
     "password-hash-wasm": "0.0.0",
     "cookie": "1.1.1",
-    "jose": "^5.2.2"
+    "jose": "^5.2.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@convex-dev/passkey-test-authenticator": "workspace:*",
@@ -442,7 +443,7 @@
     "@types/node": "^24.12.4",
     "@types/react": "^19.2.17",
     "convex": "1.48.0",
-    "convex-test": "^0.0.65",
+    "convex-test": "https://pkg.pr.new/convex-test@190",
     "hash-wasm": "^4.12.0",
     "jsdom": "^29.1.1",
     "next": "^16.0.0",
