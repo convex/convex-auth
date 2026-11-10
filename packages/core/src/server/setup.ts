@@ -37,9 +37,7 @@ import { resolveTtlConfig } from "../lib/ttl.ts";
 export type AuthMutationBuilder<Profile> = <
   ArgsValidator extends PropertyValidators,
   ReturnsValidator extends
-    | PropertyValidators
-    | Validator<unknown, "required", string>
-    | void,
+    PropertyValidators | Validator<unknown, "required", string> | void,
   ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> =
     ReturnValueForOptionalValidator<ReturnsValidator>,
 >(fn: {
