@@ -13,6 +13,12 @@ import { api } from "./_generated/api.ts";
 import schema from "./schema.ts";
 import { MIN_PASSWORD_LENGTH } from "./validation.ts";
 import { hashPassword, verifyPassword } from "password-hash-wasm/argon2id";
+import { decodeJwt } from "jose";
+import { registerAttestationSigner } from "../../lib/attestationSigner.fixture.ts";
+import {
+  NEW_USER_ATTESTATION,
+  USER_ATTESTATION,
+} from "../../lib/attestationKinds.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -34,12 +40,12 @@ describe("setPassword + verifyPassword", () => {
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
-    expect(setResult).toEqual({ success: true });
+    expect(setResult).toMatchObject({ success: true });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
       password: PASSWORD,
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toMatchObject({ success: true });
   });
 
   test("rejects a wrong password", async () => {
@@ -94,7 +100,7 @@ describe("setPassword + verifyPassword", () => {
         userId: "alice",
         password: newPassword,
       }),
-    ).toEqual({ success: true });
+    ).toMatchObject({ success: true });
     expect(
       await t.mutation(api.public.verifyPassword, {
         userId: "alice",
@@ -129,13 +135,13 @@ describe("password validation (setPassword)", () => {
       password: "kY7t-vQ2",
       minimumLength: MIN_PASSWORD_LENGTH,
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toMatchObject({ success: true });
     expect(
       await t.mutation(api.public.verifyPassword, {
         userId: "alice",
         password: "kY7t-vQ2",
       }),
-    ).toEqual({ success: true });
+    ).toMatchObject({ success: true });
   });
 
   test("rejects a password that is shorter than minimumLength", async () => {
@@ -288,7 +294,7 @@ describe("password validation (verifyPassword)", () => {
       userId: "alice",
       password: commonPassword,
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toMatchObject({ success: true });
   });
 });
 
@@ -311,7 +317,7 @@ describe("Unicode normalization", () => {
       userId: "alice",
       password: decomposed,
     });
-    expect(result).toEqual({ success: true });
+    expect(result).toMatchObject({ success: true });
   });
 });
 
@@ -462,5 +468,133 @@ describe("rate limiting (verifyPassword only)", () => {
         expect(typeof result.userError.retryAfterMs).toBe("number");
       }
     }
+  });
+});
+
+describe("attestations", () => {
+  test("verifyPassword attests the user on success", async () => {
+    const t = setup();
+    await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    const result = await t.mutation(api.public.verifyPassword, {
+      userId: "alice",
+      password: PASSWORD,
+    });
+    if (!result.success) throw new Error("expected success");
+    expect(decodeJwt(result.attestation)).toMatchObject({
+      aud: USER_ATTESTATION.audience,
+      userId: "alice",
+    });
+  });
+
+  test("setPasswordForNewUser stores the password of the new user and attests it", async () => {
+    const t = setup();
+    const core = registerAttestationSigner(t, "auth");
+    const result = await t.mutation(api.public.setPasswordForNewUser, {
+      newUser: await core.attest(NEW_USER_ATTESTATION, { userId: "alice" }),
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    if (!result.success) throw new Error("expected success");
+    expect(decodeJwt(result.attestation)).toMatchObject({
+      aud: USER_ATTESTATION.audience,
+      userId: "alice",
+    });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).toMatchObject({ success: true });
+  });
+
+  test("setPasswordForNewUser refuses a new-user attestation that the core did not sign", async () => {
+    const t = setup();
+    const other = registerAttestationSigner(t, "authOther");
+    await expect(
+      t.mutation(api.public.setPasswordForNewUser, {
+        newUser: await other.attest(NEW_USER_ATTESTATION, { userId: "alice" }),
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).rejects.toThrow("the core did not sign it");
+  });
+
+  test("setPasswordForNewUser refuses a user attestation", async () => {
+    const t = setup();
+    const core = registerAttestationSigner(t, "auth");
+    await expect(
+      t.mutation(api.public.setPasswordForNewUser, {
+        newUser: await core.attest(USER_ATTESTATION, { userId: "alice" }),
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).rejects.toThrow("Invalid attestation");
+  });
+
+  test("setPasswordForNewUser refuses a user that already has a password", async () => {
+    const t = setup();
+    const core = registerAttestationSigner(t, "auth");
+    await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    await expect(
+      t.mutation(api.public.setPasswordForNewUser, {
+        newUser: await core.attest(NEW_USER_ATTESTATION, { userId: "alice" }),
+        password: "another password that is long",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).rejects.toThrow("already has a password");
+  });
+
+  test("setPassword with a user attestation replaces the password", async () => {
+    const t = setup();
+    const email = registerAttestationSigner(t, "authEmail");
+    await t.mutation(api.public.setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    const newPassword = "another password that is long";
+    expect(
+      await t.mutation(api.public.setPassword, {
+        user: await email.attest(USER_ATTESTATION, { userId: "alice" }),
+        password: newPassword,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).toEqual({ success: true });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: newPassword,
+      }),
+    ).toMatchObject({ success: true });
+  });
+
+  test("setPassword refuses a token that is not a user attestation", async () => {
+    const t = setup();
+    const core = registerAttestationSigner(t, "auth");
+    await expect(
+      t.mutation(api.public.setPassword, {
+        user: await core.attest(NEW_USER_ATTESTATION, { userId: "alice" }),
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).rejects.toThrow("Invalid attestation");
+  });
+
+  test("setPassword requires exactly one of user and userId", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.public.setPassword, {
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).rejects.toThrow("exactly one");
   });
 });

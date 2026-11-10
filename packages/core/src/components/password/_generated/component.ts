@@ -27,8 +27,28 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       setPassword: FunctionReference<
         "mutation",
         "internal",
-        { minimumLength: number; password: string; userId: string },
+        {
+          minimumLength: number;
+          password: string;
+          user?: string;
+          userId?: string;
+        },
         | { success: true }
+        | {
+            success: false;
+            userError:
+              | { error: "PASSWORD_TOO_SHORT"; minimumLength: number }
+              | { error: "PASSWORD_TOO_LONG"; maximumLength: number }
+              | { error: "PASSWORD_HAS_SURROUNDING_WHITESPACE" }
+              | { error: "PASSWORD_TOO_COMMON" };
+          },
+        Name
+      >;
+      setPasswordForNewUser: FunctionReference<
+        "mutation",
+        "internal",
+        { minimumLength: number; newUser: string; password: string },
+        | { attestation: string; success: true }
         | {
             success: false;
             userError:
@@ -43,7 +63,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         { password: string; userId: string },
-        | { success: true }
+        | { attestation: string; success: true }
         | {
             success: false;
             userError:

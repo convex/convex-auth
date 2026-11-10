@@ -7,6 +7,7 @@ import {
   hashPassword,
   verifyPassword as verifyPasswordHash,
 } from "password-hash-wasm/argon2id";
+import { attestUser, verifyNewUser, verifyUser } from "../custom.ts";
 import {
   validatePasswordInputFormat,
   validateNewPassword,
@@ -46,28 +47,96 @@ const setPasswordResult = v.union(
 );
 type SetPasswordResult = Infer<typeof setPasswordResult>;
 
+const setPasswordForNewUserResult = v.union(
+  v.object({ success: v.literal(true), attestation: v.string() }),
+  v.object({ success: v.literal(false), userError: setPasswordUserError }),
+);
+type SetPasswordForNewUserResult = Infer<typeof setPasswordForNewUserResult>;
+
 /**
- * Set (or replace) a user's password.
+ * Set the password of a user that the core just created, and attest the
+ * user.
  *
- * This can be used both when creating a new user (will create a row),
- * or to update the password for an existing user (will update the existing row).
+ * `newUser` is the new-user attestation that the core's `createUser` returns.
+ * On success, the result has a user attestation, which the sign-in method
+ * exchanges for a session.
  *
  * `minimumLength` is the minimum length of the new password. Each caller must
  * set it, so that the caller decides the minimum and does not get the minimum
  * of the component by accident. The password methods give
  * `DEFAULT_MIN_PASSWORD_LENGTH`.
  *
- * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
- * than `MAX_PASSWORD_LENGTH`. This is an error of the caller, not of the
- * user.
+ * @throws If `newUser` is not a valid new-user attestation of the core, or if
+ * the user already has a password. Also if `minimumLength` is less than
+ * {@link MIN_PASSWORD_LENGTH} or more than `MAX_PASSWORD_LENGTH`.
  */
-export const setPassword = mutation({
-  args: { userId: v.string(), password: v.string(), minimumLength: v.number() },
-  returns: setPasswordResult,
+export const setPasswordForNewUser = mutation({
+  args: {
+    newUser: v.string(),
+    password: v.string(),
+    minimumLength: v.number(),
+  },
+  returns: setPasswordForNewUserResult,
   handler: async (
     ctx,
-    { userId, password, minimumLength },
-  ): Promise<SetPasswordResult> => {
+    { newUser, password, minimumLength },
+  ): Promise<SetPasswordForNewUserResult> => {
+    const { userId } = await verifyNewUser(newUser);
+    const userError = validateNewPassword(password, minimumLength);
+    if (userError !== null) {
+      return { success: false, userError };
+    }
+    if ((await passwordByUserId(ctx, userId)) !== null) {
+      throw new Error(
+        `Invariant violation: the new user ${userId} already has a password.`,
+      );
+    }
+    const passwordHashPHC = await hashPassword(normalizePassword(password));
+    await ctx.db.insert("passwords", { userId, passwordHashPHC });
+    return {
+      success: true,
+      attestation: await attestUser(ctx, { verifiedUserId: userId }),
+    };
+  },
+});
+
+/**
+ * Set (or replace) the password of an existing user.
+ *
+ * `user` is a user attestation: a component verified the user just before
+ * (for example `verifyPassword` with the current password, or the email
+ * component with a password-recovery link).
+ *
+ * `userId` is the older form, with no proof of the user. It will be removed.
+ * Give exactly one of `user` and `userId`.
+ *
+ * `minimumLength` is the minimum length of the new password. Each caller must
+ * set it, so that the caller decides the minimum and does not get the minimum
+ * of the component by accident. The password methods give
+ * `DEFAULT_MIN_PASSWORD_LENGTH`.
+ *
+ * @throws If `user` is not a valid user attestation. Also if `minimumLength`
+ * is less than {@link MIN_PASSWORD_LENGTH} or more than
+ * `MAX_PASSWORD_LENGTH`. These are errors of the caller, not of the user.
+ */
+export const setPassword = mutation({
+  args: {
+    user: v.optional(v.string()),
+    /** @deprecated Give `user` instead. */
+    userId: v.optional(v.string()),
+    password: v.string(),
+    minimumLength: v.number(),
+  },
+  returns: setPasswordResult,
+  handler: async (ctx, args): Promise<SetPasswordResult> => {
+    if ((args.user === undefined) === (args.userId === undefined)) {
+      throw new Error("Give exactly one of `user` and `userId`.");
+    }
+    const userId =
+      args.user !== undefined
+        ? (await verifyUser(args.user)).userId
+        : args.userId!;
+    const { password, minimumLength } = args;
     const userError = validateNewPassword(password, minimumLength);
     if (userError !== null) {
       return { success: false, userError };
@@ -86,13 +155,16 @@ export const setPassword = mutation({
 });
 
 const verifyPasswordResult = v.union(
-  v.object({ success: v.literal(true) }),
+  v.object({ success: v.literal(true), attestation: v.string() }),
   v.object({ success: v.literal(false), userError: verifyPasswordUserError }),
 );
 type VerifyPasswordResult = Infer<typeof verifyPasswordResult>;
 
 /**
  * Verify a user's password.
+ *
+ * On success, the result has a user attestation for the user, which the
+ * sign-in method exchanges for a session, or gives to `setPassword`.
  *
  * This enforces a rate limit (see `rateLimiter` above).
  *
@@ -145,7 +217,10 @@ export const verifyPassword = mutation({
     if (!matches) {
       return { success: false, userError: { error: "INVALID_CREDENTIALS" } };
     }
-    return { success: true };
+    return {
+      success: true,
+      attestation: await attestUser(ctx, { verifiedUserId: userId }),
+    };
   },
 });
 
