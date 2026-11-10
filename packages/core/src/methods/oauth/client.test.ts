@@ -11,7 +11,7 @@ import {
   calledPath,
   completed,
   flowStorage,
-  invalidCode,
+  expiredCode,
   readFlow,
   restoreNavigatorProduct,
   seedPendingFlow,
@@ -241,12 +241,12 @@ describe("OAuth client", () => {
     expect(mutation).not.toHaveBeenCalled();
   });
 
-  test("an INVALID_CODE error sets EXPIRED", async () => {
+  test("an EXPIRED redemption sets the EXPIRED flow error", async () => {
     window.history.replaceState(null, "", "/?convexAuthCode=code-1");
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
     const { client, mutation, flowError } = setupOAuth({ storage });
-    mutation.mockResolvedValueOnce(invalidCode);
+    mutation.mockResolvedValueOnce(expiredCode);
 
     await client.init();
 
@@ -259,7 +259,7 @@ describe("OAuth client", () => {
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
     const { client, mutation, flowError } = setupOAuth({ storage });
-    mutation.mockResolvedValueOnce(invalidCode);
+    mutation.mockResolvedValueOnce(expiredCode);
     // The flow error at each change that leaves the client done loading. A
     // page reading both must never see signed out with no error to explain
     // it.

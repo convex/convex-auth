@@ -70,7 +70,7 @@ const completed = { status: "complete", tokens: bundle };
  * The envelope every unredeemable code returns: unknown, already spent,
  * expired, and mismatched state are one code by design.
  */
-const invalidCode = { status: "error", userError: { error: "INVALID_CODE" } };
+const expiredCode = { status: "error", userError: { error: "EXPIRED" } };
 
 /**
  * A fake core whose builders inject fake {@link BoundAuthHelpers}.
@@ -358,17 +358,17 @@ describe("completeSignIn", () => {
     ]);
   });
 
-  test("an unknown code reports INVALID_CODE", async () => {
+  test("an unknown code reports EXPIRED", async () => {
     const t = setup();
     const result = await t.mutation(completeSignInWithAcme, {
       code: "never-minted",
       state: "state-1",
     });
-    expect(result).toEqual(invalidCode);
+    expect(result).toEqual(expiredCode);
     expect(helperCalls).toHaveLength(0);
   });
 
-  test("a wrong state reports INVALID_CODE and preserves the ticket", async () => {
+  test("a wrong state reports EXPIRED and preserves the ticket", async () => {
     const t = setup();
     const code = await mintTicket(t);
 
@@ -376,7 +376,7 @@ describe("completeSignIn", () => {
       code,
       state: "someone-elses-state",
     });
-    expect(mismatched).toEqual(invalidCode);
+    expect(mismatched).toEqual(expiredCode);
 
     // The ticket survives a mismatched attempt, so the initiating client can
     // still complete.
@@ -401,11 +401,11 @@ describe("completeSignIn", () => {
       code,
       state: "state-1",
     });
-    expect(second).toEqual(invalidCode);
+    expect(second).toEqual(expiredCode);
     expect(helperCalls).toHaveLength(1);
   });
 
-  test("an expired ticket reports INVALID_CODE", async () => {
+  test("an expired ticket reports EXPIRED", async () => {
     vi.useFakeTimers();
     const t = setup();
     const code = await mintTicket(t);
@@ -415,7 +415,7 @@ describe("completeSignIn", () => {
       code,
       state: "state-1",
     });
-    expect(result).toEqual(invalidCode);
+    expect(result).toEqual(expiredCode);
     expect(helperCalls).toHaveLength(0);
   });
 

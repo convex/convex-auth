@@ -42,9 +42,9 @@ export const completed = { status: "complete" as const, tokens: bundle };
  * The envelope `completeSignIn` returns for a code that cannot be redeemed:
  * unknown, already spent, expired, or paired with someone else's state.
  */
-export const invalidCode = {
+export const expiredCode = {
   status: "error" as const,
-  userError: { error: "INVALID_CODE" as const },
+  userError: { error: "EXPIRED" as const },
 };
 
 /**

@@ -101,7 +101,7 @@ const completeSignInResult = v.union(
   // The one-time code did not redeem: unknown, already spent, expired, or
   // paired with a state this browser never held. The server cannot tell those
   // apart and deliberately does not try, so they share one code.
-  vSignInError(v.object({ error: v.literal("INVALID_CODE") })),
+  vSignInError(v.object({ error: v.literal("EXPIRED") })),
 );
 
 /**
@@ -122,7 +122,7 @@ export type CompleteSignInResult = Infer<typeof completeSignInResult>;
  * identity, and the core exchanges that for a session.
  *
  * Returns the shared sign-in envelope: the session token bundle, or an
- * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
+ * `EXPIRED` error when the code is unknown, already redeemed, expired, or
  * the state doesn't match: all indistinguishable to the caller.
  *
  * The component calls are subtransactions of this mutation, so a failure
@@ -160,7 +160,7 @@ export function buildCompleteSignIn<
         stateHash: await sha256Hex(args.state),
       });
       if (ticket === null) {
-        return { status: "error", userError: { error: "INVALID_CODE" } };
+        return { status: "error", userError: { error: "EXPIRED" } };
       }
 
       // Finding the ticket by hash proves `code` is the value the payload was

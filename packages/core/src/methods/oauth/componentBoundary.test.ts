@@ -139,6 +139,6 @@ describe.each([
     // No ticket was minted, so the component finds nothing to claim.
     expect(
       await t.mutation(completeSignIn, { code: "code-1", state: "state-1" }),
-    ).toEqual({ status: "error", userError: { error: "INVALID_CODE" } });
+    ).toEqual({ status: "error", userError: { error: "EXPIRED" } });
   });
 });
