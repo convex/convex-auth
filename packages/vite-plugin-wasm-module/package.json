@@ -39,6 +39,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
+    "prepare": "pnpm run build",
     "prepack": "pnpm run clean && pnpm run build",
     "typecheck": "tsc --noEmit"
   },
