@@ -193,7 +193,7 @@ await app.generateOutputs(project);
 writeFileSync(
   path.join(outDir, "_category_.json"),
   JSON.stringify(
-    { label: "API reference", position: 6, collapsed: true },
+    { label: "API reference", position: 7, collapsed: true },
     null,
     2,
   ) + "\n",
