@@ -271,8 +271,8 @@ export type CreateUserFn<
  * timestamp, an audit row, syncing the user record from the latest `profile`,
  * which the core does not store) belongs here and nowhere else.
  *
- * The core resolves the account to its app user first, so `userId` is always
- * present and there is nothing to return. Declare `returns: v.null()` and
+ * The sign-in method passes the user id, so `userId` is always present and
+ * there is nothing to return. Declare `returns: v.null()` and
  * return `null`, or leave the callback out entirely. Throw a `ConvexError` to
  * reject the sign in, which on a first sign-in rolls back the user the create
  * callback just made.
