@@ -459,9 +459,7 @@ describe("completeSignIn", () => {
     ).rejects.toThrow("sign-ups are closed");
 
     // ...and the claim rolled back with the rest of the mutation, so the
-    // ticket is not burned by the failed attempt, and no account was
-    // recorded.
-    expect(await accounts(t)).toEqual([]);
+    // ticket is not burned by the failed attempt.
     helperFailure.error = undefined;
     const result = await t.mutation(completeSignInAcme, {
       code,

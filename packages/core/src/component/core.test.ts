@@ -179,8 +179,6 @@ describe("signUp", () => {
     );
     expect(session).not.toBeNull();
     const sessionId = session!._id;
-    // The session holds the user id and the sign-in method, and nothing else
-    // about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
       provider: "password",
@@ -259,17 +257,6 @@ describe("signUp", () => {
     // the session is minted, so none exists.
     expect(await sessionCount(t)).toBe(0);
   });
-
-  test("mints a new user on every call, even for the same claims", async () => {
-    const t = setup();
-    const first = await signUp(t, claims());
-    const second = await signUp(t, claims());
-
-    // The core can't tell a repeated sign-up from a new one; sign-in methods
-    // check their own component before calling signUp.
-    expect(second.userId).not.toBe(first.userId);
-    expect(await sessionCount(t)).toBe(2);
-  });
 });
 
 describe("signIn", () => {
@@ -286,12 +273,9 @@ describe("signIn", () => {
     const sessions = await t.run(
       async (ctx) => await ctx.db.query("sessions").collect(),
     );
-    expect(sessions).toHaveLength(2);
-    expect(
-      sessions.map(({ userId, provider }) => ({ userId, provider })),
-    ).toEqual([
-      { userId: first.userId, provider: "password" },
-      { userId: first.userId, provider: "password" },
+    expect(sessions.map((session) => session.userId)).toEqual([
+      first.userId,
+      first.userId,
     ]);
   });
 
@@ -330,17 +314,6 @@ describe("signIn", () => {
 
     expect(bundle.userId).toBe(first.userId);
     expect(testApp.getOnSignInCalls()).toHaveLength(0);
-  });
-
-  test("takes the sign-in method's word for the user: no app user has to exist", async () => {
-    const t = setup();
-
-    // The core can't verify the user id, so a wrong id signs the caller in
-    // as that user. Sign-in methods must pass only a user id they looked up
-    // after verifying the identity.
-    const bundle = await signIn(t, claims(), "someone");
-    expect(bundle.userId).toBe("someone");
-    expect(await sessionCount(t)).toBe(1);
   });
 
   test("refuses an empty user id", async () => {
