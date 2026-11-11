@@ -9,14 +9,17 @@ Schema and sign-in method API breaking changes - see below
   component now keeps its own `accounts` table, which connects its identities
   to app user ids.
 - replaced `accountId` with `provider` in the core's `sessions` table
+- the anonymous sign-in method no longer generates an id for each user. The
+  `provider.accountId` passed to its `createUser` and `onSignIn` is now an
+  empty string.
 - upgrading from beta.0:
   1. optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
      table of their component. An OAuth user without a copied row gets a new
      app user on their next sign-in.
-  2. add a `userId` to each row of `authAnonymous/accounts`, which now
-     requires one. Take it from the `auth/accounts` row whose `provider` is
-     `anonymous` and whose `providerAccountId` is the row's `anonymousId`. Or
-     clear `authAnonymous/accounts`, which nothing reads.
+  2. clear the `authAnonymous/accounts` table, which nothing reads. Its rows
+     now hold a `userId` instead of an `anonymousId`. To keep them, replace
+     each row with the `userId` of the `auth/accounts` row whose `provider` is
+     `anonymous` and whose `providerAccountId` is the row's `anonymousId`.
   3. delete the `auth/accounts` table
   4. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
      every user out
