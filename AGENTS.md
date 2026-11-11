@@ -6,7 +6,7 @@ This is a pnpm monorepo:
 
 - `packages/core` — the auth package, published as `@convex-dev/auth`. It
   owns three parts:
-  - The core: sessions, accounts, and JWT minting. It knows no sign-in method.
+  - The core: sessions and JWTs. It knows no sign-in method.
   - The optional components, which store the data of the sign-in methods:
     `username`, `password`, `email`, `passkey`, `totp`, `anonymous`,
     `oauth`, `google`, `apple`, and `github`. Most of them key their data by
@@ -48,7 +48,7 @@ check:doc-examples`). It is not an example to copy.
 
 ## Source layout of `packages/core/src`
 
-- `component/` — the core Convex component (`auth`): sessions, accounts, JWTs.
+- `component/` — the core Convex component (`auth`): sessions and JWTs.
 - `components/<name>/` — the optional Convex components (`username`,
   `password`, `email`, `passkey`, `totp`, `anonymous`, `oauth`, `google`,
   `apple`, `github`).
