@@ -4,18 +4,23 @@
 
 Schema and sign-in method API breaking changes - see below
 
-- moved accounts out of the core and into the components: the core's
-  `accounts` table is gone, and each OAuth component (`authGoogle`,
-  `authGithub`, `authApple`, `authOauth`) and the anonymous component keeps
-  its own `accounts` table mapping its identity to the app user id. The
-  core's `sessions` table replaces `accountId` with `provider`; upgrading
-  requires clearing the `auth/sessions` and `auth/refreshTokens` tables (which
-  signs every user out) and deleting `auth/accounts`. OAuth users who signed
-  in before the upgrade get a new app user on their next sign-in unless their
-  rows are copied into their component's `accounts` table first.
-- sign-in method API (`ctx.convexAuth`): `completeSignIn` takes the `userId`
-  the sign-in method resolved in its component, and `resolveUserId` is gone. The core's `getUserIdByAccount`
-  is gone; each OAuth component has its own.
+- moved accounts from the core into the components. Each OAuth component
+  (`authGoogle`, `authGithub`, `authApple`, `authOauth`) and the anonymous
+  component now keeps its own `accounts` table, which connects its identities
+  to app user ids.
+- replaced `accountId` with `provider` in the core's `sessions` table
+- upgrading from beta.0:
+  1. optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
+     table of their component. An OAuth user without a copied row gets a new
+     app user on their next sign-in.
+  2. delete the `auth/accounts` table
+  3. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
+     every user out
+- `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
+  `userId`, which the sign-in method gets from its component
+- removed `resolveUserId` from the sign-in method API, and removed the core's
+  `getUserIdByAccount`. Each OAuth component has its own
+  `getUserIdByAccount`.
 
 ## 2.0.0-beta.0
 
