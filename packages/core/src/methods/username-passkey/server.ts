@@ -17,6 +17,7 @@ import {
 import {
   finishAuthenticationUserError,
   finishRegistrationUserError,
+  validateExpectedOrigin,
   vAuthenticationResponseJSON,
   vPublicKeyCredentialCreationOptionsJSON,
   vPublicKeyCredentialRequestOptionsJSON,
@@ -64,9 +65,13 @@ export type UsernamePasskeyOptions = {
   rpId: string;
   /**
    * The exact origin of the ceremonies (for example,
-   * "https://app.example.com" or "http://localhost:5173").
+   * "https://app.example.com" or "http://localhost:5173"), or a list of the
+   * accepted origins. A list lets one deployment serve several clients of
+   * the same `rpId`: a web page reports the origin it is served from, an iOS
+   * app reports `https://<rpId>`, and an Android app reports `android:apk-key-hash:<hash>`, the unpadded
+   * base64url SHA-256 hash of the certificate that signs the app.
    */
-  origin: string;
+  origin: string | string[];
   /**
    * The human-readable relying party name that the browser shows in the
    * passkey dialog. WebAuthn requires it on the client. When not set, the
@@ -192,6 +197,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
   options: UsernamePasskeyOptions,
 ) {
   const { component, usernameComponent, rpId, origin } = options;
+  validateExpectedOrigin(origin);
   const rpName = options.rpName ?? rpId;
   const config: UsernamePasskeyConfig = {
     ...options,

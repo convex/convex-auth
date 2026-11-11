@@ -27,6 +27,9 @@ const EXPECTED = {
   expectedOrigin: ORIGIN,
 };
 
+const ANDROID_ORIGIN =
+  "android:apk-key-hash:47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU";
+
 // Only the expiry test moves the clock, but the restore is global to keep the
 // other tests on the real clock.
 afterEach(() => {
@@ -355,6 +358,62 @@ describe("finishAuthentication", () => {
         }),
       'the ceremony ran at the origin "https://evil.example.net"',
     );
+  });
+
+  test("accepts an origin from a list of expected origins", async () => {
+    const t = setup();
+    const { credential, passkeyId } = await register(t, "user1");
+    const { challenge } = await t.mutation(
+      api.authentication.startAuthentication,
+      { purpose: PURPOSE, userId: "user1" },
+    );
+    const assertion = await buildAssertion(credential, challenge, {
+      origin: ANDROID_ORIGIN,
+    });
+    const result = await t.mutation(api.authentication.finishAuthentication, {
+      ...EXPECTED,
+      expectedOrigin: [ORIGIN, ANDROID_ORIGIN],
+      ...assertion,
+    });
+    expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+  });
+
+  test("returns PROTOCOL_ERROR for an origin missing from the list", async () => {
+    const t = setup();
+    const { credential } = await register(t, "user1");
+    const { challenge } = await t.mutation(
+      api.authentication.startAuthentication,
+      { purpose: PURPOSE, userId: "user1" },
+    );
+    const assertion = await buildAssertion(credential, challenge, {
+      origin: "https://evil.example.net",
+    });
+    await expectProtocolError(
+      () =>
+        t.mutation(api.authentication.finishAuthentication, {
+          ...EXPECTED,
+          expectedOrigin: [ORIGIN, ANDROID_ORIGIN],
+          ...assertion,
+        }),
+      `the expected origins are "${ORIGIN}", "${ANDROID_ORIGIN}"`,
+    );
+  });
+
+  test("throws for an empty list of expected origins", async () => {
+    const t = setup();
+    const { credential } = await register(t, "user1");
+    const { challenge } = await t.mutation(
+      api.authentication.startAuthentication,
+      { purpose: PURPOSE, userId: "user1" },
+    );
+    const assertion = await buildAssertion(credential, challenge);
+    await expect(
+      t.mutation(api.authentication.finishAuthentication, {
+        ...EXPECTED,
+        expectedOrigin: [],
+        ...assertion,
+      }),
+    ).rejects.toThrow("The origin list cannot be empty");
   });
 
   test("returns PROTOCOL_ERROR for a cross-origin ceremony", async () => {

@@ -84,6 +84,20 @@ rows, in `convex/auth.ts`.
   scheme and the port (`http://localhost:5173` for the Vite dev server). The
   component rejects a passkey sign-in that comes from any other origin.
 
+  To accept several origins, pass a list. A native app that shares the
+  `rpId` of your site reports its own origin: an iOS app reports
+  `https://<rpId>`, and an Android app reports
+  `android:apk-key-hash:<hash>`, where `<hash>` is the unpadded base64url
+  SHA-256 hash of the certificate that signs the app:
+
+  ```ts
+  origin: [
+    "https://app.example.com",
+    "https://example.com",
+    "android:apk-key-hash:<hash>",
+  ],
+  ```
+
 :::warning
 
 Passkeys are permanently bound to their `rpId`: a passkey created with `rpId:

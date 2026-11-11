@@ -22,6 +22,9 @@ import {
   setup,
 } from "../passkeyTestSetup.ts";
 
+const ANDROID_ORIGIN =
+  "android:apk-key-hash:47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU";
+
 function handleRows(t: ReturnType<typeof setup>) {
   return t.run((ctx) => ctx.db.query("handles").collect());
 }
@@ -71,6 +74,7 @@ async function registrationArgs(
     name?: string;
     counter?: number;
     origin?: string;
+    expectedOrigin?: string | string[];
     crossOrigin?: boolean;
     clientDataType?: "webauthn.create" | "webauthn.get";
     authDataRpId?: string;
@@ -110,7 +114,7 @@ async function registrationArgs(
   });
   const buildArgs = (extra: { transports?: string[] } = {}) => ({
     expectedRpId: RP_ID,
-    expectedOrigin: ORIGIN,
+    expectedOrigin: options.expectedOrigin ?? ORIGIN,
     name: options.name,
     response: registrationResponse({
       credential,
@@ -726,6 +730,35 @@ describe("finishRegistration verification", () => {
       ctx.db.query("challenges").collect(),
     );
     expect(challenges).toHaveLength(1);
+  });
+
+  test("accepts an origin from a list of expected origins", async () => {
+    const t = setup();
+    const { finish } = await registrationArgs(t, "user1", {
+      origin: ANDROID_ORIGIN,
+      expectedOrigin: [ORIGIN, ANDROID_ORIGIN],
+    });
+    expect(await finish()).toMatchObject({ success: true });
+  });
+
+  test("returns PROTOCOL_ERROR for an origin missing from the list", async () => {
+    const t = setup();
+    const { finish } = await registrationArgs(t, "user1", {
+      origin: "https://evil.example.net",
+      expectedOrigin: [ORIGIN, ANDROID_ORIGIN],
+    });
+    await expectProtocolError(
+      finish,
+      `the expected origins are "${ORIGIN}", "${ANDROID_ORIGIN}"`,
+    );
+  });
+
+  test("throws for an empty list of expected origins", async () => {
+    const t = setup();
+    const { finish } = await registrationArgs(t, "user1", {
+      expectedOrigin: [],
+    });
+    await expect(finish()).rejects.toThrow("The origin list cannot be empty");
   });
 
   test("returns PROTOCOL_ERROR for a cross-origin ceremony", async () => {

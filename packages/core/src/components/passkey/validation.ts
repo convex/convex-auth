@@ -91,6 +91,47 @@ export function validatePurpose(purpose: string) {
 }
 
 /**
+ * The origin or origins at which the app runs its ceremonies. A list lets one
+ * deployment serve several clients of the same relying party, for example a
+ * web page (`https://example.com`), an iOS app (also `https://example.com`),
+ * and an Android app (`android:apk-key-hash:...`).
+ */
+export const vExpectedOrigin = v.union(v.string(), v.array(v.string()));
+export type ExpectedOrigin = Infer<typeof vExpectedOrigin>;
+
+/**
+ * Checks the expected origins that the app supplies. An empty list would
+ * reject every ceremony, thus it is a misconfiguration of the app, not an
+ * error of the client.
+ *
+ * @throws when the value is an empty list.
+ */
+export function validateExpectedOrigin(expectedOrigin: ExpectedOrigin) {
+  if (Array.isArray(expectedOrigin) && expectedOrigin.length === 0) {
+    throw new Error(
+      "The origin list cannot be empty. Provide at least one origin.",
+    );
+  }
+}
+
+/** Whether the origin of a ceremony is one of the expected origins. */
+export function originIsExpected(
+  origin: string,
+  expectedOrigin: ExpectedOrigin,
+): boolean {
+  return typeof expectedOrigin === "string"
+    ? origin === expectedOrigin
+    : expectedOrigin.includes(origin);
+}
+
+/** Describes the expected origins, for an error message. */
+export function describeExpectedOrigin(expectedOrigin: ExpectedOrigin): string {
+  return typeof expectedOrigin === "string"
+    ? `the expected origin is ${JSON.stringify(expectedOrigin)}`
+    : `the expected origins are ${expectedOrigin.map((o) => JSON.stringify(o)).join(", ")}`;
+}
+
+/**
  * One entry of `allowCredentials` or `excludeCredentials`. The WebAuthn
  * `type` field is not included, because it is always "public-key".
  */

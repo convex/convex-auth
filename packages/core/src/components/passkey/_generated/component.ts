@@ -28,7 +28,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           purpose: string;
           response: {
@@ -73,7 +73,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "query",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
           response: {
@@ -117,7 +117,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
           response: {
@@ -147,7 +147,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
           newUserId: string;
