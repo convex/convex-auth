@@ -23,6 +23,7 @@ import {
 import {
   BATCH_INTERVAL_MS,
   BATCH_SIZE,
+  INACTIVITY_WORKER_NAME,
   MAX_LIFETIME_WORKER_NAME,
 } from "./cleanup.ts";
 
@@ -1802,7 +1803,7 @@ describe("session cleanup", () => {
     // Signed in under the default 30-day max lifetime.
     const stale = await signUp(t, claims());
     await advanceWithCleanup(t, 2 * HOUR_MS);
-    // Refreshed, so only the max lifetime expires it.
+    // Fresh, so the inactivity loop has nothing to erase.
     const rotated = expectRotated(await refresh(t, stale.refreshToken));
 
     // The app is redeployed with a one-hour max lifetime, and someone signs
@@ -1824,6 +1825,209 @@ describe("session cleanup", () => {
     expect(
       await t.query(api.public.getSession, { sessionId: sessionIdOf(fresh) }),
     ).toEqual({ userId: fresh.userId });
+  });
+
+  test("a lowered inactivity timeout erases the sessions it expires", async () => {
+    const t = setup();
+    // Signed in under the default 30-day inactivity timeout.
+    const stale = await signUp(t, claims());
+    await advanceWithCleanup(t, 2 * HOUR_MS);
+    expect(await sessionCount(t)).toBe(1);
+
+    // The app is redeployed with a one-hour inactivity timeout, and someone
+    // signs in.
+    const fresh = await signUpWithTtl(
+      t,
+      claims({ providerAccountId: "bob" }),
+      60 * 60,
+    );
+    await settleScheduledFunctions(t);
+
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(stale) }),
+    ).toBeNull();
+    expect(
+      await t.query(api.public.getSession, { sessionId: sessionIdOf(fresh) }),
+    ).toEqual({ userId: fresh.userId });
+  });
+
+  test("a raised inactivity timeout keeps the sessions the old one would have expired", async () => {
+    const t = setup();
+    const alice = await signUpWithTtl(t, claims(), 60 * 60);
+    await advanceWithCleanup(t, 30 * 60 * 1000);
+
+    // The app is redeployed with the default 30-day inactivity timeout.
+    await signUp(t, claims({ providerAccountId: "bob" }));
+    // Past the old one-hour inactivity timeout of Alice's session.
+    await advanceWithCleanup(t, 2 * HOUR_MS);
+
+    expect(await sessionCount(t)).toBe(2);
+    expectRotated(await refresh(t, alice.refreshToken));
+  });
+
+  test("erases an expired sibling token, but keeps its session", async () => {
+    const t = setup();
+    const ttlSeconds = 60 * 60;
+    const refreshWithTtl = async (refreshToken: string) =>
+      await t.mutation(api.public.refresh, {
+        refreshToken,
+        ...ttl({
+          refreshInactivityTimeoutSeconds: ttlSeconds,
+        }),
+      });
+    const bundle = await signUpWithTtl(t, claims(), ttlSeconds);
+    // Redeem the sign-in token; suppose the response is lost, so the client
+    // presents the redeemed token again just before it expires. The session
+    // now has two issued siblings, one of them almost an hour older.
+    const older = expectRotated(await refreshWithTtl(bundle.refreshToken));
+    await advanceWithCleanup(t, 50 * 60 * 1000);
+    const newer = expectRotated(await refreshWithTtl(bundle.refreshToken));
+
+    // Past the inactivity timeout of the older sibling, not of the newer one.
+    await advanceWithCleanup(t, 20 * 60 * 1000);
+
+    expect(await sessionCount(t)).toBe(1);
+    expect(await issuedHashes(t)).toEqual([
+      await sha256Hex(newer.refreshToken),
+    ]);
+    // Unknown now, so it reports no session without revoking anything.
+    expect((await refreshWithTtl(older.refreshToken)).kind).toBe("noSession");
+    expectRotated(await refreshWithTtl(newer.refreshToken));
+  });
+
+  describe("getExpiredTokens", () => {
+    test("goes idle with no timeout before any lifetimes are stored", async () => {
+      const t = setup();
+      expect(
+        await t.query(internal.cleanup.getExpiredTokens, {
+          name: INACTIVITY_WORKER_NAME,
+        }),
+      ).toEqual({ kind: "idle" });
+    });
+
+    test("sleeps until the oldest issued token expires", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      // Let the cleanup loops the sign-up started, and the monitors they
+      // schedule a minute out, finish, so their commits don't move the time
+      // of the query.
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      await settleScheduledFunctions(t);
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: INACTIVITY_WORKER_NAME,
+      });
+      const [issued] = await tokensInState(t, "issued");
+      expect(result).toEqual({
+        kind: "idle",
+        timeoutMs: issued._creationTime + 60 * 60 * 1000 - Date.now(),
+      });
+    });
+
+    test("sleeps at most a day", async () => {
+      const t = setup();
+      await signUp(t, claims());
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: INACTIVITY_WORKER_NAME,
+      });
+      expect(result).toEqual({ kind: "idle", timeoutMs: DAY_MS });
+    });
+
+    test("returns the issued tokens at or past the inactivity timeout", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      const [issued] = await tokensInState(t, "issued");
+      // convex-test gives `_creationTime` a fraction of a millisecond, thus the
+      // clock goes to the first whole millisecond at or past the inactivity
+      // timeout.
+      vi.setSystemTime(Math.ceil(issued._creationTime + 60 * 60 * 1000));
+      const result = await t.query(internal.cleanup.getExpiredTokens, {
+        name: INACTIVITY_WORKER_NAME,
+      });
+      expect(result).toEqual({
+        kind: "work",
+        batch: { events: [{ id: issued._id }] },
+        cursor: issued._creationTime,
+      });
+    });
+  });
+
+  describe("deleteExpiredTokens", () => {
+    test("keeps a token that a raised inactivity timeout no longer expires, and moves the cursor back to it", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [issued] = await tokensInState(t, "issued");
+      // The inactivity timeout was raised between the query and the mutation.
+      await t.run(async (ctx) => {
+        const row = (await ctx.db.query("ttlConfig").first())!;
+        await ctx.db.patch("ttlConfig", row._id, {
+          refreshInactivityTimeoutSeconds: 30 * 24 * 60 * 60,
+        });
+      });
+
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: [{ id: issued._id }],
+      });
+      expect(result).toEqual({ cursor: issued._creationTime });
+      expect(await sessionCount(t)).toBe(1);
+    });
+
+    test("skips a token that was redeemed since the query", async () => {
+      const t = setup();
+      const bundle = await signUpWithTtl(t, claims(), 60 * 60);
+      const [issued] = await tokensInState(t, "issued");
+      await t.mutation(api.public.refresh, {
+        refreshToken: bundle.refreshToken,
+        ...ttl({
+          refreshInactivityTimeoutSeconds: 60 * 60,
+        }),
+      });
+      vi.advanceTimersByTime(2 * HOUR_MS);
+
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: [{ id: issued._id }],
+      });
+      expect(result).toBeNull();
+      // The redeemed token is not the loop's to erase; the session goes once
+      // its newest issued token expires.
+      expect(await redeemedHash(t)).toBe(await sha256Hex(bundle.refreshToken));
+    });
+
+    test("erases a token whose session was deleted before its erasure ran", async () => {
+      const t = setup();
+      const bundle = await signUpWithTtl(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [issued] = await tokensInState(t, "issued");
+      // The fake timers hold back the scheduled erasure of the tokens.
+      await t.mutation(api.public.signOut, {
+        refreshToken: bundle.refreshToken,
+      });
+      expect(await issuedHashes(t)).toEqual([issued.hash]);
+
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: [{ id: issued._id }],
+      });
+      expect(result).toBeNull();
+      // Every issued token below the cursor is gone.
+      expect(await issuedHashes(t)).toEqual([]);
+      await finishScheduledFunctions(t);
+    });
+
+    test("waits before the next batch after a full one", async () => {
+      const t = setup();
+      await signUpWithTtl(t, claims(), 60 * 60);
+      vi.advanceTimersByTime(2 * HOUR_MS);
+      const [issued] = await tokensInState(t, "issued");
+
+      // The rows after the first are gone by the time the mutation gets to
+      // them, but the batch is full all the same.
+      const result = await t.mutation(internal.cleanup.deleteExpiredTokens, {
+        events: Array.from({ length: BATCH_SIZE }, () => ({ id: issued._id })),
+      });
+      expect(result).toEqual({ debounceMs: BATCH_INTERVAL_MS });
+      expect(await sessionCount(t)).toBe(0);
+      await finishScheduledFunctions(t);
+    });
   });
 
   /** Sign up with a given max lifetime. */
@@ -1878,9 +2082,8 @@ describe("session cleanup", () => {
       const t = setup();
       await signUpWithMaxLifetime(t, claims(), 60 * 60);
       const [session] = await sessions(t);
-      // convex-test gives `_creationTime` a fraction of a millisecond, thus
-      // the clock goes to the first whole millisecond at or past the max
-      // lifetime.
+      // See the matching test of `getExpiredTokens` on the fractional
+      // `_creationTime`.
       vi.setSystemTime(Math.ceil(session._creationTime + 60 * 60 * 1000));
       const result = await t.query(
         internal.cleanup.getSessionsPastMaxLifetime,
