@@ -37,8 +37,14 @@ export const check = mutation({
 /**
  * Start a `changeEmail` challenge for `userId`. Fails with `EMAIL_TAKEN`
  * when a user has already verified the address.
+ *
+ * DANGER: `complete` records the address on this `userId`, thus an
+ * unverified `userId` lets an attacker attach their mailbox to another
+ * user's account.
+ *
+ * TODO: ensure that the user ID is the current user.
  */
-export const start = mutation({
+export const _internal_dangerous_start = mutation({
   args: { ...vStartArgs, userId: v.string() },
   returns: startFreeAddressResult,
   handler: async (ctx, args): Promise<StartFreeAddressResult> => {

@@ -69,6 +69,66 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       >;
     };
     registration: {
+      _internal_dangerous_finishRegistrationForExistingUser: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          expectedOrigin: string;
+          expectedRpId: string;
+          name?: string;
+          response: {
+            clientExtensionResults: {};
+            id: string;
+            rawId: string;
+            response: {
+              attestationObject: string;
+              clientDataJSON: string;
+              transports?: Array<string>;
+            };
+            type: "public-key";
+          };
+          verifiedUserId: string;
+        },
+        | { passkeyId: string; success: true }
+        | {
+            success: false;
+            userError:
+              | { error: "CHALLENGE_EXPIRED" }
+              | { error: "PROTOCOL_ERROR" }
+              | { error: "INVALID_NAME" };
+          },
+        Name
+      >;
+      _internal_dangerous_finishRegistrationForNewUser: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          expectedOrigin: string;
+          expectedRpId: string;
+          name?: string;
+          newUserId: string;
+          response: {
+            clientExtensionResults: {};
+            id: string;
+            rawId: string;
+            response: {
+              attestationObject: string;
+              clientDataJSON: string;
+              transports?: Array<string>;
+            };
+            type: "public-key";
+          };
+        },
+        | { passkeyId: string; success: true }
+        | {
+            success: false;
+            userError:
+              | { error: "CHALLENGE_EXPIRED" }
+              | { error: "PROTOCOL_ERROR" }
+              | { error: "INVALID_NAME" };
+          },
+        Name
+      >;
       checkRegistrationForNewUser: FunctionReference<
         "query",
         "internal",

@@ -45,8 +45,15 @@ export const check = mutation({
  *
  * Throws when the user already has an email address: it is an application
  * bug. Give only a user that the same mutation has just created.
+ *
+ * DANGER: `complete` records the address on this `userId` with no further
+ * check, thus an unverified `userId` lets an attacker attach their mailbox
+ * to another user's account.
+ *
+ * TODO: ensure that the user ID is a user that the current mutation has just
+ * created.
  */
-export const start = mutation({
+export const _internal_dangerous_start = mutation({
   args: { ...vStartArgs, userId: v.string() },
   returns: startFreeAddressResult,
   handler: async (ctx, args): Promise<StartFreeAddressResult> => {

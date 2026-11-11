@@ -227,7 +227,10 @@ export function setupOauth<
     getUserIdByAccount: (ctx, args) =>
       ctx.runQuery(options.component.provider.getUserIdByAccount, args),
     createAccount: (ctx, args) =>
-      ctx.runMutation(options.component.provider.createAccount, args),
+      ctx.runMutation(
+        options.component.provider._internal_dangerous_createAccount,
+        args,
+      ),
     profile: (payload) =>
       catalog.profile(payload.claims, payload.userInfoResponses),
   });
