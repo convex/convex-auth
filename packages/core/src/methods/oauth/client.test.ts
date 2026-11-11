@@ -295,42 +295,21 @@ describe("OAuth client", () => {
     expect(client.getSnapshot().isLoading).toBe(false);
   });
 
-  test("an app rejection sets REJECTED with the ConvexError data", async () => {
+  test("an app rejection sets OTHER_ERROR with the ConvexError on cause", async () => {
     window.history.replaceState(null, "", "/?convexAuthCode=code-1");
     const storage = new InMemoryStorage();
     seedPendingFlow(storage);
     const { client, mutation, flowError } = setupOAuth({ storage });
-    mutation.mockRejectedValueOnce(
-      new ConvexError("A verified email is required to sign in"),
-    );
+    const rejected = new ConvexError({ reason: "policy" });
+    mutation.mockRejectedValueOnce(rejected);
 
     await client.init();
 
+    // The app's backend chose the data, so the app can read it off `cause`.
     await vi.waitFor(() =>
-      expect(flowError()).toEqual({
-        error: "REJECTED",
-        data: "A verified email is required to sign in",
-      }),
+      expect(flowError()).toEqual({ error: "OTHER_ERROR", cause: rejected }),
     );
     expect(client.getSnapshot().isAuthenticated).toBe(false);
-  });
-
-  test("an app rejection passes non-string data through", async () => {
-    window.history.replaceState(null, "", "/?convexAuthCode=code-1");
-    const storage = new InMemoryStorage();
-    seedPendingFlow(storage);
-    const { client, mutation, flowError } = setupOAuth({ storage });
-    mutation.mockRejectedValueOnce(new ConvexError({ reason: "policy" }));
-
-    await client.init();
-
-    // The app's backend chose the shape, so the app can read it.
-    await vi.waitFor(() =>
-      expect(flowError()).toEqual({
-        error: "REJECTED",
-        data: { reason: "policy" },
-      }),
-    );
   });
 
   test("a rejected storage read during redemption sets OTHER_ERROR", async () => {
@@ -490,7 +469,6 @@ describe("OAuth client", () => {
   });
 
   test("a ConvexError from the start is OTHER_ERROR too", async () => {
-    // Starting runs no app code, so nothing there rejects a sign-in.
     const { convexMutation, actions } = setupOAuth();
     const rejected = new ConvexError("Sign-ups are closed");
     convexMutation.mockRejectedValueOnce(rejected);
