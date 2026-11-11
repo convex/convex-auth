@@ -77,7 +77,7 @@ pnpm pack
 
 ### Publishing a new version
 
-Run from the repo root, on `reboot`, with a clean working tree.
+Run from the repo root, on `main`, with a clean working tree.
 
 For an alpha release:
 
@@ -108,7 +108,7 @@ output, so this needs the toolchain from the section above.
 ```sh
 cd packages/password-hash-wasm
 # bump the version in package.json, then
-pnpm publish --publish-branch reboot
+pnpm publish
 ```
 
 Then update the exact `password-hash-wasm` version in `packages/core`'s dependencies
