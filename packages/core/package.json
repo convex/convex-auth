@@ -28,8 +28,8 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
-    "alpha": "pnpm version prerelease --preid alpha && pnpm publish --tag alpha --publish-branch reboot && git push --follow-tags",
-    "beta": "pnpm version prerelease --preid beta && pnpm publish --tag beta --publish-branch reboot && git push --follow-tags",
+    "alpha": "pnpm version prerelease --preid alpha && pnpm publish --tag alpha && git push --follow-tags",
+    "beta": "pnpm version prerelease --preid beta && pnpm publish --tag beta && git push --follow-tags",
     "build": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --stripInternal false --emitDeclarationOnly --outDir dist/internal-types",
     "check:clean": "test -z \"$(git status --porcelain=v1 -uno)\" || (echo 'Git working directory not clean.' >&2; exit 1)",
     "clean": "rm -rf dist",
@@ -37,7 +37,7 @@
     "postversion": "git add package.json ../../CHANGELOG.md && git commit -m \"$npm_new_version\" && git tag -m \"$npm_new_version\" \"v$npm_new_version\"",
     "prepare": "pnpm run build",
     "preversion": "pnpm run check:clean && pnpm -C ../.. install --frozen-lockfile && pnpm -w build && pnpm -w check:declarations && pnpm -w check:doc-examples && pnpm -w lint && pnpm -r --filter=!password-hash-wasm typecheck && pnpm -w test",
-    "release": "pnpm version patch && pnpm publish --publish-branch reboot && git push --follow-tags",
+    "release": "pnpm version patch && pnpm publish && git push --follow-tags",
     "typecheck": "tsc --noEmit",
     "version": "(npm whoami || npm login) && vim -c 'normal o' -c 'normal o## '$npm_package_version ../../CHANGELOG.md && prettier -w ../../CHANGELOG.md && git add ../../CHANGELOG.md"
   },
