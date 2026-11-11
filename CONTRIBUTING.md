@@ -65,8 +65,8 @@ just lint
 
 ## Releasing
 
-Only `@convex-dev/auth` is released by script. `password-hash-wasm` is published by
-hand, see below.
+Only `@convex-dev/auth` is released by script. `password-hash-wasm` and
+`vite-plugin-wasm-module` are published by hand, see below.
 
 ### Building a one-off package
 
@@ -113,3 +113,13 @@ pnpm publish
 
 Then update the exact `password-hash-wasm` version in `packages/core`'s dependencies
 and run `pnpm install`.
+
+### Publishing vite-plugin-wasm-module
+
+Its `prepack` builds `dist/`.
+
+```sh
+cd packages/vite-plugin-wasm-module
+# bump the version in package.json, then
+pnpm publish
+```
