@@ -127,14 +127,21 @@ async function registrationArgs(
   const args = buildArgs();
   const finish = (extra: { transports?: string[] } = {}) =>
     startUserId === null
-      ? t.mutation(api.registration.finishRegistrationForNewUser, {
-          ...buildArgs(extra),
-          newUserId: userId,
-        })
-      : t.mutation(api.registration.finishRegistrationForExistingUser, {
-          ...buildArgs(extra),
-          verifiedUserId: userId,
-        });
+      ? t.mutation(
+          api.registration._internal_dangerous_finishRegistrationForNewUser,
+          {
+            ...buildArgs(extra),
+            newUserId: userId,
+          },
+        )
+      : t.mutation(
+          api.registration
+            ._internal_dangerous_finishRegistrationForExistingUser,
+          {
+            ...buildArgs(extra),
+            verifiedUserId: userId,
+          },
+        );
   return { credential, userHandle, args, finish };
 }
 
@@ -408,10 +415,13 @@ describe("finishRegistrationForNewUser", () => {
     });
     await expectProtocolError(
       () =>
-        t.mutation(api.registration.finishRegistrationForNewUser, {
-          ...args,
-          newUserId: "user1",
-        }),
+        t.mutation(
+          api.registration._internal_dangerous_finishRegistrationForNewUser,
+          {
+            ...args,
+            newUserId: "user1",
+          },
+        ),
       "the ceremony comes from `existingUser`",
     );
     expect(await t.run((ctx) => ctx.db.query("passkeys").collect())).toEqual(
@@ -574,10 +584,14 @@ describe("finishRegistrationForExistingUser", () => {
     });
     await expectProtocolError(
       () =>
-        t.mutation(api.registration.finishRegistrationForExistingUser, {
-          ...args,
-          verifiedUserId: "user1",
-        }),
+        t.mutation(
+          api.registration
+            ._internal_dangerous_finishRegistrationForExistingUser,
+          {
+            ...args,
+            verifiedUserId: "user1",
+          },
+        ),
       "the ceremony comes from `newUser`",
     );
     expect(await t.run((ctx) => ctx.db.query("passkeys").collect())).toEqual(
@@ -785,21 +799,25 @@ describe("finishRegistration verification", () => {
     const { args } = await registrationArgs(t, "user1");
     await expectProtocolError(
       () =>
-        t.mutation(api.registration.finishRegistrationForExistingUser, {
-          ...args,
-          verifiedUserId: "user1",
-          response: {
-            ...args.response,
+        t.mutation(
+          api.registration
+            ._internal_dangerous_finishRegistrationForExistingUser,
+          {
+            ...args,
+            verifiedUserId: "user1",
             response: {
-              ...args.response.response,
-              clientDataJSON: toBase64URL(
-                new TextEncoder().encode(
-                  JSON.stringify({ type: "webauthn.create", origin: ORIGIN }),
+              ...args.response,
+              response: {
+                ...args.response.response,
+                clientDataJSON: toBase64URL(
+                  new TextEncoder().encode(
+                    JSON.stringify({ type: "webauthn.create", origin: ORIGIN }),
+                  ),
                 ),
-              ),
+              },
             },
           },
-        }),
+        ),
       "the client data JSON carries no challenge",
     );
   });

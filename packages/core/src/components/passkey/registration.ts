@@ -9,28 +9,28 @@
  *   handle to the user that the caller creates in the same transaction.
  *
  * ```
- *  Client                Method                           Component
- *    │                     │                                 │
- *    │  start the sign-up  │                                 │
- *    ├────────────────────▶│                                 │
- *    │                     │  startRegistrationForNewUser()  │
- *    │                     ├────────────────────────────────▶│     make a handle with no owner
- *    │                     │◀────────────────────────────────┤
- *    │◀────────────────────┤                                 │
- *    │                     │                                 │
- *    ├─▶ navigator.credentials.create()                      │
- *    │                     │                                 │
- *    │  finish the sign-up │                                 │
- *    ├────────────────────▶│                                 │  ┐  one mutation
- *    │                     │  checkRegistrationForNewUser()  │  │
- *    │                     ├────────────────────────────────▶│  │  verify it, write nothing
- *    │                     │◀────────────────────────────────┤  │
- *    │                     ├─▶ create the user               │  │
- *    │                     │  finishRegistrationForNewUser() │  │
- *    │                     ├────────────────────────────────▶│  │  store the passkey, own the handle
- *    │                     │◀────────────────────────────────┤  │
- *    │◀────────────────────┤                                 │  ┘
- *    │                     │                                 │
+ *  Client                Method                                                Component
+ *    │                     │                                                      │
+ *    │  start the sign-up  │                                                      │
+ *    ├────────────────────▶│                                                      │
+ *    │                     │  startRegistrationForNewUser()                       │
+ *    │                     ├─────────────────────────────────────────────────────▶│     make a handle with no owner
+ *    │                     │◀─────────────────────────────────────────────────────┤
+ *    │◀────────────────────┤                                                      │
+ *    │                     │                                                      │
+ *    ├─▶ navigator.credentials.create()                                           │
+ *    │                     │                                                      │
+ *    │  finish the sign-up │                                                      │
+ *    ├────────────────────▶│                                                      │  ┐  one mutation
+ *    │                     │  checkRegistrationForNewUser()                       │  │
+ *    │                     ├─────────────────────────────────────────────────────▶│  │  verify it, write nothing
+ *    │                     │◀─────────────────────────────────────────────────────┤  │
+ *    │                     ├─▶ create the user                                    │  │
+ *    │                     │  _internal_dangerous_finishRegistrationForNewUser()  │  │
+ *    │                     ├─────────────────────────────────────────────────────▶│  │  store the passkey, own the handle
+ *    │                     │◀─────────────────────────────────────────────────────┤  │
+ *    │◀────────────────────┤                                                      │  ┘
+ *    │                     │                                                      │
  * ```
  *
  * - The existing-user flow (`…ForExistingUser`), where a signed-in user adds
@@ -38,24 +38,24 @@
  *   the passkeys that the user already has.
  *
  * ```
- *  Client                     Method                                     Component
- *    │                          │                                           │
- *    │  start adding a passkey  │                                           │
- *    ├─────────────────────────▶│                                           │
- *    │                          │  startRegistrationForExistingUser(userId) │
- *    │                          ├──────────────────────────────────────────▶│     reuse the handle of the user
- *    │                          │◀──────────────────────────────────────────┤
- *    │◀─────────────────────────┤                                           │
- *    │                          │                                           │
- *    ├─▶ navigator.credentials.create()                                     │
- *    │                          │                                           │
- *    │  finish adding a passkey │                                           │
- *    ├─────────────────────────▶│                                           │
- *    │                          │  finishRegistrationForExistingUser()      │
- *    │                          ├──────────────────────────────────────────▶│     store the passkey
- *    │                          │◀──────────────────────────────────────────┤
- *    │◀─────────────────────────┤                                           │
- *    │                          │                                           │
+ *  Client                     Method                                                      Component
+ *    │                          │                                                            │
+ *    │  start adding a passkey  │                                                            │
+ *    ├─────────────────────────▶│                                                            │
+ *    │                          │  startRegistrationForExistingUser(userId)                  │
+ *    │                          ├───────────────────────────────────────────────────────────▶│     reuse the handle of the user
+ *    │                          │◀───────────────────────────────────────────────────────────┤
+ *    │◀─────────────────────────┤                                                            │
+ *    │                          │                                                            │
+ *    ├─▶ navigator.credentials.create()                                                      │
+ *    │                          │                                                            │
+ *    │  finish adding a passkey │                                                            │
+ *    ├─────────────────────────▶│                                                            │
+ *    │                          │  _internal_dangerous_finishRegistrationForExistingUser()   │
+ *    │                          ├───────────────────────────────────────────────────────────▶│     store the passkey
+ *    │                          │◀───────────────────────────────────────────────────────────┤
+ *    │◀─────────────────────────┤                                                            │
+ *    │                          │                                                            │
  * ```
  *
  * The flows never mix: a finish function refuses a ceremony that the other
@@ -112,8 +112,8 @@ function toBase64URL(bytes: ArrayBuffer): string {
  * Start a registration ceremony for a user that does not exist yet.
  *
  * The function makes a handle with no owner, because the user row does not
- * exist when the ceremony starts. `finishRegistrationForNewUser` links the
- * handle to the user that the caller creates in the same transaction.
+ * exist when the ceremony starts. `_internal_dangerous_finishRegistrationForNewUser`
+ * links the handle to the user that the caller creates in the same transaction.
  */
 export const startRegistrationForNewUser = mutation({
   args: {},
@@ -239,15 +239,15 @@ const checkRegistrationResult = v.union(
 type CheckRegistrationResult = Infer<typeof checkRegistrationResult>;
 
 /**
- * Run the verifications of `finishRegistrationForNewUser`, without any
- * write if the registration can succeed.
+ * Run the verifications of `_internal_dangerous_finishRegistrationForNewUser`, without
+ * any write if the registration can succeed.
  *
  * A transactional sign-up flow calls this query first, before it creates
  * the user. Because this is a query, the runtime enforces that nothing is
  * stored: there is no way to store an unverified credential through it.
  *
- * Guarantee: when `checkRegistrationForNewUser` returns `success: true`
- * inside a mutation, a `finishRegistrationForNewUser` call with the same
+ * Guarantee: when `checkRegistrationForNewUser` returns `success: true` inside
+ * a mutation, a `_internal_dangerous_finishRegistrationForNewUser` call with the same
  * arguments in the same mutation does not return a `userError`.
  */
 export const checkRegistrationForNewUser = query({
@@ -293,8 +293,15 @@ type FinishRegistrationResult = Infer<typeof finishRegistrationResult>;
  *
  * A caller that wants to be sure that this call succeeds before it creates
  * data can call {@link checkRegistrationForNewUser} first, in the same mutation.
+ *
+ * DANGER: the passkey goes to `newUserId`, whichever user it is, as long as
+ * the user has no passkey handle yet. An unverified `newUserId` lets an
+ * attacker add their passkey to another user's account.
+ *
+ * TODO: ensure that the user ID is a user that the current mutation has just
+ * created.
  */
-export const finishRegistrationForNewUser = mutation({
+export const _internal_dangerous_finishRegistrationForNewUser = mutation({
   args: { ...finishRegistrationArgs, newUserId: v.string() },
   returns: finishRegistrationResult,
   handler: async (ctx, args): Promise<FinishRegistrationResult> => {
@@ -313,7 +320,7 @@ export const finishRegistrationForNewUser = mutation({
       // Invariant: the new-user flow only runs for a brand-new user, which
       // cannot have a handle already.
       throw new Error(
-        "Invariant violation: The user already has a different handle. finishRegistrationForNewUser is being called for a user that is not new.",
+        "Invariant violation: The user already has a different handle. _internal_dangerous_finishRegistrationForNewUser is being called for a user that is not new.",
       );
     }
     await ctx.db.patch("handles", result.handle._id, {
@@ -342,13 +349,20 @@ export const finishRegistrationForNewUser = mutation({
  * The function verifies the attestation with `@simplewebauthn/server`. Then
  * it stores the credential.
  *
- * Each failure comes back as a `userError`. A client that does not respect
- * the WebAuthn protocol gets `PROTOCOL_ERROR`, and the backend logs say
- * which check failed. A ceremony that `startRegistrationForNewUser` started
- * gets `PROTOCOL_ERROR` too: only `finishRegistrationForNewUser` can finish
- * it. A ceremony that a different user started gets `PROTOCOL_ERROR` too.
+ * Each failure comes back as a `userError`. A client that does not respect the
+ * WebAuthn protocol gets `PROTOCOL_ERROR`, and the backend logs say which check
+ * failed. A ceremony that `startRegistrationForNewUser` started gets
+ * `PROTOCOL_ERROR` too: only `_internal_dangerous_finishRegistrationForNewUser` can
+ * finish it. A ceremony that a different user started gets `PROTOCOL_ERROR`
+ * too.
+ *
+ * DANGER: the start and the finish both trust the caller's `userId`. An
+ * unverified `verifiedUserId` lets an attacker add their passkey to another
+ * user's account.
+ *
+ * TODO: ensure that the user ID is the current user.
  */
-export const finishRegistrationForExistingUser = mutation({
+export const _internal_dangerous_finishRegistrationForExistingUser = mutation({
   args: { ...finishRegistrationArgs, verifiedUserId: v.string() },
   returns: finishRegistrationResult,
   handler: async (ctx, args): Promise<FinishRegistrationResult> => {

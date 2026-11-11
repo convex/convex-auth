@@ -78,7 +78,7 @@ export async function register(
     credential,
   });
   const result = await t.mutation(
-    api.registration.finishRegistrationForExistingUser,
+    api.registration._internal_dangerous_finishRegistrationForExistingUser,
     {
       expectedRpId: RP_ID,
       expectedOrigin: ORIGIN,

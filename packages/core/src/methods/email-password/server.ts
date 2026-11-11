@@ -456,7 +456,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const start = await ctx.runMutation(
-              component.challenge.signUp.start,
+              component.challenge.signUp._internal_dangerous_start,
               {
                 email,
                 // The user is new, so this first address becomes primary.
@@ -684,7 +684,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const start = await ctx.runMutation(
-              component.challenge.changeEmail.start,
+              component.challenge.changeEmail._internal_dangerous_start,
               {
                 email: newEmail,
                 userId,

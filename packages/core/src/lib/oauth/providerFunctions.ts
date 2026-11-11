@@ -167,7 +167,9 @@ export function buildProviderFunctions<
       await dbHelpers.findAccountUserId<SharedAccountDocument>(ctx, args),
   });
 
-  const createAccount = options.mutation({
+  // DANGER: see `_internal_dangerous_createAccount` in `components/oauth/provider.ts`.
+  // TODO: ensure that the user ID is the current user.
+  const _internal_dangerous_createAccount = options.mutation({
     args: accountFields,
     returns: v.null(),
     handler: async (ctx, args) =>
@@ -180,6 +182,6 @@ export function buildProviderFunctions<
     createTicket,
     claimTicket,
     getUserIdByAccount,
-    createAccount,
+    _internal_dangerous_createAccount,
   };
 }
