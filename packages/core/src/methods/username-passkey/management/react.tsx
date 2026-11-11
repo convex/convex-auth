@@ -1,10 +1,7 @@
 /**
- * React client for passkey management, re-exported from
- * `@convex-dev/auth/methods/username-passkey/react`.
- *
- * These hooks are used on a settings page for a logged in user,
- * so that they can register a new passkey ({@link useAddPasskey})
- * and remove one ({@link useRemovePasskey}).
+ * The shared bodies of the passkey-management hooks, `useAddPasskey` and
+ * `useRemovePasskey`. Each entry point binds them to the ceremonies of its
+ * platform.
  *
  * There is no list hook: `listPasskeys` is a plain reactive query, so a
  * page simply reads it with `useQuery(api.auth.listPasskeys, {})`.
@@ -16,6 +13,7 @@
 import { useConvex } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { useStableFunctionReference } from "../../../react/functionReference.ts";
+import type { PasskeyCeremonies } from "../ceremonies.ts";
 import {
   usePasskeyCeremonySlot,
   type AlreadyPendingFailure,
@@ -38,38 +36,17 @@ export type RemovePasskeyResult =
   RemovePasskeyFlowResult | AlreadyPendingFailure;
 
 /**
- * Hook for the "Add a passkey" button of a settings page.
+ * The body of `useAddPasskey`, for the given platform.
  *
- * ```tsx
- * import { useAddPasskey } from "@convex-dev/auth/methods/username-passkey/react";
- * import { api } from "../convex/_generated/api";
- *
- * function AddPasskeyButton() {
- *   const { addPasskey, pending } = useAddPasskey(api.auth);
- *   return (
- *     <button
- *       disabled={pending}
- *       onClick={async () => {
- *         const result = await addPasskey();
- *         if (!result.success) {
- *           // map result.userError to a message
- *         }
- *       }}
- *     >
- *       Add a passkey
- *     </button>
- *   );
- * }
- * ```
- *
- * First asks the user to authenticate with an existing passkey to prove
- * their identity, then registers a new passkey.
- *
- * @param managementApi The app module that re-exports the
- *   passkey-management functions of the method, for example `api.auth`.
+ * @param managementApi The passkey-management functions, usually `api.auth`.
+ * @param ceremonies The passkey ceremonies of the platform. Pass a module
+ *   constant, so its identity never changes.
  */
 // TODO(nicolas) Change the return value to allow showing a different UI before creating the new passkey
-export function useAddPasskey(managementApi: AddPasskeyApi) {
+export function useAddPasskeyImpl(
+  managementApi: AddPasskeyApi,
+  ceremonies: PasskeyCeremonies,
+) {
   const convex = useConvex();
 
   const { run, pending } = usePasskeyCeremonySlot({
@@ -90,8 +67,9 @@ export function useAddPasskey(managementApi: AddPasskeyApi) {
     () => ({
       convex,
       api: { startAddPasskey, verifyAddPasskey, finishAddPasskey },
+      ceremonies,
     }),
-    [convex, startAddPasskey, verifyAddPasskey, finishAddPasskey],
+    [convex, startAddPasskey, verifyAddPasskey, finishAddPasskey, ceremonies],
   );
 
   const addPasskey = useCallback(
@@ -113,37 +91,16 @@ export function useAddPasskey(managementApi: AddPasskeyApi) {
 }
 
 /**
- * Hook for the "Remove" button of a passkey list.
+ * The body of `useRemovePasskey`, for the given platform.
  *
- * ```tsx
- * import { useRemovePasskey } from "@convex-dev/auth/methods/username-passkey/react";
- * import { api } from "../convex/_generated/api";
- *
- * function RemovePasskeyButton({ passkeyId }: { passkeyId: string }) {
- *   const { removePasskey, pending } = useRemovePasskey(api.auth);
- *   return (
- *     <button
- *       disabled={pending}
- *       onClick={async () => {
- *         const result = await removePasskey(passkeyId);
- *         if (!result.success) {
- *           // map result.userError to a message
- *         }
- *       }}
- *     >
- *       Remove
- *     </button>
- *   );
- * }
- * ```
- *
- * This asks the user to reauthenticate with another passkey
- * before deleting the targeted passkey.
- *
- * @param managementApi The app module that re-exports the
- *   passkey-management functions of the method, for example `api.auth`.
+ * @param managementApi The passkey-management functions, usually `api.auth`.
+ * @param ceremonies The passkey ceremonies of the platform. Pass a module
+ *   constant, so its identity never changes.
  */
-export function useRemovePasskey(managementApi: RemovePasskeyApi) {
+export function useRemovePasskeyImpl(
+  managementApi: RemovePasskeyApi,
+  ceremonies: PasskeyCeremonies,
+) {
   const convex = useConvex();
   const { run, pending } = usePasskeyCeremonySlot({ autofill: null });
 
@@ -154,8 +111,12 @@ export function useRemovePasskey(managementApi: RemovePasskeyApi) {
     managementApi.finishRemovePasskey,
   );
   const ctx = useMemo(
-    () => ({ convex, api: { startRemovePasskey, finishRemovePasskey } }),
-    [convex, startRemovePasskey, finishRemovePasskey],
+    () => ({
+      convex,
+      api: { startRemovePasskey, finishRemovePasskey },
+      ceremonies,
+    }),
+    [convex, startRemovePasskey, finishRemovePasskey, ceremonies],
   );
 
   const removePasskey = useCallback(

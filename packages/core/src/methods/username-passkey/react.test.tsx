@@ -18,6 +18,7 @@ import {
 import { usePasskeyAutofill, usePasskeyCeremonySlot } from "./react_impl.tsx";
 
 import { toBase64URL } from "./base64url.ts";
+import { browserCeremonies } from "./client.ts";
 
 const noopAutofill = {
   pauseAutofillFlow: () => {},
@@ -827,7 +828,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
 
     await waitFor(() => expect(result.current.status).toBe("signedIn"));
@@ -848,7 +849,7 @@ describe("usePasskeyAutofill", () => {
       userError: flowError,
     }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
 
     await waitFor(() => expect(result.current.status).toBe("stopped"));
@@ -866,7 +867,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
 
     // Pause right away, while feature detection is still in flight: the
@@ -906,7 +907,7 @@ describe("usePasskeyAutofill", () => {
     });
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
 
@@ -936,7 +937,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
     await waitFor(() => expect(result.current.status).toBe("waiting"));
 
@@ -967,7 +968,12 @@ describe("usePasskeyAutofill", () => {
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, rerender, unmount } = renderHook(
       ({ enabled }: { enabled: boolean }) => {
-        const autofill = usePasskeyAutofill({ start, onAssertion, enabled });
+        const autofill = usePasskeyAutofill({
+          ceremonies: browserCeremonies,
+          start,
+          onAssertion,
+          enabled,
+        });
         const modal = usePasskeyCeremonySlot({ autofill });
         return { autofill, modal };
       },
@@ -1017,7 +1023,11 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() => {
-      const autofill = usePasskeyAutofill({ start, onAssertion });
+      const autofill = usePasskeyAutofill({
+        ceremonies: browserCeremonies,
+        start,
+        onAssertion,
+      });
       const modal = usePasskeyCeremonySlot({ autofill });
       return { autofill, modal };
     });
@@ -1049,7 +1059,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
     await waitFor(() => expect(result.current.status).toBe("waiting"));
     expect(start).toHaveBeenCalledTimes(1);
@@ -1078,7 +1088,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
     await waitFor(() => expect(result.current.status).toBe("waiting"));
 
@@ -1111,7 +1121,7 @@ describe("usePasskeyAutofill", () => {
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ start, onAssertion }),
+      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
     );
     await waitFor(() => expect(result.current.status).toBe("waiting"));
 
@@ -1135,7 +1145,12 @@ describe("usePasskeyAutofill", () => {
     const onAssertion = vi.fn(async () => ({ success: true as const }));
     const { result, rerender, unmount } = renderHook(
       ({ enabled }: { enabled: boolean }) =>
-        usePasskeyAutofill({ start, onAssertion, enabled }),
+        usePasskeyAutofill({
+          ceremonies: browserCeremonies,
+          start,
+          onAssertion,
+          enabled,
+        }),
       { initialProps: { enabled: true } },
     );
 
