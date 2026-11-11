@@ -48,28 +48,15 @@ from callback params does nothing there, and `signIn` requires an explicit
 properly means deciding what `redirectTo` looks like when it can't be a page
 URL.
 
-## Refresh-token reuse detection has a bounded horizon
+## A session's refresh-token rows are unbounded
 
-A spent or dropped refresh token is remembered for `SPENT_TOKEN_HORIZON_MS`
-(1 hour) after it is retired, and pruned when the same session next redeems a
-token.
-
-Retired rows are pruned inline by the refreshes of their own session, so a
-session abandoned mid-life leaves its remaining rows behind until it is signed
-out or expires — the same way an abandoned session row itself lingers today. Roughly
-`horizon ÷ refresh interval` rows, about 60 at the defaults.
-
-Nothing bounds how many rows a session holds. A session refreshed
+Each refresh retires a row, kept for `SPENT_TOKEN_HORIZON_MS` (1 hour) for
+reuse detection — about 60 per session at the defaults. A session refreshed
 pathologically often (an unthrottled client, or someone hammering `refresh`
-with that session's tokens — see Rate limiting) can grow its retired rows
-(read by `pruneRetiredTokens`) or, within `REFRESH_GRACE_MS`, its issued rows
-(read by `redeem`) past the transaction read limits, making that session
-unrefreshable. It can still be signed out, since deleting a session no longer
-reads its rows.
+with that session's tokens) can grow its retired rows (read by
+`pruneRetiredTokens`) or, within `REFRESH_GRACE_MS`, its issued rows (read by
+`redeem`) past the transaction read limits, making that session
+unrefreshable. It can still be signed out, and only the session's holder can
+cause it.
 
-Fix direction: a `@convex-dev/batch-worker` loop over retired `refreshTokens`
-rows by `retiredAt`, mirroring `packages/core/src/components/passkey/cleanup.ts`,
-to sweep orphans globally and cap the table regardless of any one session's
-behavior. Bound its idle probe's range read above (the passkey version's
-`gte(cursor)` is unbounded, which would put the whole index tail in the loop's
-read set and thrash on OCC at refresh volume).
+Fix direction: rate-limit `refresh` (see Rate limiting).

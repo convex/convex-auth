@@ -23,6 +23,7 @@ import {
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
 } from "./expiry.ts";
+import { scheduleSessionCleanup } from "./cleanup.ts";
 import {
   type TtlConfig,
   validateTtlConfig,
@@ -112,6 +113,8 @@ async function issueSession(
     sessionId,
     ttl.accessTokenTtlSeconds,
   );
+  // The loop erases the session once it reaches its max lifetime.
+  await scheduleSessionCleanup(ctx);
   return {
     accessToken,
     refreshToken,
@@ -385,8 +388,12 @@ export const getUserIdByAccount = query({
  * Returns an object with the session's `userId` when the session row exists.
  * If there is no row for the session id, it returns `null`.
  *
- * A session is live exactly as long as its row exists: sign-out, refresh-token
- * reuse detection, and expired-token cleanup all delete the row.
+ * A session is live as long as its row exists. Sign-out, revocation, and
+ * refresh-token reuse detection delete the row right away. An expired session
+ * is deleted by a background cleanup loop (see cleanup.ts) once it reaches its
+ * max lifetime, which can be a while after it expired for inactivity;
+ * `refresh` refuses its tokens in the meantime, so its access tokens are the
+ * last it has.
  *
  * This is a component function; it is callable by the app, not by end-user
  * clients, so it does not expose session existence to the outside world.
@@ -442,7 +449,11 @@ export const refresh = mutation({
     // throw unconditionally.
     const ttl = validateTtlConfig(args);
     const now = Date.now();
-    await recordTtlConfig(ctx, ttl);
+    // A changed lifetime can expire other sessions right away (or later than
+    // the loop planned), thus the loop runs again with the stored new values.
+    if (await recordTtlConfig(ctx, ttl)) {
+      await scheduleSessionCleanup(ctx);
+    }
 
     const token = await lookupRefreshTokenByHash(
       ctx,
@@ -575,10 +586,11 @@ export const signOut = mutation({
  *
  * Sessions are listed newest first.
  *
- * Expired sessions are included, since a session's row outlives its tokens
- * until something deletes it. The query does not read the clock, so its result
- * stays cached until a session or token changes; callers that want only the
- * active sessions compare the expiry to the current time themselves.
+ * The background cleanup loop deletes a session once it reaches its max
+ * lifetime. A session that expired for inactivity before that still shows up
+ * until then; callers that want only the active sessions compare the expiry
+ * to the current time themselves. The query does not read the clock, so its
+ * result stays cached until a session or token changes.
  *
  * This is a component function callable by the app, not by end-user clients.
  */
