@@ -27,7 +27,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       createAnonymousAccount: FunctionReference<
         "mutation",
         "internal",
-        { anonymousId: string; userId: string },
+        { userId: string },
         null,
         Name
       >;
