@@ -45,10 +45,13 @@ The 🔴 functions fall into two groups:
    `userId` names. The core has no idea how the user was verified.
 2. **Binding a credential to a `userId`**: `password.setPassword`,
    `passkey.finishRegistrationFor*User`, `email.{signUp,addEmail,changeEmail}.start`,
-   `oauth.createAccount`, `anonymous.createAnonymousAccount`,
-   `totp.createTotp`/`confirmTotp`. Each one lets an attacker who controls the
-   `userId` attach a credential they own (a password, a passkey, a mailbox, a
-   provider account) to the victim's account, then sign in with it.
+   `oauth.createAccount`, `totp.createTotp`/`confirmTotp`. Each one lets an
+   attacker who controls the `userId` attach a credential they own (a password,
+   a passkey, a mailbox, a provider account) to the victim's account, then sign
+   in with it.
+
+`oauth.createAuthorizationRequest` is the odd one out: it trusts `redirectTo`,
+and the callback sends the one-time ticket code there (see its row).
 
 ## Full table
 
@@ -131,18 +134,18 @@ The 🔴 functions fall into two groups:
 
 ### `authAnonymous` (not exported yet)
 
-| Function                 | Kind     | Rating | Assessment                                                                                                                                                                                   |
-| ------------------------ | -------- | :----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createAnonymousAccount` | mutation |   🔴   | Inserts an `anonymousId` → `userId` row with no check at all, **not even uniqueness** of `anonymousId` (unlike `oauth.createAccount`). Whoever holds that anonymous id signs in as `userId`. |
+| Function                 | Kind     | Rating | Assessment                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | -------- | :----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `createAnonymousAccount` | mutation |   🟠   | Inserts an `anonymousId` → `userId` row with no check. Harmless today: nothing looks these rows up by `anonymousId` (an anonymous identity is never signed in again), so a bogus or duplicate row grants nothing. It would become 🔴 if anonymous sign-in ever returned to an existing account by id; enforce uniqueness then. |
 
 ### `authOAuth`, `authGoogle`, `authApple`, `authGithub` (shared via `buildProviderFunctions`)
 
-| Function                     | Kind     | Rating | Assessment                                                                                                                                                                                                                                                                                           |
-| ---------------------------- | -------- | :----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createAuthorizationRequest` | mutation |   🟠   | Stores `stateHash`, `codeVerifier` and `redirectTo` as given. The component does **not** validate `redirectTo`: the method checks it against `allowedRedirectOrigins`, and a caller that skips that check gets an open redirect after sign-in. No takeover (the state is still bound to the caller). |
-| `claimTicket`                | mutation |   🟢   | Needs the hash of the one-time ticket code and the hash of the original state; the payload is encrypted with a key derived from the raw code.                                                                                                                                                        |
-| `getUserIdByAccount`         | query    |   🟢   | Provider account id → user id. Read-only; the danger is only in passing its result to `auth.signIn` without a verified provider account id.                                                                                                                                                          |
-| `createAccount`              | mutation |   🔴   | Links any `providerAccountId` to any `userId` (rejects duplicates of `providerAccountId` only). An attacker who controls both links their own provider account to the victim, then signs in with the provider → takeover.                                                                            |
+| Function                     | Kind     | Rating | Assessment                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------- | -------- | :----: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createAuthorizationRequest` | mutation |   🔴   | Stores `stateHash`, `codeVerifier` and `redirectTo` as given, and the callback later redirects to `redirectTo` **with the one-time ticket code**. The component does not validate `redirectTo`; the method's `startSignIn` checks it against `allowedRedirectOrigins`. A caller that skips the check enables a takeover: the attacker starts a flow with their own `redirectTo` (they hold the state), sends the victim the provider's authorization URL, and once the victim consents, the code lands on the attacker's site; code + state redeem a session as the victim. |
+| `claimTicket`                | mutation |   🟢   | Needs the hash of the one-time ticket code and the hash of the original state; the payload is encrypted with a key derived from the raw code.                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `getUserIdByAccount`         | query    |   🟢   | Provider account id → user id. Read-only; the danger is only in passing its result to `auth.signIn` without a verified provider account id.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `createAccount`              | mutation |   🔴   | Links any `providerAccountId` to any `userId` (rejects duplicates of `providerAccountId` only). An attacker who controls both links their own provider account to the victim, then signs in with the provider → takeover.                                                                                                                                                                                                                                                                                                                                                   |
 
 ## Observations
 
@@ -159,8 +162,6 @@ The 🔴 functions fall into two groups:
   brand new user created in the same mutation (checked against
   `createdUserIds`/a fresh-user token), and one for an existing user that
   requires a step-up proof.
-- `anonymous.createAnonymousAccount` lacks the uniqueness check that
-  `oauth.createAccount` has.
 - `username.getUserIdByUsername` has no enumeration rate limit, unlike
   `email.lookupEmail`.
 - `password.verifyPassword` throws on a `userId` with no password instead of
