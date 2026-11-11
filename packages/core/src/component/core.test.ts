@@ -165,6 +165,38 @@ async function redeemedHash(t: ConvexTestApi) {
   return redeemed[0]?.hash;
 }
 
+describe("created user IDs", () => {
+  async function createdUserIds(t: ConvexTestApi) {
+    return (
+      await t.run(async (ctx) => ctx.db.query("createdUserIds").collect())
+    ).map((row) => row.userId);
+  }
+
+  test("signUp, signIn, and signUpWithoutSession record the user ID once", async () => {
+    const t = setup();
+    const { userId } = await signUp(t, claims());
+    await signIn(t, claims(), userId);
+    await signIn(t, claims(), "someone");
+    const { userId: pending } = await t.mutation(
+      api.public.signUpWithoutSession,
+      { claims: claims(), createUserHandle: CREATE_USER_HANDLE },
+    );
+    expect((await createdUserIds(t)).sort()).toEqual(
+      [userId, "someone", pending].sort(),
+    );
+  });
+
+  test("markUserIdCreated records a user ID once, and refuses an empty one", async () => {
+    const t = setup();
+    await t.mutation(api.public.markUserIdCreated, { userId: "imported" });
+    await t.mutation(api.public.markUserIdCreated, { userId: "imported" });
+    expect(await createdUserIds(t)).toEqual(["imported"]);
+    await expect(
+      t.mutation(api.public.markUserIdCreated, { userId: "" }),
+    ).rejects.toThrow("empty user ID");
+  });
+});
+
 describe("signUp", () => {
   test("creates a session and mints a verifiable JWT", async () => {
     const t = setup();

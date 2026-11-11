@@ -2,6 +2,12 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // The IDs of the app users that the core created or signed in, or that the
+  // app marked as created (`markUserIdCreated`).
+  createdUserIds: defineTable({
+    userId: v.string(),
+  }).index("by_userId", ["userId"]),
+
   // One row per active session. Its refresh tokens live in `refreshTokens`.
   // A session expires once it goes `refreshInactivityTimeoutSeconds` without a
   // refresh, or at the latest `sessionMaxLifetimeSeconds` after its
