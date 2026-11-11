@@ -13,11 +13,16 @@ Schema and sign-in method API breaking changes - see below
   1. optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
      table of their component. An OAuth user without a copied row gets a new
      app user on their next sign-in.
-  2. delete the `auth/accounts` table
-  3. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
+  2. add a `userId` to each row of `authAnonymous/accounts`, which now
+     requires one. Take it from the `auth/accounts` row whose `provider` is
+     `anonymous` and whose `providerAccountId` is the row's `anonymousId`. Or
+     clear `authAnonymous/accounts`, which nothing reads.
+  3. delete the `auth/accounts` table
+  4. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
      every user out
 - `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
-  `userId`, which the sign-in method gets from its component
+  `userId`, which the sign-in method gets from its component. This API isn't
+  stable yet: expect its arguments to change again.
 - removed `resolveUserId` from the sign-in method API, and removed the core's
   `getUserIdByAccount`. Each OAuth component has its own
   `getUserIdByAccount`.
