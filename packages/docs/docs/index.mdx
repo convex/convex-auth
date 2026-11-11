@@ -4,17 +4,6 @@ title: Convex Auth
 description: The best way to add authentication to your Convex app.
 ---
 
-:::warning[Convex Auth v2 is in beta]
-
-Do not use Convex Auth v2 in production projects yet. The APIs may change
-before the general availability release.
-
-The beta meets the same security bar as the stable release. However, it has no
-guaranteed upgrade path to the stable v2 release, and only the newest beta gets
-bug fixes.
-
-:::
-
 Convex Auth is the best way to add authentication to your
 [Convex](https://www.convex.dev) app.
 
@@ -26,15 +15,13 @@ Convex Auth is the best way to add authentication to your
 
 ### What's the status of Convex Auth?
 
-Convex Auth is in active development and hasn't reached a stable release yet.
-These are the docs for the new development branch of Convex Auth which is built
-on Convex Components and is targeting a public stable release in Q4 2026.
+These are the docs for Convex Auth v2, the current stable release. It is built
+on [Convex Components](https://www.convex.dev/components) and includes features
+to build user sign-up/sign-in using passwords, passkeys, and Apple, Google, or
+GitHub OAuth.
 
-It currently includes features to build basic user sign-up/sign-in using
-passwords, passkeys and Apple, Google, or GitHub OAuth.
-
-You can try Convex Auth in its current state but beware that the API and schema
-may change in breaking ways before the stable release.
+Convex Auth v1 will receive security updates while we work to close some
+feature gaps in v2 and unlock the ability for more applications to migrate.
 
 ### How much does it cost?
 
@@ -45,14 +32,12 @@ pricing](https://www.convex.dev/pricing) applies.
 
 ### Does Convex Auth support what my app needs?
 
-Currently Convex Auth supports several login methods out of the box:
+Convex Auth supports several login methods out of the box:
 
 - [Username + Password](./login-providers/password.mdx)
 - [Email + Password](./login-providers/email-password.mdx)
 - [Passkey](./login-providers/passkey.mdx)
 - [OAuth](./login-providers/oauth.mdx) (Apple, Google, and GitHub)
-
-Additional feature will be available with the stable release.
 
 ### Will my app be secure?
 
@@ -74,29 +59,33 @@ database. You stay in control of the user data, and you can
 
 ### Which front-end libraries or frameworks can I use Convex Auth with?
 
-:::warning
+Convex Auth comes with support for React SPAs and SSR apps built with Next.js.
 
-WIP
-
-:::
+The code was designed with extension to other frameworks in mind though, so
+let us know on [Ship](https://ship.convex.dev/) if there are other frameworks
+you'd like to see supported!
 
 ### How is it different compared to…
 
 #### …WorkOS/Clerk/Auth0?
 
-:::warning
+There are a few major differences:
 
-WIP
-
-:::
+- The entire auth system is transactional and reactive within your application
+- There's no third-party system to integrate with to get authentication in your
+  application
+- All of your user data is stored in your application
+- All setup/configuration is done via code - agents love Convex Auth!
+- These established providers have more features
 
 #### …Convex + Better Auth?
 
-:::warning
-
-WIP
-
-:::
+Convex Auth was built by Convex engineers for Convex applications. Better Auth is
+a flexible framework that targets traditional relational database systems. There
+are numerous integration points that don't fit quite right when using Better
+Auth with Convex. We encourage anyone starting a new application to use Convex
+Auth and will be providing migration guides and/or tooling for existing users of
+the Convex Better Auth component.
 
 #### …Convex Auth v1?
 

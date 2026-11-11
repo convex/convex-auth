@@ -15,13 +15,6 @@ Every project using Convex Auth starts with these steps.
 
 Add the Convex Auth package to your project.
 
-:::warning
-
-Convex Auth v2 is still in development. This installs the latest development
-build from NPM.
-
-:::
-
 {/* prettier-ignore-start */}
 
 <Tabs groupId="package-manager">
@@ -72,7 +65,8 @@ export default app;
 <Step title="Configure the authentication provider">
 
 Create `convex/auth.config.ts`. This file tells your deployment to accept the
-access tokens of Convex Auth:
+access tokens of Convex Auth. Your deployment signs the access tokens with its
+own key, thus you do not have secrets to configure.
 
 ```ts title="convex/auth.config.ts"
 import type { AuthConfig } from "convex/server";
@@ -82,9 +76,6 @@ export default {
   providers: [convexAuthProvider()],
 } satisfies AuthConfig;
 ```
-
-Your deployment signs the access tokens with its own key, thus you do not have
-secrets to configure.
 
 </Step>
 
