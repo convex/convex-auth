@@ -67,7 +67,7 @@ async function seedSignedUpUser(
   const userId = await t.run(async (ctx) => await ctx.db.insert("users", {}));
   await runInComponent(t, "auth", async (ctx) => {
     await ctx.db.insert("accounts", {
-      provider: "emailPassword",
+      component: "authPassword",
       providerAccountId: userId,
       userId,
     });
@@ -103,7 +103,7 @@ async function asUser(t: T, userId: string) {
   const sessionId = await runInComponent(t, "auth", async (ctx) => {
     return await ctx.db.insert("sessions", {
       userId,
-      provider: "emailPassword",
+      component: "authPassword",
     });
   });
   return t.withIdentity({ subject: sessionId });
@@ -362,7 +362,7 @@ describe("completeSignUp", () => {
     const userId = await t.run(async (ctx) => await ctx.db.insert("users", {}));
     await runInComponent(t, "auth", async (ctx) => {
       await ctx.db.insert("accounts", {
-        provider: "emailPassword",
+        component: "authPassword",
         providerAccountId: userId,
         userId,
       });
@@ -422,7 +422,7 @@ describe("completeSignUp", () => {
       );
       await runInComponent(t, "auth", async (ctx) => {
         await ctx.db.insert("accounts", {
-          provider: "emailPassword",
+          component: "authPassword",
           providerAccountId: userId,
           userId,
         });

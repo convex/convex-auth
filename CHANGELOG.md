@@ -26,9 +26,9 @@ Schema and sign-in method API breaking changes - see below
 - `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
   `userId`, which the sign-in method gets from its component. This API isn't
   stable yet: expect its arguments to change again.
-- the core's `sessions` table records in `provider` the path of the component
-  that verified the user (for example `authPassword`), not the name of the
-  sign-in method.
+- the core's `sessions` table renames `provider` to `component`, which holds
+  the path of the component that verified the user (for example
+  `authPassword`), not the name of the sign-in method.
 - the user callbacks (`createUser` and `onSignIn`) no longer receive
   `provider.accountId`: they receive `provider: { name, profile }`. Remove
   `accountId: v.string()` from their argument validators. For OAuth,
