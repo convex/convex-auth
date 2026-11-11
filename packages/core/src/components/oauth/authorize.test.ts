@@ -15,8 +15,8 @@ import { sha256Hex } from "../../lib/crypto.ts";
 
 /**
  * Tests for the shared `buildStartSignIn`, run through the app-side
- * `startSignIn` mutation that `setupOauth` produces against the real
- * component (real `createAuthorizationRequest`, real records). The built-in
+ * `startSignIn` mutation that `setupOauth` produces against the real component
+ * (real `_internal_dangerous_createAuthorizationRequest`, real records). The built-in
  * providers build their authorization URL with the same function.
  */
 

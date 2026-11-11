@@ -24,6 +24,56 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      _internal_dangerous_signIn: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessTokenTtlSeconds: number;
+          claims: { profile: any; providerName: string };
+          componentPath: string;
+          onSignInHandle?: string;
+          refreshInactivityTimeoutSeconds: number;
+          sessionMaxLifetimeSeconds: number;
+          userId: string;
+        },
+        {
+          accessToken: string;
+          refreshToken: string;
+          refreshTokenExpiresAt: number;
+          userId: string;
+        },
+        Name
+      >;
+      _internal_dangerous_signUp: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessTokenTtlSeconds: number;
+          claims: { profile: any; providerName: string };
+          componentPath: string;
+          createUserHandle: string;
+          onSignInHandle?: string;
+          refreshInactivityTimeoutSeconds: number;
+          sessionMaxLifetimeSeconds: number;
+        },
+        {
+          accessToken: string;
+          refreshToken: string;
+          refreshTokenExpiresAt: number;
+          userId: string;
+        },
+        Name
+      >;
+      _internal_dangerous_signUpWithoutSession: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          claims: { profile: any; providerName: string };
+          createUserHandle: string;
+        },
+        { userId: string },
+        Name
+      >;
       getSession: FunctionReference<
         "query",
         "internal",
@@ -77,61 +127,11 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Array<string>,
         Name
       >;
-      signIn: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          accessTokenTtlSeconds: number;
-          claims: { profile: any; providerName: string };
-          componentPath: string;
-          onSignInHandle?: string;
-          refreshInactivityTimeoutSeconds: number;
-          sessionMaxLifetimeSeconds: number;
-          userId: string;
-        },
-        {
-          accessToken: string;
-          refreshToken: string;
-          refreshTokenExpiresAt: number;
-          userId: string;
-        },
-        Name
-      >;
       signOut: FunctionReference<
         "mutation",
         "internal",
         { refreshToken: string },
         null,
-        Name
-      >;
-      signUp: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          accessTokenTtlSeconds: number;
-          claims: { profile: any; providerName: string };
-          componentPath: string;
-          createUserHandle: string;
-          onSignInHandle?: string;
-          refreshInactivityTimeoutSeconds: number;
-          sessionMaxLifetimeSeconds: number;
-        },
-        {
-          accessToken: string;
-          refreshToken: string;
-          refreshTokenExpiresAt: number;
-          userId: string;
-        },
-        Name
-      >;
-      signUpWithoutSession: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          claims: { profile: any; providerName: string };
-          createUserHandle: string;
-        },
-        { userId: string },
         Name
       >;
     };

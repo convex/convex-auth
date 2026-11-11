@@ -28,7 +28,7 @@ const PROVIDER_NAME = "password";
 export type UsernamePasswordOptions = {
   /**
    * The mounted password component (`components.authPassword`). The
-   * recipe drives its `setPassword` / `verifyPassword` mutations.
+   * recipe drives its `_internal_dangerous_setPassword` / `verifyPassword` mutations.
    */
   component: ComponentApi;
   /**
@@ -148,8 +148,8 @@ export function setupUsernamePassword<UsersTable extends string>(
           ): Promise<SignUpResult> => {
             // Validate the username and the password *before* creating
             // anything, so invalid input never mints a session.
-            // (`setUsername` and `setPassword` do the same checks again, but by
-            // then the account would already exist.)
+            // (`setUsername` and `_internal_dangerous_setPassword` do the same checks
+            // again, but by then the account would already exist.)
             // TODO(nicolas) Make the first-party methods apply stronger validation rules by default
             const usernameError = validateUsernameFormat(username);
             if (usernameError !== null) {
@@ -196,7 +196,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             }
 
             const setResult = await ctx.runMutation(
-              component.public.setPassword,
+              component.public._internal_dangerous_setPassword,
               {
                 userId: tokens.userId,
                 password,
@@ -320,7 +320,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             }
 
             const setResult = await ctx.runMutation(
-              component.public.setPassword,
+              component.public._internal_dangerous_setPassword,
               {
                 userId,
                 password: newPassword,

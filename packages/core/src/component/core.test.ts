@@ -89,7 +89,7 @@ async function finishScheduledFunctions(t: ConvexTestApi) {
 
 /** Establish a brand new identity: its app user and a session. */
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
-  return await t.mutation(api.public.signUp, {
+  return await t.mutation(api.public._internal_dangerous_signUp, {
     claims: c,
     componentPath: COMPONENT_PATH,
     createUserHandle: CREATE_USER_HANDLE,
@@ -100,7 +100,7 @@ async function signUp(t: ConvexTestApi, c: AuthClaims) {
 
 /** Sign a known identity back in, as an app that attached an `onSignIn` does. */
 async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
-  return await t.mutation(api.public.signIn, {
+  return await t.mutation(api.public._internal_dangerous_signIn, {
     claims: c,
     componentPath: COMPONENT_PATH,
     userId,
@@ -192,7 +192,7 @@ describe("sessions and created user IDs", () => {
     await signIn(t, claims(), userId);
     await signIn(t, claims(), "someone");
     const { userId: pending } = await t.mutation(
-      api.public.signUpWithoutSession,
+      api.public._internal_dangerous_signUpWithoutSession,
       { claims: claims(), createUserHandle: CREATE_USER_HANDLE },
     );
     expect((await createdUserIds(t)).sort()).toEqual(
@@ -272,7 +272,7 @@ describe("signUp", () => {
     const t = setup();
     testApp.resetUserCallbackCalls();
 
-    const bundle = await t.mutation(api.public.signUp, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signUp, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
@@ -289,7 +289,7 @@ describe("signUp", () => {
     const t = setup();
 
     await expect(
-      t.mutation(api.public.signUp, {
+      t.mutation(api.public._internal_dangerous_signUp, {
         claims: claims(),
         componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
@@ -355,7 +355,7 @@ describe("signIn", () => {
     testApp.resetUserCallbackCalls();
 
     // No `onSignInHandle` is what an app that left `onSignIn` out sends.
-    const bundle = await t.mutation(api.public.signIn, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signIn, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       userId: first.userId,
@@ -380,10 +380,13 @@ describe("signUpWithoutSession", () => {
     const t = setup();
     testApp.resetUserCallbackCalls();
 
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
-      claims: claims(),
-      createUserHandle: CREATE_USER_HANDLE,
-    });
+    const { userId } = await t.mutation(
+      api.public._internal_dangerous_signUpWithoutSession,
+      {
+        claims: claims(),
+        createUserHandle: CREATE_USER_HANDLE,
+      },
+    );
 
     // The id returned by the app's createUser.
     expect(userId).toBe("user1");
@@ -396,10 +399,13 @@ describe("signUpWithoutSession", () => {
 
   test("a later signIn with the user id mints a session", async () => {
     const t = setup();
-    const { userId } = await t.mutation(api.public.signUpWithoutSession, {
-      claims: claims(),
-      createUserHandle: CREATE_USER_HANDLE,
-    });
+    const { userId } = await t.mutation(
+      api.public._internal_dangerous_signUpWithoutSession,
+      {
+        claims: claims(),
+        createUserHandle: CREATE_USER_HANDLE,
+      },
+    );
 
     const bundle = await signIn(t, claims(), userId);
     expect(bundle.userId).toBe(userId);
@@ -592,12 +598,15 @@ describe("refresh", () => {
       refreshInactivityTimeoutSeconds: 60 * 60,
       sessionMaxLifetimeSeconds: 2 * 60 * 60,
     });
-    let bundle: TokenBundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...lifetimes,
-    });
+    let bundle: TokenBundle = await t.mutation(
+      api.public._internal_dangerous_signUp,
+      {
+        claims: claims(),
+        componentPath: COMPONENT_PATH,
+        createUserHandle: CREATE_USER_HANDLE,
+        ...lifetimes,
+      },
+    );
     // Refresh every half hour, well within the inactivity timeout, until the
     // session is just short of its max lifetime.
     for (let i = 0; i < 3; i++) {
@@ -647,12 +656,15 @@ describe("refresh", () => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const t = setup();
     const lifetimes = ttl({ refreshInactivityTimeoutSeconds: 60 * 60 });
-    const bundle: TokenBundle = await t.mutation(api.public.signUp, {
-      claims: claims(),
-      componentPath: COMPONENT_PATH,
-      createUserHandle: CREATE_USER_HANDLE,
-      ...lifetimes,
-    });
+    const bundle: TokenBundle = await t.mutation(
+      api.public._internal_dangerous_signUp,
+      {
+        claims: claims(),
+        componentPath: COMPONENT_PATH,
+        createUserHandle: CREATE_USER_HANDLE,
+        ...lifetimes,
+      },
+    );
     // The refresh commits, but the client never gets the response.
     vi.advanceTimersByTime(50 * 60 * 1000);
     expectRotated(
@@ -1391,7 +1403,7 @@ describe("token lifetime configuration", () => {
   test("honors a custom access-token TTL on sign-up", async () => {
     const t = setup();
     const before = Date.now();
-    const bundle = await t.mutation(api.public.signUp, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signUp, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
@@ -1411,7 +1423,7 @@ describe("token lifetime configuration", () => {
     const oneHourMs = oneHourSeconds * 1000;
 
     const before = Date.now();
-    const bundle = await t.mutation(api.public.signUp, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signUp, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
@@ -1448,7 +1460,7 @@ describe("token lifetime configuration", () => {
       refreshInactivityTimeoutSeconds: 2 * 60 * 60,
       sessionMaxLifetimeSeconds: 3 * 60 * 60,
     });
-    const bundle = await t.mutation(api.public.signUp, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signUp, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
@@ -1476,7 +1488,7 @@ describe("token lifetime configuration", () => {
   test("rejects a configuration where the access TTL is not shorter than the inactivity timeout", async () => {
     const t = setup();
     await expect(
-      t.mutation(api.public.signUp, {
+      t.mutation(api.public._internal_dangerous_signUp, {
         claims: claims(),
         componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
@@ -1490,7 +1502,7 @@ describe("token lifetime configuration", () => {
   test("rejects a configuration where the inactivity timeout is longer than the max lifetime", async () => {
     const t = setup();
     await expect(
-      t.mutation(api.public.signUp, {
+      t.mutation(api.public._internal_dangerous_signUp, {
         claims: claims(),
         componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
@@ -1503,7 +1515,7 @@ describe("token lifetime configuration", () => {
 
   test("accepts an inactivity timeout equal to the max lifetime", async () => {
     const t = setup();
-    const bundle = await t.mutation(api.public.signUp, {
+    const bundle = await t.mutation(api.public._internal_dangerous_signUp, {
       claims: claims(),
       componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,

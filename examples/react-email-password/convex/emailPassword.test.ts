@@ -82,7 +82,7 @@ async function seedSignedUpUser(
   });
   await t.run(async (ctx) => {
     const result = await ctx.runMutation(
-      components.authPassword.public.setPassword,
+      components.authPassword.public._internal_dangerous_setPassword,
       { userId, password, minimumLength: DEFAULT_MIN_PASSWORD_LENGTH },
     );
     if (!result.success) {
@@ -368,11 +368,14 @@ describe("completeSignUpWithEmailPassword", () => {
       });
     });
     await t.run(async (ctx) => {
-      await ctx.runMutation(components.authPassword.public.setPassword, {
-        userId,
-        password: PASSWORD,
-        minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
-      });
+      await ctx.runMutation(
+        components.authPassword.public._internal_dangerous_setPassword,
+        {
+          userId,
+          password: PASSWORD,
+          minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
+        },
+      );
     });
     await seedChallenge(t, {
       email: EMAIL,

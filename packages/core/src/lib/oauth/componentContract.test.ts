@@ -87,7 +87,7 @@ const createAuthorizationRequest = makeFunctionReference<
   "mutation",
   { stateHash: string; redirectTo: string; codeVerifier: string },
   { clientId: string; callbackUrl: string }
->("provider:createAuthorizationRequest");
+>("provider:_internal_dangerous_createAuthorizationRequest");
 
 const claimAuthorizationRequest = makeFunctionReference<
   "mutation",

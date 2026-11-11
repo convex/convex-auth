@@ -116,11 +116,14 @@ function tokenRoute(claims: Record<string, unknown> = {}) {
  */
 async function startFlow(t: ReturnType<typeof setup>): Promise<string> {
   const state = "state-raw-1";
-  await t.mutation(api.provider.createAuthorizationRequest, {
-    stateHash: await sha256Hex(state),
-    redirectTo: REDIRECT_TO,
-    codeVerifier: "verifier-1",
-  });
+  await t.mutation(
+    api.provider._internal_dangerous_createAuthorizationRequest,
+    {
+      stateHash: await sha256Hex(state),
+      redirectTo: REDIRECT_TO,
+      codeVerifier: "verifier-1",
+    },
+  );
   return state;
 }
 

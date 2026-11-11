@@ -9,7 +9,7 @@ import { isCommonPassword } from "./commonPasswords.ts";
 
 /**
  * The absolute minimum length of a password. The component rejects a shorter
- * password in `setPassword` and in `verifyPassword`.
+ * password in `_internal_dangerous_setPassword` and in `verifyPassword`.
  *
  * It is lower than the minimum of the password methods (10), so that the component
  * can verify the passwords of other systems with this minimum (for example,
@@ -115,9 +115,9 @@ export function validatePasswordInputFormat(
  * {@link validatePasswordInputFormat} and then rejects the most frequent
  * passwords.
  *
- * `setPassword` of the component gives the `minimumLength` of its caller. The
- * password methods give `DEFAULT_MIN_PASSWORD_LENGTH`, both here and to
- * `setPassword`.
+ * `_internal_dangerous_setPassword` of the component gives the `minimumLength` of its
+ * caller. The password methods give `DEFAULT_MIN_PASSWORD_LENGTH`, both here
+ * and to `_internal_dangerous_setPassword`.
  *
  * Returns a `SetPasswordUserError` for the first violation, or
  * `null` when the password is applicable.

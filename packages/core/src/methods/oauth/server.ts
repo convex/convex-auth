@@ -200,15 +200,19 @@ export function setupOauth<
     scopes: catalog.scopes,
     callbackMethod: catalog.callbackMethod,
     createAuthorizationRequest: (ctx, args) =>
-      ctx.runMutation(options.component.provider.createAuthorizationRequest, {
-        providerName,
-        stateHash: args.stateHash,
-        redirectTo: args.redirectTo,
-        codeVerifier: args.codeVerifier,
-        tokenEndpoint: catalog.tokenEndpoint,
-        userInfoEndpoints: catalog.userInfoEndpoints,
-        issuers,
-      }),
+      ctx.runMutation(
+        options.component.provider
+          ._internal_dangerous_createAuthorizationRequest,
+        {
+          providerName,
+          stateHash: args.stateHash,
+          redirectTo: args.redirectTo,
+          codeVerifier: args.codeVerifier,
+          tokenEndpoint: catalog.tokenEndpoint,
+          userInfoEndpoints: catalog.userInfoEndpoints,
+          issuers,
+        },
+      ),
   });
 
   /**

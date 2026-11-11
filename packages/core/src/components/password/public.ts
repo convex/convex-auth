@@ -60,8 +60,12 @@ type SetPasswordResult = Infer<typeof setPasswordResult>;
  * @throws If `minimumLength` is less than {@link MIN_PASSWORD_LENGTH} or more
  * than `MAX_PASSWORD_LENGTH`. This is an error of the caller, not of the
  * user.
+ *
+ * DANGER: This replaces the password of any `userId`, with no proof. The
+ * name says so because app code must not call it: only the password methods
+ * of this package do, for a user they just created or verified.
  */
-export const setPassword = mutation({
+export const _internal_dangerous_setPassword = mutation({
   args: { userId: v.string(), password: v.string(), minimumLength: v.number() },
   returns: setPasswordResult,
   handler: async (

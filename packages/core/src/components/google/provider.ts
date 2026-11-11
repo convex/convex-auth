@@ -3,7 +3,7 @@ import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import { buildProviderFunctions } from "../../lib/oauth/providerFunctions.ts";
 
 export const {
-  createAuthorizationRequest,
+  _internal_dangerous_createAuthorizationRequest,
   claimAuthorizationRequest,
   createTicket,
   claimTicket,
