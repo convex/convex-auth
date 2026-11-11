@@ -25,9 +25,10 @@ export default function wasmModule(): Plugin {
     // `.wasm` import, and it reports an error.
     enforce: "pre",
     async load(id) {
-      // An id with a query, such as `x.wasm?init` or `x.wasm?url`, does not
-      // end with `.wasm`. Vite handles these ids.
-      if (!id.endsWith(".wasm")) return null;
+      // Vite handles an id with a query, such as `x.wasm?init` or
+      // `x.wasm?url`. Check for the query first, because a query can also end
+      // with `.wasm` (`x.js?from=y.wasm`).
+      if (id.includes("?") || !id.endsWith(".wasm")) return null;
       const base64 = (await readFile(id)).toString("base64");
       return [
         `const bytes = Uint8Array.from(atob(${JSON.stringify(base64)}), (c) => c.charCodeAt(0));`,

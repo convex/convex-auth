@@ -28,6 +28,7 @@ beforeAll(async () => {
     join(dir, "entry.js"),
     'export { default } from "./module.wasm";\n',
   );
+  await writeFile(join(dir, "value.js"), "export const value = 42;\n");
   server = await createServer({
     root: dir,
     configFile: false,
@@ -56,6 +57,16 @@ test("the module instantiates with the imports of the caller", async () => {
     wbg: { f: () => {} },
   });
   expect(instance).toBeInstanceOf(WebAssembly.Instance);
+});
+
+test("Vite loads an id whose query ends with .wasm", async () => {
+  const { value } = await server.ssrLoadModule("/value.js?from=module.wasm");
+  expect(value).toBe(42);
+});
+
+test("Vite loads a .wasm import with a query", async () => {
+  const { default: url } = await server.ssrLoadModule("/module.wasm?url");
+  expect(url).toMatch(/\/module\.wasm$/);
 });
 
 test("the plugin applies only when Vite serves the code", () => {
