@@ -29,12 +29,19 @@ Schema and sign-in method API breaking changes - see below
 - the core's `sessions` table renames `provider` to `component`, which holds
   the path of the component that verified the user (for example
   `authPassword`), not the name of the sign-in method.
-- the user callbacks (`createUser` and `onSignIn`) no longer receive
-  `provider.accountId`: they receive `provider: { name, profile }`. Remove
-  `accountId: v.string()` from their argument validators. For OAuth,
-  `profile.id` is the account ID of the provider. The `ctx.convexAuth`
-  helpers no longer take `providerAccountId`, and `USE_USER_ID_AS_ACCOUNT_ID`
-  is gone.
+- the user callbacks (`createUser` and `onSignIn`) no longer receive the
+  account ID (`provider.accountId`). For OAuth, `profile.id` is the account ID
+  of the provider. The `ctx.convexAuth` helpers no longer take
+  `providerAccountId`, and `USE_USER_ID_AS_ACCOUNT_ID` is gone.
+- the user callbacks (`createUser` and `onSignIn`) now receive
+  `{ method, profile }` instead of `{ provider: { name, profile } }`, where
+  `method` is the name of the sign-in method. `onSignIn` also still receives
+  `userId`. The sign-in methods `"password"` and `"passkey"` are now
+  `"usernamePassword"` and `"usernamePasskey"`, the names of the methods that
+  apps import. Update the argument validators of the callbacks, for example
+  `{ method: v.literal("usernamePassword"), profile: v.object({}) }` instead
+  of `{ provider: v.object({ name: v.literal("password"), profile:
+v.object({}) }) }`, and remove `accountId: v.string()`.
 - removed `resolveUserId` from the sign-in method API, and removed the core's
   `getUserIdByAccount`. Each OAuth component has its own
   `getUserIdByAccount`.

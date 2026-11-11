@@ -100,12 +100,12 @@ export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(
 // made by name does not.
 const createUserAcme = makeFunctionReference<
   "mutation",
-  { provider: { name: "acme"; profile: AcmeProfile } },
+  { method: "acme"; profile: AcmeProfile },
   Id<"users">
 >("users:createUserAcme") as unknown as FunctionReference<
   "mutation",
   "internal",
-  { provider: { name: "acme"; profile: AcmeProfile } },
+  { method: "acme"; profile: AcmeProfile },
   Id<"users">
 >;
 

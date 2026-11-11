@@ -20,6 +20,9 @@ import {
   SCOPES,
 } from "../../components/google/constants.ts";
 
+/** The name of this sign-in method. The app's user callbacks get it as `method`. */
+const METHOD_NAME = "google";
+
 /**
  * The account profile that the `google` method produces. Google is OIDC, so
  * identity comes from validated id_token claims. This is the exact shape the
@@ -111,10 +114,10 @@ export function setupGoogle<UsersTable extends string>(
      * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
-      callbacks: UserCallbacks<"google", GoogleProfile, UsersTable>,
+      callbacks: UserCallbacks<typeof METHOD_NAME, GoogleProfile, UsersTable>,
     ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser: callbacks.createUser,
         onSignIn: callbacks.onSignIn,
       });

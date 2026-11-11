@@ -5,10 +5,10 @@
  * app's user row and returns its id, and then calls the optional `onSignIn` on every
  * sign-in, that first one included.
  *
- * All sign-in methods in this example share one pair of callbacks. GitHub supplies
- * the user's GitHub profile, and `createUser` stores the login from it. The
- * others supply an empty profile. `lastSignedInAt` is maintained by the
- * `onSignIn` hook.
+ * The anonymous and username-password methods share one `createUser`, since
+ * both supply an empty profile. GitHub supplies the user's GitHub profile, and
+ * `createUserGithub` stores the login from it. All sign-in methods share one
+ * `onSignIn` hook, which maintains `lastSignedInAt`.
  *
  * @module
  */
@@ -18,42 +18,51 @@ import { v } from "convex/values";
 import { components } from "./_generated/api";
 import { internalMutation, query } from "./_generated/server";
 
-// The union shape of the configured sign-in methods.
-const vProvider = v.union(
-  v.object({
-    name: v.literal("anonymous"),
-    profile: v.object({}),
-  }),
-  v.object({
-    name: v.literal("password"),
-    profile: v.object({}),
-  }),
-  v.object({
-    name: v.literal("github"),
-    profile: vGithubProfile,
-  }),
-);
+// A Convex function takes an object as its args, not a union of objects. Thus
+// a callback that serves several sign-in methods takes a union of the method
+// names as `method`, and a union of their profiles as `profile`.
 
+// The `createUser` of the anonymous and the username-password methods. Both
+// supply an empty profile.
 export const createUser = internalMutation({
-  args: { provider: vProvider },
+  args: {
+    method: v.union(v.literal("anonymous"), v.literal("usernamePassword")),
+    profile: v.object({}),
+  },
+  returns: v.id("users"),
+  handler: async (ctx) => {
+    return await ctx.db.insert("users", {});
+  },
+});
+
+// The `createUser` of the GitHub method, which stores the GitHub login.
+export const createUserGithub = internalMutation({
+  args: {
+    method: v.literal("github"),
+    profile: vGithubProfile,
+  },
   returns: v.id("users"),
   handler: async (ctx, args) => {
-    return await ctx.db.insert(
-      "users",
-      args.provider.name === "github"
-        ? { githubLogin: args.provider.profile.login }
-        : {},
-    );
+    return await ctx.db.insert("users", { githubLogin: args.profile.login });
   },
 });
 
 // An example of the per-sign-in hook. Here the app records a `lastSignedInAt`
 // timestamp for each user on every sign-in, whichever method they used.
 export const onSignIn = internalMutation({
-  args: { provider: vProvider, userId: v.id("users") },
+  args: {
+    method: v.union(
+      v.literal("anonymous"),
+      v.literal("usernamePassword"),
+      v.literal("github"),
+    ),
+    profile: v.union(v.object({}), vGithubProfile),
+    userId: v.id("users"),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch("users", args.userId, { lastSignedInAt: Date.now() });
+    return null;
   },
 });
 

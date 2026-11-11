@@ -12,16 +12,14 @@ import { vAppleProfile } from "@convex-dev/auth/methods/apple/server";
  */
 export const createUser = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("apple"),
-      profile: vAppleProfile,
-    }),
+    method: v.literal("apple"),
+    profile: vAppleProfile,
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
     return await ctx.db.insert("users", {
-      name: args.provider.profile.name,
-      email: args.provider.profile.email,
+      name: args.profile.name,
+      email: args.profile.email,
     });
   },
 });
@@ -36,15 +34,13 @@ export const createUser = internalMutation({
  */
 export const onSignIn = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("apple"),
-      profile: vAppleProfile,
-    }),
+    method: v.literal("apple"),
+    profile: vAppleProfile,
     userId: v.id("users"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { name } = args.provider.profile;
+    const { name } = args.profile;
     if (name === undefined) {
       return null;
     }

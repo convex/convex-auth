@@ -19,8 +19,8 @@ import {
 } from "../../components/password/validation.ts";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "password";
+/** The name of this sign-in method. The app's user callbacks get it as `method`. */
+const METHOD_NAME = "usernamePassword";
 
 /**
  * Options for {@link setupUsernamePassword}.
@@ -126,9 +126,9 @@ export function setupUsernamePassword<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<"password", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, Record<string, never>, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });

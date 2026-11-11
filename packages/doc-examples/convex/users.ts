@@ -9,10 +9,8 @@ import { vAcmeProfile } from "./acme";
 
 export const createUserAnonymous = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("anonymous"),
-      profile: v.object({}),
-    }),
+    method: v.literal("anonymous"),
+    profile: v.object({}),
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -20,10 +18,8 @@ export const createUserAnonymous = internalMutation({
 
 export const createUserPassword = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("password"),
-      profile: v.object({}),
-    }),
+    method: v.literal("usernamePassword"),
+    profile: v.object({}),
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -31,10 +27,8 @@ export const createUserPassword = internalMutation({
 
 export const createUserEmailPassword = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("emailPassword"),
-      profile: v.object({}),
-    }),
+    method: v.literal("emailPassword"),
+    profile: v.object({}),
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -42,10 +36,8 @@ export const createUserEmailPassword = internalMutation({
 
 export const createUserPasskey = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("passkey"),
-      profile: v.object({}),
-    }),
+    method: v.literal("usernamePasskey"),
+    profile: v.object({}),
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -53,10 +45,8 @@ export const createUserPasskey = internalMutation({
 
 export const createUserGoogle = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("google"),
-      profile: vGoogleProfile,
-    }),
+    method: v.literal("google"),
+    profile: vGoogleProfile,
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -64,10 +54,8 @@ export const createUserGoogle = internalMutation({
 
 export const createUserApple = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("apple"),
-      profile: vAppleProfile,
-    }),
+    method: v.literal("apple"),
+    profile: vAppleProfile,
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -75,10 +63,8 @@ export const createUserApple = internalMutation({
 
 export const createUserGithub = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("github"),
-      profile: vGithubProfile,
-    }),
+    method: v.literal("github"),
+    profile: vGithubProfile,
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
@@ -86,10 +72,8 @@ export const createUserGithub = internalMutation({
 
 export const createUserAcme = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("acme"),
-      profile: vAcmeProfile,
-    }),
+    method: v.literal("acme"),
+    profile: vAcmeProfile,
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),

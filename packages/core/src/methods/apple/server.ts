@@ -22,6 +22,9 @@ import {
 } from "../../components/apple/constants.ts";
 import type { SanitizedAppleUser } from "../../components/apple/user.ts";
 
+/** The name of this sign-in method. The app's user callbacks get it as `method`. */
+const METHOD_NAME = "apple";
+
 export type { SanitizedAppleUser };
 
 /**
@@ -143,10 +146,10 @@ export function setupApple<UsersTable extends string>(
      * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
-      callbacks: UserCallbacks<"apple", AppleProfile, UsersTable>,
+      callbacks: UserCallbacks<typeof METHOD_NAME, AppleProfile, UsersTable>,
     ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser: callbacks.createUser,
         onSignIn: callbacks.onSignIn,
       });

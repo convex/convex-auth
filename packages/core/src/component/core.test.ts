@@ -54,7 +54,7 @@ async function verifyAccessToken(t: ConvexTestApi, token: string) {
 
 function claims(overrides: Partial<AuthClaims> = {}): AuthClaims {
   return {
-    providerName: "password",
+    method: "usernamePassword",
     profile: { name: "Alice" },
     ...overrides,
   };
@@ -249,20 +249,16 @@ describe("signUp", () => {
 
     expect(testApp.getCreateUserCalls()).toEqual([
       {
-        provider: {
-          name: "password",
-          profile: { name: "Alice" },
-        },
+        method: "usernamePassword",
+        profile: { name: "Alice" },
       },
     ]);
     // A first sign-in is still a sign-in, so onSignIn runs too, with the id
     // createUser just returned. Per-sign-in work has one home.
     expect(testApp.getOnSignInCalls()).toEqual([
       {
-        provider: {
-          name: "password",
-          profile: { name: "Alice" },
-        },
+        method: "usernamePassword",
+        profile: { name: "Alice" },
         userId: bundle.userId,
       },
     ]);
@@ -341,10 +337,8 @@ describe("signIn", () => {
     expect(testApp.getCreateUserCalls()).toHaveLength(1);
     expect(testApp.getOnSignInCalls()).toHaveLength(2);
     expect(testApp.getOnSignInCalls()[1]).toEqual({
-      provider: {
-        name: "password",
-        profile: { name: "Alice 2.0" },
-      },
+      method: "usernamePassword",
+      profile: { name: "Alice 2.0" },
       userId: first.userId,
     });
   });

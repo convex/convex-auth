@@ -40,6 +40,6 @@ export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(
     allowedRedirectOrigins: ["http://localhost:3000"],
   },
 ).attachUserCallbacks({
-  createUser: internal.users.createUser,
+  createUser: internal.users.createUserGithub,
   onSignIn: internal.users.onSignIn,
 });

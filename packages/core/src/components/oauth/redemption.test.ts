@@ -71,17 +71,17 @@ const invalidCode = { status: "error", userError: { error: "INVALID_CODE" } };
  * `signUpWithoutSession` is never reached by redemption.
  */
 const fakeCore = {
-  bindProvider: <Provider extends string, Profile>({
+  bindMethod: <MethodName extends string, Profile>({
     name,
   }: {
-    name: Provider;
+    name: MethodName;
   }): MethodBuilders<Profile> => {
     const record =
       (kind: HelperCall["kind"]) =>
       async ({ userId, profile }: { userId?: string; profile: Profile }) => {
         helperCalls.push({
           kind,
-          claims: { providerName: name, profile },
+          claims: { method: name, profile },
           ...(userId === undefined ? {} : { userId }),
         });
         if (helperFailure.error !== undefined) {
@@ -295,7 +295,7 @@ describe("completeSignIn", () => {
       {
         kind: "signUp",
         claims: {
-          providerName: "acme",
+          method: "acme",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
       },
@@ -326,7 +326,7 @@ describe("completeSignIn", () => {
         kind: "signIn",
         userId: "user-7",
         claims: {
-          providerName: "acme",
+          method: "acme",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
       },
@@ -351,7 +351,7 @@ describe("completeSignIn", () => {
       {
         kind: "signUp",
         claims: {
-          providerName: "acmeInfo",
+          method: "acmeInfo",
           profile: { id: "42", login: "octocat" },
         },
       },
