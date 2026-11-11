@@ -147,6 +147,20 @@ async function createAppUser(
   });
 }
 
+/** Add the user to `createdUserIds`, if it is not there yet. */
+async function recordCreatedUserId(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("createdUserIds")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (existing === null) {
+    await ctx.db.insert("createdUserIds", { userId });
+  }
+}
+
 /**
  * Run the app's sign-in callback, if it attached one. Every sign-in goes
  * through here, a first one included, so per-sign-in work in the app has a
@@ -208,6 +222,7 @@ export const signUp = mutation({
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
+    await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
     return await issueSession(ctx, userId, args.claims.providerName, ttl);
   },
@@ -244,6 +259,7 @@ export const signIn = mutation({
     if (userId === "") {
       throw new Error("Cannot sign in: no user id was given.");
     }
+    await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, claims, userId, args.onSignInHandle);
     return await issueSession(ctx, userId, claims.providerName, ttl);
   },
@@ -273,7 +289,30 @@ export const signUpWithoutSession = mutation({
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
+    await recordCreatedUserId(ctx, userId);
     return { userId };
+  },
+});
+
+/**
+ * Record that a user exists.
+ *
+ * The core records the users that it creates and signs in. Call this function
+ * for the other users: the users that the app imports or creates without the
+ * core, and the users that existed before the app upgraded to this version.
+ *
+ * Any code of the app can call this function. That is safe: it only records
+ * that an ID is in use.
+ */
+export const markUserIdCreated = mutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    if (userId === "") {
+      throw new Error("Cannot mark an empty user ID as created.");
+    }
+    await recordCreatedUserId(ctx, userId);
+    return null;
   },
 });
 

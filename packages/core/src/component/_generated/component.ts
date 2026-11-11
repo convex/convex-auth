@@ -42,6 +42,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         }>,
         Name
       >;
+      markUserIdCreated: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        null,
+        Name
+      >;
       refresh: FunctionReference<
         "mutation",
         "internal",
