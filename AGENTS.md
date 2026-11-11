@@ -18,6 +18,7 @@ This is a pnpm monorepo:
     (only its shared React client is exported for now; the API for custom
     providers is not), `google`, `apple`, and `github`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
+- `packages/vite-plugin-wasm-module` — the `vite-plugin-wasm-module` package, a Vite plugin that loads each `.wasm` import as a `WebAssembly.Module`, as the Convex runtime does. It does not depend on Convex Auth. It publishes compiled JavaScript plus declarations from `dist/`.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
