@@ -190,3 +190,56 @@ We recommend copying the following component into your app, adapting it to your 
 </Step>
 
 </StepByStep>
+
+### Using passkeys in a React Native app
+
+The hooks also run in React Native apps, through
+[`react-native-passkeys`](https://github.com/peterferguson/react-native-passkeys).
+The backend stays the same.
+
+<StepByStep>
+
+<Step title="Install react-native-passkeys">
+
+```sh
+npx expo install react-native-passkeys
+```
+
+The library is a native module, so it runs in a development build of your app
+and not in Expo Go. Follow its README to link your app to the `rpId`: iOS
+only offers passkeys for an `rpId` that lists your app in the
+`webcredentials` section of its `apple-app-site-association` file, and
+Android only for an `rpId` that lists it in its `assetlinks.json` file.
+
+</Step>
+
+<Step title="Set the origin">
+
+Add the origins of your app to the `origin` list in `convex/auth.ts`, next to
+the origin of your site: `https://<rpId>` for iOS, and
+`android:apk-key-hash:<hash>` for Android, as the "Set up the public backend
+functions" step shows.
+
+</Step>
+
+<Step title="Import the hooks from the React Native entry point">
+
+Import `useSignInWithUsernamePasskey`, `useAddPasskey`, and `useRemovePasskey`
+from `@convex-dev/auth/methods/username-passkey/react-native` instead of
+`@convex-dev/auth/methods/username-passkey/react`. They take the same
+arguments and return the same results:
+
+```tsx
+import { useSignInWithUsernamePasskey } from "@convex-dev/auth/methods/username-passkey/react-native";
+
+const { signIn, pending } = useSignInWithUsernamePasskey(api.auth);
+// ...
+const result = await signIn({ username });
+```
+
+Passkey autofill runs in browsers only: in a React Native app, `autofill`
+reports `available: false`.
+
+</Step>
+
+</StepByStep>

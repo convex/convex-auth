@@ -56,7 +56,13 @@ check:doc-examples`). It is not an example to copy.
   components: `server.ts` (Convex functions of the app), `react.tsx` or
   `react.ts` (hooks), and the browser code. A method is published at
   `@convex-dev/auth/methods/<method>/server` and
-  `@convex-dev/auth/methods/<method>/react`. A method whose backend and
+  `@convex-dev/auth/methods/<method>/react`. `username-passkey` also has a
+  `react-native.tsx`, published at
+  `@convex-dev/auth/methods/username-passkey/react-native`, which runs the same
+  hooks on `react-native-passkeys` (an optional peer dependency; the
+  repository installs it as a dev dependency for its types, and
+  `pnpm-workspace.yaml` marks its `expo` and `react-native` peers optional so
+  pnpm does not install them). A method whose backend and
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
   runtime can import.

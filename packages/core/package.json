@@ -170,6 +170,13 @@
       "types": "./dist/methods/username-passkey/react.d.ts",
       "default": "./dist/methods/username-passkey/react.js"
     },
+    "./methods/username-passkey/react-native": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-passkey/react-native.d.ts"
+      },
+      "types": "./dist/methods/username-passkey/react-native.d.ts",
+      "default": "./dist/methods/username-passkey/react-native.js"
+    },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/oauth/react.d.ts"
@@ -436,6 +443,7 @@
     "@convex-dev/passkey-test-authenticator": "workspace:*",
     "@convex-dev/resend": "^0.2.8",
     "@edge-runtime/vm": "^5.0.0",
+    "@simplewebauthn/typescript-types": "^8.3.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/babel__code-frame": "^7.27.0",
@@ -448,6 +456,7 @@
     "next": "^16.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-native-passkeys": "0.4.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.0"
@@ -456,7 +465,8 @@
     "@convex-dev/resend": "^0.2.8",
     "convex": "^1.48.0",
     "next": "^16.0.0",
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "react-native-passkeys": "^0.4.2"
   },
   "peerDependenciesMeta": {
     "@convex-dev/resend": {
@@ -466,6 +476,9 @@
       "optional": true
     },
     "react": {
+      "optional": true
+    },
+    "react-native-passkeys": {
       "optional": true
     }
   }
