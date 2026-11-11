@@ -183,7 +183,7 @@ describe("sessions and created user IDs", () => {
     const session = await t.run(async (ctx) =>
       ctx.db.get(payload.sub as Id<"sessions">),
     );
-    expect(session).toMatchObject({ provider: COMPONENT_PATH });
+    expect(session).toMatchObject({ component: COMPONENT_PATH });
   });
 
   test("signUp, signIn, and signUpWithoutSession record the user ID once", async () => {
@@ -228,7 +228,7 @@ describe("signUp", () => {
     // verified the user, and nothing else about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
-      provider: COMPONENT_PATH,
+      component: COMPONENT_PATH,
     });
 
     // The access token verifies against the deployment JWKS with the right
@@ -322,10 +322,10 @@ describe("signIn", () => {
     );
     expect(sessions).toHaveLength(2);
     expect(
-      sessions.map(({ userId, provider }) => ({ userId, provider })),
+      sessions.map(({ userId, component }) => ({ userId, component })),
     ).toEqual([
-      { userId: first.userId, provider: COMPONENT_PATH },
-      { userId: first.userId, provider: COMPONENT_PATH },
+      { userId: first.userId, component: COMPONENT_PATH },
+      { userId: first.userId, component: COMPONENT_PATH },
     ]);
   });
 
@@ -1214,14 +1214,14 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const bundles = await signInUntil(t, MAX_SESSIONS_PER_USER);
     // Sessions from before the cap existed; not reachable by signing in.
     await t.run(async (ctx) => {
-      const { provider } = (await ctx.db.get(
+      const { component } = (await ctx.db.get(
         "sessions",
         sessionIdOf(bundles[0]) as Id<"sessions">,
       ))!;
       for (let i = 0; i < 2; i++) {
         const sessionId = await ctx.db.insert("sessions", {
           userId: bundles[0].userId,
-          provider,
+          component,
         });
         await ctx.db.insert("refreshTokens", {
           hash: `extra-${i}`,

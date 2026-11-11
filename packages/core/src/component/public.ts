@@ -71,14 +71,14 @@ async function mintAccessToken(
 async function issueSession(
   ctx: MutationCtx,
   userId: string,
-  provider: string,
+  component: string,
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
   await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
-    provider,
+    component,
   });
   // Read back for its `_creationTime`, which its max lifetime counts from.
   const session = (await ctx.db.get("sessions", sessionId))!;
@@ -206,7 +206,7 @@ async function notifySignIn(
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
  * `componentPath` is the path of the component that verified the user, for
- * example `"authPassword"`. The session records it as its `provider`.
+ * example `"authPassword"`. The session records it as its `component`.
  *
  * See {@link signIn} for the return-visit path.
  */
@@ -246,7 +246,7 @@ export const signUp = mutation({
  * verifying the identity.
  *
  * `componentPath` is the path of the component that verified the user, for
- * example `"authPassword"`. The session records it as its `provider`.
+ * example `"authPassword"`. The session records it as its `component`.
  *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
