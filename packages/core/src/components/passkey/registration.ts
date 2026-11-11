@@ -85,6 +85,10 @@ import {
   invalidNameUserError,
   passkeyNameIsValid,
   transportsAreValid,
+  vExpectedOrigin,
+  describeExpectedOrigin,
+  originIsExpected,
+  validateExpectedOrigin,
 } from "./validation.ts";
 import { SUPPORTED_ALGORITHM_IDS } from "./constants.ts";
 import {
@@ -213,8 +217,9 @@ const registrationCheckArgs = {
   // will be able to use that passkey.
   // See https://web.dev/articles/webauthn-rp-id
   expectedRpId: v.string(),
-  // The expected origin of the ceremony (for example, "https://app.example.com").
-  expectedOrigin: v.string(),
+  // The expected origin of the ceremony (for example, "https://app.example.com"),
+  // or a list of the accepted origins.
+  expectedOrigin: vExpectedOrigin,
   response: vRegistrationResponseJSON,
 };
 
@@ -480,6 +485,7 @@ async function lookupRegistrationChallenge(
     challengeRow: null,
   } as const;
 
+  validateExpectedOrigin(args.expectedOrigin);
   const { transports } = args.response.response;
   if (!transportsAreValid(transports)) {
     console.warn(
@@ -504,13 +510,11 @@ async function lookupRegistrationChallenge(
     );
     return PROTOCOL_ERROR;
   }
-  if (clientData.origin !== args.expectedOrigin) {
-    // We could allow this verification to be less strict in the future
-    // (see the comment in `finishAuthentication`).
+  if (!originIsExpected(clientData.origin, args.expectedOrigin)) {
     console.warn(
       `Rejected the passkey ceremony: the ceremony ran at the origin ` +
-        `${JSON.stringify(clientData.origin)}, but the expected origin is ` +
-        `${JSON.stringify(args.expectedOrigin)}. Check that the \`origin\` of ` +
+        `${JSON.stringify(clientData.origin)}, but ` +
+        `${describeExpectedOrigin(args.expectedOrigin)}. Check that the \`origin\` of ` +
         `the sign-in method matches the page that ran the ceremony.`,
     );
     return PROTOCOL_ERROR;

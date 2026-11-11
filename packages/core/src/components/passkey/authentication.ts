@@ -18,7 +18,11 @@ import {
 import {
   credentialDescriptor,
   finishAuthenticationUserError,
+  describeExpectedOrigin,
+  originIsExpected,
+  validateExpectedOrigin,
   validatePurpose,
+  vExpectedOrigin,
 } from "./validation.ts";
 
 // The challenge and the credential IDs travel as raw bytes (Convex
@@ -123,12 +127,13 @@ export const finishAuthentication = mutation({
   args: {
     purpose: v.string(),
     expectedRpId: v.string(),
-    expectedOrigin: v.string(),
+    expectedOrigin: vExpectedOrigin,
     response: vAuthenticationResponseJSON,
   },
   returns: finishAuthenticationResult,
   handler: async (ctx, args): Promise<FinishAuthenticationResult> => {
     validatePurpose(args.purpose);
+    validateExpectedOrigin(args.expectedOrigin);
     const credentialId = toArrayBuffer(
       // args.response contains the credential ID twice: in `args.response.id`
       // and `args.response.rawId`. They are identical by definition (and SimpleWebAuthn
@@ -211,21 +216,13 @@ export const finishAuthentication = mutation({
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
-    if (clientData.origin !== args.expectedOrigin) {
-      // Note: This forces the app to provide a single accepted origin.
-      // In some cases, the server might need to accept multiple origins, for instance:
-      // - a dev server running on localhost might want to accept all ports
-      //   (RP ID = localhost, allowed origin = localhost:*)
-      // - an app might want to use origin verification to only allow a specific list
-      //   of subdomains (RP ID = example.com, allowed origins =
-      //   [auth.example.com, dashboard.example.com] but NOT marketing.example.com)
-      // For these reasons, we will probably want to offer more customization options
-      // for this check in the future. `expectedOrigin` already takes an array
-      // in `@simplewebauthn/server`, so the list case is a small change.
+    if (!originIsExpected(clientData.origin, args.expectedOrigin)) {
+      // Note: The check is exact. A dev server on any port of localhost, or
+      // a pattern of subdomains, would need a more flexible check.
       console.warn(
         `Rejected the passkey ceremony: the ceremony ran at the origin ` +
-          `${JSON.stringify(clientData.origin)}, but the expected origin is ` +
-          `${JSON.stringify(args.expectedOrigin)}. Check that the \`origin\` of ` +
+          `${JSON.stringify(clientData.origin)}, but ` +
+          `${describeExpectedOrigin(args.expectedOrigin)}. Check that the \`origin\` of ` +
           `the sign-in method matches the page that ran the ceremony.`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
