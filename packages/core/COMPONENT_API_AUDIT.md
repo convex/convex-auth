@@ -132,11 +132,11 @@ and the callback sends the one-time ticket code there (see its row).
 | `getStatus`   | query    |   🟡   | 2FA enabled flag and backup code count of any `userId`.                                                                                                                                                                                                  |
 | `listTotps`   | query    |   🟡   | Active TOTP ids and creation times of any `userId`.                                                                                                                                                                                                      |
 
-### `authAnonymous` (not exported yet)
+### `authAnonymous`
 
-| Function                 | Kind     | Rating | Assessment                                                                                                                                                                                                                                                                                                                     |
-| ------------------------ | -------- | :----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `createAnonymousAccount` | mutation |   🟠   | Inserts an `anonymousId` → `userId` row with no check. Harmless today: nothing looks these rows up by `anonymousId` (an anonymous identity is never signed in again), so a bogus or duplicate row grants nothing. It would become 🔴 if anonymous sign-in ever returned to an existing account by id; enforce uniqueness then. |
+| Function                 | Kind     | Rating | Assessment                                                                                                                                                                   |
+| ------------------------ | -------- | :----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createAnonymousAccount` | mutation |   🟠   | Inserts a row holding the given `userId`, with no check. Harmless: nothing reads these rows (an anonymous identity is never signed in again), so a bogus row grants nothing. |
 
 ### `authOAuth`, `authGoogle`, `authApple`, `authGithub` (shared via `buildProviderFunctions`)
 
