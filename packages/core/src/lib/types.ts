@@ -212,9 +212,9 @@ export type ConvexAuthApi = {
 export const vAuthClaims = v.object({
   /**
    * The name that the sign-in method registers with the core, e.g.
-   * "password" for the `usernamePassword` method.
+   * "usernamePassword" for the `usernamePassword` method.
    */
-  providerName: v.string(),
+  method: v.string(),
   /** Arbitrary profile data the method learned about the user. */
   profile: v.any(),
 });
@@ -238,15 +238,15 @@ export type AuthClaims = Infer<typeof vAuthClaims>;
  * type `Id<usersTable>` rather than a bare string.
  */
 export type CreateUserFn<
-  ProviderName extends string,
+  MethodName extends string,
   Profile,
   UsersTable extends string = string,
 > = FunctionReference_future<
   "mutation",
   "internal",
   {
-    provider: {
-      name: ProviderName;
+    method: {
+      name: MethodName;
       profile: Profile;
     };
   },
@@ -269,15 +269,15 @@ export type CreateUserFn<
  * callback just made.
  */
 export type OnSignInFn<
-  ProviderName extends string,
+  MethodName extends string,
   Profile,
   UsersTable extends string = string,
 > = FunctionReference_future<
   "mutation",
   "internal",
   {
-    provider: {
-      name: ProviderName;
+    method: {
+      name: MethodName;
       profile: Profile;
     };
     userId: GenericId<UsersTable>;
@@ -291,12 +291,12 @@ export type OnSignInFn<
  * user record), {@link OnSignInFn} is optional.
  */
 export type UserCallbacks<
-  Provider extends string,
+  Method extends string,
   Profile,
   UsersTable extends string = string,
 > = {
-  createUser: CreateUserFn<Provider, Profile, UsersTable>;
-  onSignIn?: OnSignInFn<Provider, Profile, UsersTable>;
+  createUser: CreateUserFn<Method, Profile, UsersTable>;
+  onSignIn?: OnSignInFn<Method, Profile, UsersTable>;
 };
 
 /**

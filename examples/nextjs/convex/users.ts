@@ -19,9 +19,9 @@ import { components } from "./_generated/api";
 import { internalMutation, query } from "./_generated/server";
 
 // The union shape of the configured sign-in methods.
-const vProvider = v.union(
+const vMethod = v.union(
   v.object({
-    name: v.literal("password"),
+    name: v.literal("usernamePassword"),
     profile: v.object({}),
   }),
   v.object({
@@ -31,13 +31,13 @@ const vProvider = v.union(
 );
 
 export const createUser = internalMutation({
-  args: { provider: vProvider },
+  args: { method: vMethod },
   returns: v.id("users"),
   handler: async (ctx, args) => {
     return await ctx.db.insert(
       "users",
-      args.provider.name === "github"
-        ? { githubLogin: args.provider.profile.login }
+      args.method.name === "github"
+        ? { githubLogin: args.method.profile.login }
         : {},
     );
   },
@@ -46,7 +46,7 @@ export const createUser = internalMutation({
 // An example of the per-sign-in hook. Here the app records a `lastSignedInAt`
 // timestamp for each user on every sign-in, whichever method they used.
 export const onSignIn = internalMutation({
-  args: { provider: vProvider, userId: v.id("users") },
+  args: { method: vMethod, userId: v.id("users") },
   returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch("users", args.userId, { lastSignedInAt: Date.now() });
