@@ -50,6 +50,7 @@ declare const authOauth: typeof import("@convex-dev/auth/components/oauth/convex
 declare const authGoogle: typeof import("@convex-dev/auth/components/google/convex.config").default;
 declare const authApple: typeof import("@convex-dev/auth/components/apple/convex.config").default;
 declare const authGithub: typeof import("@convex-dev/auth/components/github/convex.config").default;
+declare const authDiscord: typeof import("@convex-dev/auth/components/discord/convex.config").default;
 // react-router
 declare function Navigate(props: { to: string; replace?: boolean }): null;
 declare module "expo-secure-store" {
