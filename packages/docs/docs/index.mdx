@@ -39,6 +39,21 @@ Convex Auth supports several login methods out of the box:
 - [Username + Passkey](./login-providers/passkey.mdx)
 - [OAuth](./login-providers/oauth.mdx) (Apple, Google, and GitHub)
 
+### Should I use Convex Auth or another auth provider?
+
+**Convex Auth is recommended for new projects.** It covers the sign-in methods
+most apps need, keeps your user data in your own database, and needs no
+external service.
+
+Use a dedicated auth provider, such as WorkOS, Clerk, or Auth0, when your app
+needs advanced authentication methods that Convex Auth does not offer, such as:
+
+- SAML single sign-on (SSO)
+- SCIM user provisioning
+
+Convex works with these providers too. See
+[Authentication](https://docs.convex.dev/auth) in the Convex docs.
+
 ### Will my app be secure?
 
 Convex Auth gives you **secure defaults**. Its features are carefully designed
@@ -76,7 +91,9 @@ There are a few major differences:
   application
 - All of your user data is stored in your application
 - All setup/configuration is done via code - agents love Convex Auth!
-- These established providers have more features
+- These established providers offer more advanced authentication methods, such
+  as SAML SSO and SCIM provisioning. See
+  [Should I use Convex Auth or another auth provider?](#should-i-use-convex-auth-or-another-auth-provider)
 
 #### …Convex + Better Auth?
 
