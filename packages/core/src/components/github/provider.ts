@@ -1,12 +1,15 @@
 import type { Doc } from "./_generated/dataModel.ts";
 import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import { buildProviderFunctions } from "../../lib/oauth/providerFunctions.ts";
+import { userInfoFieldAccountId } from "../../lib/oauth/dbHelpers.ts";
 
 export const {
   createAuthorizationRequest,
   claimAuthorizationRequest,
   createTicket,
   claimTicket,
+  redeemTicket,
+  linkAccount,
   getUserIdByAccount,
   createAccount,
 } = buildProviderFunctions<
@@ -18,4 +21,5 @@ export const {
   mutation,
   internalMutation,
   clientId: () => env.CLIENT_ID,
+  accountId: userInfoFieldAccountId("user", "id"),
 });

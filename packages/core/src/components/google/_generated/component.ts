@@ -52,5 +52,26 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         string | null,
         Name
       >;
+      linkAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { newUser: string; ticketCode: string },
+        { attestation: string },
+        Name
+      >;
+      redeemTicket: FunctionReference<
+        "mutation",
+        "internal",
+        { state: string; ticketCode: string },
+        | null
+        | {
+            attestation: string;
+            kind: "existing";
+            payload: string;
+            providerAccountId: string;
+          }
+        | { kind: "new"; payload: string; providerAccountId: string },
+        Name
+      >;
     };
   };

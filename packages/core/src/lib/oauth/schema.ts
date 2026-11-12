@@ -55,6 +55,13 @@ export const ticketFields = {
    * keys never become Convex field names.
    */
   encryptedPayload: v.string(),
+  /**
+   * Set when `redeemTicket` found no account for the identity: the provider
+   * account id that the component derived from the payload. The ticket then
+   * waits for `linkAccount`, in the same transaction, which connects this id
+   * to the new user and deletes the ticket.
+   */
+  pendingProviderAccountId: v.optional(v.string()),
 };
 
 export const authorizationRequestsTable = defineTable(
