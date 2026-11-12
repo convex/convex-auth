@@ -17,8 +17,8 @@ export default defineSchema({
   // refreshes.
   sessions: defineTable({
     userId: v.string(),
-    // The path of the component that verified the user when the session was
-    // created, for example `"authPassword"`.
+    // The path of the component that authenticated the user when the session
+    // was created, for example `"authPassword"`.
     component: v.string(),
   }).index("by_user", ["userId"]),
 

@@ -502,7 +502,7 @@ export function setupEmailPassword<UsersTable extends string>(
             const tokens = await ctx.convexAuth.completeSignIn({
               userId: complete.userId,
               profile: {},
-              verifiedBy: component,
+              authenticatedBy: component,
             });
             return { status: "complete", tokens };
           },
@@ -548,7 +548,7 @@ export function setupEmailPassword<UsersTable extends string>(
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
               profile: {},
-              verifiedBy: passwordComponent,
+              authenticatedBy: passwordComponent,
             });
             return { status: "complete", tokens };
           },
@@ -925,7 +925,7 @@ export function setupEmailPassword<UsersTable extends string>(
             const tokens = await ctx.convexAuth.completeSignIn({
               userId,
               profile: {},
-              verifiedBy: component,
+              authenticatedBy: component,
             });
 
             // The notification goes to the primary address, which can be

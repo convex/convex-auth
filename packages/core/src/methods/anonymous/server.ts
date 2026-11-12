@@ -72,7 +72,7 @@ export function setupAnonymous<UsersTable extends string>(
             // to look up.
             const tokens = await ctx.convexAuth.completeSignUp({
               profile: {},
-              verifiedBy: component,
+              authenticatedBy: component,
             });
             await ctx.runMutation(component.provider.createAnonymousAccount, {
               userId: tokens.userId,

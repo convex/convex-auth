@@ -41,7 +41,7 @@ const ISSUER =
   process.env.CONVEX_CLOUD_URL ?? "https://some-deployment.convex.cloud";
 const AUDIENCE = "convex-auth";
 const CREATE_USER_HANDLE = "testApp:createUser";
-/** The path of the component that verified the users of the tests. */
+/** The path of the component that authenticated the users of the tests. */
 const COMPONENT_PATH = "authPassword";
 const ON_SIGN_IN_HANDLE = "testApp:onSignIn";
 const THROWING_ON_SIGN_IN_HANDLE = "testApp:onSignInThatThrows";
@@ -176,7 +176,7 @@ describe("sessions and created user IDs", () => {
     ).map((row) => row.userId);
   }
 
-  test("a session records the path of the component that verified the user", async () => {
+  test("a session records the path of the component that authenticated the user", async () => {
     const t = setup();
     const bundle = await signUp(t, claims());
     const { payload } = await verifyAccessToken(t, bundle.accessToken);
@@ -225,7 +225,7 @@ describe("signUp", () => {
     expect(session).not.toBeNull();
     const sessionId = session!._id;
     // The session holds the user id and the path of the component that
-    // verified the user, and nothing else about the identity.
+    // authenticated the user, and nothing else about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
       component: COMPONENT_PATH,
