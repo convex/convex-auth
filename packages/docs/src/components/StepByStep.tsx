@@ -11,7 +11,7 @@ import styles from "./StepByStep.module.css";
  *   Add the Convex Auth package to your project.
  *
  *   ```sh
- *   npm i @convex-dev/auth@beta
+ *   npm i @convex-dev/auth
  *   ```
  *
  *   </Step>
