@@ -9,7 +9,7 @@ import { setupOauth, type OauthProfile } from "../../methods/oauth/server.ts";
 import {
   asComponentApi,
   fakeCallbacks,
-} from "../../lib/oauth/componentContract.test.ts";
+} from "../../lib/oauth/componentContract.fixture.ts";
 import {
   encryptTicketPayload,
   generateRandomToken,

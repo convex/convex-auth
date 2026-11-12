@@ -27,7 +27,6 @@ const projects = ["packages", "examples"].flatMap((group) =>
         // include keeps the globber out of heavy dirs (e.g. Rust `target/`).
         include: ["src/**/*.test.{ts,tsx}", "convex/**/*.test.{ts,tsx}"],
         exclude: [...configDefaults.exclude, "**/target/**", "**/pkg/**"],
-        passWithNoTests: true, // TODO(nicolas) remove?
         server: {
           deps: {
             // convex-test loads function modules dynamically; inlining keeps

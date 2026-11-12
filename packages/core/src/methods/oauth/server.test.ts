@@ -3,7 +3,7 @@ import type { ComponentApi } from "../../components/oauth/_generated/component.t
 import {
   fakeCallbacks,
   fakeCore,
-} from "../../lib/oauth/componentContract.test.ts";
+} from "../../lib/oauth/componentContract.fixture.ts";
 import { setupOauth, type OauthCatalog, type OauthOptions } from "./server.ts";
 
 /**

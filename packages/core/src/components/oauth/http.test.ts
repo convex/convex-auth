@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { FunctionArgs } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api.ts";
-import { testCallbackMethods } from "../../lib/oauth/componentContract.test.ts";
+import { testCallbackMethods } from "../../lib/oauth/componentContract.fixture.ts";
 import { decryptTicketPayload } from "../../lib/oauth/crypto.ts";
 import schema from "./schema.ts";
 import { sha256Hex } from "../../lib/crypto.ts";

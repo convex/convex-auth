@@ -7,7 +7,7 @@ import {
   generateRandomToken,
 } from "../../lib/oauth/crypto.ts";
 import schema from "./schema.ts";
-import { testAccountsContract } from "../../lib/oauth/componentContract.test.ts";
+import { testAccountsContract } from "../../lib/oauth/componentContract.fixture.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 
