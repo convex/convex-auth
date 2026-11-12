@@ -5,6 +5,7 @@ import { api } from "./_generated/api.ts";
 import type { ComponentApi } from "./_generated/component.ts";
 import schema from "./schema.ts";
 import { setupOauth, type OauthCatalog } from "../../methods/oauth/server.ts";
+import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
   asComponentApi,
   fakeCallbacks,
@@ -91,6 +92,28 @@ const testApp = {
     fakeCallbacks,
     options,
   ).startSignIn,
+  // The catalog has no field for extra parameters, so this one is built
+  // directly, the way a built-in provider builds it.
+  startSignInOverriding: buildStartSignIn({
+    providerName: "overriding",
+    allowedOrigins: ALLOWED_ORIGINS,
+    authorizationEndpoint: AUTHORIZATION_ENDPOINT,
+    scopes: [],
+    extraAuthorizationParams: {
+      state: "x",
+      redirect_uri: "https://evil.example",
+    },
+    createAuthorizationRequest: (ctx, args) =>
+      ctx.runMutation(
+        options.component.provider
+          ._internal_dangerous_createAuthorizationRequest,
+        {
+          ...args,
+          providerName: "overriding",
+          tokenEndpoint: "https://provider.example/token",
+        },
+      ),
+  }),
 };
 
 const modules = {
@@ -116,6 +139,11 @@ const startSignInFormPost = makeFunctionReference<
   StartSignInArgs,
   StartSignInResult
 >("testApp:startSignInFormPost");
+const startSignInOverriding = makeFunctionReference<
+  "mutation",
+  StartSignInArgs,
+  StartSignInResult
+>("testApp:startSignInOverriding");
 
 function setup() {
   // One instance serving one provider: the component instance binds the
@@ -233,6 +261,19 @@ describe("startSignIn", () => {
       redirectTo: REDIRECT_TO,
     });
     expect(new URL(redirect).searchParams.has("response_mode")).toBe(false);
+  });
+
+  test("an extra parameter cannot override a flow parameter", async () => {
+    const t = setup();
+    const { redirect, state } = await t.mutation(startSignInOverriding, {
+      redirectTo: REDIRECT_TO,
+    });
+
+    const params = new URL(redirect).searchParams;
+    expect(params.getAll("state")).toEqual([state]);
+    expect(params.getAll("redirect_uri")).toEqual([CALLBACK_URL]);
+    const request = await storedRequest(t);
+    expect(request?.stateHash).toBe(await sha256Hex(state));
   });
 
   test("the returned state hashes to the recorded state hash", async () => {
