@@ -13,18 +13,43 @@ import {
 } from "@convex-dev/passkey-test-authenticator";
 import { api } from "./passkey/_generated/api.ts";
 import schema from "./passkey/schema.ts";
+import { registerAttestationSigner } from "../lib/attestationSigner.fixture.ts";
+import { NEW_USER_ATTESTATION } from "../lib/attestationKinds.ts";
 
 export const modules = import.meta.glob("./passkey/**/*.ts");
+
+const coreSigners = new WeakMap<
+  object,
+  ReturnType<typeof registerAttestationSigner>
+>();
 
 /**
  * Make a test instance of the component. The component mounts the batch
  * worker (the ceremony mutations ping the cleanup loop), so register it
  * with the test instance too.
+ *
+ * The function also registers the test signer of the core (`auth`). Register
+ * every component before the test runs a function: convex-test does not add
+ * a component that it registers later to a transaction that is open, for
+ * example a function of the cleanup loop that runs in the background.
  */
 export function setup(): TestConvex<typeof schema> {
   const t = convexTest(schema, modules);
   registerBatchWorker(t);
+  coreSigners.set(t, registerAttestationSigner(t, "auth"));
   return t;
+}
+
+/** A new-user attestation of the core for `userId`. */
+export async function newUserAttestation(
+  t: object,
+  userId: string,
+): Promise<string> {
+  const signer = coreSigners.get(t);
+  if (signer === undefined) {
+    throw new Error("Make the test instance with `setup`.");
+  }
+  return await signer.attest(NEW_USER_ATTESTATION, { userId });
 }
 
 /** Assert that two byte buffers hold the same bytes. */

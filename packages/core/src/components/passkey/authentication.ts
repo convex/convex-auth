@@ -1,4 +1,5 @@
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
+import { attestUser } from "../custom.ts";
 import { vAuthenticationResponseJSON } from "./validation.ts";
 import {
   decodeClientDataJSON,
@@ -102,6 +103,8 @@ const finishAuthenticationResult = v.union(
     success: v.literal(true),
     userId: v.string(),
     passkeyId: v.string(),
+    // A user attestation for `userId`: the user signed with a passkey.
+    attestation: v.string(),
   }),
   v.object({
     success: v.literal(false),
@@ -118,8 +121,8 @@ type FinishAuthenticationResult = Infer<typeof finishAuthenticationResult>;
  *
  * The function finds the credential. Then it examines the authenticator
  * data, the client data, and the assertion signature. It deletes the
- * challenge and returns the `userId` of the user. The app can then make a
- * session for that user.
+ * challenge and returns the `userId` of the user and a user attestation for
+ * it. The sign-in method exchanges the attestation for a session.
  *
  * `purpose` must be the purpose that `startAuthentication` received.
  */
@@ -337,6 +340,7 @@ export const finishAuthentication = mutation({
       success: true,
       userId: passkey.userId,
       passkeyId: passkey._id,
+      attestation: await attestUser(ctx, { verifiedUserId: passkey.userId }),
     };
   },
 });

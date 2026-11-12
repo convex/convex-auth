@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api.ts";
+import { registerAttestationSigner } from "../../lib/attestationSigner.fixture.ts";
+import {
+  NEW_USER_ATTESTATION,
+  USER_ATTESTATION,
+} from "../../lib/attestationKinds.ts";
+import { decodeJwt } from "jose";
 import { toArrayBuffer } from "./helpers.ts";
 import { MAX_PASSKEY_NAME_LENGTH } from "./validation.ts";
 import { CHALLENGE_TTL_MS } from "./constants.ts";
@@ -16,6 +22,7 @@ import {
   toBase64URL,
 } from "@convex-dev/passkey-test-authenticator";
 import {
+  newUserAttestation,
   expectProtocolError,
   expectSameBytes,
   register,
@@ -83,11 +90,14 @@ async function registrationArgs(
     includeCredential?: boolean;
     challenge?: ArrayBuffer;
     startUserId?: string | null;
+    // The new-user attestation of a new-user ceremony. By default, `finish`
+    // signs one as the core.
+    newUser?: string;
   } = {},
 ) {
-  const credential = options.credential ?? (await generateES256Credential());
   const startUserId =
     options.startUserId !== undefined ? options.startUserId : userId;
+  const credential = options.credential ?? (await generateES256Credential());
   let challenge: ArrayBuffer;
   let userHandle: ArrayBuffer | null;
   if (options.challenge !== undefined) {
@@ -129,13 +139,13 @@ async function registrationArgs(
     }),
   });
   const args = buildArgs();
-  const finish = (extra: { transports?: string[] } = {}) =>
+  const finish = async (extra: { transports?: string[] } = {}) =>
     startUserId === null
-      ? t.mutation(api.registration.finishRegistrationForNewUser, {
+      ? await t.mutation(api.registration.finishRegistrationForNewUser, {
           ...buildArgs(extra),
-          newUserId: userId,
+          newUser: options.newUser ?? (await newUserAttestation(t, userId)),
         })
-      : t.mutation(api.registration.finishRegistrationForExistingUser, {
+      : await t.mutation(api.registration.finishRegistrationForExistingUser, {
           ...buildArgs(extra),
           verifiedUserId: userId,
         });
@@ -382,6 +392,37 @@ describe("startRegistrationForExistingUser", () => {
 });
 
 describe("finishRegistrationForNewUser", () => {
+  test("attests the new user", async () => {
+    const t = setup();
+    const { finish } = await registrationArgs(t, "user1", {
+      startUserId: null,
+    });
+    const result = await finish();
+    if (!result.success || !("attestation" in result)) {
+      throw new Error("expected an attestation");
+    }
+    expect(decodeJwt(result.attestation as string)).toMatchObject({
+      aud: USER_ATTESTATION.audience,
+      userId: "user1",
+    });
+  });
+
+  test("refuses a new-user attestation that the core did not sign", async () => {
+    const t = setup();
+    const newUser = await registerAttestationSigner(t, "authOther").attest(
+      NEW_USER_ATTESTATION,
+      { userId: "user1" },
+    );
+    const { finish } = await registrationArgs(t, "user1", {
+      startUserId: null,
+      newUser,
+    });
+    await expect(finish()).rejects.toThrow("the core did not sign it");
+    expect(await t.run((ctx) => ctx.db.query("passkeys").collect())).toEqual(
+      [],
+    );
+  });
+
   test("stores the passkey and links the handle to the verified user", async () => {
     const t = setup();
     const { credential, userHandle, finish } = await registrationArgs(
@@ -394,7 +435,7 @@ describe("finishRegistrationForNewUser", () => {
 
     const passkeys = await t.run((ctx) => ctx.db.query("passkeys").collect());
     expect(passkeys).toHaveLength(1);
-    expect(result).toEqual({ success: true, passkeyId: passkeys[0]._id });
+    expect(result).toMatchObject({ success: true, passkeyId: passkeys[0]._id });
     expect(passkeys[0].userId).toBe("user1");
     expect(passkeys[0].counter).toBe(5);
     expectSameBytes(passkeys[0].credentialId, credential.credentialId);
@@ -410,11 +451,12 @@ describe("finishRegistrationForNewUser", () => {
     const { args } = await registrationArgs(t, "user1", {
       startUserId: "user1",
     });
+    const newUser = await newUserAttestation(t, "user1");
     await expectProtocolError(
       () =>
         t.mutation(api.registration.finishRegistrationForNewUser, {
           ...args,
-          newUserId: "user1",
+          newUser,
         }),
       "the ceremony comes from `existingUser`",
     );

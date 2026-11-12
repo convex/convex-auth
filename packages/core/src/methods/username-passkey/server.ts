@@ -326,12 +326,12 @@ export function setupUsernamePasskey<UsersTable extends string>(
          *    conflict, and `checkRegistrationForNewUser` (the full WebAuthn
          *    verification as a query). Each failure, correctable or not,
          *    returns a `userError` here, before anything exists.
-         * 2. Writes that cannot fail after the checks: `completeSignUp` mints
-         *    the user, the account, and the session, `setUsername` stores the
-         *    username, and `finishRegistrationForNewUser` stores the
-         *    passkey. None of
-         *    them can fail after step 1 inside the same transaction, so a
-         *    failure throws and rolls everything back.
+         * 2. Writes that cannot fail after the checks: `createUser` creates
+         *    the user, `setUsername` stores the username,
+         *    `finishRegistrationForNewUser` stores the passkey and attests the
+         *    user, and `createSession` creates the session from that
+         *    attestation. None of them can fail after step 1 inside the same
+         *    transaction, so a failure throws and rolls everything back.
          */
         finishSignUpWithUsernamePasskey: authMutation({
           args: {
@@ -388,14 +388,13 @@ export function setupUsernamePasskey<UsersTable extends string>(
               return { status: "error", userError };
             }
 
-            const tokens = await ctx.convexAuth.completeSignUp({
+            const { userId, newUser } = await ctx.convexAuth.createUser({
               profile: {},
-              verifiedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
               usernameComponent.public.setUsername,
-              { userId: tokens.userId, username },
+              { userId, username },
             );
             if (!setUsernameResult.success) {
               // Not possible: the username format was validated and the
@@ -415,7 +414,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
               {
                 expectedRpId: rpId,
                 expectedOrigin: origin,
-                newUserId: tokens.userId,
+                newUser,
                 response: args.response,
                 name: passkeyName,
               },
@@ -431,6 +430,12 @@ export function setupUsernamePasskey<UsersTable extends string>(
               );
             }
 
+            // The passkey component attested the user, thus the core
+            // creates the session.
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: registrationResult.attestation,
+              profile: {},
+            });
             return { status: "complete", tokens };
           },
         }),
@@ -472,10 +477,9 @@ export function setupUsernamePasskey<UsersTable extends string>(
               { userId },
             );
 
-            const tokens = await ctx.convexAuth.completeSignIn({
-              userId,
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: authenticationResult.attestation,
               profile: {},
-              verifiedBy: component,
             });
             return { status: "complete", tokens, username };
           },
