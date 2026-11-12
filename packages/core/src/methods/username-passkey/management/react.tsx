@@ -42,7 +42,6 @@ export type RemovePasskeyResult =
  * @param ceremonies The passkey ceremonies of the platform. Pass a module
  *   constant, so its identity never changes.
  */
-// TODO(nicolas) Change the return value to allow showing a different UI before creating the new passkey
 export function useAddPasskeyImpl(
   managementApi: AddPasskeyApi,
   ceremonies: ResolvedPasskeyCeremonies,

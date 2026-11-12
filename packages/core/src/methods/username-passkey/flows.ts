@@ -53,7 +53,6 @@ type FinishSignUpMutation = FunctionReference<
 type FinishSignInMutation = FunctionReference<
   "mutation",
   "public",
-  // TODO(nicolas) Consider changing the name of the argument to `credential`
   { response: WireAuthenticationResponse },
   ClientView<FinishSignInResult>
 >;
@@ -139,9 +138,6 @@ export async function runSignInOrSignUpFlow(
   }
 
   if (start.step === "register") {
-    // TODO(nicolas) Consider not showing the registration UI immediately,
-    // but instead showing a screen that tells the user they have no account
-    // and suggest creating one.
     const ceremony = await ceremonies.register(start.options);
     if (!ceremony.success) {
       return { status: "error", userError: ceremony.userError };
