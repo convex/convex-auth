@@ -145,8 +145,13 @@ export const getUserIdByAccount = query({
 /**
  * Create an account connecting a provider account id to an app user id.
  * Throws if that provider account id already has one.
+ *
+ * DANGER: an unverified `userId` or `providerAccountId` lets an attacker
+ * connect their provider account to another user's account.
+ *
+ * TODO: ensure that the user ID is the current user.
  */
-export const createAccount = mutation({
+export const _internal_dangerous_createAccount = mutation({
   args: accountFields,
   returns: v.null(),
   handler: async (ctx, args) =>

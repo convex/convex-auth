@@ -328,7 +328,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
          *    returns a `userError` here, before anything exists.
          * 2. Writes that cannot fail after the checks: `completeSignUp` mints
          *    the user, the account, and the session, `setUsername` stores the
-         *    username, and `finishRegistrationForNewUser` stores the
+         *    username, and `_internal_dangerous_finishRegistrationForNewUser` stores the
          *    passkey. None of
          *    them can fail after step 1 inside the same transaction, so a
          *    failure throws and rolls everything back.
@@ -411,7 +411,8 @@ export function setupUsernamePasskey<UsersTable extends string>(
             // Store the verified credential, link the handle to the new
             // user, and consume the challenge.
             const registrationResult = await ctx.runMutation(
-              component.registration.finishRegistrationForNewUser,
+              component.registration
+                ._internal_dangerous_finishRegistrationForNewUser,
               {
                 expectedRpId: rpId,
                 expectedOrigin: origin,

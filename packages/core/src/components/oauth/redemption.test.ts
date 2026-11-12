@@ -311,7 +311,7 @@ describe("completeSignIn", () => {
     const code = await mintTicket(t);
 
     // The identity already has an account.
-    await t.mutation(api.provider.createAccount, {
+    await t.mutation(api.provider._internal_dangerous_createAccount, {
       providerAccountId: "acme-sub-1",
       userId: "user-7",
     });
