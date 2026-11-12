@@ -28,19 +28,19 @@ describe("componentPathOf", () => {
 
   test("refuses a reference to a function of the app", () => {
     expect(() => componentPathOf(anyApi.users.get)).toThrow(
-      "Expected the reference of a component",
+      "Expected a reference inside a component",
     );
   });
 
   test("refuses the `components` object itself", () => {
     expect(() => componentPathOf(components)).toThrow(
-      "Expected the reference of a component",
+      "Expected a reference inside a component",
     );
   });
 
   test("refuses something that is not a reference", () => {
     expect(() => componentPathOf({})).toThrow(
-      "Expected the reference of a component",
+      "Expected a reference inside a component",
     );
   });
 });
