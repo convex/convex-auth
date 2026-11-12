@@ -2,16 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Maps a provider-scoped identity to an opaque app user id. The app owns the
-  // actual users table; we only store the id string it gives us back.
-  accounts: defineTable({
-    provider: v.string(),
-    providerAccountId: v.string(),
-    userId: v.string(),
-  })
-    .index("by_provider_account", ["provider", "providerAccountId"])
-    .index("by_user", ["userId"]),
-
   // One row per active session. Its refresh tokens live in `refreshTokens`.
   // A session expires once it goes `refreshInactivityTimeoutSeconds` without a
   // refresh, or at the latest `sessionMaxLifetimeSeconds` after its
@@ -21,7 +11,9 @@ export default defineSchema({
   // refreshes.
   sessions: defineTable({
     userId: v.string(),
-    accountId: v.id("accounts"),
+    // The `name` passed to `bindProvider` by the sign-in method that created
+    // this session.
+    provider: v.string(),
   }).index("by_user", ["userId"]),
 
   // Every refresh token a session has handed out and still remembers, by its

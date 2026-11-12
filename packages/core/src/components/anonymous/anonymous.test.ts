@@ -11,9 +11,15 @@ function setup() {
 }
 
 describe("anonymous auth", () => {
-  test("createAnonymousAccount, returns ID", async () => {
+  test("createAnonymousAccount records the user", async () => {
     const t = setup();
-    const result = await t.mutation(api.provider.createAnonymousAccount, {});
-    expect(result).not.toBe(null);
+    await t.mutation(api.provider.createAnonymousAccount, {
+      userId: "user-1",
+    });
+    const accounts = await t.run(
+      async (ctx) => await ctx.db.query("accounts").collect(),
+    );
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toMatchObject({ userId: "user-1" });
   });
 });

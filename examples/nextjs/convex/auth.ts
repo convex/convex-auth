@@ -3,9 +3,9 @@ import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
 import { setupUsernamePassword } from "@convex-dev/auth/methods/username-password/server";
 
-// The core owns sessions, accounts, and JWT minting. Each sign-in method is
-// wired to it with its own setup function, and only hands back its functions
-// once the app attaches the callbacks that create its user rows. Each method
+// The core owns sessions and JWT minting. Each sign-in method is wired to it
+// with its own setup function, and only hands back its functions once the app
+// attaches the callbacks that create its user rows. Each sign-in method
 // exposes the functions its client hooks call, like
 // `signUpWithUsernamePassword` / `signInWithUsernamePassword` for the password
 // one.

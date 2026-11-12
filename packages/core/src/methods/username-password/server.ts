@@ -175,11 +175,6 @@ export function setupUsernamePassword<UsersTable extends string>(
               };
             }
 
-            // Create the account + app user (via the app's createUser) and
-            // mint the session. Password accounts are keyed by the app user id,
-            // which does not exist before this call mints it, hence the
-            // placeholder; sign-in passes the user id itself.
-            //
             // TODO(nicolas) The app's user callbacks should not receive a
             // provider account ID for the `usernamePassword` method at all: the value
             // is an internal key ("" at sign-up, the user id afterwards) with
@@ -263,10 +258,8 @@ export function setupUsernamePassword<UsersTable extends string>(
               return { status: "error", userError: verifyResult.userError };
             }
 
-            // The username resolved to a user id and its password verified, so
-            // the account exists and `completeSignIn` (which throws otherwise)
-            // is the right helper.
             const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
               providerAccountId: userId,
               profile: {},
             });

@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+Schema and sign-in method API breaking changes - see below
+
+- moved accounts from the core into the components. Each OAuth component
+  (`authGoogle`, `authGithub`, `authApple`, `authOauth`) and the anonymous
+  component now keeps its own `accounts` table, which connects its identities
+  to app user ids.
+- replaced `accountId` with `provider` in the core's `sessions` table
+- the anonymous sign-in method no longer generates an id for each user. The
+  `provider.accountId` passed to its `createUser` and `onSignIn` is now an
+  empty string.
+- upgrading from beta.0:
+  1. optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
+     table of their component. An OAuth user without a copied row gets a new
+     app user on their next sign-in.
+  2. clear the `authAnonymous/accounts` table, which nothing reads. Its rows
+     now hold a `userId` instead of an `anonymousId`. To keep them, replace
+     each row with the `userId` of the `auth/accounts` row whose `provider` is
+     `anonymous` and whose `providerAccountId` is the row's `anonymousId`.
+  3. delete the `auth/accounts` table
+  4. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
+     every user out
+- `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
+  `userId`, which the sign-in method gets from its component. This API isn't
+  stable yet: expect its arguments to change again.
+- removed `resolveUserId` from the sign-in method API, and removed the core's
+  `getUserIdByAccount`. Each OAuth component has its own
+  `getUserIdByAccount`.
+
 ## 2.0.0-beta.0
 
 Some API and schema breaking changes - see below

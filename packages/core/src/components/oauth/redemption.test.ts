@@ -27,27 +27,21 @@ import type {
 } from "../../server/setup.ts";
 
 /**
- * Tests for the app-side `completeSignIn` mutation that `setupOauth`
- * produces, run against the real component (real `claimTicket`, real ticket
- * crypto). The core helpers it uses (`ctx.convexAuth.completeSignUp` /
- * `completeSignIn`, plus the `resolveUserId` it picks between them with) are
- * faked and spied here. The real ones are covered by the core's own suite
- * (component/core.test.ts).
+ * Tests for the app-side `completeSignIn` mutation produced by `setupOauth`,
+ * run against the real OAuth component. The core helpers on `ctx.convexAuth`
+ * are fakes, and component/core.test.ts covers the real ones.
  */
 
 /**
- * Claims recorded by the fake `ctx.convexAuth.completeSignUp` /
- * `completeSignIn`, tagged with which of the two redemption chose. The suite
- * runs in one process, so tests read and reset this directly.
+ * Calls to the fake `ctx.convexAuth.completeSignUp` / `completeSignIn`. The
+ * suite runs in one process, so tests read and reset this directly.
  */
-type HelperCall = { kind: "signUp" | "signIn"; claims: AuthClaims };
+type HelperCall = {
+  kind: "signUp" | "signIn";
+  claims: AuthClaims;
+  userId?: string;
+};
 const helperCalls: HelperCall[] = [];
-
-/**
- * What the fake `ctx.convexAuth.resolveUserId` reports. `null` (the default)
- * models an identity the core has never seen; a user id models a return visit.
- */
-const resolvedUserId = { value: null as string | null };
 
 /**
  * When set, the fake helpers throw this instead of returning a bundle, modeling
@@ -85,15 +79,18 @@ const fakeCore = {
     const record =
       (kind: HelperCall["kind"]) =>
       async ({
+        userId,
         providerAccountId,
         profile,
       }: {
+        userId?: string;
         providerAccountId: string;
         profile: Profile;
       }) => {
         helperCalls.push({
           kind,
           claims: { providerName: name, providerAccountId, profile },
+          ...(userId === undefined ? {} : { userId }),
         });
         if (helperFailure.error !== undefined) {
           throw helperFailure.error;
@@ -103,7 +100,6 @@ const fakeCore = {
     const convexAuth: BoundAuthHelpers<Profile> = {
       completeSignUp: record("signUp"),
       completeSignIn: record("signIn"),
-      resolveUserId: async () => resolvedUserId.value,
       signUpWithoutSession: async () => {
         throw new Error("signUpWithoutSession is not used by redemption");
       },
@@ -276,10 +272,16 @@ async function mintTicket(
   return ticketCode;
 }
 
+/** Get the component's accounts without system fields. */
+async function accounts(t: ReturnType<typeof setup>) {
+  return (
+    await t.run(async (ctx) => await ctx.db.query("accounts").collect())
+  ).map(({ providerAccountId, userId }) => ({ providerAccountId, userId }));
+}
+
 afterEach(() => {
   vi.useRealTimers();
   helperCalls.length = 0;
-  resolvedUserId.value = null;
   helperFailure.error = undefined;
 });
 
@@ -295,8 +297,8 @@ describe("completeSignIn", () => {
 
     expect(result).toEqual(completed);
     // The decrypted payload flowed through the catalog's profile mapping
-    // into the fake helpers. The identity is unknown to the core, so
-    // redemption took the sign-up path.
+    // into the fake helpers. The identity is unknown to the component, so
+    // redemption took the sign-up path...
     expect(helperCalls).toEqual([
       {
         kind: "signUp",
@@ -307,14 +309,21 @@ describe("completeSignIn", () => {
         },
       },
     ]);
+    // ...and recorded an account for the new user.
+    expect(await accounts(t)).toEqual([
+      { providerAccountId: "acme-sub-1", userId: bundle.userId },
+    ]);
   });
 
   test("signs a returning identity in rather than signing it up again", async () => {
     const t = setup();
     const code = await mintTicket(t);
 
-    // Only the core knows the account has been seen before.
-    resolvedUserId.value = "user-1";
+    // The identity already has an account.
+    await t.mutation(api.provider.createAccount, {
+      providerAccountId: "acme-sub-1",
+      userId: "user-7",
+    });
     const result = await t.mutation(completeSignInWithAcme, {
       code,
       state: "state-1",
@@ -324,6 +333,7 @@ describe("completeSignIn", () => {
     expect(helperCalls).toEqual([
       {
         kind: "signIn",
+        userId: "user-7",
         claims: {
           providerName: "acme",
           providerAccountId: "acme-sub-1",
@@ -331,6 +341,7 @@ describe("completeSignIn", () => {
         },
       },
     ]);
+    expect(await accounts(t)).toHaveLength(1);
   });
 
   test("passes userinfo responses to the profile mapping", async () => {

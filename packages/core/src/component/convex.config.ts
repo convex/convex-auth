@@ -3,9 +3,9 @@ import { defineComponent } from "convex/server";
 /**
  * The core auth component.
  *
- * Owns:
- *  - the provider-account <-> app-user mapping (`accounts`)
- *  - session lifetimes (`sessions`: refresh tokens, rotation, expiry)
+ * Owns session lifetimes (`sessions`: refresh tokens, rotation, expiry). The
+ * mapping from a provider account to an app user lives in the component of
+ * each sign-in method, not here.
  *
  * Access tokens are signed with the deployment's own key
  * (`ctx.auth.signJwt`), so the component carries no signing material of its
