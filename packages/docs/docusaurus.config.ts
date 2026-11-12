@@ -19,8 +19,9 @@ const config: Config = {
   },
   title: "Convex Auth",
   tagline: "The best way to add authentication to your Convex app.",
-  // The preview deployment. These docs will move into https://docs.convex.dev
-  // when Convex Auth v2 is released.
+  // The preview deployment. The docs are published at
+  // https://docs.convex.dev/auth/convex-auth, and `vercel.json` redirects this
+  // host there. The pull request previews still serve this site.
   url: "https://auth-v2.previews.convex.dev",
   baseUrl: "/",
   // TODO: Allow crawlers to index the docs.

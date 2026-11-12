@@ -2,5 +2,19 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "docusaurus-2",
   "buildCommand": "pnpm build",
-  "outputDirectory": "build"
+  "outputDirectory": "build",
+  "redirects": [
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": "auth-v2.previews.convex.dev" }],
+      "destination": "https://docs.convex.dev/auth/convex-auth",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "auth-v2.previews.convex.dev" }],
+      "destination": "https://docs.convex.dev/auth/convex-auth/:path*",
+      "permanent": true
+    }
+  ]
 }
