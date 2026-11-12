@@ -7,7 +7,7 @@ import { Infer, v } from "convex/values";
 import { mutation } from "../_generated/server.ts";
 import { ADD_EMAIL_TTL_MS, VALIDATE_EMAIL_COPY } from "../helpers.ts";
 import { normalizeEmail, startFreeAddressUserError } from "../validation.ts";
-import { verifyUser } from "../../custom.ts";
+import { verifyCurrentUser, verifyUser } from "../../custom.ts";
 import {
   vStartArgs,
   vClaimArgs,
@@ -83,9 +83,10 @@ type CompleteResult = Infer<typeof completeResult>;
 
 /**
  * Complete a `changeEmail` challenge: remove the old primary address and
- * record the new one as primary. The `userId` must be the one given at
- * start; another user fails with `WRONG_USER`, and
- * the challenge stays.
+ * record the new one as primary. `currentUser` is the current-user
+ * attestation of the core (`attestCurrentUser`). The signed-in user must be
+ * the one of the start; another user fails with `WRONG_USER`, and the
+ * challenge stays.
  *
  * This can fail with `EMAIL_TAKEN` in the very rare case where the email is
  * assigned to someone else on verification. This can happen in the following scenario:
@@ -97,10 +98,10 @@ type CompleteResult = Infer<typeof completeResult>;
  *   is no longer available, so the completion fails with `EMAIL_TAKEN`.
  */
 export const complete = mutation({
-  args: { ...vClaimArgs, userId: v.string() },
+  args: { ...vClaimArgs, currentUser: v.string() },
   returns: completeResult,
   handler: async (ctx, args): Promise<CompleteResult> => {
-    const { userId } = args;
+    const { userId } = await verifyCurrentUser(args.currentUser);
     const claim = await claimChallenge(ctx, {
       emailCode: args.emailCode,
       browserSecret: args.browserSecret,

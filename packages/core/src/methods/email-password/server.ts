@@ -721,13 +721,13 @@ export function setupEmailPassword<UsersTable extends string>(
             // The link is bound to the user who started the change, so the
             // same user must be signed in to complete it. Another user gets
             // `WRONG_USER`, and the link still works for the right user.
-            const userId = await getAuthUserId(ctx, core.component);
-            if (userId === null) {
+            const currentUser = await ctx.convexAuth.attestCurrentUser();
+            if (currentUser === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
             const complete = await ctx.runMutation(
               component.challenge.changeEmail.complete,
-              { emailCode, browserSecret, userId },
+              { emailCode, browserSecret, currentUser },
             );
             if (!complete.success) {
               return { success: false, userError: complete.userError };

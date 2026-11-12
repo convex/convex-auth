@@ -7,7 +7,12 @@
 import { describe, expect, test } from "vitest";
 import { api } from "../_generated/api.ts";
 import { rateLimiter } from "../helpers.ts";
-import { seedChallenge, seedEmail, setup } from "../../emailTestSetup.ts";
+import {
+  currentUser,
+  seedChallenge,
+  seedEmail,
+  setup,
+} from "../../emailTestSetup.ts";
 import { startFreeAddressPreconditions, startPreconditions } from "./common.ts";
 
 const PURPOSE = "myApp/flow";
@@ -160,7 +165,7 @@ describe("the kind of a challenge", () => {
     const rightKind = await t.mutation(api.challenge.addEmail.complete, {
       emailCode: "code1",
       browserSecret: "secret1",
-      userId: "user1",
+      currentUser: await currentUser(t, "user1"),
     });
     expect(rightKind).toMatchObject({ success: true });
   });

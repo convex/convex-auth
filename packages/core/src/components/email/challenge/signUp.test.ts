@@ -12,6 +12,7 @@ import { NEW_USER_ATTESTATION } from "../../../lib/attestationKinds.ts";
 
 import {
   newUserAttestation,
+  currentUser,
   seedEmail,
   seedChallenge,
   setup as setupComponent,
@@ -171,7 +172,7 @@ describe("the kind of a signUp challenge", () => {
       t.mutation(api.challenge.addEmail.complete, {
         emailCode: "code1",
         browserSecret: "secret1",
-        userId: "user1",
+        currentUser: await currentUser(t, "user1"),
       }),
     ).rejects.toThrow(/"signUp".*"addEmail"/);
     // The row stays, thus the right kind still works.
