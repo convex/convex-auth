@@ -4,6 +4,9 @@ title: Username + passkey
 description: Sign users in with a username and a passkey.
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 The passkey component lets you implement passkey-based login.
 
 A passkey replaces the password with a key pair that stays on the user's device:
@@ -185,6 +188,263 @@ We recommend copying the following component into your app, adapting it to your 
 
 ```tsx file="examples/react-passkey/src/PasskeySettings.tsx" title="src/PasskeySettings.tsx"
 
+```
+
+</Step>
+
+</StepByStep>
+
+### Using passkeys in a React Native app
+
+The passkey hooks also run in a React Native app, on a native passkey layer
+that your app provides: a React Native passkey library, or your own native
+module. `createUsernamePasskeyHooks` from
+`@convex-dev/auth/methods/username-passkey/react-custom` makes the hooks on top
+of it. The hooks take the same arguments and return the same results as the
+ones of `@convex-dev/auth/methods/username-passkey/react`, and the backend
+stays the same.
+
+:::info
+
+Convex Auth doesn't have a fully bundled passkey solution for React Native yet.
+However, you can adapt the example integration below to the third-party library
+of your choice.
+
+:::
+
+<StepByStep>
+
+<Step title="Set up the native passkey layer">
+
+This example uses the third-party
+[`react-native-passkey`](https://www.npmjs.com/package/react-native-passkey)
+library. It is a native module, so in an Expo app it runs in a development
+build, not in Expo Go.
+
+```sh
+npm install react-native-passkey
+```
+
+</Step>
+
+<Step title="Add the origins of your app">
+
+Add the origins of your app to the `origin` list in `convex/auth.ts`, next to
+the origin of your site: `https://<rpId>` for iOS, and
+`android:apk-key-hash:<hash>` for Android, as the “Set up the public backend
+functions” step shows.
+
+```ts title="convex/auth.ts"
+origin: [
+  "https://app.example.com",
+  "https://example.com",
+  "android:apk-key-hash:<hash>",
+],
+```
+
+</Step>
+
+<Step title="Implement the ceremonies">
+
+The hooks run every passkey ceremony through a `PasskeyCeremonies` object:
+
+- `isSupported()` tells whether the device can run passkey ceremonies. When it
+  returns `false`, the hooks return `WEBAUTHN_UNSUPPORTED`.
+- `register(options)` makes a new passkey, and `authenticate(options)` signs in
+  with an existing one. `options` is the
+  `PublicKeyCredentialCreationOptionsJSON` or
+  `PublicKeyCredentialRequestOptionsJSON` of the WebAuthn specification. Both
+  resolve with `{ success: true, response }`, where `response` is the
+  registration or authentication response in the same JSON encoding, with
+  `type: "public-key"` and a `rawId`. The hooks keep only the fields that the
+  server accepts, so the response may have more.
+- For a failure they recognize, `register` and `authenticate` resolve with
+  `{ success: false, userError }`: `CEREMONY_ABORTED` when the user dismissed
+  the dialog or has no passkey for the app, `PASSKEY_ALREADY_REGISTERED` when
+  the device already holds a passkey for the account, and
+  `WEBAUTHN_UNSUPPORTED`. Any other failure can throw: the hooks return
+  `OTHER_ERROR`, with the thrown value on `cause`.
+
+Make the hooks once, in a module of your app:
+
+```ts title="src/passkeys.ts"
+import {
+  createUsernamePasskeyHooks,
+  type PasskeyCeremonies,
+  type PasskeyClientError,
+} from "@convex-dev/auth/methods/username-passkey/react-custom";
+import {
+  Passkey,
+  type PasskeyCreateRequest,
+  type PasskeyGetRequest,
+} from "react-native-passkey";
+
+// The library throws `{ error, message }` objects, where `error` is one of
+// its error codes.
+function toUserError(cause: unknown): PasskeyClientError | null {
+  switch ((cause as { error?: unknown } | null)?.error) {
+    case "UserCancelled":
+    case "NoCredentials":
+      return { error: "CEREMONY_ABORTED" };
+    case "NotSupported":
+      return { error: "WEBAUTHN_UNSUPPORTED" };
+    case "CredentialAlreadyExists":
+      return { error: "PASSKEY_ALREADY_REGISTERED" };
+    default:
+      return null;
+  }
+}
+
+const ceremonies: PasskeyCeremonies = {
+  isSupported: () => Passkey.isSupported(),
+  register: async (options) => {
+    try {
+      // The cast narrows the transports, which the library types as an enum.
+      const response = await Passkey.create(options as PasskeyCreateRequest);
+      return { success: true, response: { ...response, type: "public-key" } };
+    } catch (cause) {
+      const userError = toUserError(cause);
+      if (userError === null) throw cause;
+      return { success: false, userError };
+    }
+  },
+  authenticate: async (options) => {
+    try {
+      const response = await Passkey.get(options as PasskeyGetRequest);
+      return {
+        success: true,
+        response: {
+          ...response,
+          // In the JSON encoding, `rawId` is the same string as `id`.
+          rawId: response.rawId ?? response.id,
+          type: "public-key",
+        },
+      };
+    } catch (cause) {
+      const userError = toUserError(cause);
+      if (userError === null) throw cause;
+      return { success: false, userError };
+    }
+  },
+};
+
+export const { useSignInWithUsernamePasskey, useAddPasskey, useRemovePasskey } =
+  createUsernamePasskeyHooks(ceremonies);
+```
+
+</Step>
+
+<Step title="Serve the association files">
+
+iOS and Android only offer the passkeys of an `rpId` to an app that the
+`rpId` lists, in `https://<rpId>/.well-known/apple-app-site-association` and
+`https://<rpId>/.well-known/assetlinks.json`. Serve both with a `200`, no
+redirect, and the `application/json` content type.
+
+The files go on the domain of the `rpId`, which is usually your web host, not
+your deployment's `convex.site` domain. To serve them from Convex HTTP actions
+instead, have the web host rewrite (not redirect) `/.well-known/*` to them.
+
+On iOS, also add `webcredentials:<rpId>` to the app's Associated Domains
+(`ios.associatedDomains` in an Expo `app.json`). Apple caches the file, so a
+change can take a while to reach devices.
+
+On Android, list the SHA-256 fingerprints of every certificate that signs the
+app (debug, upload, and Play app signing), the same certificates as the
+`android:apk-key-hash:<hash>` origins.
+
+<Tabs>
+  <TabItem value="ios" label="iOS">
+
+```json title="public/.well-known/apple-app-site-association"
+{
+  "webcredentials": {
+    "apps": ["<TeamID>.<BundleID>"]
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="android" label="Android">
+
+```json title="public/.well-known/assetlinks.json"
+[
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.example.app",
+      "sha256_cert_fingerprints": ["AB:CD:...:EF"]
+    }
+  }
+]
+```
+
+  </TabItem>
+  <TabItem value="convex" label="Convex HTTP actions">
+
+```ts title="convex/http.ts"
+// Only serve the association files from your Convex deployment
+// if you're hosting a mobile-only app or if you plan to rewrite
+// or proxy requests to endpoints like these from your web front-end.
+import { httpRouter } from "convex/server";
+import { httpAction } from "./_generated/server";
+
+const http = httpRouter();
+
+function json(body: unknown) {
+  return httpAction(
+    async () =>
+      new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      }),
+  );
+}
+
+http.route({
+  path: "/.well-known/apple-app-site-association",
+  method: "GET",
+  handler: json({ webcredentials: { apps: ["<TeamID>.<BundleID>"] } }),
+});
+
+http.route({
+  path: "/.well-known/assetlinks.json",
+  method: "GET",
+  handler: json([
+    {
+      relation: ["delegate_permission/common.get_login_creds"],
+      target: {
+        namespace: "android_app",
+        package_name: "com.example.app",
+        sha256_cert_fingerprints: ["AB:CD:...:EF"],
+      },
+    },
+  ]),
+});
+
+export default http;
+```
+
+  </TabItem>
+</Tabs>
+
+</Step>
+
+<Step title="Use the hooks">
+
+Import the hooks from the module you created above instead of
+`@convex-dev/auth/methods/username-passkey/react`.
+
+`PasskeyCeremonies` has an optional `autofill` member for passkey autofill.
+Without it, the `autofill` field of `useSignInWithUsernamePasskey` reports
+`available: false`.
+
+```tsx
+import { useSignInWithUsernamePasskey } from "./passkeys";
+
+const { signIn, pending } = useSignInWithUsernamePasskey(api.auth);
+// ...
+const result = await signIn({ username });
 ```
 
 </Step>
