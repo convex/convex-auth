@@ -122,10 +122,8 @@ demonstrating the different sign-in methods.
 
 ## Documentation
 
-<!-- TODO: Use the final docs link when we release v2. -->
-
 This `README` is just the start. Learn more about Convex Auth in the
-[full documentation](https://auth-v2.previews.convex.dev/).
+[full documentation](https://docs.convex.dev/auth/convex-auth).
 
 ## Examples
 

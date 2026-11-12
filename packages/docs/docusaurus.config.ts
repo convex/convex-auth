@@ -9,8 +9,7 @@ const repoRoot = path.resolve(__dirname, "../..");
 
 const github = {
   repo: "https://github.com/convex/convex-auth",
-  // TODO: update the branch to `main` when Convex Auth v2 is released.
-  branch: "reboot",
+  branch: "main",
 };
 
 const config: Config = {
