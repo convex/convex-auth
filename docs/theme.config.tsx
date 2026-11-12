@@ -9,8 +9,7 @@ const config: DocsThemeConfig = {
   banner: {
     key: "v2-docs",
     text: (
-      // TODO: Change the link to docs.convex.dev when the v2 docs are out.
-      <a href="https://auth-v2.previews.convex.dev" target="_blank">
+      <a href="https://docs.convex.dev/auth/convex-auth" target="_blank">
         These are the docs for Convex Auth v1. See the v2 docs →
       </a>
     ),
