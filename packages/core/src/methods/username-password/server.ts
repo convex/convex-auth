@@ -174,14 +174,16 @@ export function setupUsernamePassword<UsersTable extends string>(
               };
             }
 
-            const tokens = await ctx.convexAuth.completeSignUp({
+            // Create the user without a session. The core attests that the
+            // user is new, and the password component accepts only that
+            // attestation to store the password of a new user.
+            const { userId, newUser } = await ctx.convexAuth.createUser({
               profile: {},
-              verifiedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
               usernameComponent.public.setUsername,
-              { userId: tokens.userId, username },
+              { userId, username },
             );
             if (!setUsernameResult.success) {
               // Unexpected: we validated the username above, and this handler
@@ -196,9 +198,9 @@ export function setupUsernamePassword<UsersTable extends string>(
             }
 
             const setResult = await ctx.runMutation(
-              component.public.setPassword,
+              component.public.setPasswordForNewUser,
               {
-                userId: tokens.userId,
+                newUser,
                 password,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
@@ -207,14 +209,19 @@ export function setupUsernamePassword<UsersTable extends string>(
               // Unexpected: we pre-validated the password above,
               // so this call should not fail.
               // Throwing so that the transaction doesn’t commit.
-              //
-              // TODO(nicolas) can we improve this?
               throw new Error(
-                "Unexpected error when setting the password: " + userError,
-                { cause: userError },
+                "Unexpected error when setting the password: " +
+                  setResult.userError.error,
+                { cause: setResult.userError },
               );
             }
 
+            // The password component attested the user, thus the core
+            // creates the session.
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: setResult.attestation,
+              profile: {},
+            });
             return { status: "complete", tokens };
           },
         }),
@@ -252,10 +259,9 @@ export function setupUsernamePassword<UsersTable extends string>(
               return { status: "error", userError: verifyResult.userError };
             }
 
-            const tokens = await ctx.convexAuth.completeSignIn({
-              userId,
+            const tokens = await ctx.convexAuth.createSession({
+              attestation: verifyResult.attestation,
               profile: {},
-              verifiedBy: component,
             });
             return { status: "complete", tokens };
           },
@@ -319,10 +325,12 @@ export function setupUsernamePassword<UsersTable extends string>(
               };
             }
 
+            // `verifyPassword` attested the user with the current password,
+            // thus the password component accepts the new password.
             const setResult = await ctx.runMutation(
               component.public.setPassword,
               {
-                userId,
+                user: verifyResult.attestation,
                 password: newPassword,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
