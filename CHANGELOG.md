@@ -1,46 +1,64 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
-Schema and sign-in method API breaking changes - see below
+First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.
 
-- moved accounts from the core into the components. Each OAuth component
-  (`authGoogle`, `authGithub`, `authApple`, `authOauth`) and the anonymous
-  component now keeps its own `accounts` table, which connects its identities
-  to app user ids.
-- the anonymous sign-in method no longer generates an id for each user. Its
-  `createUser` and `onSignIn` receive no account ID (see the changes to the
-  user callbacks below).
-- upgrading from beta.0:
-  1. optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
-     table of their component. An OAuth user without a copied row gets a new
-     app user on their next sign-in.
-  2. clear the `authAnonymous/accounts` table, which nothing reads. Its rows
-     now hold a `userId` instead of an `anonymousId`. To keep them, replace
-     each row with the `userId` of the `auth/accounts` row whose `provider` is
-     `anonymous` and whose `providerAccountId` is the row's `anonymousId`.
-  3. delete the `auth/accounts` table
-  4. clear the `auth/sessions` and `auth/refreshTokens` tables, which signs
-     every user out
-- `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
-  `userId`, which the sign-in method gets from its component. This API isn't
-  stable yet: expect its arguments to change again.
-- the user callbacks (`createUser` and `onSignIn`) no longer receive the
-  account ID (`provider.accountId`). For OAuth, `profile.id` is the account ID
-  of the provider. The `ctx.convexAuth` helpers no longer take
-  `providerAccountId`.
-- the user callbacks (`createUser` and `onSignIn`) now receive
-  `method: { name, profile }` instead of `provider: { name, profile }`. The
-  `name` of the `usernamePassword` method is now `"usernamePassword"` instead
-  of `"password"`, and the `name` of the `usernamePasskey` method is now
-  `"usernamePasskey"` instead of `"passkey"`. Update the argument validators of the callbacks, for
-  example `{ method: v.object({ name: v.literal("usernamePassword"), profile:
-v.object({}) }) }` instead of `{ provider: v.object({ name:
-v.literal("password"), profile: v.object({}) }) }`, and remove
-  `accountId: v.string()`.
-- removed `resolveUserId` from the sign-in method API, and removed the core's
-  `getUserIdByAccount`. Each OAuth component has its own
-  `getUserIdByAccount`.
+### Upgrading from beta.0
+
+1. Upgrade `convex` to 1.48.0 or later.
+2. Use `convexAuthProvider()` in `convex/auth.config.ts`. The deployment now
+   issues the JWTs, so remove the `JWT_PRIVATE_KEY` and `JWKS` environment
+   variables.
+3. Mount the core component as `auth`; the `componentName` option is gone.
+4. Update the user callbacks (`createUser`, `onSignIn`): they receive
+   `method: { name, profile }` instead of `provider: { name, profile }`, and no
+   account ID. Method names are now `"usernamePassword"` and
+   `"usernamePasskey"`. For OAuth, `profile.id` is the provider's account ID.
+5. Migrate the data:
+   - optionally, copy the OAuth rows of `auth/accounts` into the `accounts`
+     table of their component (`authGoogle`, `authGithub`, `authApple`). An
+     OAuth user without a copied row gets a new app user on their next sign-in.
+   - clear `authAnonymous/accounts`, then delete `auth/accounts`.
+   - clear `auth/sessions` and `auth/refreshTokens`, which signs every user out.
+
+### Breaking changes
+
+- Sessions are now stateful: a JWT is only valid while its session lives, and
+  its `sub` is the session ID. Use `getAuthUserId` to get the user.
+- Each OAuth component keeps its own `accounts` table and its own
+  `getUserIdByAccount`. The core's `getUserIdByAccount` is removed.
+- Renamed `completeSignUp`/`useCompleteSignUp` to
+  `completeSignUpWithEmailPassword`/`useCompleteSignUpWithEmailPassword`,
+  `*ProviderOptions` to `*Options`, and the test helpers `register*Provider`
+  to `register*`.
+- Renamed the refresh-token TTL option to `refreshInactivityTimeoutSeconds`,
+  and added `sessionMaxLifetimeSeconds` (default 30 days).
+- `setPassword` of the password component requires `minimumLength`.
+- Component functions that trust their caller's arguments now have an
+  `_internal_dangerous_` prefix (for example `auth.public.signIn`).
+- Errors use consistent codes: `NOT_LOGGED_IN`, `INCORRECT_CODE`, and
+  `OTHER_ERROR` for OAuth client errors.
+- Removed the `npx @convex-dev/auth` CLI. The anonymous method, TOTP, and the
+  API for custom OAuth providers are no longer exported.
+
+### New
+
+- Session revocation. Password recovery signs out all of the user's
+  sessions, and clients sign out as soon as their session is revoked.
+- `@convex-dev/auth/methods/username-passkey/react-custom` for React Native
+  and other custom passkey integrations.
+- The passkey origin can be an array.
+
+### Improvements
+
+- At most 100 sessions per user; the least recently refreshed one is evicted.
+- Passwords imported from v1 with 8 or more characters still work; new
+  passwords still need 10. More common passwords are rejected.
+- Setup validates TTLs, email link URLs, and the OAuth `httpPrefix`.
+  Usernames are capped at 100 characters, and email addresses that Resend
+  can't deliver to are rejected.
+- Next.js: works with Cache Components.
 
 ## 2.0.0-beta.0
 
