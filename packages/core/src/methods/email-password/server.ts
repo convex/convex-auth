@@ -39,8 +39,8 @@ import {
 } from "../../components/email/validation.ts";
 import type { SendEmailRef } from "../../components/email/helpers.ts";
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "emailPassword";
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "emailPassword";
 
 /**
  * The purpose of the `custom` challenge that account recovery starts. The
@@ -390,9 +390,9 @@ export function setupEmailPassword<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<typeof PROVIDER_NAME, EmailPasswordProfile, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, EmailPasswordProfile, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });

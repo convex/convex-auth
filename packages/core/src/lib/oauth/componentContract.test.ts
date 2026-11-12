@@ -45,7 +45,7 @@ export const ALLOWED_ORIGINS = [ALLOWED_ORIGIN];
 const REDIRECT_TO = `${ALLOWED_ORIGIN}/after`;
 
 export const fakeCore = {
-  bindProvider: () => ({
+  bindMethod: () => ({
     authMutation: mutationGeneric,
   }),
 } as unknown as AuthCore;

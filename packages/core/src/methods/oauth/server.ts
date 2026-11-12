@@ -187,7 +187,7 @@ export function setupOauth<
     }
   }
 
-  const { authMutation } = core.bindProvider({
+  const { authMutation } = core.bindMethod({
     name: providerName,
     createUser: callbacks.createUser,
     onSignIn: callbacks.onSignIn,
