@@ -4,6 +4,7 @@ import { BACKUP_CODE_COUNT, hashBackupCode } from "./backupCodes.ts";
 import { MAX_TOTPS_PER_USER, PENDING_ENROLLMENT_TTL_MS } from "./enrollment.ts";
 import { base32Encode } from "./totp.ts";
 import {
+  currentUser,
   ENROLLMENT,
   PERIOD_MS,
   addAuthenticator,
@@ -20,7 +21,7 @@ describe("createTotp", () => {
   test("returns the secret and the otpauth URI, and starts a pending enrollment", async () => {
     const t = setup();
     const { secret, otpauthUri } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     expect(secret).toMatch(/^[A-Z2-7]{32}$/);
@@ -42,11 +43,11 @@ describe("createTotp", () => {
   test("a second call replaces the pending secret", async () => {
     const t = setup();
     const first = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     const second = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     expect(second.secret).not.toBe(first.secret);
@@ -58,13 +59,13 @@ describe("createTotp", () => {
     // Only the code of the last secret confirms the enrollment.
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(first.secret),
       }),
     ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(second.secret),
       }),
     ).toMatchObject({ success: true });
@@ -74,7 +75,7 @@ describe("createTotp", () => {
     const t = setup();
     const { secret } = await enroll(t);
     await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
 
@@ -99,7 +100,7 @@ describe("createTotp", () => {
     const t = setup();
     const alice = await enroll(t, "alice");
     const alicePending = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
 
@@ -111,7 +112,7 @@ describe("createTotp", () => {
     });
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "bob",
+        currentUser: await currentUser(t, "bob"),
         code: await codeFor(alicePending.secret),
       }),
     ).toEqual({
@@ -148,7 +149,7 @@ describe("createTotp", () => {
     );
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(alicePending.secret),
       }),
     ).toMatchObject({ success: true });
@@ -159,11 +160,11 @@ describe("confirmTotp", () => {
   test("activates the secret and returns the backup codes", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     const result = await t.mutation(api.enrollment.confirmTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       code: await codeFor(secret),
     });
     expect(result.success).toBe(true);
@@ -185,13 +186,13 @@ describe("confirmTotp", () => {
   test("accepts a code with a space in the middle", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     const code = await codeFor(secret);
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: `${code.slice(0, 3)} ${code.slice(3)}`,
       }),
     ).toMatchObject({ success: true });
@@ -201,12 +202,12 @@ describe("confirmTotp", () => {
     for (const offset of [-PERIOD_MS, PERIOD_MS]) {
       const t = setup();
       const { secret } = await t.mutation(api.enrollment.createTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         ...ENROLLMENT,
       });
       expect(
         await t.mutation(api.enrollment.confirmTotp, {
-          userId: "alice",
+          currentUser: await currentUser(t, "alice"),
           code: await codeFor(secret, Date.now() + offset),
         }),
         `offset ${offset}`,
@@ -217,13 +218,13 @@ describe("confirmTotp", () => {
   test("rejects a code from outside the window", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     for (const offset of [-2 * PERIOD_MS, 2 * PERIOD_MS]) {
       expect(
         await t.mutation(api.enrollment.confirmTotp, {
-          userId: "alice",
+          currentUser: await currentUser(t, "alice"),
           code: await codeFor(secret, Date.now() + offset),
         }),
         `offset ${offset}`,
@@ -234,12 +235,15 @@ describe("confirmTotp", () => {
   test("rejects a malformed code", async () => {
     const t = setup();
     await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     for (const code of ["", "12345", "1234567", "abcdef", "12345a"]) {
       expect(
-        await t.mutation(api.enrollment.confirmTotp, { userId: "alice", code }),
+        await t.mutation(api.enrollment.confirmTotp, {
+          currentUser: await currentUser(t, "alice"),
+          code,
+        }),
         JSON.stringify(code),
       ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     }
@@ -262,14 +266,14 @@ describe("confirmTotp", () => {
   test("rejects a wrong code and keeps the enrollment pending", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     // A code from ten minutes ago is outside the window.
     const stale = await codeFor(secret, Date.now() - 10 * 60 * 1000);
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: stale,
       }),
     ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
@@ -282,7 +286,7 @@ describe("confirmTotp", () => {
     // The right code still confirms it.
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(secret),
       }),
     ).toMatchObject({ success: true });
@@ -292,7 +296,7 @@ describe("confirmTotp", () => {
     const t = setup();
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: "123456",
       }),
     ).toEqual({
@@ -304,7 +308,7 @@ describe("confirmTotp", () => {
     const { secret } = await enroll(t);
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(secret),
       }),
     ).toEqual({
@@ -319,13 +323,13 @@ describe("confirmTotp", () => {
   test("refuses a pending secret that is an hour old", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     advance(PENDING_ENROLLMENT_TTL_MS);
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(secret),
       }),
     ).toEqual({
@@ -338,12 +342,12 @@ describe("confirmTotp", () => {
 
     // A new enrollment can be confirmed.
     const next = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(next.secret),
       }),
     ).toMatchObject({ success: true });
@@ -352,13 +356,13 @@ describe("confirmTotp", () => {
   test("accepts a pending secret until it is an hour old", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     advance(PENDING_ENROLLMENT_TTL_MS - PERIOD_MS);
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(secret),
       }),
     ).toMatchObject({ success: true });
@@ -393,12 +397,12 @@ describe("confirmTotp", () => {
       await addAuthenticator(t);
     }
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     expect(
       await t.mutation(api.enrollment.confirmTotp, {
-        userId: "alice",
+        currentUser: await currentUser(t, "alice"),
         code: await codeFor(secret),
       }),
     ).toEqual({ success: false, userError: { error: "TOO_MANY_TOTPS" } });
@@ -419,11 +423,11 @@ describe("confirmTotp", () => {
   test("records the step of the confirmation code", async () => {
     const t = setup();
     const { secret } = await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
     await t.mutation(api.enrollment.confirmTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       code: await codeFor(secret),
     });
     const row = await t.run((ctx) => ctx.db.query("totpSecrets").unique());
@@ -444,7 +448,7 @@ describe("listTotps", () => {
     await enroll(t, "bob");
     // A pending enrollment is not listed.
     await t.mutation(api.enrollment.createTotp, {
-      userId: "alice",
+      currentUser: await currentUser(t, "alice"),
       ...ENROLLMENT,
     });
 

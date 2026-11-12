@@ -27,7 +27,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       confirmTotp: FunctionReference<
         "mutation",
         "internal",
-        { code: string; userId: string },
+        { code: string; currentUser: string },
         | { backupCodes?: Array<string>; success: true; totpId: string }
         | {
             success: false;
@@ -43,8 +43,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accountDisplayName: string;
+          currentUser: string;
           issuerDisplayName: string;
-          userId: string;
         },
         { otpauthUri: string; secret: string },
         Name

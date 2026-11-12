@@ -14,6 +14,7 @@
  * @module
  */
 import { mutation, MutationCtx, query } from "./_generated/server.ts";
+import { verifyCurrentUser } from "../custom.ts";
 import { Doc } from "./_generated/dataModel.ts";
 import { Infer, v } from "convex/values";
 import {
@@ -52,7 +53,9 @@ export const PENDING_ENROLLMENT_TTL_MS = 60 * 60 * 1000; // 1 hour
 export const MAX_TOTPS_PER_USER = 10;
 
 /**
- * Start the TOTP enrollment of a user: generate a new secret.
+ * Start the TOTP enrollment of the signed-in user: generate a new secret.
+ * `currentUser` is the current-user attestation of the core
+ * (`attestCurrentUser`).
  *
  * The new secret is *pending*: its use should not be enforced at sign-in until
  * the user proves that their authenticator has it, with `confirmTotp`.
@@ -67,15 +70,16 @@ export const MAX_TOTPS_PER_USER = 10;
  */
 export const createTotp = mutation({
   args: {
-    userId: v.string(),
+    currentUser: v.string(),
     issuerDisplayName: v.string(),
     accountDisplayName: v.string(),
   },
   returns: createTotpResult,
   handler: async (
     ctx,
-    { userId, issuerDisplayName, accountDisplayName },
+    { currentUser, issuerDisplayName, accountDisplayName },
   ): Promise<CreateTotpResult> => {
+    const { userId } = await verifyCurrentUser(currentUser);
     const secret = generateSecret();
     const params = {
       algorithm: DEFAULT_ALGORITHM,
@@ -127,8 +131,10 @@ const confirmTotpResult = v.union(
 type ConfirmTotpResult = Infer<typeof confirmTotpResult>;
 
 /**
- * Finish the TOTP enrollment of a user: check a code against the pending
- * secret, and activate it next to the active secrets the user has already.
+ * Finish the TOTP enrollment of the signed-in user: check a code against the
+ * pending secret, and activate it next to the active secrets the user has
+ * already. `currentUser` is the current-user attestation of the core
+ * (`attestCurrentUser`).
  *
  * The first active secret of a user comes with a new set of backup codes. A
  * user who adds a second authenticator keeps their backup codes. The code that
@@ -141,9 +147,10 @@ type ConfirmTotpResult = Infer<typeof confirmTotpResult>;
  * secret stays, and can be confirmed once the user deletes one.
  */
 export const confirmTotp = mutation({
-  args: { userId: v.string(), code: v.string() },
+  args: { currentUser: v.string(), code: v.string() },
   returns: confirmTotpResult,
-  handler: async (ctx, { userId, code }): Promise<ConfirmTotpResult> => {
+  handler: async (ctx, { currentUser, code }): Promise<ConfirmTotpResult> => {
+    const { userId } = await verifyCurrentUser(currentUser);
     const pending = await confirmablePendingSecret(ctx, userId);
     if (pending === null) {
       return { success: false, userError: { error: "NO_PENDING_ENROLLMENT" } };
