@@ -20,7 +20,7 @@ than in the browser:
 The sign-in method guides still apply. Your Convex backend and the method
 hooks you call from your UI are the same as in a single-page app. What changes
 is how the frontend connects to Convex Auth. This guide covers that wiring.
-[Sign-in methods with Next.js](./login-providers.mdx) covers the
+[Sign-in methods with Next.js](./methods.mdx) covers the
 method-specific differences.
 
 The code below comes from the
@@ -71,7 +71,7 @@ handlers that sign users in, refresh the session, and sign them out.
 The `signIn` list says which Convex functions the browser can call through
 the sign-in route. The route refuses any function that isn't listed. Add every
 function in your app that creates a session, like signing up or signing in. See
-[Sign-in methods with Next.js](./login-providers.mdx) for the functions
+[Sign-in methods with Next.js](./methods.mdx) for the functions
 each method needs.
 
 ```ts file="examples/nextjs/src/lib/serverAuth.ts" title="src/lib/serverAuth.ts" highlight="signIn: [...],"
@@ -187,7 +187,7 @@ same as in a single-page app. Import `useConvexAuth` and the `Authenticated`,
 proxy can apply your redirects.
 
 For your sign-in and sign-up pages, use the hooks of each sign-in method. See
-[Sign-in methods with Next.js](./login-providers.mdx).
+[Sign-in methods with Next.js](./methods.mdx).
 
 ```tsx file="examples/nextjs/app/Dashboard.tsx" title="app/Dashboard.tsx" highlight="import { useAuthActions, useAuthToken }" highlight="await signOut();"
 
