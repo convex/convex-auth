@@ -81,3 +81,13 @@ export const onSignInThatThrows = internalMutation({
     throw new Error("no sign-ins for you");
   },
 });
+
+/**
+ * A `createUser` that returns the same user ID on every call, as a callback
+ * that returns an existing user does.
+ */
+export const createUserReturningFixedId = internalMutation({
+  args: vCreateUser,
+  returns: v.string(),
+  handler: async () => "fixedUser",
+});
