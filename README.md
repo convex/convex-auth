@@ -21,10 +21,8 @@ Here's a quick start guide to adding username + password login to a Convex appli
 
 Install the package.
 
-<!-- TODO: Drop the @beta tag once v2 is released as latest. -->
-
 ```sh
-npm i @convex-dev/auth@beta
+npm i @convex-dev/auth
 ```
 
 Register the required Convex Auth components in `convex/convex.config.ts`.
