@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import { decodeJwt } from "jose";
+import { USER_ATTESTATION } from "../../../lib/attestationKinds.ts";
 import {
   registerResendStub,
   stubEmailSender,
   sentEmails,
 } from "../../../testing/resend.ts";
 import { api } from "../_generated/api.ts";
+import { registerAttestationSigner } from "../../../lib/attestationSigner.fixture.ts";
+import { NEW_USER_ATTESTATION } from "../../../lib/attestationKinds.ts";
+
 import {
+  newUserAttestation,
   seedEmail,
   seedChallenge,
   setup as setupComponent,
@@ -49,7 +55,11 @@ describe("challenge.signUp.complete", () => {
         emailCode: "code1",
         browserSecret: "secret1",
       }),
-    ).toEqual({ success: true, userId: "user1", email: "alice@example.com" });
+    ).toMatchObject({
+      success: true,
+      userId: "user1",
+      email: "alice@example.com",
+    });
     expect(
       await t.query(api.verifiedEmails.getEmails, { userId: "user1" }),
     ).toEqual([{ email: "alice@example.com", isPrimary: true }]);
@@ -183,7 +193,7 @@ describe("challenge.signUp.start", () => {
         email: "alice@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
-        userId: "user1",
+        newUser: await newUserAttestation(t, "user1"),
       });
     if (!result.success) {
       throw new Error("The start failed: " + result.userError.error);
@@ -205,7 +215,11 @@ describe("challenge.signUp.start", () => {
         emailCode: emailCodeInLink(sent[0].text),
         browserSecret: result.browserSecret,
       }),
-    ).toEqual({ success: true, userId: "user1", email: "alice@example.com" });
+    ).toMatchObject({
+      success: true,
+      userId: "user1",
+      email: "alice@example.com",
+    });
   });
 
   test("rejects a taken address with EMAIL_TAKEN", async () => {
@@ -219,7 +233,7 @@ describe("challenge.signUp.start", () => {
           email: "Alice@Example.com",
           url: URL,
           emailSender: await stubEmailSender(t),
-          userId: "user1",
+          newUser: await newUserAttestation(t, "user1"),
         }),
     ).toEqual({ success: false, userError: { error: "EMAIL_TAKEN" } });
     expect(await sentEmails(t)).toEqual([]);
@@ -234,7 +248,7 @@ describe("challenge.signUp.start", () => {
         email: "alice@work.example",
         url: URL,
         emailSender: await stubEmailSender(t),
-        userId: "user1",
+        newUser: await newUserAttestation(t, "user1"),
       }),
     ).rejects.toThrow(/already has an email/);
     expect(await sentEmails(t)).toEqual([]);
@@ -256,5 +270,39 @@ describe("challenge.signUp.check", () => {
 
     await seedEmail(t, "user2", "taken@example.com", true);
     expect(await check("Taken@Example.com")).toEqual({ error: "EMAIL_TAKEN" });
+  });
+});
+
+describe("challenge.signUp attestations", () => {
+  test("start refuses a new-user attestation that the core did not sign", async () => {
+    const t = setup();
+    const other = registerAttestationSigner(t, "authOther");
+    await expect(
+      t.withRequestMetadata({ ip: IP }).mutation(api.challenge.signUp.start, {
+        email: "alice@example.com",
+        url: URL,
+        emailSender: await stubEmailSender(t),
+        newUser: await other.attest(NEW_USER_ATTESTATION, { userId: "user1" }),
+      }),
+    ).rejects.toThrow("the core did not sign it");
+  });
+
+  test("complete attests the user of the challenge", async () => {
+    const t = setup();
+    await seedChallenge(t, {
+      email: "alice@example.com",
+      purpose: { kind: "signUp", userId: "user1" },
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    const result = await t.mutation(api.challenge.signUp.complete, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    if (!result.success) throw new Error("expected success");
+    expect(decodeJwt(result.attestation)).toMatchObject({
+      aud: USER_ATTESTATION.audience,
+      userId: "user1",
+    });
   });
 });

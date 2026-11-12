@@ -32,6 +32,7 @@ import {
   type ChallengeOfKind,
   type StartChallengeResult,
 } from "./common.ts";
+import { attestUser } from "../../custom.ts";
 
 // The application's name for the flow. Opaque to the component.
 const vPurposeName = v.string();
@@ -122,6 +123,10 @@ const completeResult = v.union(
     // or `null` when it is no user's verified address. When `start` got a
     // user ID, it is this user.
     emailOwnerId: v.union(v.string(), v.null()),
+    // `complete` only: a user attestation for `emailOwnerId`, because the
+    // person proved control of a verified address of that user. `null` when
+    // `emailOwnerId` is `null`. `peek` does not attest.
+    attestation: v.optional(v.union(v.string(), v.null())),
   }),
   v.object({
     success: v.literal(false),
@@ -218,6 +223,16 @@ export const complete = mutation({
     if (!claim.success) {
       return claim.failure;
     }
-    return await claimableResult(ctx, claim.row);
+    const result = await claimableResult(ctx, claim.row);
+    if (!result.success) {
+      return result;
+    }
+    return {
+      ...result,
+      attestation:
+        result.emailOwnerId === null
+          ? null
+          : await attestUser(ctx, { verifiedUserId: result.emailOwnerId }),
+    };
   },
 });

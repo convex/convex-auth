@@ -1,3 +1,5 @@
+import { decodeJwt } from "jose";
+import { USER_ATTESTATION } from "../../../lib/attestationKinds.ts";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   registerResendStub,
@@ -73,7 +75,7 @@ describe("challenge.custom.peek", () => {
       currentUserId: null,
     };
 
-    expect(await t.query(api.challenge.custom.peek, args)).toEqual({
+    expect(await t.query(api.challenge.custom.peek, args)).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user2",
@@ -128,7 +130,7 @@ describe("challenge.custom.complete", () => {
         purpose: PURPOSE,
         currentUserId: "user1",
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user1",
@@ -202,7 +204,7 @@ describe("challenge.custom.complete", () => {
         purpose: PURPOSE,
         currentUserId: null,
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user2",
@@ -225,7 +227,7 @@ describe("challenge.custom.complete", () => {
         purpose: PURPOSE,
         currentUserId: null,
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "nobody@example.com",
       emailOwnerId: null,
@@ -294,7 +296,7 @@ describe("challenge.custom.complete", () => {
         ...args,
         currentUserId: "user1",
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user1",
@@ -318,7 +320,7 @@ describe("challenge.custom.complete", () => {
         purpose: PURPOSE,
         currentUserId: "user1",
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user2",
@@ -381,7 +383,7 @@ describe("challenge.custom.start", () => {
         purpose: PURPOSE,
         currentUserId: "user1",
       }),
-    ).toEqual({
+    ).toMatchObject({
       success: true,
       email: "alice@example.com",
       emailOwnerId: "user1",
@@ -510,5 +512,45 @@ describe("challenge.custom.check", () => {
     expect(
       limited?.error === "RATE_LIMITED" && limited.retryAfterMs,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe("challenge.custom attestations", () => {
+  test("complete attests the owner of the address, and not an address with no owner", async () => {
+    const t = setup();
+    await seedEmail(t, "user2", "alice@example.com", true);
+    await seedChallenge(t, {
+      email: "alice@example.com",
+      purpose: { kind: "custom", purpose: "test/recovery" },
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+    await seedChallenge(t, {
+      email: "bob@example.com",
+      purpose: { kind: "custom", purpose: "test/recovery" },
+      emailCode: "code2",
+      browserSecret: "secret2",
+    });
+    const owned = await t.mutation(api.challenge.custom.complete, {
+      emailCode: "code1",
+      browserSecret: "secret1",
+      purpose: "test/recovery",
+      currentUserId: null,
+    });
+    if (!owned.success || typeof owned.attestation !== "string") {
+      throw new Error("expected an attestation");
+    }
+    expect(decodeJwt(owned.attestation)).toMatchObject({
+      aud: USER_ATTESTATION.audience,
+      userId: "user2",
+    });
+    expect(
+      await t.mutation(api.challenge.custom.complete, {
+        emailCode: "code2",
+        browserSecret: "secret2",
+        purpose: "test/recovery",
+        currentUserId: null,
+      }),
+    ).toMatchObject({ success: true, emailOwnerId: null, attestation: null });
   });
 });

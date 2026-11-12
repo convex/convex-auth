@@ -7,6 +7,7 @@ import { Infer, v } from "convex/values";
 import { mutation } from "../_generated/server.ts";
 import { ADD_EMAIL_TTL_MS, VALIDATE_EMAIL_COPY } from "../helpers.ts";
 import { normalizeEmail, startFreeAddressUserError } from "../validation.ts";
+import { verifyUser } from "../../custom.ts";
 import {
   vStartArgs,
   vClaimArgs,
@@ -35,13 +36,18 @@ export const check = mutation({
 });
 
 /**
- * Start a `changeEmail` challenge for `userId`. Fails with `EMAIL_TAKEN`
- * when a user has already verified the address.
+ * Start a `changeEmail` challenge for the user of the user attestation
+ * `user`: a component verified the user just before (for example, with the
+ * current password). Fails with `EMAIL_TAKEN` when a user has already
+ * verified the address.
+ *
+ * Throws when `user` is not a valid user attestation.
  */
 export const start = mutation({
-  args: { ...vStartArgs, userId: v.string() },
+  args: { ...vStartArgs, user: v.string() },
   returns: startFreeAddressResult,
   handler: async (ctx, args): Promise<StartFreeAddressResult> => {
+    const { userId } = await verifyUser(args.user);
     const error = await startFreeAddressPreconditions(
       ctx,
       args.email,
@@ -52,7 +58,7 @@ export const start = mutation({
     }
     const created = await createChallengeAndSendEmail(ctx, {
       email: args.email,
-      purpose: { kind: "changeEmail", userId: args.userId },
+      purpose: { kind: "changeEmail", userId },
       ttlMs: ADD_EMAIL_TTL_MS,
       url: args.url,
       emailSender: args.emailSender,
