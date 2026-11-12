@@ -64,3 +64,21 @@ export const authorizationRequestsTable = defineTable(
 export const ticketsTable = defineTable(ticketFields).index("ticketCodeHash", [
   "ticketCodeHash",
 ]);
+
+/**
+ * An account connects a provider account id to an app user id.
+ */
+export const accountFields = {
+  /**
+   * The `id` from the provider's profile mapping, unique within that
+   * provider.
+   */
+  providerAccountId: v.string(),
+  /** The app user id returned by the app's `createUser` callback. */
+  userId: v.string(),
+};
+
+export const accountsTable = defineTable(accountFields).index(
+  "providerAccountId",
+  ["providerAccountId"],
+);

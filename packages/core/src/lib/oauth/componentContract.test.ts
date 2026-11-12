@@ -79,7 +79,7 @@ function setup(schema: ComponentSchema, modules: ComponentModules) {
 }
 
 /**
- * The four mutations, by the names Convex registers them under. They are
+ * The shared functions, referenced by their registered names. They are
  * written out rather than taken from a generated `api`, because each
  * component generates its own and this runs against all of them.
  */
@@ -115,12 +115,23 @@ const claimTicket = makeFunctionReference<
   null | { encryptedPayload: string }
 >("provider:claimTicket");
 
+const getUserIdByAccount = makeFunctionReference<
+  "query",
+  { providerAccountId: string },
+  string | null
+>("provider:getUserIdByAccount");
+
+const createAccount = makeFunctionReference<
+  "mutation",
+  { providerAccountId: string; userId: string },
+  null
+>("provider:createAccount");
+
 /**
- * Run the four mutations a component built with `buildProviderFunctions`
- * registers, start to finish: record an authorization request, claim it, mint
- * a ticket, and redeem it. Every argument and every returned field goes
+ * Define tests for the functions registered by a component built with
+ * `buildProviderFunctions`. Every argument and every returned field goes
  * through the component's own validators, so a validator that no longer
- * matches the table it describes fails here.
+ * matches what the app side passes or reads back fails here.
  */
 export function testProviderFunctionsContract(
   schema: ComponentSchema,
@@ -187,6 +198,46 @@ export function testProviderFunctionsContract(
           stateHash: await sha256Hex("someone-elses-state"),
         }),
       ).toBeNull();
+    });
+  });
+
+  testAccountsContract(schema, modules);
+}
+
+/**
+ * Define tests for a component's `getUserIdByAccount` and `createAccount`.
+ * `testProviderFunctionsContract` runs them; the oauth component defines its
+ * own account functions and runs them directly.
+ */
+export function testAccountsContract(
+  schema: ComponentSchema,
+  modules: ComponentModules,
+): void {
+  describe("account functions", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    test("an account resolves to its user once recorded, and only once", async () => {
+      const t = setup(schema, modules);
+
+      await t.mutation(createAccount, {
+        providerAccountId: "sub-1",
+        userId: "user-1",
+      });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-1");
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-2" }),
+      ).toBeNull();
+
+      await expect(
+        t.mutation(createAccount, {
+          providerAccountId: "sub-1",
+          userId: "user-2",
+        }),
+      ).rejects.toThrow(/already exists/);
     });
   });
 }
