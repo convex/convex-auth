@@ -6,7 +6,10 @@
 
 import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import type { PasskeyCeremonies, PasskeyClientFailure } from "../ceremonies.ts";
+import type {
+  ResolvedPasskeyCeremonies,
+  PasskeyClientFailure,
+} from "../ceremonies.ts";
 import type {
   WireAuthenticationResponse,
   WireRegistrationResponse,
@@ -71,7 +74,7 @@ export type ManagementFlowContext<Api> = {
   convex: ConvexReactClient;
   api: Api;
   /** The passkey ceremonies of the platform. */
-  ceremonies: PasskeyCeremonies;
+  ceremonies: ResolvedPasskeyCeremonies;
 };
 
 export type AddPasskeyFlowResult =

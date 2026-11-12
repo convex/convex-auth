@@ -1,9 +1,9 @@
 /**
  * The platform-neutral part of the passkey clients: the result shapes of a
- * ceremony, the {@link PasskeyCeremonies} interface that each platform
- * implements, and the helpers that the implementations share. The flows and
- * hooks take a {@link PasskeyCeremonies} as an argument, so they hold no
- * platform code.
+ * ceremony, the {@link ResolvedPasskeyCeremonies} that the flows and hooks
+ * run, and the helpers that the implementations share. An app implements the
+ * looser {@link PasskeyCeremonies}, which {@link resolveCeremonies} turns into
+ * the former. The flows and hooks hold no platform code.
  *
  * @module
  */
@@ -69,7 +69,7 @@ export type PasskeyAuthenticationResult =
  * The functions never throw. They return discriminated unions, and they
  * fold every failure into the {@link PasskeyClientError} shape.
  */
-export type PasskeyCeremonies = {
+export type ResolvedPasskeyCeremonies = {
   /**
    * Whether this runtime can run passkey ceremonies. The flows check it
    * before they call a start mutation.
@@ -132,8 +132,9 @@ export function foldClientError(cause: unknown): PasskeyClientError {
   return { error: "OTHER_ERROR", cause };
 }
 
-/** The registration response shape that the platform libraries return. */
-type PlatformRegistrationResponse = {
+/** A registration response in the WebAuthn JSON encoding, as the passkey
+ * libraries return it. */
+export type PasskeyRegistrationResponse = {
   id: string;
   rawId: string;
   response: {
@@ -144,8 +145,9 @@ type PlatformRegistrationResponse = {
   type: "public-key";
 };
 
-/** The authentication response shape that the platform libraries return. */
-type PlatformAuthenticationResponse = {
+/** An authentication response in the WebAuthn JSON encoding, as the passkey
+ * libraries return it. */
+export type PasskeyAuthenticationResponse = {
   id: string;
   rawId: string;
   response: {
@@ -167,7 +169,7 @@ type PlatformAuthenticationResponse = {
  * refuse too.
  */
 export function pruneRegistrationResponse(
-  response: PlatformRegistrationResponse,
+  response: PasskeyRegistrationResponse,
 ): WireRegistrationResponse {
   return {
     id: response.id,
@@ -188,7 +190,7 @@ export function pruneRegistrationResponse(
 /** Keep only the fields of an authentication response that the finish
  * mutations accept (see {@link pruneRegistrationResponse}). */
 export function pruneAuthenticationResponse(
-  response: PlatformAuthenticationResponse,
+  response: PasskeyAuthenticationResponse,
 ): WireAuthenticationResponse {
   return {
     id: response.id,
@@ -203,5 +205,117 @@ export function pruneAuthenticationResponse(
     },
     clientExtensionResults: {},
     type: response.type,
+  };
+}
+
+/**
+ * The passkey ceremonies of a platform, which an app implements to run the
+ * passkey hooks outside a browser. `createUsernamePasskeyHooks` takes one.
+ *
+ * `register` and `authenticate` return the response of the platform as it is:
+ * the hooks keep only the fields the server accepts. For a failure they
+ * recognize, they return the matching {@link PasskeyClientError}. A thrown
+ * error named `NotAllowedError` or `AbortError` becomes `CEREMONY_ABORTED`,
+ * and any other thrown value becomes `OTHER_ERROR`.
+ */
+export type PasskeyCeremonies = {
+  /** Whether this device can run passkey ceremonies. */
+  isSupported: () => boolean;
+  register: (
+    options: WireCreationOptions,
+  ) => Promise<
+    | { success: true; response: PasskeyRegistrationResponse }
+    | PasskeyClientFailure
+  >;
+  authenticate: (
+    options: WireRequestOptions,
+  ) => Promise<
+    | { success: true; response: PasskeyAuthenticationResponse }
+    | PasskeyClientFailure
+  >;
+  /** Passkey autofill. Without it, autofill reports `available: false`. */
+  autofill?: {
+    isAvailable: () => Promise<boolean>;
+    authenticate: (
+      options: WireRequestOptions,
+      signal: AbortSignal,
+    ) => Promise<
+      | { success: true; response: PasskeyAuthenticationResponse }
+      | PasskeyClientFailure
+    >;
+    onResume?: (listener: () => void) => () => void;
+  };
+};
+
+/**
+ * Turn the ceremonies of an app into the ones the flows run: prune the
+ * responses, fold thrown values, and default autofill to unavailable.
+ */
+export function resolveCeremonies(
+  ceremonies: PasskeyCeremonies,
+): ResolvedPasskeyCeremonies {
+  const { autofill } = ceremonies;
+  const authenticated = (
+    result:
+      | { success: true; response: PasskeyAuthenticationResponse }
+      | PasskeyClientFailure,
+  ): PasskeyAuthenticationResult =>
+    result.success
+      ? {
+          success: true,
+          response: pruneAuthenticationResponse(result.response),
+        }
+      : result;
+  const failed = (cause: unknown): PasskeyClientFailure => ({
+    success: false,
+    userError: foldClientError(cause),
+  });
+
+  return {
+    isSupported: () => {
+      try {
+        return ceremonies.isSupported();
+      } catch {
+        return false;
+      }
+    },
+    register: async (options) => {
+      try {
+        const result = await ceremonies.register(options);
+        return result.success
+          ? {
+              success: true,
+              response: pruneRegistrationResponse(result.response),
+            }
+          : result;
+      } catch (cause) {
+        return failed(cause);
+      }
+    },
+    authenticate: async (options) => {
+      try {
+        return authenticated(await ceremonies.authenticate(options));
+      } catch (cause) {
+        return failed(cause);
+      }
+    },
+    isAutofillAvailable: async () => {
+      try {
+        return (await autofill?.isAvailable()) ?? false;
+      } catch {
+        return false;
+      }
+    },
+    authenticateWithAutofill: async (options, signal) => {
+      if (autofill === undefined) {
+        return { success: false, userError: { error: "WEBAUTHN_UNSUPPORTED" } };
+      }
+      try {
+        return authenticated(await autofill.authenticate(options, signal));
+      } catch (cause) {
+        return failed(cause);
+      }
+    },
+    onResume: autofill?.onResume ?? (() => () => {}),
   };
 }

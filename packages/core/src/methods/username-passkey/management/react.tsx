@@ -13,7 +13,7 @@
 import { useConvex } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { useStableFunctionReference } from "../../../react/functionReference.ts";
-import type { PasskeyCeremonies } from "../ceremonies.ts";
+import type { ResolvedPasskeyCeremonies } from "../ceremonies.ts";
 import {
   usePasskeyCeremonySlot,
   type AlreadyPendingFailure,
@@ -45,7 +45,7 @@ export type RemovePasskeyResult =
 // TODO(nicolas) Change the return value to allow showing a different UI before creating the new passkey
 export function useAddPasskeyImpl(
   managementApi: AddPasskeyApi,
-  ceremonies: PasskeyCeremonies,
+  ceremonies: ResolvedPasskeyCeremonies,
 ) {
   const convex = useConvex();
 
@@ -99,7 +99,7 @@ export function useAddPasskeyImpl(
  */
 export function useRemovePasskeyImpl(
   managementApi: RemovePasskeyApi,
-  ceremonies: PasskeyCeremonies,
+  ceremonies: ResolvedPasskeyCeremonies,
 ) {
   const convex = useConvex();
   const { run, pending } = usePasskeyCeremonySlot({ autofill: null });

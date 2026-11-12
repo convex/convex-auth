@@ -1,6 +1,6 @@
 /**
  * The shared body of the passkey sign-in hook. Each entry point binds it to
- * the {@link PasskeyCeremonies} of its platform.
+ * the {@link ResolvedPasskeyCeremonies} of its platform.
  *
  * @module
  */
@@ -24,7 +24,7 @@ import {
   usePasskeyCeremonySlot,
 } from "./react_impl.tsx";
 import {
-  PasskeyCeremonies,
+  ResolvedPasskeyCeremonies,
   PasskeyClientError,
   PasskeyClientFailure,
 } from "./ceremonies.ts";
@@ -50,7 +50,7 @@ export type SignInWithUsernamePasskeyResult =
  */
 export function useSignInWithUsernamePasskeyImpl(
   usernamePasskeyApi: UsernamePasskeyApi,
-  ceremonies: PasskeyCeremonies,
+  ceremonies: ResolvedPasskeyCeremonies,
 ) {
   const { setSession } = useAuthActions();
 

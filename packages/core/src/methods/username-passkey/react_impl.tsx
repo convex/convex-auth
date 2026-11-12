@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   foldClientError,
   type PasskeyClientFailure,
-  type PasskeyCeremonies,
+  type ResolvedPasskeyCeremonies,
   type PasskeyClientError,
 } from "./ceremonies.ts";
 import { CHALLENGE_TTL_MS } from "../../components/passkey/constants.ts";
@@ -129,7 +129,7 @@ export function usePasskeyAutofill<E = never>(options: {
    * The passkey ceremonies of the platform. The loop reads them once per
    * run of its effect, thus they must keep their identity.
    */
-  ceremonies: PasskeyCeremonies;
+  ceremonies: ResolvedPasskeyCeremonies;
   /**
    * Mint fresh options (with a fresh challenge) for a
    * conditional-mediation request, usually through the start mutation of

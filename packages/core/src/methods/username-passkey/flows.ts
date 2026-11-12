@@ -14,7 +14,10 @@ import type {
   SlimTokenBundle,
   TokenBundle,
 } from "../../lib/types.ts";
-import type { PasskeyCeremonies, PasskeyClientError } from "./ceremonies.ts";
+import type {
+  ResolvedPasskeyCeremonies,
+  PasskeyClientError,
+} from "./ceremonies.ts";
 import type {
   FinishSignInResult,
   FinishSignUpResult,
@@ -78,7 +81,7 @@ export type SignInFlowContext = {
   /** Stores a minted session. */
   setSession: (session: TokenBundle | SlimTokenBundle) => Promise<void>;
   /** The passkey ceremonies of the platform. */
-  ceremonies: PasskeyCeremonies;
+  ceremonies: ResolvedPasskeyCeremonies;
 };
 
 /**
