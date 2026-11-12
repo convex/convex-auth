@@ -1,10 +1,10 @@
-import { parse, serialize } from "cookie";
+import { parseCookie, stringifySetCookie } from "cookie";
 import { CookieOptions, CookieStore } from "./cookies.ts";
 
 /**
  * Serialize a cookie into a `Set-Cookie` header value.
  *
- * Thin adapter over the `cookie` package's `serialize` that maps our
+ * Thin adapter over the `cookie` package's `stringifySetCookie` that maps our
  * {@link CookieOptions} onto it.
  *
  * Deletion is expressed by the caller as an empty value with `maxAge: 0` (and a
@@ -15,7 +15,9 @@ export function serializeCookie(
   value: string,
   options: CookieOptions = {},
 ): string {
-  return serialize(name, value, {
+  return stringifySetCookie({
+    name,
+    value,
     path: options.path ?? "/",
     maxAge:
       options.maxAge === undefined ? undefined : Math.floor(options.maxAge),
@@ -66,10 +68,10 @@ export interface HttpCookies extends CookieStore {
  * ```
  */
 export function httpCookies(request: Request): HttpCookies {
-  // `cookie`'s `parse` tolerates malformed percent-encoding on foreign cookies
-  // (falling back to the raw value) rather than throwing and failing the whole
-  // request.
-  const jar = parse(request.headers.get("cookie") ?? "");
+  // `cookie`'s `parseCookie` tolerates malformed percent-encoding on foreign
+  // cookies (falling back to the raw value) rather than throwing and failing
+  // the whole request.
+  const jar = parseCookie(request.headers.get("cookie") ?? "");
   // Reflect writes back to reads within the same request, and remember them as
   // serialized Set-Cookie headers to flush onto the response.
   const overlay = new Map<string, string | null>();
