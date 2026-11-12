@@ -129,10 +129,13 @@ the parts of the integration that are specific to Next.js:
 
 <Step title="Set up the proxy">
 
-Create `proxy.ts` at the root of your app. The proxy runs before each page
-request. It refreshes the session if the access token is about to expire, so
-Server Components always see a current token. It also lets you redirect
-requests based on whether the user is signed in.
+Create `proxy.ts` next to your `app/` directory: at the project root, or at
+`src/proxy.ts` if your app uses a `src/` directory. Next.js ignores a proxy
+anywhere else, without a warning.
+
+The proxy runs before each page request. It refreshes the session if the access
+token is about to expire, so Server Components always see a current token. It
+also lets you redirect requests based on whether the user is signed in.
 
 :::warning
 
