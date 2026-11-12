@@ -46,9 +46,12 @@ export const check = mutation({
  * Throws when the user already has an email address: it is an application
  * bug. Give only a user that the same mutation has just created.
  *
- * DANGER: `complete` records the address on this `userId` with no further
- * check, thus an unverified `userId` lets an attacker attach their mailbox
- * to another user's account.
+ * DANGER: `complete`, the second step of this challenge
+ * (`challenge.signUp.complete`), records the address on the `userId` given
+ * here with no further check, thus an unverified `userId` here lets an
+ * attacker attach their mailbox to another user's account. `complete` needs
+ * no prefix: it takes no `userId`, thus this function is the only place
+ * where the user is chosen.
  *
  * TODO: ensure that the user ID is a user that the current mutation has just
  * created.

@@ -73,7 +73,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
           response: {
@@ -103,7 +103,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "mutation",
         "internal",
         {
-          expectedOrigin: string;
+          expectedOrigin: string | Array<string>;
           expectedRpId: string;
           name?: string;
           newUserId: string;
@@ -171,66 +171,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { userId: string },
         null,
-        Name
-      >;
-      finishRegistrationForExistingUser: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          expectedOrigin: string | Array<string>;
-          expectedRpId: string;
-          name?: string;
-          response: {
-            clientExtensionResults: {};
-            id: string;
-            rawId: string;
-            response: {
-              attestationObject: string;
-              clientDataJSON: string;
-              transports?: Array<string>;
-            };
-            type: "public-key";
-          };
-          verifiedUserId: string;
-        },
-        | { passkeyId: string; success: true }
-        | {
-            success: false;
-            userError:
-              | { error: "CHALLENGE_EXPIRED" }
-              | { error: "PROTOCOL_ERROR" }
-              | { error: "INVALID_NAME" };
-          },
-        Name
-      >;
-      finishRegistrationForNewUser: FunctionReference<
-        "mutation",
-        "internal",
-        {
-          expectedOrigin: string | Array<string>;
-          expectedRpId: string;
-          name?: string;
-          newUserId: string;
-          response: {
-            clientExtensionResults: {};
-            id: string;
-            rawId: string;
-            response: {
-              attestationObject: string;
-              clientDataJSON: string;
-              transports?: Array<string>;
-            };
-            type: "public-key";
-          };
-        },
-        | { passkeyId: string; success: true }
-        | {
-            success: false;
-            userError:
-              | { error: "CHALLENGE_EXPIRED" }
-              | { error: "PROTOCOL_ERROR" }
-              | { error: "INVALID_NAME" };
-          },
         Name
       >;
       listPasskeys: FunctionReference<

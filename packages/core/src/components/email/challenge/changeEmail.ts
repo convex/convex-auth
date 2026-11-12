@@ -38,9 +38,12 @@ export const check = mutation({
  * Start a `changeEmail` challenge for `userId`. Fails with `EMAIL_TAKEN`
  * when a user has already verified the address.
  *
- * DANGER: `complete` records the address on this `userId`, thus an
- * unverified `userId` lets an attacker attach their mailbox to another
- * user's account.
+ * DANGER: `complete`, the second step of this challenge
+ * (`challenge.changeEmail.complete`), records the address on the `userId`
+ * given here. It only checks that its own `userId` matches this one, thus an
+ * unverified `userId` here lets an attacker attach their mailbox to another
+ * user's account. `complete` needs no prefix: once this `userId` is right,
+ * a wrong `userId` there fails with `WRONG_USER`.
  *
  * TODO: ensure that the user ID is the current user.
  */
