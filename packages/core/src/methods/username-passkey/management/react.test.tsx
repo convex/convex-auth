@@ -11,7 +11,7 @@ import {
   type RemovePasskeyResult,
   useAddPasskey,
   useRemovePasskey,
-} from "./react.tsx";
+} from "../react.tsx";
 
 // The flows call several different functions and the tests assert their
 // order, so every step of a flow records its name here.
