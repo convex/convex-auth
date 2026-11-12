@@ -8,7 +8,9 @@ Schema and sign-in method API breaking changes - see below
   (`authGoogle`, `authGithub`, `authApple`, `authOauth`) and the anonymous
   component now keeps its own `accounts` table, which connects its identities
   to app user ids.
-- replaced `accountId` with `provider` in the core's `sessions` table
+- replaced `accountId` with `component` in the core's `sessions` table. It
+  holds the path of the component that authenticated the user (for example
+  `authPassword`), not the name of the sign-in method.
 - the anonymous sign-in method no longer generates an id for each user. The
   `provider.accountId` passed to its `createUser` and `onSignIn` is now an
   empty string.
@@ -26,9 +28,6 @@ Schema and sign-in method API breaking changes - see below
 - `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
   `userId`, which the sign-in method gets from its component. This API isn't
   stable yet: expect its arguments to change again.
-- the core's `sessions` table renames `provider` to `component`, which holds
-  the path of the component that verified the user (for example
-  `authPassword`), not the name of the sign-in method.
 - the user callbacks (`createUser` and `onSignIn`) no longer receive
   `provider.accountId`: they receive `provider: { name, profile }`. Remove
   `accountId: v.string()` from their argument validators. For OAuth,
