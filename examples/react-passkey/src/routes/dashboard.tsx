@@ -13,7 +13,6 @@ export function Dashboard() {
           Signed in as <strong>{user.username}</strong> ({user.id})
         </p>
       )}
-      {/* TODO(nicolas) Update the structure of the demo to avoid concurrent ceremonies */}
       <PasskeySettings />
       <button onClick={() => signOut()}>Sign out</button>
     </>

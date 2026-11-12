@@ -12,6 +12,10 @@ import { api } from "../convex/_generated/api";
 export function PasskeySettings() {
   const query = useQuery(api.auth.listPasskeys, {});
   const { addPasskey, pending: adding } = useAddPasskey(api.auth);
+  // One remove hook for the whole list, thus two removals cannot run at the
+  // same time. `removingId` tells which row shows the spinner.
+  const { removePasskey, pending: removing } = useRemovePasskey(api.auth);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (query !== undefined && !query.success) {
@@ -27,6 +31,11 @@ export function PasskeySettings() {
   // passkey must add a second one before they can remove either.
   const canRemove = passkeys.length > 1;
 
+  // The browser runs only one passkey dialog at a time, and a second
+  // ceremony cancels the first. Thus, while a passkey is being added or
+  // removed, disable the buttons that start a ceremony.
+  const ceremonyRunning = adding || removing;
+
   return (
     <section>
       <h2>Your passkeys</h2>
@@ -35,7 +44,17 @@ export function PasskeySettings() {
           <PasskeyRow
             key={passkey.passkeyId}
             passkey={passkey}
-            canRemove={canRemove}
+            canRemove={canRemove && !ceremonyRunning}
+            removing={removing && removingId === passkey.passkeyId}
+            onRemove={async () => {
+              setError(null);
+              setRemovingId(passkey.passkeyId);
+              const result = await removePasskey(passkey.passkeyId);
+              setRemovingId(null);
+              if (!result.success) {
+                setError(errorMessage(result.userError));
+              }
+            }}
             onError={setError}
           />
         ))}
@@ -46,7 +65,7 @@ export function PasskeySettings() {
         </p>
       ) : null}
       <button
-        disabled={adding}
+        disabled={ceremonyRunning}
         onClick={async () => {
           setError(null);
           const result = await addPasskey();
@@ -64,6 +83,8 @@ export function PasskeySettings() {
 function PasskeyRow({
   passkey,
   canRemove,
+  removing,
+  onRemove,
   onError,
 }: {
   passkey: {
@@ -72,11 +93,10 @@ function PasskeyRow({
     createdAt: number;
   };
   canRemove: boolean;
+  removing: boolean;
+  onRemove: () => Promise<void>;
   onError: (message: string | null) => void;
 }) {
-  // Each row has its own remove hook, so `pending` drives only the spinner
-  // of this row.
-  const { removePasskey, pending: removing } = useRemovePasskey(api.auth);
   const renamePasskey = useMutation(api.auth.renamePasskey);
   return (
     <li>
@@ -106,16 +126,12 @@ function PasskeyRow({
         Rename
       </button>{" "}
       <button
-        disabled={removing || !canRemove}
+        disabled={!canRemove}
         onClick={async () => {
           if (!window.confirm("Remove this passkey?")) {
             return;
           }
-          onError(null);
-          const result = await removePasskey(passkey.passkeyId);
-          if (!result.success) {
-            onError(errorMessage(result.userError));
-          }
+          await onRemove();
         }}
       >
         {removing ? "Waiting for your passkey…" : "Remove"}
