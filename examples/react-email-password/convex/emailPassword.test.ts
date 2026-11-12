@@ -80,16 +80,34 @@ async function seedSignedUpUser(
       isPrimary: true,
     });
   });
+  await seedPassword(t, userId, password);
+  return userId;
+}
+
+/**
+ * Store the password of a user that the test inserted. The password component
+ * stores the password of a new user only with a new-user attestation of the
+ * core, thus the test signs one as the core does.
+ */
+async function seedPassword(t: T, userId: string, password: string) {
+  const newUser = await runInComponent(
+    t,
+    "auth",
+    async (ctx) =>
+      await ctx.auth.signJwt({
+        claims: { aud: "convex-auth/attestation/new-user", userId },
+        expiresInSeconds: 1,
+      }),
+  );
   await t.run(async (ctx) => {
     const result = await ctx.runMutation(
-      components.authPassword.public.setPassword,
-      { userId, password, minimumLength: DEFAULT_MIN_PASSWORD_LENGTH },
+      components.authPassword.public.setPasswordForNewUser,
+      { newUser, password, minimumLength: DEFAULT_MIN_PASSWORD_LENGTH },
     );
     if (!result.success) {
       throw new Error("Could not seed the password");
     }
   });
-  return userId;
 }
 
 /**
@@ -367,13 +385,7 @@ describe("completeSignUpWithEmailPassword", () => {
         userId,
       });
     });
-    await t.run(async (ctx) => {
-      await ctx.runMutation(components.authPassword.public.setPassword, {
-        userId,
-        password: PASSWORD,
-        minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
-      });
-    });
+    await seedPassword(t, userId, PASSWORD);
     await seedChallenge(t, {
       email: EMAIL,
       purpose: { kind: "signUp", userId },

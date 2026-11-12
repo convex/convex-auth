@@ -9,7 +9,7 @@ import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
-  buildAttestedCompleteSignIn,
+  buildCompleteSignIn,
   validateAllowedRedirectOrigins,
 } from "../../lib/oauth/redemption.ts";
 import type { ComponentApi } from "../../components/github/_generated/component.ts";
@@ -144,7 +144,7 @@ export function setupGithub<UsersTable extends string>(
           options.component.provider.createAuthorizationRequest,
       });
 
-      const completeSignIn = buildAttestedCompleteSignIn<
+      const completeSignIn = buildCompleteSignIn<
         GithubProfile,
         { userInfoResponses?: GithubUserInfo }
       >({

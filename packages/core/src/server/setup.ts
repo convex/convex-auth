@@ -19,7 +19,6 @@ import {
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
-import { componentPathOf } from "../lib/componentPath.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -169,11 +168,17 @@ export type AuthCore<UsersTable extends string = string> = {
  *
  * The core never triggers a sign-in itself: it has no idea how any given
  * method authenticates a user. *Triggering sign-in is the responsibility of
- * each method.* A method:
- * 1. verifies the user its own way (checking a password, say),
- * 2. looks the identity's app user up in its own component,
- * 3. calls `completeSignUp` for a new identity, or `completeSignIn` for a
- *    known one, to get a session.
+ * each method.* The core creates a session only from a user attestation: a
+ * short-lived token that a component signs when it verifies the user. Thus
+ * the code of the app cannot sign a user in without such a component.
+ *
+ * - Sign-in: a component of the method verifies the user its own way
+ *   (checking a password, say) and attests the user. The method gives the
+ *   attestation to `createSession`.
+ * - Sign-up: the method calls `createUser`, which creates the user and
+ *   returns a new-user attestation. The components of the method connect
+ *   their data to the new user with that attestation and attest the user. The
+ *   method gives the user attestation to `createSession`.
  *
  * The core injects both helpers on `ctx.convexAuth`.
  *
@@ -373,48 +378,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           },
           onSignInHandle: await onSignInHandle(),
           ...ttl,
-        });
-      },
-      completeSignUp: async (args: {
-        profile: Profile;
-        verifiedBy: object;
-      }): Promise<TokenBundle> => {
-        return await ctx.runMutation(component.public.signUp, {
-          claims: {
-            method: name,
-            profile: args.profile,
-          },
-          componentPath: componentPathOf(args.verifiedBy),
-          createUserHandle: await createFunctionHandle(createUser),
-          onSignInHandle: await onSignInHandle(),
-          ...ttl,
-        });
-      },
-      completeSignIn: async (args: {
-        userId: string;
-        profile: Profile;
-        verifiedBy: object;
-      }): Promise<TokenBundle> => {
-        return await ctx.runMutation(component.public.signIn, {
-          claims: {
-            method: name,
-            profile: args.profile,
-          },
-          componentPath: componentPathOf(args.verifiedBy),
-          userId: args.userId,
-          onSignInHandle: await onSignInHandle(),
-          ...ttl,
-        });
-      },
-      signUpWithoutSession: async (args: {
-        profile: Profile;
-      }): Promise<{ userId: string }> => {
-        return await ctx.runMutation(component.public.signUpWithoutSession, {
-          claims: {
-            method: name,
-            profile: args.profile,
-          },
-          createUserHandle: await createFunctionHandle(createUser),
         });
       },
       revokeOtherSessions: async (): Promise<number> => {

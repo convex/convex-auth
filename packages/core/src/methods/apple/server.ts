@@ -9,7 +9,7 @@ import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
-  buildAttestedCompleteSignIn,
+  buildCompleteSignIn,
   validateAllowedRedirectOrigins,
   type OidcClaims,
 } from "../../lib/oauth/redemption.ts";
@@ -168,7 +168,7 @@ export function setupApple<UsersTable extends string>(
        * Complete an Apple sign-in by redeeming the one-time `code` from the
        * callback redirect together with the state held since `startSignIn`.
        */
-      const completeSignIn = buildAttestedCompleteSignIn<
+      const completeSignIn = buildCompleteSignIn<
         AppleProfile,
         { claims?: OidcClaims; callbackParams?: { user?: SanitizedAppleUser } }
       >({

@@ -9,7 +9,7 @@ import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import {
-  buildAttestedCompleteSignIn,
+  buildCompleteSignIn,
   validateAllowedRedirectOrigins,
   type OidcClaims,
 } from "../../lib/oauth/redemption.ts";
@@ -131,7 +131,7 @@ export function setupGoogle<UsersTable extends string>(
           options.component.provider.createAuthorizationRequest,
       });
 
-      const completeSignIn = buildAttestedCompleteSignIn<
+      const completeSignIn = buildCompleteSignIn<
         GoogleProfile,
         { claims?: OidcClaims }
       >({

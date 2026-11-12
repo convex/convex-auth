@@ -41,6 +41,42 @@ v.literal("password"), profile: v.object({}) }) }`, and remove
 - removed `resolveUserId` from the sign-in method API, and removed the core's
   `getUserIdByAccount`. Each OAuth component has its own
   `getUserIdByAccount`.
+- sessions now come only from user attestations: short-lived JWTs that a
+  component signs (with the deployment's key) when it verifies a user. The
+  code of the app can no longer sign a user in without such a component.
+  - the core's `signUp`, `signIn`, and `signUpWithoutSession` are replaced by
+    `createUser` (creates the user, no session, and returns a new-user
+    attestation) and `createSession` (takes a user attestation). The
+    `ctx.convexAuth` helpers `completeSignUp`, `completeSignIn`, and
+    `signUpWithoutSession` are replaced by `createUser` and `createSession`.
+  - the components connect their data to a new user only with the new-user
+    attestation of the core: `setPasswordForNewUser` (password),
+    `challenge.signUp.start({ newUser })` (email),
+    `finishRegistrationForNewUser({ newUser })` (passkey),
+    `createAnonymousAccount({ newUser })` (anonymous, which now creates the
+    anonymous ID itself), and `linkAccount` (OAuth). `setPassword` and
+    `challenge.changeEmail.start` take a user attestation (`user`) instead of
+    a user ID.
+  - the OAuth components redeem tickets themselves (`redeemTicket`), with a
+    fixed rule for the account ID. `claimTicket` and `createAccount` are gone.
+  - the core keeps the IDs of the users that it created or signed in
+    (`createdUserIds`), and `createUser` refuses one of them, thus the core
+    never attests that an existing user is new.
+- the core must be mounted as `auth` (`app.use(auth)`), and
+  `convexAuthProvider` no longer takes `componentName`.
+- the custom OAuth component (`authOauth`) reads the token endpoint, the
+  issuers, the userinfo endpoints, and the account ID field from its env
+  (`TOKEN_ENDPOINT`, `ISSUERS`, `USERINFO_ENDPOINTS`, `ACCOUNT_ID_FIELD`), not
+  from the `setupOauth` catalog.
+
+Upgrading:
+
+- for each existing user, call the core's `markUserIdCreated({ userId })`
+  once (for example in a migration over the users table), and also for the
+  users that the app creates or imports without the core. Until then,
+  `createUser` cannot tell that such a user is not new.
+- move the `tokenEndpoint`, `issuer`, and `userInfoEndpoints` of a custom
+  OAuth catalog to the env of its component in `convex.config.ts`.
 
 ## 2.0.0-beta.0
 

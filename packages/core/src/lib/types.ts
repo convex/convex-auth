@@ -333,58 +333,6 @@ export type BoundAuthHelpers<Profile> = {
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
-   * Create the app user for a *new* identity and exchange it for a session.
-   *
-   * Call this when the sign-in method has verified a new identity. The core:
-   * 1. calls the app's `createUser` to create the app user,
-   * 2. calls the app's `onSignIn`, like any other sign-in,
-   * 3. returns the tokens a client needs to make authenticated calls.
-   *
-   * The core doesn't track identities, so the sign-in method must look the
-   * identity up in its own component first, and call
-   * {@link BoundAuthHelpers.completeSignIn} for a known one. After a sign-up,
-   * the sign-in method must record the returned `userId` in its component in
-   * the same mutation.
-   */
-  completeSignUp(args: {
-    profile: Profile;
-    /**
-     * The component that verified the user, for example
-     * `components.authPassword`. The session records its path.
-     */
-    verifiedBy: object;
-  }): Promise<TokenBundle>;
-  /**
-   * Exchange a verified *existing* identity for a session.
-   *
-   * Call this once the sign-in method has authenticated a known identity its
-   * own way (checking a password, say) and looked up its user id. The core
-   * runs the app's `onSignIn` callback if one is attached, and returns the
-   * tokens a client needs to make authenticated calls.
-   *
-   * The core doesn't check `userId`, so a wrong one signs the caller in as
-   * that user.
-   */
-  completeSignIn(args: {
-    userId: string;
-    profile: Profile;
-    /**
-     * The component that verified the user, for example
-     * `components.authPassword`. The session records its path.
-     */
-    verifiedBy: object;
-  }): Promise<TokenBundle>;
-  /**
-   * Create the app user for a verified identity without a session.
-   *
-   * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. The app's `createUser` creates the
-   * user, as for `completeSignUp`, and `onSignIn` doesn't run. The sign-in
-   * method records the returned `userId` in its own component and signs the
-   * user in later with `completeSignIn`.
-   */
-  signUpWithoutSession(args: { profile: Profile }): Promise<{ userId: string }>;
-  /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)
    * sessions revoked; returns 0 when not authenticated. Expired sessions are

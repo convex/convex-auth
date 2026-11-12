@@ -159,53 +159,6 @@ export async function insertTicket<Doc extends TicketContract>(
 }
 
 /**
- * Claim a ticket by ticket code hash: find, check, delete, and return it in
- * one transaction, so a replayed or raced redemption finds nothing.
- *
- * The caller must also present the hash of the state minted at sign-in, which
- * binds redemption to the client that initiated the flow. `match` is an extra
- * check over the stored ticket, for a component that keeps more on it and
- * wants those fields to have to match too.
- *
- * The caller writes out `Doc` as its own generated document type, e.g.
- * `claimTicket<Doc<"tickets">>(ctx, args)`.
- */
-export async function claimTicket<Doc extends TicketContract>(
-  ctx: MutationCtx,
-  args: {
-    ticketCodeHash: string;
-    stateHash: string;
-    match?: (ticket: Doc) => boolean;
-  },
-): Promise<{ encryptedPayload: string } | null> {
-  // The same assertion as in claimAuthorizationRequest, for the same reason.
-  const ticket = (await ctx.db
-    .query("tickets")
-    .withIndex("ticketCodeHash", (q) =>
-      q.eq("ticketCodeHash", args.ticketCodeHash),
-    )
-    .unique()) as (Doc & { _id: GenericId<"tickets"> }) | null;
-  if (ticket === null) {
-    return null;
-  }
-  if (ticket.expiresAt < Date.now()) {
-    await ctx.db.delete("tickets", ticket._id);
-    return null;
-  }
-  if (
-    ticket.stateHash !== args.stateHash ||
-    ticket.pendingProviderAccountId !== undefined
-  ) {
-    return null;
-  }
-  if (args.match !== undefined && !args.match(ticket)) {
-    return null;
-  }
-  await ctx.db.delete("tickets", ticket._id);
-  return { encryptedPayload: ticket.encryptedPayload };
-}
-
-/**
  * Get the app user id connected to a given provider account id, or `null`
  * if there is none.
  *

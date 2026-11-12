@@ -9,8 +9,6 @@ import { Infer, v } from "convex/values";
 import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import { vSignInComplete, vSignInError } from "../types.ts";
 import type { AuthMutationBuilder } from "../../server/setup.ts";
-import { decryptTicketPayload } from "./crypto.ts";
-import { sha256Hex } from "../crypto.ts";
 
 /**
  * Standard OIDC id_token claims. The well-known ones are typed. Any other
@@ -150,7 +148,7 @@ export type RedeemedTicket =
  *
  * @internal Not public until the API for custom methods is stable.
  */
-export function buildAttestedCompleteSignIn<
+export function buildCompleteSignIn<
   Profile extends { id: string },
   Payload extends TicketPayload = TicketPayload,
 >(options: {
@@ -213,119 +211,6 @@ export function buildAttestedCompleteSignIn<
       const tokens = await ctx.convexAuth.createSession({
         attestation,
         profile,
-      });
-      return { status: "complete", tokens };
-    },
-  });
-}
-
-/**
- * Build a provider's `completeSignIn` mutation.
- *
- * The client presents the one-time code from the callback redirect together
- * with the state it has held since sign-in started. Both are hashed before
- * they reach the component, which claims the matching ticket, and the
- * identity payload is decrypted with a key derived from the raw code. The
- * profile mapping then turns what the provider attested into the account
- * identity. If the component has an account for the identity, the core signs
- * that user in. Otherwise the core creates a new app user, and the component
- * records an account for that user in the same mutation.
- *
- * Returns the shared sign-in envelope: the session token bundle, or an
- * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
- * the state doesn't match: all indistinguishable to the caller.
- *
- * The component calls are subtransactions of this mutation, so a failure
- * anywhere (including the app rejecting the sign-in from `createUser` /
- * `onSignIn`) rolls back the ticket claim and the account. Only a successful
- * redemption consumes the ticket.
- *
- * @internal Not public until the API for custom methods is stable.
- */
-export function buildCompleteSignIn<
-  Profile extends { id: string },
-  Payload extends TicketPayload = TicketPayload,
->(options: {
-  /** The provider's name, for the error message when a mapping returns no id. */
-  providerName: string;
-  /** The core's method-bound mutation builder. */
-  authMutation: AuthMutationBuilder<Profile>;
-  /**
-   * The component of the provider, for example `components.authGoogle`. The
-   * sessions record its path.
-   */
-  component: object;
-  /** Claim the ticket in this provider's component instance. */
-  claimTicket: (
-    ctx: MutationCtx,
-    args: { ticketCodeHash: string; stateHash: string },
-  ) => Promise<{ encryptedPayload: string } | null>;
-  /**
-   * Get the app user id connected to a given provider account id in this
-   * provider's component, or `null` if there is none.
-   */
-  getUserIdByAccount: (
-    ctx: MutationCtx,
-    args: { providerAccountId: string },
-  ) => Promise<string | null>;
-  /** Create an account connecting a provider account id to an app user id. */
-  createAccount: (
-    ctx: MutationCtx,
-    args: { providerAccountId: string; userId: string },
-  ) => Promise<null>;
-  /** Map what the provider attested to the account profile. */
-  profile: (payload: Payload) => Profile;
-}) {
-  return options.authMutation({
-    args: {
-      code: v.string(),
-      state: v.string(),
-    },
-    returns: completeSignInResult,
-    handler: async (ctx, args): Promise<CompleteSignInResult> => {
-      const ticket = await options.claimTicket(ctx, {
-        ticketCodeHash: await sha256Hex(args.code),
-        stateHash: await sha256Hex(args.state),
-      });
-      if (ticket === null) {
-        return { status: "error", userError: { error: "INVALID_CODE" } };
-      }
-
-      // Finding the ticket by hash proves `code` is the value the payload was
-      // encrypted under, so decryption only fails on corruption.
-      const payload = JSON.parse(
-        await decryptTicketPayload(args.code, ticket.encryptedPayload),
-      ) as Payload;
-
-      const profile = options.profile(payload);
-      if (typeof profile.id !== "string" || profile.id === "") {
-        throw new Error(
-          `Profile mapping for provider "${options.providerName}" returned no id`,
-        );
-      }
-
-      // The same redemption flow serves a first sign-in and a return visit, so
-      // look the identity up to pick a path. The lookup and the writes share
-      // one transaction, so concurrent first redemptions of one identity
-      // create only one user.
-      const existingUserId = await options.getUserIdByAccount(ctx, {
-        providerAccountId: profile.id,
-      });
-      if (existingUserId !== null) {
-        const tokens = await ctx.convexAuth.completeSignIn({
-          userId: existingUserId,
-          profile,
-          verifiedBy: options.component,
-        });
-        return { status: "complete", tokens };
-      }
-      const tokens = await ctx.convexAuth.completeSignUp({
-        profile,
-        verifiedBy: options.component,
-      });
-      await options.createAccount(ctx, {
-        providerAccountId: profile.id,
-        userId: tokens.userId,
       });
       return { status: "complete", tokens };
     },

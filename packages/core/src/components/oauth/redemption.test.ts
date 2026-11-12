@@ -123,15 +123,6 @@ const fakeCore = {
         });
         return bundle;
       },
-      completeSignUp: async () => {
-        throw new Error("completeSignUp is not used by redemption");
-      },
-      completeSignIn: async () => {
-        throw new Error("completeSignIn is not used by redemption");
-      },
-      signUpWithoutSession: async () => {
-        throw new Error("signUpWithoutSession is not used by redemption");
-      },
       revokeOtherSessions: async () => {
         throw new Error("revokeOtherSessions is not used by redemption");
       },

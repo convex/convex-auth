@@ -200,6 +200,31 @@ async function startFlow(
   return { state, stateHash };
 }
 
+/**
+ * Read the ticket that the callback minted, as `redeemTicket` finds it. The
+ * tests of the callback read the payload directly: the redemption has its
+ * own tests (`redemption.test.ts`).
+ */
+async function readTicket(
+  t: ReturnType<typeof setup>,
+  ticketCodeHash: string,
+  stateHash: string,
+): Promise<{ encryptedPayload: string } | null> {
+  const ticket = await t.run(async (ctx) =>
+    ctx.db
+      .query("tickets")
+      .withIndex("ticketCodeHash", (q) =>
+        q.eq("ticketCodeHash", ticketCodeHash),
+      )
+      .unique(),
+  );
+  return ticket !== null &&
+    ticket.stateHash === stateHash &&
+    ticket.providerName === PROVIDER_NAME
+    ? { encryptedPayload: ticket.encryptedPayload }
+    : null;
+}
+
 /** GET the component's callback route the way the identity provider redirect would. */
 function callback(
   t: ReturnType<typeof setup>,
@@ -379,11 +404,7 @@ describe("oauth callback", () => {
     // covered by the redemption leg's tests.
     const ticketCode = redirectParams(response).get(OAUTH_CODE_PARAM)!;
     expect(ticketCode).toEqual(expect.any(String));
-    const claimed = await t.mutation(api.provider.claimTicket, {
-      providerName: PROVIDER_NAME,
-      ticketCodeHash: await sha256Hex(ticketCode),
-      stateHash,
-    });
+    const claimed = await readTicket(t, await sha256Hex(ticketCode), stateHash);
     expect(claimed).not.toBeNull();
     const payload = JSON.parse(
       await decryptTicketPayload(ticketCode, claimed!.encryptedPayload),
@@ -420,11 +441,7 @@ describe("oauth callback", () => {
     expect(headers["User-Agent"]).toBe("convex-auth");
 
     const ticketCode = redirectParams(response).get(OAUTH_CODE_PARAM)!;
-    const claimed = await t.mutation(api.provider.claimTicket, {
-      providerName: PROVIDER_NAME,
-      ticketCodeHash: await sha256Hex(ticketCode),
-      stateHash,
-    });
+    const claimed = await readTicket(t, await sha256Hex(ticketCode), stateHash);
     const payload = JSON.parse(
       await decryptTicketPayload(ticketCode, claimed!.encryptedPayload),
     );
@@ -459,11 +476,7 @@ describe("oauth callback", () => {
     });
 
     const ticketCode = redirectParams(response).get(OAUTH_CODE_PARAM)!;
-    const claimed = await t.mutation(api.provider.claimTicket, {
-      providerName: PROVIDER_NAME,
-      ticketCodeHash: await sha256Hex(ticketCode),
-      stateHash,
-    });
+    const claimed = await readTicket(t, await sha256Hex(ticketCode), stateHash);
     const payload = JSON.parse(
       await decryptTicketPayload(ticketCode, claimed!.encryptedPayload),
     );
@@ -721,11 +734,11 @@ describe("oauth callback", () => {
 
       const params = redirectParams(response, baseRequest.redirectTo, 303);
       const ticketCode = params.get(OAUTH_CODE_PARAM)!;
-      const claimed = await t.mutation(api.provider.claimTicket, {
-        providerName: PROVIDER_NAME,
-        ticketCodeHash: await sha256Hex(ticketCode),
+      const claimed = await readTicket(
+        t,
+        await sha256Hex(ticketCode),
         stateHash,
-      });
+      );
       const payload = JSON.parse(
         await decryptTicketPayload(ticketCode, claimed!.encryptedPayload),
       );
