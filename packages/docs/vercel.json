@@ -5,15 +5,15 @@
   "outputDirectory": "build",
   "redirects": [
     {
-      "source": "/api/:path*",
+      "source": "/api(/.*)?",
       "has": [{ "type": "host", "value": "auth-v2.previews.convex.dev" }],
       "destination": "https://docs.convex.dev/auth/convex-auth",
       "permanent": true
     },
     {
-      "source": "/:path*",
+      "source": "/:path(.*)",
       "has": [{ "type": "host", "value": "auth-v2.previews.convex.dev" }],
-      "destination": "https://docs.convex.dev/auth/convex-auth/:path*",
+      "destination": "https://docs.convex.dev/auth/convex-auth/:path",
       "permanent": true
     }
   ]
