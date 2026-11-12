@@ -82,7 +82,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: { profile: any; providerName: string };
+          claims: { method: string; profile: any };
           componentPath: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
@@ -109,7 +109,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: { profile: any; providerName: string };
+          claims: { method: string; profile: any };
           componentPath: string;
           createUserHandle: string;
           onSignInHandle?: string;
@@ -127,10 +127,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       signUpWithoutSession: FunctionReference<
         "mutation",
         "internal",
-        {
-          claims: { profile: any; providerName: string };
-          createUserHandle: string;
-        },
+        { claims: { method: string; profile: any }; createUserHandle: string },
         { userId: string },
         Name
       >;

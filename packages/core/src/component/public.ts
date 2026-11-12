@@ -17,6 +17,7 @@ import {
   type OnSignInFn,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import { assertMountedAsCore } from "../lib/coreComponent.ts";
 import {
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
@@ -44,7 +45,8 @@ const AUDIENCE = "convex-auth";
 
 // The `iss` claim is set by the deployment when this component calls
 // `ctx.auth.signJwt`: `${CONVEX_CLOUD_URL}/components/auth`, which is what the
-// app's auth.config.ts must name as the issuer.
+// app's auth.config.ts must name as the issuer. The app must mount the core at
+// `auth` (see `CORE_COMPONENT_PATH`).
 
 // --- Internal helpers ------------------------------------------------------
 
@@ -62,10 +64,12 @@ async function mintAccessToken(
   sessionId: Id<"sessions">,
   ttlSeconds: number,
 ): Promise<string> {
-  return await ctx.auth.signJwt({
+  const token = await ctx.auth.signJwt({
     claims: { sub: sessionId, aud: AUDIENCE },
     expiresInSeconds: ttlSeconds,
   });
+  assertMountedAsCore(token);
+  return token;
 }
 
 async function issueSession(
@@ -140,8 +144,8 @@ async function createAppUser(
   createUser: CreateUserFunctionHandle,
 ): Promise<string> {
   return await ctx.runMutation(createUser, {
-    provider: {
-      name: claims.providerName,
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
   });
@@ -174,8 +178,8 @@ async function notifySignIn(
 ): Promise<void> {
   if (onSignInHandle === undefined) return;
   await ctx.runMutation(onSignInHandle as OnSignInFunctionHandle, {
-    provider: {
-      name: claims.providerName,
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
     userId: asUserId(userId),

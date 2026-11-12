@@ -22,6 +22,9 @@ import {
 } from "../../components/apple/constants.ts";
 import type { SanitizedAppleUser } from "../../components/apple/user.ts";
 
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "apple";
+
 export type { SanitizedAppleUser };
 
 /**
@@ -143,10 +146,10 @@ export function setupApple<UsersTable extends string>(
      * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
-      callbacks: UserCallbacks<"apple", AppleProfile, UsersTable>,
+      callbacks: UserCallbacks<typeof METHOD_NAME, AppleProfile, UsersTable>,
     ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser: callbacks.createUser,
         onSignIn: callbacks.onSignIn,
       });
@@ -177,7 +180,10 @@ export function setupApple<UsersTable extends string>(
         getUserIdByAccount: (ctx, args) =>
           ctx.runQuery(options.component.provider.getUserIdByAccount, args),
         createAccount: (ctx, args) =>
-          ctx.runMutation(options.component.provider.createAccount, args),
+          ctx.runMutation(
+            options.component.provider._internal_dangerous_createAccount,
+            args,
+          ),
         profile: (payload) => {
           if (payload.claims === undefined) {
             throw new Error(

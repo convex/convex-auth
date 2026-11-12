@@ -6,8 +6,8 @@ import {
 import type { AuthCore } from "../../server/setup.ts";
 import { ComponentApi } from "../../components/anonymous/_generated/component.ts";
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "anonymous";
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "anonymous";
 
 /**
  * A sign-in method for anonymous accounts.
@@ -50,9 +50,9 @@ export function setupAnonymous<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<"anonymous", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, Record<string, never>, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });

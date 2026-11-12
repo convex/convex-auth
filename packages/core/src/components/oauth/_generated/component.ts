@@ -24,18 +24,18 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     provider: {
+      _internal_dangerous_createAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { providerAccountId: string; userId: string },
+        null,
+        Name
+      >;
       claimTicket: FunctionReference<
         "mutation",
         "internal",
         { providerName: string; stateHash: string; ticketCodeHash: string },
         null | { encryptedPayload: string },
-        Name
-      >;
-      createAccount: FunctionReference<
-        "mutation",
-        "internal",
-        { providerAccountId: string; userId: string },
-        null,
         Name
       >;
       createAuthorizationRequest: FunctionReference<

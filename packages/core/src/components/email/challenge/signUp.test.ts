@@ -174,12 +174,12 @@ describe("the kind of a signUp challenge", () => {
   });
 });
 
-describe("challenge.signUp.start", () => {
+describe("challenge.signUp._internal_dangerous_start", () => {
   test("sends a link that completes the challenge for the user", async () => {
     const t = setup();
     const result = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.signUp.start, {
+      .mutation(api.challenge.signUp._internal_dangerous_start, {
         email: "alice@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
@@ -215,7 +215,7 @@ describe("challenge.signUp.start", () => {
     expect(
       await t
         .withRequestMetadata({ ip: IP })
-        .mutation(api.challenge.signUp.start, {
+        .mutation(api.challenge.signUp._internal_dangerous_start, {
           email: "Alice@Example.com",
           url: URL,
           emailSender: await stubEmailSender(t),
@@ -230,12 +230,14 @@ describe("challenge.signUp.start", () => {
     await seedEmail(t, "user1", "alice@example.com", true);
 
     await expect(
-      t.withRequestMetadata({ ip: IP }).mutation(api.challenge.signUp.start, {
-        email: "alice@work.example",
-        url: URL,
-        emailSender: await stubEmailSender(t),
-        userId: "user1",
-      }),
+      t
+        .withRequestMetadata({ ip: IP })
+        .mutation(api.challenge.signUp._internal_dangerous_start, {
+          email: "alice@work.example",
+          url: URL,
+          emailSender: await stubEmailSender(t),
+          userId: "user1",
+        }),
     ).rejects.toThrow(/already has an email/);
     expect(await sentEmails(t)).toEqual([]);
     expect(await t.run((ctx) => ctx.db.query("challenges").collect())).toEqual(

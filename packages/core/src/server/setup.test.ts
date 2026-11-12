@@ -1,5 +1,5 @@
 /**
- * Tests the helpers `setupConvexAuth`'s `bindProvider` injects on
+ * Tests the helpers `setupConvexAuth`'s `bindMethod` injects on
  * `ctx.convexAuth` for the handlers of a method.
  *
  * Runs as an app with the core component installed (the same harness shape as
@@ -33,13 +33,13 @@ const components = componentsGeneric() as unknown as {
  */
 const createUser = internalMutationGeneric({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.string(),
       profile: v.any(),
     }),
   },
   returns: v.string(),
-  handler: async (_ctx, args) => args.provider.profile.id,
+  handler: async (_ctx, args) => args.method.profile.id,
 });
 
 const core = setupConvexAuth({ component: components.auth });
@@ -51,14 +51,14 @@ const core = setupConvexAuth({ component: components.auth });
 const authenticatedBy = (componentsGeneric() as unknown as { authTest: object })
   .authTest;
 
-const { authMutation } = core.bindProvider({
-  name: "test-provider",
-  // The runtime value `bindProvider` needs is a reference it can turn into a
+const { authMutation } = core.bindMethod({
+  name: "testMethod",
+  // The runtime value `bindMethod` needs is a reference it can turn into a
   // function handle; the cast supplies the type-level contract the app's
   // codegen would.
   createUser: makeFunctionReference<"mutation">(
     "testApp:createUser",
-  ) as unknown as CreateUserFn<"test-provider", unknown, "users">,
+  ) as unknown as CreateUserFn<"testMethod", unknown, "users">,
 });
 
 const signUp = authMutation({
@@ -101,18 +101,18 @@ const revokeAllSessions = authMutation({
 });
 
 // The same app redeployed with a lower inactivity timeout: the same component
-// and provider name, so it sees the sessions the default-timeout core minted.
+// and method name, so it sees the sessions the default-timeout core minted.
 const SHORT_INACTIVITY_TIMEOUT_SECONDS = 60 * 60;
 const shortTtlCore = setupConvexAuth({
   component: components.auth,
   refreshInactivityTimeoutSeconds: SHORT_INACTIVITY_TIMEOUT_SECONDS,
 });
 
-const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindProvider({
-  name: "test-provider",
+const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindMethod({
+  name: "testMethod",
   createUser: makeFunctionReference<"mutation">(
     "testApp:createUser",
-  ) as unknown as CreateUserFn<"test-provider", unknown, "users">,
+  ) as unknown as CreateUserFn<"testMethod", unknown, "users">,
 });
 
 const signInShortTtl = shortTtlAuthMutation({

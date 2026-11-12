@@ -45,7 +45,7 @@ export const ALLOWED_ORIGINS = [ALLOWED_ORIGIN];
 const REDIRECT_TO = `${ALLOWED_ORIGIN}/after`;
 
 export const fakeCore = {
-  bindProvider: () => ({
+  bindMethod: () => ({
     authMutation: mutationGeneric,
   }),
 } as unknown as AuthCore;
@@ -125,7 +125,7 @@ const createAccount = makeFunctionReference<
   "mutation",
   { providerAccountId: string; userId: string },
   null
->("provider:createAccount");
+>("provider:_internal_dangerous_createAccount");
 
 /**
  * Define tests for the functions registered by a component built with
@@ -205,9 +205,9 @@ export function testProviderFunctionsContract(
 }
 
 /**
- * Define tests for a component's `getUserIdByAccount` and `createAccount`.
- * `testProviderFunctionsContract` runs them; the oauth component defines its
- * own account functions and runs them directly.
+ * Define tests for a component's `getUserIdByAccount` and
+ * `_internal_dangerous_createAccount`. `testProviderFunctionsContract` runs them; the
+ * oauth component defines its own account functions and runs them directly.
  */
 export function testAccountsContract(
   schema: ComponentSchema,

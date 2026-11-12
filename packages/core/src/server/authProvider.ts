@@ -1,4 +1,5 @@
 import type { AuthProvider } from "convex/server";
+import { CORE_COMPONENT_PATH } from "../lib/coreComponent.ts";
 
 /**
  * The provider that the app lists in `convex/auth.config.ts` to accept the
@@ -18,14 +19,10 @@ import type { AuthProvider } from "convex/server";
  * } satisfies AuthConfig;
  * ```
  *
- * @param options.componentName The name the app mounts the auth component
- * under in `convex.config.ts` (`app.use(auth, { name })`). Defaults to
- * `"auth"`.
+ * The app must mount the auth component as `auth` (`app.use(auth)` in
+ * `convex.config.ts`), which is the default name.
  */
-export function convexAuthProvider(
-  options: { componentName?: string } = {},
-): AuthProvider {
-  const componentName = options.componentName ?? "auth";
+export function convexAuthProvider(): AuthProvider {
   const cloudUrl = process.env.CONVEX_CLOUD_URL;
   if (!cloudUrl) {
     throw new Error(
@@ -36,7 +33,7 @@ export function convexAuthProvider(
     type: "customJwt",
     // The `aud` claim that the auth component sets on the tokens.
     applicationID: "convex-auth",
-    issuer: `${cloudUrl}/components/${componentName}`,
+    issuer: `${cloudUrl}/components/${CORE_COMPONENT_PATH}`,
     jwks: `${cloudUrl}/.well-known/jwks.json`,
     algorithm: "ES256",
   };
