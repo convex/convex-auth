@@ -11,8 +11,16 @@ import { accountFields } from "../../lib/oauth/schema.ts";
  *
  * Returns the provider's `CLIENT_ID` and the callback URL, which the caller
  * needs for the authorization URL.
+ *
+ * DANGER: the component does not validate `redirectTo`, and the callback
+ * sends the one-time ticket code there. The method's `startSignIn` checks it
+ * against `allowedRedirectOrigins` first; a caller that skips the check lets
+ * an attacker get a victim's ticket code, and sign in as the victim.
+ *
+ * TODO: validate `redirectTo` in the component, e.g. against allowed origins
+ * given in the component's configuration.
  */
-export const createAuthorizationRequest = mutation({
+export const _internal_dangerous_createAuthorizationRequest = mutation({
   args: {
     providerName: v.string(),
     stateHash: v.string(),

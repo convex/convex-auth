@@ -161,7 +161,8 @@ export function setupApple<UsersTable extends string>(
         scopes: SCOPES,
         callbackMethod: CALLBACK_METHOD,
         createAuthorizationRequest:
-          options.component.provider.createAuthorizationRequest,
+          options.component.provider
+            ._internal_dangerous_createAuthorizationRequest,
       });
 
       /**

@@ -31,18 +31,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
+      _internal_dangerous_createAuthorizationRequest: FunctionReference<
+        "mutation",
+        "internal",
+        { codeVerifier: string; redirectTo: string; stateHash: string },
+        { callbackUrl: string; clientId: string },
+        Name
+      >;
       claimTicket: FunctionReference<
         "mutation",
         "internal",
         { stateHash: string; ticketCodeHash: string },
         null | { encryptedPayload: string },
-        Name
-      >;
-      createAuthorizationRequest: FunctionReference<
-        "mutation",
-        "internal",
-        { codeVerifier: string; redirectTo: string; stateHash: string },
-        { callbackUrl: string; clientId: string },
         Name
       >;
       getUserIdByAccount: FunctionReference<

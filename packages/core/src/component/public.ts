@@ -212,9 +212,13 @@ async function notifySignIn(
  * `componentPath` is the path of the component that authenticated the user, for
  * example `"authPassword"`. The session records it as its `component`.
  *
- * See {@link signIn} for the return-visit path.
+ * See {@link _internal_dangerous_signIn} for the return-visit path.
+ *
+ * DANGER: This trusts `claims`, which reach the app's `createUser` and
+ * `onSignIn`. The name says so because app code must not call it: only
+ * the sign-in methods of this package do, right after they verify the user.
  */
-export const signUp = mutation({
+export const _internal_dangerous_signUp = mutation({
   args: {
     claims: vAuthClaims,
     componentPath: v.string(),
@@ -249,6 +253,10 @@ export const signUp = mutation({
  * that user. Sign-in methods must pass only a user id they looked up after
  * verifying the identity.
  *
+ * DANGER: This mints a session for any `userId`. The name says so because
+ * app code must not call it: only the sign-in methods of this package do,
+ * right after they verify the user.
+ *
  * `componentPath` is the path of the component that authenticated the user, for
  * example `"authPassword"`. The session records it as its `component`.
  *
@@ -256,7 +264,7 @@ export const signUp = mutation({
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  */
-export const signIn = mutation({
+export const _internal_dangerous_signIn = mutation({
   args: {
     claims: vAuthClaims,
     componentPath: v.string(),
@@ -281,14 +289,19 @@ export const signIn = mutation({
  * Create the app user for the verified identity claims of a sign-in method
  * without minting a session.
  *
- * Sign-in methods use this (via the `signUpWithoutSession` helper the core hands
- * them) when the user must complete a step before the first sign-in — for
+ * Sign-in methods use this (via the `signUpWithoutSession` helper the core
+ * hands them) when the user must complete a step before the first sign-in — for
  * example, an email validation. The app's `createUser` mutation creates the
- * user, as for `signUp`. No session is minted and `onSignIn` doesn't run, so
- * the user can't make authenticated calls until a later `signIn` succeeds.
- * The caller must record the returned `userId` in its own component.
+ * user, as for `_internal_dangerous_signUp`. No session is minted and `onSignIn` doesn't
+ * run, so the user can't make authenticated calls until a later
+ * `_internal_dangerous_signIn` succeeds. The caller must record the returned `userId` in
+ * its own component.
+ *
+ * DANGER: This trusts `claims`, which reach the app's `createUser`. The name
+ * says so because app code must not call it: only the sign-in methods of this
+ * package do, right after they verify the user.
  */
-export const signUpWithoutSession = mutation({
+export const _internal_dangerous_signUpWithoutSession = mutation({
   args: {
     claims: vAuthClaims,
     createUserHandle: v.string(),

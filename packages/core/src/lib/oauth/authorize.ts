@@ -70,10 +70,10 @@ export function buildStartSignIn(options: {
    * Record the request in the provider's component, and return what the
    * authorization URL needs.
    *
-   * If the component's `createAuthorizationRequest` mutation takes exactly
-   * {@link CreateAuthorizationRequestArgs}, pass its reference. If the
-   * mutation takes more fields, pass a function that runs it with those
-   * fields added.
+   * If the component's `_internal_dangerous_createAuthorizationRequest` mutation takes
+   * exactly {@link CreateAuthorizationRequestArgs}, pass its reference. If the
+   * mutation takes more fields, pass a function that runs it with those fields
+   * added.
    */
   createAuthorizationRequest:
     | CreateAuthorizationRequestRef

@@ -113,7 +113,7 @@ export type EmailPasswordOptions = {
   component: ComponentApi;
   /**
    * The mounted password component (`components.authPassword`). The
-   * method drives its `setPassword` / `verifyPassword` mutations.
+   * method drives its `_internal_dangerous_setPassword` / `verifyPassword` mutations.
    */
   passwordComponent: PasswordComponentApi;
   /** How the method sends emails. */
@@ -438,7 +438,7 @@ export function setupEmailPassword<UsersTable extends string>(
             });
 
             const setResult = await ctx.runMutation(
-              passwordComponent.public.setPassword,
+              passwordComponent.public._internal_dangerous_setPassword,
               {
                 userId,
                 password,
@@ -613,7 +613,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const setResult = await ctx.runMutation(
-              passwordComponent.public.setPassword,
+              passwordComponent.public._internal_dangerous_setPassword,
               {
                 userId,
                 password: newPassword,
@@ -898,7 +898,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const setResult = await ctx.runMutation(
-              passwordComponent.public.setPassword,
+              passwordComponent.public._internal_dangerous_setPassword,
               {
                 userId,
                 password: newPassword,

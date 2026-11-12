@@ -354,43 +354,52 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         profile: Profile;
         authenticatedBy: object;
       }): Promise<TokenBundle> => {
-        return await ctx.runMutation(component.public.signUp, {
-          claims: {
-            method: name,
-            profile: args.profile,
+        return await ctx.runMutation(
+          component.public._internal_dangerous_signUp,
+          {
+            claims: {
+              method: name,
+              profile: args.profile,
+            },
+            componentPath: componentPathOf(args.authenticatedBy),
+            createUserHandle: await createFunctionHandle(createUser),
+            onSignInHandle: await onSignInHandle(),
+            ...ttl,
           },
-          componentPath: componentPathOf(args.authenticatedBy),
-          createUserHandle: await createFunctionHandle(createUser),
-          onSignInHandle: await onSignInHandle(),
-          ...ttl,
-        });
+        );
       },
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
         authenticatedBy: object;
       }): Promise<TokenBundle> => {
-        return await ctx.runMutation(component.public.signIn, {
-          claims: {
-            method: name,
-            profile: args.profile,
+        return await ctx.runMutation(
+          component.public._internal_dangerous_signIn,
+          {
+            claims: {
+              method: name,
+              profile: args.profile,
+            },
+            componentPath: componentPathOf(args.authenticatedBy),
+            userId: args.userId,
+            onSignInHandle: await onSignInHandle(),
+            ...ttl,
           },
-          componentPath: componentPathOf(args.authenticatedBy),
-          userId: args.userId,
-          onSignInHandle: await onSignInHandle(),
-          ...ttl,
-        });
+        );
       },
       signUpWithoutSession: async (args: {
         profile: Profile;
       }): Promise<{ userId: string }> => {
-        return await ctx.runMutation(component.public.signUpWithoutSession, {
-          claims: {
-            method: name,
-            profile: args.profile,
+        return await ctx.runMutation(
+          component.public._internal_dangerous_signUpWithoutSession,
+          {
+            claims: {
+              method: name,
+              profile: args.profile,
+            },
+            createUserHandle: await createFunctionHandle(createUser),
           },
-          createUserHandle: await createFunctionHandle(createUser),
-        });
+        );
       },
       revokeOtherSessions: async (): Promise<number> => {
         const identity = await ctx.auth.getUserIdentity();

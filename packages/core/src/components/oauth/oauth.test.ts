@@ -45,7 +45,7 @@ describe("oauth", () => {
   test("createAuthorizationRequest stores the request and returns the provider's client id and callback URL", async () => {
     const t = setup();
     const result = await t.mutation(
-      api.provider.createAuthorizationRequest,
+      api.provider._internal_dangerous_createAuthorizationRequest,
       requestArgs,
     );
     expect(result).toEqual({
@@ -62,13 +62,19 @@ describe("oauth", () => {
     const t = setup();
     vi.stubEnv("CONVEX_SITE_URL", undefined);
     await expect(
-      t.mutation(api.provider.createAuthorizationRequest, requestArgs),
+      t.mutation(
+        api.provider._internal_dangerous_createAuthorizationRequest,
+        requestArgs,
+      ),
     ).rejects.toThrow(/CONVEX_SITE_URL is not visible/);
   });
 
   test("claimAuthorizationRequest returns the request exactly once", async () => {
     const t = setup();
-    await t.mutation(api.provider.createAuthorizationRequest, requestArgs);
+    await t.mutation(
+      api.provider._internal_dangerous_createAuthorizationRequest,
+      requestArgs,
+    );
     const claimed = await t.mutation(
       internal.provider.claimAuthorizationRequest,
       { stateHash: requestArgs.stateHash },
@@ -101,7 +107,10 @@ describe("oauth", () => {
   test("claimAuthorizationRequest deletes an expired request and returns only redirectTo", async () => {
     vi.useFakeTimers();
     const t = setup();
-    await t.mutation(api.provider.createAuthorizationRequest, requestArgs);
+    await t.mutation(
+      api.provider._internal_dangerous_createAuthorizationRequest,
+      requestArgs,
+    );
     vi.advanceTimersByTime(11 * 60 * 1000);
     const claimed = await t.mutation(
       internal.provider.claimAuthorizationRequest,
