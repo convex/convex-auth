@@ -19,6 +19,7 @@ import {
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
+import { componentPathOf } from "../lib/componentPath.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -50,7 +51,7 @@ export type AuthMutationBuilder<Profile> = <
 }) => RegisteredMutation<"public", ObjectType<ArgsValidator>, ReturnValue>;
 
 /**
- * The function builders a method gets from {@link AuthCore.bindProvider}.
+ * The function builders a method gets from {@link AuthCore.bindMethod}.
  *
  * Each builds a public Convex function whose handler receives the
  * method-bound helpers on `ctx.convexAuth` alongside the standard ctx.
@@ -77,8 +78,8 @@ export type AuthCore<UsersTable extends string = string> = {
   /**
    * The core component, as passed to {@link setupConvexAuth}.
    *
-   * The sign-in methods pass it to `getAuthUserId`, so they work when the app
-   * mounts the core under a name other than `auth`.
+   * The sign-in methods pass it to `getAuthUserId`. The app must mount the
+   * core as `auth`.
    *
    * @internal
    */
@@ -128,10 +129,9 @@ export type AuthCore<UsersTable extends string = string> = {
    * Register a sign-in method with the core and get the function builders its
    * implementation uses.
    *
-   * `name` identifies the method in the core's `accounts` table: accounts
-   * are keyed by `(name, providerAccountId)`, so it must be unique among the
-   * methods bound to this core — a duplicate throws immediately (two
-   * methods sharing a name would silently share accounts).
+   * `name` is the name of the sign-in method. The app's user callbacks get it
+   * as `method.name`. Two sign-in methods with one name would be
+   * indistinguishable, so a duplicate name on this core throws.
    *
    * `createUser` is the app's user-creating callback for this method and
    * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
@@ -143,10 +143,10 @@ export type AuthCore<UsersTable extends string = string> = {
    *
    * @internal Not public until the API for custom methods is stable.
    */
-  bindProvider<Provider extends string, Profile>(
+  bindMethod<MethodName extends string, Profile>(
     options: {
-      name: Provider;
-    } & UserCallbacks<Provider, Profile, UsersTable>,
+      name: MethodName;
+    } & UserCallbacks<MethodName, Profile, UsersTable>,
   ): MethodBuilders<Profile>;
 };
 
@@ -169,11 +169,13 @@ export type AuthCore<UsersTable extends string = string> = {
  *
  * The core never triggers a sign-in itself: it has no idea how any given
  * method authenticates a user. *Triggering sign-in is the responsibility of
- * each method.* A method verifies the user its own way (checking a
- * password, say) and then calls one of the helpers the core injects on
- * `ctx.convexAuth` to exchange the verified identity for a session:
- * `completeSignUp` when it has just established the account, `completeSignIn`
- * when the account already exists.
+ * each method.* A method:
+ * 1. verifies the user its own way (checking a password, say),
+ * 2. looks the identity's app user up in its own component,
+ * 3. calls `completeSignUp` for a new identity, or `completeSignIn` for a
+ *    known one, to get a session.
+ *
+ * The core injects both helpers on `ctx.convexAuth`.
  *
  * Token and session lifetimes are configurable here. The access-token TTL
  * defaults to 1m, and `sessionMaxLifetimeSeconds` to 30d.
@@ -284,26 +286,26 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   });
 
   // Names of methods bound to this core, for duplicate detection. Scoped to
-  // this `setupConvexAuth` call (not module-global): the collision that matters is
-  // two methods on the same core, whose accounts would silently share rows.
+  // this `setupConvexAuth` call, since names only need to be unique within one
+  // core.
   const boundMethodNames = new Set<string>();
 
-  const bindProvider = <Provider extends string, Profile>({
+  const bindMethod = <MethodName extends string, Profile>({
     name,
     createUser,
     onSignIn,
   }: {
-    name: Provider;
+    name: MethodName;
   } & UserCallbacks<
-    Provider,
+    MethodName,
     Profile,
     UsersTable
   >): MethodBuilders<Profile> => {
     if (boundMethodNames.has(name)) {
       throw new Error(
         `A sign-in method named "${name}" is already bound to this auth core. ` +
-          `Method names key the accounts table, so each method must ` +
-          `have a unique name.`,
+          `The app's callbacks get the name of the sign-in method as ` +
+          `\`method.name\`, so each sign-in method must have a unique name.`,
       );
     }
     boundMethodNames.add(name);
@@ -349,56 +351,45 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     // The helpers close over the live ctx.
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
-        providerAccountId: string;
         profile: Profile;
+        verifiedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signUp, {
           claims: {
-            providerName: name,
-            providerAccountId: args.providerAccountId,
+            method: name,
             profile: args.profile,
           },
+          componentPath: componentPathOf(args.verifiedBy),
           createUserHandle: await createFunctionHandle(createUser),
           onSignInHandle: await onSignInHandle(),
           ...ttl,
         });
       },
       completeSignIn: async (args: {
-        providerAccountId: string;
+        userId: string;
         profile: Profile;
+        verifiedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signIn, {
           claims: {
-            providerName: name,
-            providerAccountId: args.providerAccountId,
+            method: name,
             profile: args.profile,
           },
+          componentPath: componentPathOf(args.verifiedBy),
+          userId: args.userId,
           onSignInHandle: await onSignInHandle(),
           ...ttl,
         });
       },
-      // Creates the app user + account without a session, for methods where
-      // the user must complete a step (e.g. an email validation) before the
-      // first sign-in.
       signUpWithoutSession: async (args: {
-        providerAccountId: string;
         profile: Profile;
       }): Promise<{ userId: string }> => {
         return await ctx.runMutation(component.public.signUpWithoutSession, {
           claims: {
-            providerName: name,
-            providerAccountId: args.providerAccountId,
+            method: name,
             profile: args.profile,
           },
           createUserHandle: await createFunctionHandle(createUser),
-        });
-      },
-      resolveUserId: async (
-        providerAccountId: string,
-      ): Promise<string | null> => {
-        return await ctx.runQuery(component.public.getUserIdByAccount, {
-          provider: name,
-          providerAccountId,
         });
       },
       revokeOtherSessions: async (): Promise<number> => {
@@ -450,6 +441,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     signOut,
     refreshSession,
     isAuthenticated,
-    bindProvider,
+    bindMethod,
   };
 }

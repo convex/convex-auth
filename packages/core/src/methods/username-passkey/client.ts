@@ -17,6 +17,9 @@
  * handle every failure through one `userError` switch and never need their
  * own `try`/`catch`.
  *
+ * {@link browserCeremonies} bundles them in the {@link PasskeyCeremonies}
+ * shape that the flows and hooks take.
+ *
  * @internal
  * @module
  */
@@ -34,10 +37,27 @@ import type {
 import type {
   WireAuthenticationResponse,
   WireCreationOptions,
-  WireRegistrationResponse,
   WireRequestOptions,
 } from "../../components/passkey/validation.ts";
 import { fromBase64URL, toBase64URL } from "./base64url.ts";
+import {
+  foldClientError,
+  pruneAuthenticationResponse,
+  pruneRegistrationResponse,
+  type PasskeyAuthenticationResult,
+  type PasskeyCeremonies,
+  type PasskeyClientError,
+  type PasskeyRegistrationResult,
+} from "./ceremonies.ts";
+
+export {
+  foldClientError,
+  type PasskeyAuthenticationResult,
+  type PasskeyCeremonies,
+  type PasskeyClientError,
+  type PasskeyClientFailure,
+  type PasskeyRegistrationResult,
+} from "./ceremonies.ts";
 
 // Apps and custom flows read the WebAuthn JSON types from here, so they
 // never depend on `@simplewebauthn/*` directly. The `Wire…` variants are
@@ -56,54 +76,6 @@ export type {
 } from "../../components/passkey/validation.ts";
 
 /**
- * The failures the browser side produces (the server never returns these):
- *
- * - `CEREMONY_ABORTED`: the user dismissed the passkey dialog, the browser
- *   refused the ceremony (`NotAllowedError`), or another ceremony displaced
- *   this one. This is the most common failure; show a calm "sign-in was
- *   cancelled" message.
- * - `PASSKEY_ALREADY_REGISTERED`: the authenticator refused a registration
- *   because it already holds a passkey for this account
- *   (`InvalidStateError`, usually via `excludeCredentials`). Tell the user
- *   they can sign in with the passkey they already have.
- * - `WEBAUTHN_UNSUPPORTED`: the browser has no WebAuthn support, or the
- *   page is not a secure context.
- * - `OTHER_ERROR`: everything else thrown (a network blip, a bug, an
- *   unexpected server error). The thrown value is preserved on `cause` for
- *   callers that want to inspect or log it.
- */
-export type PasskeyClientError =
-  | { error: "CEREMONY_ABORTED" }
-  | { error: "PASSKEY_ALREADY_REGISTERED" }
-  | { error: "WEBAUTHN_UNSUPPORTED" }
-  | { error: "OTHER_ERROR"; cause: unknown };
-
-/**
- * A failed result with a browser-side `userError`. The failure arm all the
- * ceremony functions and hooks share; it composes with the server's own
- * `{ success: false, userError }` results into one `userError` switch.
- */
-export type PasskeyClientFailure = {
-  success: false;
-  userError: PasskeyClientError;
-};
-
-/**
- * The result of {@link register}: the response to send to the finish
- * mutation, or a user-facing `userError`.
- */
-export type PasskeyRegistrationResult =
-  { success: true; response: WireRegistrationResponse } | PasskeyClientFailure;
-
-/**
- * The result of {@link authenticate}: the response to send to the finish
- * mutation, or a user-facing `userError`.
- */
-export type PasskeyAuthenticationResult =
-  | { success: true; response: WireAuthenticationResponse }
-  | PasskeyClientFailure;
-
-/**
  * Whether this browser can run WebAuthn ceremonies on this page. The
  * ceremony functions run this check themselves; call it directly to hide a
  * passkey button up front.
@@ -114,28 +86,6 @@ export function supportsWebAuthn(): boolean {
     typeof PublicKeyCredential !== "undefined" &&
     window.isSecureContext
   );
-}
-
-/**
- * Fold a thrown value into the {@link PasskeyClientError} shape, so callers
- * handle every failure through one `userError` switch.
- *
- * The browser errors keep their `name` when `@simplewebauthn/browser` wraps
- * them in a `WebAuthnError`, so one check covers both the wrapped and the
- * raw form. `NotAllowedError` is what the browser throws when the user
- * dismisses the dialog, when the ceremony times out, and when the page is
- * not allowed to run one. `AbortError` is a ceremony that another one
- * displaced. A `null` credential cannot happen through
- * `@simplewebauthn/browser` (it throws instead).
- */
-export function foldClientError(cause: unknown): PasskeyClientError {
-  // `DOMException` does not extend `Error` in every runtime.
-  if (cause instanceof Error || cause instanceof DOMException) {
-    if (cause.name === "NotAllowedError" || cause.name === "AbortError") {
-      return { error: "CEREMONY_ABORTED" };
-    }
-  }
-  return { error: "OTHER_ERROR", cause };
 }
 
 /**
@@ -153,53 +103,6 @@ function foldRegistrationError(cause: unknown): PasskeyClientError {
     return { error: "PASSKEY_ALREADY_REGISTERED" };
   }
   return foldClientError(cause);
-}
-
-/**
- * Keep only the fields of a registration response that the finish
- * mutations accept. `@simplewebauthn/browser` adds convenience fields
- * (`publicKey`, `publicKeyAlgorithm`, `authenticatorData`,
- * `authenticatorAttachment`) that duplicate data from the attestation
- * object, and the exact server validators refuse them.
- */
-function pruneRegistrationResponse(
-  response: RegistrationResponseJSON,
-): WireRegistrationResponse {
-  return {
-    id: response.id,
-    rawId: response.rawId,
-    response: {
-      clientDataJSON: response.response.clientDataJSON,
-      attestationObject: response.response.attestationObject,
-      ...(response.response.transports !== undefined
-        ? { transports: response.response.transports }
-        : {}),
-    },
-    // The options request no extensions, so there is nothing to report.
-    clientExtensionResults: {},
-    type: response.type,
-  };
-}
-
-/** Keep only the fields of an authentication response that the finish
- * mutations accept (see {@link pruneRegistrationResponse}). */
-function pruneAuthenticationResponse(
-  response: AuthenticationResponseJSON,
-): WireAuthenticationResponse {
-  return {
-    id: response.id,
-    rawId: response.rawId,
-    response: {
-      clientDataJSON: response.response.clientDataJSON,
-      authenticatorData: response.response.authenticatorData,
-      signature: response.response.signature,
-      ...(response.response.userHandle !== undefined
-        ? { userHandle: response.response.userHandle }
-        : {}),
-    },
-    clientExtensionResults: {},
-    type: response.type,
-  };
 }
 
 /**
@@ -330,3 +233,62 @@ function assertionToJSON(
     type: "public-key",
   };
 }
+
+/**
+ * Whether this browser can offer passkeys in the autocompletion list of an
+ * `<input autoComplete="… webauthn">`. Never throws.
+ */
+export async function isConditionalMediationAvailable(): Promise<boolean> {
+  // Feature-detect conditional mediation. The method is a static one,
+  // and it is absent in older browsers: guard before calling it. Count
+  // a rejection as "not available".
+  let supported = false;
+  try {
+    supported =
+      supportsWebAuthn() &&
+      typeof PublicKeyCredential.isConditionalMediationAvailable ===
+        "function" &&
+      (await PublicKeyCredential.isConditionalMediationAvailable());
+  } catch {
+    // Keep `supported` as `false`.
+  }
+  return supported;
+}
+
+// The page events after which a pending autofill request re-checks the age
+// of its challenge right away, rather than on the next periodic check: the
+// user coming back to the page, and the user focusing a field (such as the
+// username field whose autocompletion list offers the passkeys).
+const STALENESS_CHECK_WINDOW_EVENTS = ["focus", "pageshow"] as const;
+const STALENESS_CHECK_DOCUMENT_EVENTS = [
+  "visibilitychange",
+  "focusin",
+] as const;
+
+/** See {@link PasskeyCeremonies.onResume}. */
+function onPageResume(listener: () => void): () => void {
+  for (const event of STALENESS_CHECK_WINDOW_EVENTS) {
+    window.addEventListener(event, listener);
+  }
+  for (const event of STALENESS_CHECK_DOCUMENT_EVENTS) {
+    document.addEventListener(event, listener);
+  }
+  return () => {
+    for (const event of STALENESS_CHECK_WINDOW_EVENTS) {
+      window.removeEventListener(event, listener);
+    }
+    for (const event of STALENESS_CHECK_DOCUMENT_EVENTS) {
+      document.removeEventListener(event, listener);
+    }
+  };
+}
+
+/** The browser ceremonies, which the hooks of `react.tsx` run. */
+export const browserCeremonies: PasskeyCeremonies = {
+  isSupported: supportsWebAuthn,
+  register,
+  authenticate,
+  isAutofillAvailable: isConditionalMediationAvailable,
+  authenticateWithAutofill,
+  onResume: onPageResume,
+};

@@ -67,7 +67,7 @@ async function seedSignedUpUser(
   const userId = await t.run(async (ctx) => await ctx.db.insert("users", {}));
   await runInComponent(t, "auth", async (ctx) => {
     await ctx.db.insert("accounts", {
-      provider: "emailPassword",
+      component: "authPassword",
       providerAccountId: userId,
       userId,
     });
@@ -96,18 +96,14 @@ async function seedSignedUpUser(
  * Configure the passed in `T` with a session for `userId`.
  *
  * The access token's subject is a session id, and the core looks the user up
- * through the session, so this seeds a session for the account
- * `seedSignedUpUser` created.
+ * through the session, so this seeds a session for the user created by
+ * `seedSignedUpUser`.
  */
 async function asUser(t: T, userId: string) {
   const sessionId = await runInComponent(t, "auth", async (ctx) => {
-    const account = await ctx.db
-      .query("accounts")
-      .filter((q) => q.eq(q.field("userId"), userId))
-      .unique();
     return await ctx.db.insert("sessions", {
       userId,
-      accountId: account!._id,
+      component: "authPassword",
     });
   });
   return t.withIdentity({ subject: sessionId });
@@ -366,7 +362,7 @@ describe("completeSignUpWithEmailPassword", () => {
     const userId = await t.run(async (ctx) => await ctx.db.insert("users", {}));
     await runInComponent(t, "auth", async (ctx) => {
       await ctx.db.insert("accounts", {
-        provider: "emailPassword",
+        component: "authPassword",
         providerAccountId: userId,
         userId,
       });
@@ -426,7 +422,7 @@ describe("completeSignUpWithEmailPassword", () => {
       );
       await runInComponent(t, "auth", async (ctx) => {
         await ctx.db.insert("accounts", {
-          provider: "emailPassword",
+          component: "authPassword",
           providerAccountId: userId,
           userId,
         });

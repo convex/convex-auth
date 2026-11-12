@@ -14,12 +14,7 @@ import type {
   SlimTokenBundle,
   TokenBundle,
 } from "../../lib/types.ts";
-import {
-  authenticate,
-  register,
-  supportsWebAuthn,
-  type PasskeyClientError,
-} from "./client.ts";
+import type { PasskeyCeremonies, PasskeyClientError } from "./ceremonies.ts";
 import type {
   FinishSignInResult,
   FinishSignUpResult,
@@ -82,11 +77,13 @@ export type SignInFlowContext = {
   signInApi: AuthSignInApi;
   /** Stores a minted session. */
   setSession: (session: TokenBundle | SlimTokenBundle) => Promise<void>;
+  /** The passkey ceremonies of the platform. */
+  ceremonies: PasskeyCeremonies;
 };
 
 /**
  * The user-facing failures the ceremony protocol reports. `startSignInWithUsernamePasskey` and
- * the browser ceremonies answer with their own `success` boolean rather than
+ * the ceremonies answer with their own `success` boolean rather than
  * the shared envelope, so this flow re-wraps their payloads as error arms and
  * callers only ever see the one discriminant.
  */
@@ -125,9 +122,9 @@ export async function runSignInOrSignUpFlow(
   ctx: SignInFlowContext,
   { username }: { username: string },
 ): Promise<SignInFlowResult> {
-  const { convex, api, signInApi, setSession } = ctx;
+  const { convex, api, signInApi, setSession, ceremonies } = ctx;
 
-  if (!supportsWebAuthn()) {
+  if (!ceremonies.isSupported()) {
     return { status: "error", userError: { error: "WEBAUTHN_UNSUPPORTED" } };
   }
 
@@ -142,7 +139,7 @@ export async function runSignInOrSignUpFlow(
     // TODO(nicolas) Consider not showing the registration UI immediately,
     // but instead showing a screen that tells the user they have no account
     // and suggest creating one.
-    const ceremony = await register(start.options);
+    const ceremony = await ceremonies.register(start.options);
     if (!ceremony.success) {
       return { status: "error", userError: ceremony.userError };
     }
@@ -160,7 +157,7 @@ export async function runSignInOrSignUpFlow(
     return { ...result, flow: "signUp" };
   }
 
-  const ceremony = await authenticate(start.options);
+  const ceremony = await ceremonies.authenticate(start.options);
   if (!ceremony.success) {
     return { status: "error", userError: ceremony.userError };
   }

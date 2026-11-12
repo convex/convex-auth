@@ -10,15 +10,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  authenticateWithAutofill,
   foldClientError,
   type PasskeyClientFailure,
-  supportsWebAuthn,
+  type PasskeyCeremonies,
   type PasskeyClientError,
-  type WireRequestOptions,
-} from "./client.ts";
+} from "./ceremonies.ts";
 import { CHALLENGE_TTL_MS } from "../../components/passkey/constants.ts";
-import type { WireAuthenticationResponse } from "../../components/passkey/validation.ts";
+import type {
+  WireAuthenticationResponse,
+  WireRequestOptions,
+} from "../../components/passkey/validation.ts";
 
 //------------------------------------------------------------------------------
 // Autofill
@@ -76,16 +77,6 @@ const AUTOFILL_REFRESH_MS = CHALLENGE_TTL_MS - 2 * 60 * 1000;
 // a short period is cheap.
 const AUTOFILL_STALENESS_CHECK_MS = 10 * 1000;
 
-// The page events after which a pending autofill request re-checks the age
-// of its challenge right away, rather than on the next periodic check: the
-// user coming back to the page, and the user focusing a field (such as the
-// username field whose autocompletion list offers the passkeys).
-const STALENESS_CHECK_WINDOW_EVENTS = ["focus", "pageshow"] as const;
-const STALENESS_CHECK_DOCUMENT_EVENTS = [
-  "visibilitychange",
-  "focusin",
-] as const;
-
 // After this many autofill assertions in a row come back as a failure,
 // the autofill flow stops instead of asking the browser again.
 const MAX_AUTOFILL_FAILURES = 3;
@@ -135,6 +126,11 @@ export function usePasskeyAutofill<E = never>(options: {
    */
   enabled?: boolean;
   /**
+   * The passkey ceremonies of the platform. The loop reads them once per
+   * run of its effect, thus they must keep their identity.
+   */
+  ceremonies: PasskeyCeremonies;
+  /**
    * Mint fresh options (with a fresh challenge) for a
    * conditional-mediation request, usually through the start mutation of
    * the flow (the `startAutofillSignInWithUsernamePasskey` mutation of a passkey recipe).
@@ -160,7 +156,7 @@ export function usePasskeyAutofill<E = never>(options: {
   //   challenges, so we need to pause autofill while a modal passkey
   //   challenge is running.
 
-  const { enabled = true } = options;
+  const { enabled = true, ceremonies } = options;
 
   const [available, setAvailable] = useState<boolean | null>(null);
   const [status, setStatus] = useState<PasskeyAutofillStatus>("idle");
@@ -235,18 +231,13 @@ export function usePasskeyAutofill<E = never>(options: {
       });
 
     const runLoop = async () => {
-      // Feature-detect conditional mediation. The method is a static one,
-      // and it is absent in older browsers: guard before calling it. Count
+      // Feature-detect autofill through the ceremonies of the platform. Count
       // a rejection as "not available": if it escaped, the promise chain
       // below would reject unhandled and the hook would stay on
       // `available: null` and `status: "idle"` forever.
       let supported = false;
       try {
-        supported =
-          supportsWebAuthn() &&
-          typeof PublicKeyCredential.isConditionalMediationAvailable ===
-            "function" &&
-          (await PublicKeyCredential.isConditionalMediationAvailable());
+        supported = await ceremonies.isAutofillAvailable();
       } catch {
         // Keep `supported` as `false`.
       }
@@ -322,14 +313,9 @@ export function usePasskeyAutofill<E = never>(options: {
           refreshIfStale,
           AUTOFILL_STALENESS_CHECK_MS,
         );
-        for (const event of STALENESS_CHECK_WINDOW_EVENTS) {
-          window.addEventListener(event, refreshIfStale);
-        }
-        for (const event of STALENESS_CHECK_DOCUMENT_EVENTS) {
-          document.addEventListener(event, refreshIfStale);
-        }
+        const stopResumeChecks = ceremonies.onResume(refreshIfStale);
 
-        const result = await authenticateWithAutofill(
+        const result = await ceremonies.authenticateWithAutofill(
           requestOptions,
           controller.signal,
         );
@@ -337,12 +323,7 @@ export function usePasskeyAutofill<E = never>(options: {
           controllerRef.current = null;
         }
         clearInterval(refreshTimer);
-        for (const event of STALENESS_CHECK_WINDOW_EVENTS) {
-          window.removeEventListener(event, refreshIfStale);
-        }
-        for (const event of STALENESS_CHECK_DOCUMENT_EVENTS) {
-          document.removeEventListener(event, refreshIfStale);
-        }
+        stopResumeChecks();
         if (!alive) {
           return;
         }
@@ -412,7 +393,7 @@ export function usePasskeyAutofill<E = never>(options: {
       // Never leave the loop parked; it exits on `alive`.
       wakeRef.current?.();
     };
-  }, [enabled]);
+  }, [enabled, ceremonies]);
 
   return useMemo(
     () => ({

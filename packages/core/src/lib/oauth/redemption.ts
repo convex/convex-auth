@@ -119,7 +119,9 @@ export type CompleteSignInResult = Infer<typeof completeSignInResult>;
  * they reach the component, which claims the matching ticket, and the
  * identity payload is decrypted with a key derived from the raw code. The
  * profile mapping then turns what the provider attested into the account
- * identity, and the core exchanges that for a session.
+ * identity. If the component has an account for the identity, the core signs
+ * that user in. Otherwise the core creates a new app user, and the component
+ * records an account for that user in the same mutation.
  *
  * Returns the shared sign-in envelope: the session token bundle, or an
  * `INVALID_CODE` error when the code is unknown, already redeemed, expired, or
@@ -127,8 +129,8 @@ export type CompleteSignInResult = Infer<typeof completeSignInResult>;
  *
  * The component calls are subtransactions of this mutation, so a failure
  * anywhere (including the app rejecting the sign-in from `createUser` /
- * `onSignIn`) rolls back the ticket claim. Only a successful redemption
- * consumes the ticket.
+ * `onSignIn`) rolls back the ticket claim and the account. Only a successful
+ * redemption consumes the ticket.
  *
  * @internal Not public until the API for custom methods is stable.
  */
@@ -140,11 +142,29 @@ export function buildCompleteSignIn<
   providerName: string;
   /** The core's method-bound mutation builder. */
   authMutation: AuthMutationBuilder<Profile>;
+  /**
+   * The component of the provider, for example `components.authGoogle`. The
+   * sessions record its path.
+   */
+  component: object;
   /** Claim the ticket in this provider's component instance. */
   claimTicket: (
     ctx: MutationCtx,
     args: { ticketCodeHash: string; stateHash: string },
   ) => Promise<{ encryptedPayload: string } | null>;
+  /**
+   * Get the app user id connected to a given provider account id in this
+   * provider's component, or `null` if there is none.
+   */
+  getUserIdByAccount: (
+    ctx: MutationCtx,
+    args: { providerAccountId: string },
+  ) => Promise<string | null>;
+  /** Create an account connecting a provider account id to an app user id. */
+  createAccount: (
+    ctx: MutationCtx,
+    args: { providerAccountId: string; userId: string },
+  ) => Promise<null>;
   /** Map what the provider attested to the account profile. */
   profile: (payload: Payload) => Profile;
 }) {
@@ -177,19 +197,28 @@ export function buildCompleteSignIn<
       }
 
       // The same redemption flow serves a first sign-in and a return visit, so
-      // resolve the identity to pick a path. This handler is a mutation, so the
-      // lookup and the write it decides on are one transaction.
-      const existingUserId = await ctx.convexAuth.resolveUserId(profile.id);
-      const tokens =
-        existingUserId === null
-          ? await ctx.convexAuth.completeSignUp({
-              providerAccountId: profile.id,
-              profile,
-            })
-          : await ctx.convexAuth.completeSignIn({
-              providerAccountId: profile.id,
-              profile,
-            });
+      // look the identity up to pick a path. The lookup and the writes share
+      // one transaction, so concurrent first redemptions of one identity
+      // create only one user.
+      const existingUserId = await options.getUserIdByAccount(ctx, {
+        providerAccountId: profile.id,
+      });
+      if (existingUserId !== null) {
+        const tokens = await ctx.convexAuth.completeSignIn({
+          userId: existingUserId,
+          profile,
+          verifiedBy: options.component,
+        });
+        return { status: "complete", tokens };
+      }
+      const tokens = await ctx.convexAuth.completeSignUp({
+        profile,
+        verifiedBy: options.component,
+      });
+      await options.createAccount(ctx, {
+        providerAccountId: profile.id,
+        userId: tokens.userId,
+      });
       return { status: "complete", tokens };
     },
   });

@@ -3,7 +3,6 @@ import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
   vSignInError,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -89,8 +88,8 @@ export type UsernamePasskeyConfig = Required<UsernamePasskeyOptions> & {
   coreComponent: CoreComponentApi;
 };
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "passkey";
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "usernamePasskey";
 
 const startSignInResult = v.union(
   // The username has an account: authenticate with a passkey of that
@@ -213,9 +212,9 @@ export function setupUsernamePasskey<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<"passkey", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, Record<string, never>, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });
@@ -329,7 +328,7 @@ export function setupUsernamePasskey<UsersTable extends string>(
          *    returns a `userError` here, before anything exists.
          * 2. Writes that cannot fail after the checks: `completeSignUp` mints
          *    the user, the account, and the session, `setUsername` stores the
-         *    username, and `finishRegistrationForNewUser` stores the
+         *    username, and `_internal_dangerous_finishRegistrationForNewUser` stores the
          *    passkey. None of
          *    them can fail after step 1 inside the same transaction, so a
          *    failure throws and rolls everything back.
@@ -389,17 +388,9 @@ export function setupUsernamePasskey<UsersTable extends string>(
               return { status: "error", userError };
             }
 
-            // Create the account + app user (via the app's createUser) and
-            // mint the session.
-            //
-            // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for this method at all: the value is an
-            // internal key ("" at sign-up, the user id afterwards) with no
-            // meaning to the app. We will probably improve this when
-            // methods support typesafe profiles.
             const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
+              verifiedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
@@ -420,7 +411,8 @@ export function setupUsernamePasskey<UsersTable extends string>(
             // Store the verified credential, link the handle to the new
             // user, and consume the challenge.
             const registrationResult = await ctx.runMutation(
-              component.registration.finishRegistrationForNewUser,
+              component.registration
+                ._internal_dangerous_finishRegistrationForNewUser,
               {
                 expectedRpId: rpId,
                 expectedOrigin: origin,
@@ -482,8 +474,9 @@ export function setupUsernamePasskey<UsersTable extends string>(
             );
 
             const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
+              userId,
               profile: {},
+              verifiedBy: component,
             });
             return { status: "complete", tokens, username };
           },

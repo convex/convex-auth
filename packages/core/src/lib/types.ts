@@ -205,20 +205,16 @@ export type ConvexAuthApi = {
  * Shared identity-claims contract between the *sign-in methods* that
  * authenticate users and the *core* component.
  *
- * After a method authenticates a user it produces this plain payload; the app
- * forwards it to the core's `signIn`, which turns it into a session. Methods
+ * After a sign-in method authenticates a user it produces this plain payload;
+ * the app forwards it to the core's `signUp` or `signIn`. Sign-in methods
  * never call the core directly, they only know how to produce these claims.
  */
 export const vAuthClaims = v.object({
   /**
    * The name that the sign-in method registers with the core, e.g.
-   * "password" for the `usernamePassword` method.
+   * "usernamePassword" for the `usernamePassword` method.
    */
-  providerName: v.string(),
-  /**
-   * Stable, provider-scoped account identifier (e.g. the Google account ID).
-   */
-  providerAccountId: v.string(),
+  method: v.string(),
   /** Arbitrary profile data the method learned about the user. */
   profile: v.any(),
 });
@@ -226,20 +222,10 @@ export const vAuthClaims = v.object({
 export type AuthClaims = Infer<typeof vAuthClaims>;
 
 /**
- * The `providerAccountId` a method sends to `completeSignUp` when it has no
- * identifier of its own. The core then keys the new account by the app user id
- * `createUser` returns, and later sign-ins send that user id as the account
- * identifier.
- *
- * @TODO(nicolas) Consider replacing this mechanism
- */
-export const USE_USER_ID_AS_ACCOUNT_ID = "";
-
-/**
  * The type of an app defined user-creating mutation: create the app's user
- * record for an identity the core has not seen before, and return its id. It
- * runs once per account, and {@link OnSignInFn} runs right after it, so this
- * one is only responsible for what is true at creation time.
+ * record for a new identity, and return its id. It runs once per account, and
+ * {@link OnSignInFn} runs right after it, so this one is only responsible for
+ * what is true at creation time.
  *
  * This is the core entrypoint for an application to integrate its user model
  * with Convex Auth. Apps install one per sign-in method, although the function that
@@ -252,16 +238,15 @@ export const USE_USER_ID_AS_ACCOUNT_ID = "";
  * type `Id<usersTable>` rather than a bare string.
  */
 export type CreateUserFn<
-  ProviderName extends string,
+  MethodName extends string,
   Profile,
   UsersTable extends string = string,
 > = FunctionReference_future<
   "mutation",
   "internal",
   {
-    provider: {
-      name: ProviderName;
-      accountId: string;
+    method: {
+      name: MethodName;
       profile: Profile;
     };
   },
@@ -277,23 +262,22 @@ export type CreateUserFn<
  * timestamp, an audit row, syncing the user record from the latest `profile`,
  * which the core does not store) belongs here and nowhere else.
  *
- * The core resolves the account to its app user first, so `userId` is always
- * present and there is nothing to return. Declare `returns: v.null()` and
+ * The sign-in method passes the user id, so `userId` is always present and
+ * there is nothing to return. Declare `returns: v.null()` and
  * return `null`, or leave the callback out entirely. Throw a `ConvexError` to
  * reject the sign in, which on a first sign-in rolls back the user the create
  * callback just made.
  */
 export type OnSignInFn<
-  ProviderName extends string,
+  MethodName extends string,
   Profile,
   UsersTable extends string = string,
 > = FunctionReference_future<
   "mutation",
   "internal",
   {
-    provider: {
-      name: ProviderName;
-      accountId: string;
+    method: {
+      name: MethodName;
       profile: Profile;
     };
     userId: GenericId<UsersTable>;
@@ -307,12 +291,12 @@ export type OnSignInFn<
  * user record), {@link OnSignInFn} is optional.
  */
 export type UserCallbacks<
-  Provider extends string,
+  Method extends string,
   Profile,
   UsersTable extends string = string,
 > = {
-  createUser: CreateUserFn<Provider, Profile, UsersTable>;
-  onSignIn?: OnSignInFn<Provider, Profile, UsersTable>;
+  createUser: CreateUserFn<Method, Profile, UsersTable>;
+  onSignIn?: OnSignInFn<Method, Profile, UsersTable>;
 };
 
 /**
@@ -323,57 +307,57 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
-   * Exchange a *newly established* account identity for a session.
+   * Create the app user for a *new* identity and exchange it for a session.
    *
-   * Call this when the method has just created the account. The core records
-   * the account, calls the app's `createUser` to mint the app user, then its
-   * `onSignIn` like any other sign-in, and returns the tokens a client needs to
-   * make authenticated calls.
+   * Call this when the sign-in method has verified a new identity. The core:
+   * 1. calls the app's `createUser` to create the app user,
+   * 2. calls the app's `onSignIn`, like any other sign-in,
+   * 3. returns the tokens a client needs to make authenticated calls.
    *
-   * Throws if the identity already has an account. A method that cannot tell
-   * a first sign-in from a return visit should call
-   * {@link BoundAuthHelpers.resolveUserId} first and pick the right helper.
+   * The core doesn't track identities, so the sign-in method must look the
+   * identity up in its own component first, and call
+   * {@link BoundAuthHelpers.completeSignIn} for a known one. After a sign-up,
+   * the sign-in method must record the returned `userId` in its component in
+   * the same mutation.
    */
   completeSignUp(args: {
-    providerAccountId: string;
     profile: Profile;
+    /**
+     * The component that verified the user, for example
+     * `components.authPassword`. The session records its path.
+     */
+    verifiedBy: object;
   }): Promise<TokenBundle>;
   /**
-   * Exchange a verified *existing* account identity for a session.
+   * Exchange a verified *existing* identity for a session.
    *
-   * Call this once the method has authenticated a known account its own way
-   * (checking a password, say). The core resolves the account to its app user,
+   * Call this once the sign-in method has authenticated a known identity its
+   * own way (checking a password, say) and looked up its user id. The core
    * runs the app's `onSignIn` callback if one is attached, and returns the
    * tokens a client needs to make authenticated calls.
    *
-   * Throws if the identity has no account: reaching this helper is the
-   * method's assertion that the account exists, so a miss is a bug rather
-   * than an authentication failure to report to the user.
+   * The core doesn't check `userId`, so a wrong one signs the caller in as
+   * that user.
    */
   completeSignIn(args: {
-    providerAccountId: string;
+    userId: string;
     profile: Profile;
+    /**
+     * The component that verified the user, for example
+     * `components.authPassword`. The session records its path.
+     */
+    verifiedBy: object;
   }): Promise<TokenBundle>;
   /**
-   * Create the account and the app user for a verified identity, but do not
-   * mint a session.
+   * Create the app user for a verified identity without a session.
    *
    * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. Account creation follows the same
-   * rules as `completeSignUp`: the app's `createUser` mints the user, and an
-   * identity that already has an account is refused. `onSignIn` does not run.
-   * The method signs the user in later with `completeSignIn`.
+   * validation) before the first sign-in. The app's `createUser` creates the
+   * user, as for `completeSignUp`, and `onSignIn` doesn't run. The sign-in
+   * method records the returned `userId` in its own component and signs the
+   * user in later with `completeSignIn`.
    */
-  signUpWithoutSession(args: {
-    providerAccountId: string;
-    profile: Profile;
-  }): Promise<{ userId: string }>;
-  /**
-   * Look up the app user id for a given `providerAccountId`.
-   *
-   * Returns `null` when no user id is found for the account.
-   */
-  resolveUserId(providerAccountId: string): Promise<string | null>;
+  signUpWithoutSession(args: { profile: Profile }): Promise<{ userId: string }>;
   /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)

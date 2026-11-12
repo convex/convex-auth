@@ -14,7 +14,6 @@ import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
   vSignInError,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -40,8 +39,8 @@ import {
 } from "../../components/email/validation.ts";
 import type { SendEmailRef } from "../../components/email/helpers.ts";
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "emailPassword";
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "emailPassword";
 
 /**
  * The purpose of the `custom` challenge that account recovery starts. The
@@ -391,19 +390,18 @@ export function setupEmailPassword<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<typeof PROVIDER_NAME, EmailPasswordProfile, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, EmailPasswordProfile, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });
 
       return {
         /**
-         * Create a new account: the app user, the account and the password are
-         * written immediately, but no session is minted. The user signs in for
-         * the first time through `completeSignUpWithEmailPassword`, after they open the
-         * challenge link.
+         * Create the app user and password for a new account, without a
+         * session. The user signs in for the first time through
+         * `completeSignUpWithEmailPassword`, after opening the challenge link.
          *
          * Repeated sign-ups with one unvalidated address create separate
          * users; the first completed validation wins, and the others can never
@@ -435,12 +433,7 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            // Create the app user + account without a session. Accounts are
-            // keyed by the app user id, which does not exist before this call
-            // mints it, hence the placeholder; sign-in passes the user id
-            // itself.
             const { userId } = await ctx.convexAuth.signUpWithoutSession({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
             });
 
@@ -463,7 +456,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const start = await ctx.runMutation(
-              component.challenge.signUp.start,
+              component.challenge.signUp._internal_dangerous_start,
               {
                 email,
                 // The user is new, so this first address becomes primary.
@@ -507,8 +500,9 @@ export function setupEmailPassword<UsersTable extends string>(
               return { status: "error", userError: complete.userError };
             }
             const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: complete.userId,
+              userId: complete.userId,
               profile: {},
+              verifiedBy: component,
             });
             return { status: "complete", tokens };
           },
@@ -552,8 +546,9 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
+              userId,
               profile: {},
+              verifiedBy: passwordComponent,
             });
             return { status: "complete", tokens };
           },
@@ -689,7 +684,7 @@ export function setupEmailPassword<UsersTable extends string>(
             }
 
             const start = await ctx.runMutation(
-              component.challenge.changeEmail.start,
+              component.challenge.changeEmail._internal_dangerous_start,
               {
                 email: newEmail,
                 userId,
@@ -928,8 +923,9 @@ export function setupEmailPassword<UsersTable extends string>(
             await ctx.convexAuth.revokeAllSessions(userId);
 
             const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
+              userId,
               profile: {},
+              verifiedBy: component,
             });
 
             // The notification goes to the primary address, which can be

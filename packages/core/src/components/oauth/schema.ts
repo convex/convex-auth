@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
+  accountsTable,
   authorizationRequestFields,
   ticketFields,
 } from "../../lib/oauth/schema.ts";
@@ -30,4 +31,6 @@ export default defineSchema({
     /** Provider that authenticated the user, e.g. "acme". */
     providerName: v.string(),
   }).index("ticketCodeHash", ["ticketCodeHash"]),
+
+  accounts: accountsTable,
 });

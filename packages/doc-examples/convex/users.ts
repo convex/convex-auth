@@ -8,9 +8,8 @@ import { internalMutation } from "./_generated/server";
 
 export const createUserPassword = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("password"),
-      accountId: v.string(),
+    method: v.object({
+      name: v.literal("usernamePassword"),
       profile: v.object({}),
     }),
   },
@@ -20,9 +19,8 @@ export const createUserPassword = internalMutation({
 
 export const createUserEmailPassword = internalMutation({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.literal("emailPassword"),
-      accountId: v.string(),
       profile: v.object({}),
     }),
   },
@@ -32,9 +30,8 @@ export const createUserEmailPassword = internalMutation({
 
 export const createUserPasskey = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("passkey"),
-      accountId: v.string(),
+    method: v.object({
+      name: v.literal("usernamePasskey"),
       profile: v.object({}),
     }),
   },
@@ -44,9 +41,8 @@ export const createUserPasskey = internalMutation({
 
 export const createUserGoogle = internalMutation({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.literal("google"),
-      accountId: v.string(),
       profile: vGoogleProfile,
     }),
   },
@@ -56,9 +52,8 @@ export const createUserGoogle = internalMutation({
 
 export const createUserApple = internalMutation({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.literal("apple"),
-      accountId: v.string(),
       profile: vAppleProfile,
     }),
   },
@@ -68,9 +63,8 @@ export const createUserApple = internalMutation({
 
 export const createUserGithub = internalMutation({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.literal("github"),
-      accountId: v.string(),
       profile: vGithubProfile,
     }),
   },

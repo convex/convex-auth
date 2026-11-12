@@ -219,13 +219,13 @@ describe("concurrent challenges for one address", () => {
   });
 });
 
-describe("challenge.changeEmail.start", () => {
+describe("challenge.changeEmail._internal_dangerous_start", () => {
   test("sends a link to the new address, and the completion replaces the old one", async () => {
     const t = setup();
     await seedEmail(t, "user1", "old@example.com", true);
     const result = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.changeEmail.start, {
+      .mutation(api.challenge.changeEmail._internal_dangerous_start, {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
@@ -271,7 +271,7 @@ describe("challenge.changeEmail.start", () => {
     await seedEmail(t, "user2", "new@example.com", true);
     const result = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.changeEmail.start, {
+      .mutation(api.challenge.changeEmail._internal_dangerous_start, {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),
@@ -302,7 +302,7 @@ describe("challenge.changeEmail.check", () => {
 
     const start = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.changeEmail.start, {
+      .mutation(api.challenge.changeEmail._internal_dangerous_start, {
         email: "new@example.com",
         url: URL,
         emailSender: await stubEmailSender(t),

@@ -3,7 +3,6 @@ import { getAuthUserId } from "../../server/userId.ts";
 import {
   vSignInComplete,
   vSignInError,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -20,8 +19,8 @@ import {
 } from "../../components/password/validation.ts";
 import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 
-// TODO: derive this from the component mount path rather than hardcoding it.
-const PROVIDER_NAME = "password";
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "usernamePassword";
 
 /**
  * Options for {@link setupUsernamePassword}.
@@ -127,9 +126,9 @@ export function setupUsernamePassword<UsersTable extends string>(
     attachUserCallbacks({
       createUser,
       onSignIn,
-    }: UserCallbacks<"password", Record<string, never>, UsersTable>) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+    }: UserCallbacks<typeof METHOD_NAME, Record<string, never>, UsersTable>) {
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser,
         onSignIn,
       });
@@ -175,19 +174,9 @@ export function setupUsernamePassword<UsersTable extends string>(
               };
             }
 
-            // Create the account + app user (via the app's createUser) and
-            // mint the session. Password accounts are keyed by the app user id,
-            // which does not exist before this call mints it, hence the
-            // placeholder; sign-in passes the user id itself.
-            //
-            // TODO(nicolas) The app's user callbacks should not receive a
-            // provider account ID for the `usernamePassword` method at all: the value
-            // is an internal key ("" at sign-up, the user id afterwards) with
-            // no meaning to the app. We will probably improve this when
-            // methods support typesafe profiles.
             const tokens = await ctx.convexAuth.completeSignUp({
-              providerAccountId: USE_USER_ID_AS_ACCOUNT_ID,
               profile: {},
+              verifiedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
@@ -263,12 +252,10 @@ export function setupUsernamePassword<UsersTable extends string>(
               return { status: "error", userError: verifyResult.userError };
             }
 
-            // The username resolved to a user id and its password verified, so
-            // the account exists and `completeSignIn` (which throws otherwise)
-            // is the right helper.
             const tokens = await ctx.convexAuth.completeSignIn({
-              providerAccountId: userId,
+              userId,
               profile: {},
+              verifiedBy: component,
             });
             return { status: "complete", tokens };
           },

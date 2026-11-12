@@ -1,5 +1,6 @@
 import { defineSchema } from "convex/server";
 import {
+  accountsTable,
   authorizationRequestsTable,
   ticketsTable,
 } from "../../lib/oauth/schema.ts";
@@ -7,4 +8,5 @@ import {
 export default defineSchema({
   authorizationRequests: authorizationRequestsTable,
   tickets: ticketsTable,
+  accounts: accountsTable,
 });

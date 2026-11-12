@@ -1,5 +1,5 @@
-import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.ts";
-import { Doc, Id } from "./_generated/dataModel.ts";
+import { mutation, query, MutationCtx } from "./_generated/server.ts";
+import { Id } from "./_generated/dataModel.ts";
 import { GenericId, v } from "convex/values";
 import {
   FunctionArgs,
@@ -13,11 +13,11 @@ import {
   type TokenBundle,
   vRefreshResult,
   type RefreshResult,
-  USE_USER_ID_AS_ACCOUNT_ID,
   type CreateUserFn,
   type OnSignInFn,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
+import { assertMountedAsCore } from "../lib/coreComponent.ts";
 import {
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
@@ -45,23 +45,10 @@ const AUDIENCE = "convex-auth";
 
 // The `iss` claim is set by the deployment when this component calls
 // `ctx.auth.signJwt`: `${CONVEX_CLOUD_URL}/components/auth`, which is what the
-// app's auth.config.ts must name as the issuer.
+// app's auth.config.ts must name as the issuer. The app must mount the core at
+// `auth` (see `CORE_COMPONENT_PATH`).
 
 // --- Internal helpers ------------------------------------------------------
-
-/** Look up an account by its provider identity. */
-function accountByIdentity(
-  ctx: QueryCtx,
-  provider: string,
-  providerAccountId: string,
-): Promise<Doc<"accounts"> | null> {
-  return ctx.db
-    .query("accounts")
-    .withIndex("by_provider_account", (q) =>
-      q.eq("provider", provider).eq("providerAccountId", providerAccountId),
-    )
-    .unique();
-}
 
 /**
  * Mint the access token with the deployment's signing key. The deployment
@@ -77,23 +64,25 @@ async function mintAccessToken(
   sessionId: Id<"sessions">,
   ttlSeconds: number,
 ): Promise<string> {
-  return await ctx.auth.signJwt({
+  const token = await ctx.auth.signJwt({
     claims: { sub: sessionId, aud: AUDIENCE },
     expiresInSeconds: ttlSeconds,
   });
+  assertMountedAsCore(token);
+  return token;
 }
 
 async function issueSession(
   ctx: MutationCtx,
-  accountId: Id<"accounts">,
   userId: string,
+  component: string,
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
   await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
-    accountId,
+    component,
   });
   // Read back for its `_creationTime`, which its max lifetime counts from.
   const session = (await ctx.db.get("sessions", sessionId))!;
@@ -146,75 +135,34 @@ function asUserId(userId: string): GenericId<string> {
 }
 
 /**
- * Create the account and app-level user for an identity the core has not seen before.
- *
- * The app's `createUser` callback mints and returns the user id, and this
- * records the provider-identity -> user mapping. Returns what minting a
- * session needs: the account id and its app user id. The claims are passed to
- * the `createUser` callback.
- *
- * Both `signUp` and the sessionless `signUpWithoutSession` build on this.
+ * Create the app user for a new identity with the app's `createUser`
+ * callback, and return its id.
  */
-async function createAccount(
+async function createAppUser(
   ctx: MutationCtx,
   claims: AuthClaims,
   createUser: CreateUserFunctionHandle,
-): Promise<{ accountId: Id<"accounts">; userId: string }> {
-  // `USE_USER_ID_AS_ACCOUNT_ID` means the account is keyed by the app user id,
-  // which does not exist until the callback below mints it. Such claims can
-  // never match an existing account (accounts are never stored with an empty
-  // identifier), so there is nothing to check yet; the pre-insert check below
-  // covers that path once the key is known.
-  if (claims.providerAccountId !== USE_USER_ID_AS_ACCOUNT_ID) {
-    const account = await accountByIdentity(
-      ctx,
-      claims.providerName,
-      claims.providerAccountId,
-    );
-    if (account !== null) {
-      // Creating an account for an identity that already has one would mint a
-      // second app user for someone who already has one. Fail before calling
-      // the app.
-      throw new Error(
-        `Cannot create an account: an account for provider = ${JSON.stringify(claims.providerName)} ` +
-          `and provider account ID = ${JSON.stringify(claims.providerAccountId)} already ` +
-          `exists. Sign-in methods that cannot tell a first sign-in from a return visit must ` +
-          `look the identity up (getUserIdByAccount) and call signIn instead.`,
-      );
-    }
-  }
-
-  const userId = await ctx.runMutation(createUser, {
-    provider: {
-      name: claims.providerName,
-      accountId: claims.providerAccountId,
+): Promise<string> {
+  return await ctx.runMutation(createUser, {
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
   });
-  const { providerName } = claims;
-  const providerAccountId =
-    claims.providerAccountId === USE_USER_ID_AS_ACCOUNT_ID
-      ? userId
-      : claims.providerAccountId;
-  // The last word on uniqueness, for the `USE_USER_ID_AS_ACCOUNT_ID` path,
-  // whose key is only known now. Redundant for every other path, and cheap.
-  const existingAccount = await ctx.db
-    .query("accounts")
-    .withIndex("by_provider_account", (q) =>
-      q.eq("provider", providerName).eq("providerAccountId", providerAccountId),
-    )
-    .first();
-  if (existingAccount !== null) {
-    throw new Error(
-      `Invariant violation: an account for provider = ${JSON.stringify(providerName)} and provider account ID = ${JSON.stringify(providerAccountId)} already exists`,
-    );
+}
+
+/** Add the user to `createdUserIds`, if it is not there yet. */
+async function recordCreatedUserId(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("createdUserIds")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (existing === null) {
+    await ctx.db.insert("createdUserIds", { userId });
   }
-  const accountId = await ctx.db.insert("accounts", {
-    provider: providerName,
-    providerAccountId,
-    userId,
-  });
-  return { accountId, userId };
 }
 
 /**
@@ -230,9 +178,8 @@ async function notifySignIn(
 ): Promise<void> {
   if (onSignInHandle === undefined) return;
   await ctx.runMutation(onSignInHandle as OnSignInFunctionHandle, {
-    provider: {
-      name: claims.providerName,
-      accountId: claims.providerAccountId,
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
     userId: asUserId(userId),
@@ -254,16 +201,23 @@ async function notifySignIn(
  * other sign-in. An `onSignIn` that throws therefore rolls back the user
  * `createUser` just made, since both are subtransactions of this one.
  *
+ * The core doesn't track identities, so a repeated sign-up creates another
+ * user. The sign-in method must check its own component for the identity
+ * first, and record the returned `userId` there in the same mutation.
+ *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
- * Throws when the identity already has an account. See {@link signIn} for the
- * return-visit path.
+ * `componentPath` is the path of the component that verified the user, for
+ * example `"authPassword"`. The session records it as its `component`.
+ *
+ * See {@link signIn} for the return-visit path.
  */
 export const signUp = mutation({
   args: {
     claims: vAuthClaims,
+    componentPath: v.string(),
     createUserHandle: v.string(),
     onSignInHandle: v.optional(v.string()),
     ...vTtlConfigFields,
@@ -271,18 +225,19 @@ export const signUp = mutation({
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
     const ttl = validateTtlConfig(args);
-    const { accountId, userId } = await createAccount(
+    const userId = await createAppUser(
       ctx,
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
+    await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
-    return await issueSession(ctx, accountId, userId, ttl);
+    return await issueSession(ctx, userId, args.componentPath, ttl);
   },
 });
 
 /**
- * Performs an app-integrated user sign-in.
+ * Performs an app-integrated user sign-in of an existing user.
  *
  * Establishes a session and returns a token bundle upon success.
  *
@@ -290,51 +245,48 @@ export const signUp = mutation({
  * framework's `completeSignIn` helper. That function takes care of passing the
  * `onSignInHandle` app callback.
  *
+ * The core doesn't check `userId`, so a wrong `userId` signs the caller in as
+ * that user. Sign-in methods must pass only a user id they looked up after
+ * verifying the identity.
+ *
+ * `componentPath` is the path of the component that verified the user, for
+ * example `"authPassword"`. The session records it as its `component`.
+ *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
- *
- * Throws when the identity has no account.
  */
 export const signIn = mutation({
   args: {
     claims: vAuthClaims,
+    componentPath: v.string(),
+    userId: v.string(),
     onSignInHandle: v.optional(v.string()),
     ...vTtlConfigFields,
   },
   returns: vTokenBundle,
   handler: async (ctx, args): Promise<TokenBundle> => {
     const ttl = validateTtlConfig(args);
-    const { claims } = args;
-    const account = await accountByIdentity(
-      ctx,
-      claims.providerName,
-      claims.providerAccountId,
-    );
-    if (account === null) {
-      throw new Error(
-        `Cannot sign in: no account for provider = ${JSON.stringify(claims.providerName)} ` +
-          `and provider account ID = ${JSON.stringify(claims.providerAccountId)} exists. ` +
-          `A first sign-in for an identity must go through signUp.`,
-      );
+    const { claims, userId } = args;
+    if (userId === "") {
+      throw new Error("Cannot sign in: no user id was given.");
     }
-    await notifySignIn(ctx, claims, account.userId, args.onSignInHandle);
-    return await issueSession(ctx, account._id, account.userId, ttl);
+    await recordCreatedUserId(ctx, userId);
+    await notifySignIn(ctx, claims, userId, args.onSignInHandle);
+    return await issueSession(ctx, userId, args.componentPath, ttl);
   },
 });
 
 /**
- * Create the account and the app user for the verified identity claims of a method
+ * Create the app user for the verified identity claims of a sign-in method
  * without minting a session.
  *
  * Sign-in methods use this (via the `signUpWithoutSession` helper the core hands
  * them) when the user must complete a step before the first sign-in — for
- * example, an email validation. Account creation follows the same rules as
- * `signUp` (the app's `createUser` mutation mints the user,
- * `USE_USER_ID_AS_ACCOUNT_ID` keys the account by the minted user id, and an
- * identity that already has an account is refused), but no session is minted
- * and `onSignIn` does not run: the user cannot make authenticated calls until
- * a later `signIn` succeeds.
+ * example, an email validation. The app's `createUser` mutation creates the
+ * user, as for `signUp`. No session is minted and `onSignIn` doesn't run, so
+ * the user can't make authenticated calls until a later `signIn` succeeds.
+ * The caller must record the returned `userId` in its own component.
  */
 export const signUpWithoutSession = mutation({
   args: {
@@ -344,36 +296,35 @@ export const signUpWithoutSession = mutation({
   returns: v.object({ userId: v.string() }),
   handler: async (ctx, args): Promise<{ userId: string }> => {
     // TODO: This API is kind of awkward. We might want to reconsider it before the GA v2 release.
-    const { userId } = await createAccount(
+    const userId = await createAppUser(
       ctx,
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
+    await recordCreatedUserId(ctx, userId);
     return { userId };
   },
 });
 
 /**
- * Resolve a provider identity to its app user id without minting a session.
+ * Record that a user exists.
  *
- * Sign-in methods use this (via the `resolveUserId` helper the core hands them) to look
- * up the user behind a `(provider, providerAccountId)` pair before authenticating
- * — e.g. a password method needs the user id to verify a stored password *before*
- * a session is issued. Returns `null` when no account exists for the identity.
+ * The core records the users that it creates and signs in. Call this function
+ * for the other users: the users that the app imports or creates without the
+ * core, and the users that existed before the app upgraded to this version.
  *
- * This is a component function; it is callable by the app, not by end-user
- * clients, so it does not expose account existence to the outside world. The
- * method's own public API decides what, if anything, to reveal.
+ * Any code of the app can call this function. That is safe: it only records
+ * that an ID is in use.
  */
-export const getUserIdByAccount = query({
-  args: { provider: v.string(), providerAccountId: v.string() },
-  returns: v.union(v.string(), v.null()),
-  handler: async (
-    ctx,
-    { provider, providerAccountId },
-  ): Promise<string | null> => {
-    const account = await accountByIdentity(ctx, provider, providerAccountId);
-    return account?.userId ?? null;
+export const markUserIdCreated = mutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    if (userId === "") {
+      throw new Error("Cannot mark an empty user ID as created.");
+    }
+    await recordCreatedUserId(ctx, userId);
+    return null;
   },
 });
 

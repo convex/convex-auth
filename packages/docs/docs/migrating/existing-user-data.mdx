@@ -28,9 +28,8 @@ with ids from that table: `createUser` must return an `Id<"members">`, and
 ```ts title="convex/users.ts"
 export const createUser = internalMutation({
   args: {
-    provider: v.object({
-      name: v.literal("password"),
-      accountId: v.string(),
+    method: v.object({
+      name: v.literal("usernamePassword"),
       profile: v.object({}),
     }),
   },

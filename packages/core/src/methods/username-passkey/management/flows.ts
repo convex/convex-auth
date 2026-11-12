@@ -6,12 +6,7 @@
 
 import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import {
-  authenticate,
-  register,
-  supportsWebAuthn,
-  type PasskeyClientFailure,
-} from "../client.ts";
+import type { PasskeyCeremonies, PasskeyClientFailure } from "../ceremonies.ts";
 import type {
   WireAuthenticationResponse,
   WireRegistrationResponse,
@@ -75,6 +70,8 @@ export type RemovePasskeyApi = {
 export type ManagementFlowContext<Api> = {
   convex: ConvexReactClient;
   api: Api;
+  /** The passkey ceremonies of the platform. */
+  ceremonies: PasskeyCeremonies;
 };
 
 export type AddPasskeyFlowResult =
@@ -97,9 +94,9 @@ export type RemovePasskeyFlowResult =
 export async function runAddPasskeyFlow(
   ctx: ManagementFlowContext<AddPasskeyApi>,
 ): Promise<AddPasskeyFlowResult> {
-  const { convex, api } = ctx;
+  const { convex, api, ceremonies } = ctx;
 
-  if (!supportsWebAuthn()) {
+  if (!ceremonies.isSupported()) {
     return { success: false, userError: { error: "WEBAUTHN_UNSUPPORTED" } };
   }
 
@@ -107,7 +104,7 @@ export async function runAddPasskeyFlow(
   if (!start.success) {
     return start;
   }
-  const assertion = await authenticate(start.options);
+  const assertion = await ceremonies.authenticate(start.options);
   if (!assertion.success) {
     return assertion;
   }
@@ -117,7 +114,7 @@ export async function runAddPasskeyFlow(
   if (!verified.success) {
     return verified;
   }
-  const registration = await register(verified.options);
+  const registration = await ceremonies.register(verified.options);
   if (!registration.success) {
     return registration;
   }
@@ -135,9 +132,9 @@ export async function runRemovePasskeyFlow(
   ctx: ManagementFlowContext<RemovePasskeyApi>,
   { passkeyId }: { passkeyId: string },
 ): Promise<RemovePasskeyFlowResult> {
-  const { convex, api } = ctx;
+  const { convex, api, ceremonies } = ctx;
 
-  if (!supportsWebAuthn()) {
+  if (!ceremonies.isSupported()) {
     return { success: false, userError: { error: "WEBAUTHN_UNSUPPORTED" } };
   }
 
@@ -145,7 +142,7 @@ export async function runRemovePasskeyFlow(
   if (!start.success) {
     return start;
   }
-  const assertion = await authenticate(start.options);
+  const assertion = await ceremonies.authenticate(start.options);
   if (!assertion.success) {
     return assertion;
   }

@@ -1,5 +1,5 @@
 /**
- * Tests the helpers `setupConvexAuth`'s `bindProvider` injects on
+ * Tests the helpers `setupConvexAuth`'s `bindMethod` injects on
  * `ctx.convexAuth` for the handlers of a method.
  *
  * Runs as an app with the core component installed (the same harness shape as
@@ -28,31 +28,37 @@ const components = componentsGeneric() as unknown as {
 
 /**
  * Stand-in for the app's user-creating callback. Like a minimal real app it
- * owns no users table, and just echoes the provider-scoped account id back as
- * the app user id (the same contract as the component suite's fixture).
+ * owns no users table, and just echoes the `id` of the profile back as the app
+ * user id, so a test chooses the user id of a sign-up.
  */
 const createUser = internalMutationGeneric({
   args: {
-    provider: v.object({
+    method: v.object({
       name: v.string(),
-      accountId: v.string(),
       profile: v.any(),
     }),
   },
   returns: v.string(),
-  handler: async (_ctx, args) => args.provider.accountId,
+  handler: async (_ctx, args) => args.method.profile.id,
 });
 
 const core = setupConvexAuth({ component: components.auth });
 
-const { authMutation } = core.bindProvider({
-  name: "test-provider",
-  // The runtime value `bindProvider` needs is a reference it can turn into a
+/**
+ * The component that verifies the users of the test method. The sessions
+ * record its path.
+ */
+const verifiedBy = (componentsGeneric() as unknown as { authTest: object })
+  .authTest;
+
+const { authMutation } = core.bindMethod({
+  name: "testMethod",
+  // The runtime value `bindMethod` needs is a reference it can turn into a
   // function handle; the cast supplies the type-level contract the app's
   // codegen would.
   createUser: makeFunctionReference<"mutation">(
     "testApp:createUser",
-  ) as unknown as CreateUserFn<"test-provider", unknown, "users">,
+  ) as unknown as CreateUserFn<"testMethod", unknown, "users">,
 });
 
 const signUp = authMutation({
@@ -60,18 +66,20 @@ const signUp = authMutation({
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignUp({
-      providerAccountId: accountId,
-      profile: {},
+      profile: { id: accountId },
+      verifiedBy,
     }),
 });
 
+// The fixture's createUser returns the `id` of the profile as the user id.
 const signIn = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
-      providerAccountId: accountId,
+      userId: accountId,
       profile: {},
+      verifiedBy,
     }),
 });
 
@@ -93,18 +101,18 @@ const revokeAllSessions = authMutation({
 });
 
 // The same app redeployed with a lower inactivity timeout: the same component
-// and provider name, so it sees the sessions the default-timeout core minted.
+// and method name, so it sees the sessions the default-timeout core minted.
 const SHORT_INACTIVITY_TIMEOUT_SECONDS = 60 * 60;
 const shortTtlCore = setupConvexAuth({
   component: components.auth,
   refreshInactivityTimeoutSeconds: SHORT_INACTIVITY_TIMEOUT_SECONDS,
 });
 
-const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindProvider({
-  name: "test-provider",
+const { authMutation: shortTtlAuthMutation } = shortTtlCore.bindMethod({
+  name: "testMethod",
   createUser: makeFunctionReference<"mutation">(
     "testApp:createUser",
-  ) as unknown as CreateUserFn<"test-provider", unknown, "users">,
+  ) as unknown as CreateUserFn<"testMethod", unknown, "users">,
 });
 
 const signInShortTtl = shortTtlAuthMutation({
@@ -112,8 +120,9 @@ const signInShortTtl = shortTtlAuthMutation({
   returns: v.any(),
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignIn({
-      providerAccountId: accountId,
+      userId: accountId,
       profile: {},
+      verifiedBy,
     }),
 });
 

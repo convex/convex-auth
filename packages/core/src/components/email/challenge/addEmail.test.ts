@@ -206,12 +206,15 @@ describe("the userId of an addEmail challenge", () => {
   });
 });
 
-describe("challenge.addEmail.start", () => {
+describe("challenge.addEmail._internal_dangerous_start", () => {
   test("sends a link and returns the secret", async () => {
     const t = setup();
     const result = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, await startArgs(t));
+      .mutation(
+        api.challenge.addEmail._internal_dangerous_start,
+        await startArgs(t),
+      );
     expect(result).toMatchObject({ success: true });
     if (!result.success) {
       throw new Error("unreachable");
@@ -252,7 +255,7 @@ describe("challenge.addEmail.start", () => {
     const t = setup();
     const result = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, {
+      .mutation(api.challenge.addEmail._internal_dangerous_start, {
         ...(await startArgs(t)),
         email: "not-an-email",
       });
@@ -272,7 +275,7 @@ describe("challenge.addEmail.start", () => {
     for (const email of ["alice@example.com", "Alice@Example.COM"]) {
       const result = await t
         .withRequestMetadata({ ip: IP })
-        .mutation(api.challenge.addEmail.start, {
+        .mutation(api.challenge.addEmail._internal_dangerous_start, {
           ...(await startArgs(t)),
           email,
         });
@@ -290,7 +293,10 @@ describe("challenge.addEmail.start", () => {
     const start = (email: string) =>
       t
         .withRequestMetadata({ ip: IP })
-        .mutation(api.challenge.addEmail.start, { ...args, email });
+        .mutation(api.challenge.addEmail._internal_dangerous_start, {
+          ...args,
+          email,
+        });
     for (let i = 0; i < 5; i++) {
       expect(await start("alice@example.com")).toMatchObject({ success: true });
     }
@@ -316,7 +322,10 @@ describe("challenge.addEmail.start", () => {
     const start = (ip: string, email: string) =>
       t
         .withRequestMetadata({ ip })
-        .mutation(api.challenge.addEmail.start, { ...args, email });
+        .mutation(api.challenge.addEmail._internal_dangerous_start, {
+          ...args,
+          email,
+        });
     for (let i = 0; i < 20; i++) {
       expect(await start(IP, `user${i}@example.com`)).toMatchObject({
         success: true,
@@ -337,7 +346,7 @@ describe("challenge.addEmail.start", () => {
     const args = await startArgs(t);
     await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, {
+      .mutation(api.challenge.addEmail._internal_dangerous_start, {
         ...args,
         url: `${URL}?flow=signUp`,
       });
@@ -354,7 +363,7 @@ describe("challenge.addEmail.start", () => {
     const args = await startArgs(t);
     await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, args);
+      .mutation(api.challenge.addEmail._internal_dangerous_start, args);
     const [sent] = await sentEmails(t);
     expect(sent.from).toBe(args.emailSender.from);
   });
@@ -374,7 +383,10 @@ describe("challenge.addEmail.check", () => {
     }
     const start = await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, await startArgs(t));
+      .mutation(
+        api.challenge.addEmail._internal_dangerous_start,
+        await startArgs(t),
+      );
     expect(start).toMatchObject({ success: true });
   });
 
@@ -393,7 +405,7 @@ describe("challenge.addEmail.check", () => {
     for (let i = 0; i < 5; i++) {
       await t
         .withRequestMetadata({ ip: IP })
-        .mutation(api.challenge.addEmail.start, args);
+        .mutation(api.challenge.addEmail._internal_dangerous_start, args);
     }
     expect(await check("alice@example.com")).toMatchObject({
       error: "RATE_LIMITED",
@@ -417,7 +429,10 @@ describe("the cleanup loop", () => {
 
     await t
       .withRequestMetadata({ ip: IP })
-      .mutation(api.challenge.addEmail.start, await startArgs(t));
+      .mutation(
+        api.challenge.addEmail._internal_dangerous_start,
+        await startArgs(t),
+      );
     // The loop runs in scheduled functions; let them all complete.
     await t.finishAllScheduledFunctions(() => vi.runAllTimers());
 

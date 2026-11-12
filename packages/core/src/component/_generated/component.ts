@@ -31,13 +31,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { userId: string } | null,
         Name
       >;
-      getUserIdByAccount: FunctionReference<
-        "query",
-        "internal",
-        { provider: string; providerAccountId: string },
-        string | null,
-        Name
-      >;
       listSessions: FunctionReference<
         "query",
         "internal",
@@ -47,6 +40,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           lastRefreshedAt: number;
           sessionId: string;
         }>,
+        Name
+      >;
+      markUserIdCreated: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        null,
         Name
       >;
       refresh: FunctionReference<
@@ -82,14 +82,12 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
+          claims: { method: string; profile: any };
+          componentPath: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
           sessionMaxLifetimeSeconds: number;
+          userId: string;
         },
         {
           accessToken: string;
@@ -111,11 +109,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         {
           accessTokenTtlSeconds: number;
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
+          claims: { method: string; profile: any };
+          componentPath: string;
           createUserHandle: string;
           onSignInHandle?: string;
           refreshInactivityTimeoutSeconds: number;
@@ -132,14 +127,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
       signUpWithoutSession: FunctionReference<
         "mutation",
         "internal",
-        {
-          claims: {
-            profile: any;
-            providerAccountId: string;
-            providerName: string;
-          };
-          createUserHandle: string;
-        },
+        { claims: { method: string; profile: any }; createUserHandle: string },
         { userId: string },
         Name
       >;

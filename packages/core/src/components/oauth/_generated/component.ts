@@ -24,6 +24,13 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     provider: {
+      _internal_dangerous_createAccount: FunctionReference<
+        "mutation",
+        "internal",
+        { providerAccountId: string; userId: string },
+        null,
+        Name
+      >;
       claimTicket: FunctionReference<
         "mutation",
         "internal",
@@ -44,6 +51,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           userInfoEndpoints?: Record<string, string>;
         },
         { callbackUrl: string; clientId: string },
+        Name
+      >;
+      getUserIdByAccount: FunctionReference<
+        "query",
+        "internal",
+        { providerAccountId: string },
+        string | null,
         Name
       >;
     };

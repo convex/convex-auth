@@ -1,18 +1,17 @@
 import { internalMutation } from "./_generated/server.ts";
 import { Infer, v } from "convex/values";
 
-const vProvider = v.object({
+const vMethod = v.object({
   name: v.string(),
-  accountId: v.string(),
   profile: v.any(),
 });
 
 const vCreateUser = v.object({
-  provider: vProvider,
+  method: vMethod,
 });
 
 const vOnSignIn = v.object({
-  provider: vProvider,
+  method: vMethod,
   userId: v.string(),
 });
 

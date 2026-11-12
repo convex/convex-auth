@@ -187,7 +187,7 @@ export function setupOauth<
     }
   }
 
-  const { authMutation } = core.bindProvider({
+  const { authMutation } = core.bindMethod({
     name: providerName,
     createUser: callbacks.createUser,
     onSignIn: callbacks.onSignIn,
@@ -218,11 +218,19 @@ export function setupOauth<
   const completeSignIn = buildCompleteSignIn<Profile, TicketPayload<UserInfo>>({
     providerName,
     authMutation,
+    component: options.component,
     claimTicket: (ctx, args) =>
       ctx.runMutation(options.component.provider.claimTicket, {
         providerName,
         ...args,
       }),
+    getUserIdByAccount: (ctx, args) =>
+      ctx.runQuery(options.component.provider.getUserIdByAccount, args),
+    createAccount: (ctx, args) =>
+      ctx.runMutation(
+        options.component.provider._internal_dangerous_createAccount,
+        args,
+      ),
     profile: (payload) =>
       catalog.profile(payload.claims, payload.userInfoResponses),
   });
