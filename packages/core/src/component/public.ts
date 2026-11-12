@@ -209,7 +209,7 @@ async function notifySignIn(
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
- * `componentPath` is the path of the component that verified the user, for
+ * `componentPath` is the path of the component that authenticated the user, for
  * example `"authPassword"`. The session records it as its `component`.
  *
  * See {@link _internal_dangerous_signIn} for the return-visit path.
@@ -257,7 +257,7 @@ export const _internal_dangerous_signUp = mutation({
  * app code must not call it: only the sign-in methods of this package do,
  * right after they verify the user.
  *
- * `componentPath` is the path of the component that verified the user, for
+ * `componentPath` is the path of the component that authenticated the user, for
  * example `"authPassword"`. The session records it as its `component`.
  *
  * The JWT accessToken in the return value is signed by the deployment, with

@@ -352,7 +352,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
         profile: Profile;
-        verifiedBy: object;
+        authenticatedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(
           component.public._internal_dangerous_signUp,
@@ -361,7 +361,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
               method: name,
               profile: args.profile,
             },
-            componentPath: componentPathOf(args.verifiedBy),
+            componentPath: componentPathOf(args.authenticatedBy),
             createUserHandle: await createFunctionHandle(createUser),
             onSignInHandle: await onSignInHandle(),
             ...ttl,
@@ -371,7 +371,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
-        verifiedBy: object;
+        authenticatedBy: object;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(
           component.public._internal_dangerous_signIn,
@@ -380,7 +380,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
               method: name,
               profile: args.profile,
             },
-            componentPath: componentPathOf(args.verifiedBy),
+            componentPath: componentPathOf(args.authenticatedBy),
             userId: args.userId,
             onSignInHandle: await onSignInHandle(),
             ...ttl,

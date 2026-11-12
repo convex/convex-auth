@@ -48,7 +48,7 @@ const core = setupConvexAuth({ component: components.auth });
  * The component that verifies the users of the test method. The sessions
  * record its path.
  */
-const verifiedBy = (componentsGeneric() as unknown as { authTest: object })
+const authenticatedBy = (componentsGeneric() as unknown as { authTest: object })
   .authTest;
 
 const { authMutation } = core.bindMethod({
@@ -67,7 +67,7 @@ const signUp = authMutation({
   handler: async (ctx, { accountId }) =>
     await ctx.convexAuth.completeSignUp({
       profile: { id: accountId },
-      verifiedBy,
+      authenticatedBy,
     }),
 });
 
@@ -79,7 +79,7 @@ const signIn = authMutation({
     await ctx.convexAuth.completeSignIn({
       userId: accountId,
       profile: {},
-      verifiedBy,
+      authenticatedBy,
     }),
 });
 
@@ -122,7 +122,7 @@ const signInShortTtl = shortTtlAuthMutation({
     await ctx.convexAuth.completeSignIn({
       userId: accountId,
       profile: {},
-      verifiedBy,
+      authenticatedBy,
     }),
 });
 

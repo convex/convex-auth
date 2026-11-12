@@ -324,10 +324,10 @@ export type BoundAuthHelpers<Profile> = {
   completeSignUp(args: {
     profile: Profile;
     /**
-     * The component that verified the user, for example
+     * The component that authenticated the user, for example
      * `components.authPassword`. The session records its path.
      */
-    verifiedBy: object;
+    authenticatedBy: object;
   }): Promise<TokenBundle>;
   /**
    * Exchange a verified *existing* identity for a session.
@@ -344,10 +344,10 @@ export type BoundAuthHelpers<Profile> = {
     userId: string;
     profile: Profile;
     /**
-     * The component that verified the user, for example
+     * The component that authenticated the user, for example
      * `components.authPassword`. The session records its path.
      */
-    verifiedBy: object;
+    authenticatedBy: object;
   }): Promise<TokenBundle>;
   /**
    * Create the app user for a verified identity without a session.

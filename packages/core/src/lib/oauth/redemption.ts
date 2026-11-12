@@ -207,13 +207,13 @@ export function buildCompleteSignIn<
         const tokens = await ctx.convexAuth.completeSignIn({
           userId: existingUserId,
           profile,
-          verifiedBy: options.component,
+          authenticatedBy: options.component,
         });
         return { status: "complete", tokens };
       }
       const tokens = await ctx.convexAuth.completeSignUp({
         profile,
-        verifiedBy: options.component,
+        authenticatedBy: options.component,
       });
       await options.createAccount(ctx, {
         providerAccountId: profile.id,
