@@ -20,6 +20,9 @@ import {
   type GithubUserInfo,
 } from "../../components/github/constants.ts";
 
+/** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
+const METHOD_NAME = "github";
+
 export type { GithubUserInfo };
 
 /**
@@ -124,10 +127,10 @@ export function setupGithub<UsersTable extends string>(
      * args must be declared) and get the functions of this method to export.
      */
     attachUserCallbacks(
-      callbacks: UserCallbacks<"github", GithubProfile, UsersTable>,
+      callbacks: UserCallbacks<typeof METHOD_NAME, GithubProfile, UsersTable>,
     ) {
-      const { authMutation } = core.bindProvider({
-        name: PROVIDER_NAME,
+      const { authMutation } = core.bindMethod({
+        name: METHOD_NAME,
         createUser: callbacks.createUser,
         onSignIn: callbacks.onSignIn,
       });

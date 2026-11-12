@@ -51,7 +51,7 @@ export type AuthMutationBuilder<Profile> = <
 }) => RegisteredMutation<"public", ObjectType<ArgsValidator>, ReturnValue>;
 
 /**
- * The function builders a method gets from {@link AuthCore.bindProvider}.
+ * The function builders a method gets from {@link AuthCore.bindMethod}.
  *
  * Each builds a public Convex function whose handler receives the
  * method-bound helpers on `ctx.convexAuth` alongside the standard ctx.
@@ -129,8 +129,8 @@ export type AuthCore<UsersTable extends string = string> = {
    * Register a sign-in method with the core and get the function builders its
    * implementation uses.
    *
-   * `name` identifies the sign-in method to the app's user callbacks and on
-   * its sessions. Two sign-in methods with one name would be
+   * `name` is the name of the sign-in method. The app's user callbacks get it
+   * as `method.name`. Two sign-in methods with one name would be
    * indistinguishable, so a duplicate name on this core throws.
    *
    * `createUser` is the app's user-creating callback for this method and
@@ -143,10 +143,10 @@ export type AuthCore<UsersTable extends string = string> = {
    *
    * @internal Not public until the API for custom methods is stable.
    */
-  bindProvider<Provider extends string, Profile>(
+  bindMethod<MethodName extends string, Profile>(
     options: {
-      name: Provider;
-    } & UserCallbacks<Provider, Profile, UsersTable>,
+      name: MethodName;
+    } & UserCallbacks<MethodName, Profile, UsersTable>,
   ): MethodBuilders<Profile>;
 };
 
@@ -290,23 +290,22 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   // core.
   const boundMethodNames = new Set<string>();
 
-  const bindProvider = <Provider extends string, Profile>({
+  const bindMethod = <MethodName extends string, Profile>({
     name,
     createUser,
     onSignIn,
   }: {
-    name: Provider;
+    name: MethodName;
   } & UserCallbacks<
-    Provider,
+    MethodName,
     Profile,
     UsersTable
   >): MethodBuilders<Profile> => {
     if (boundMethodNames.has(name)) {
       throw new Error(
         `A sign-in method named "${name}" is already bound to this auth core. ` +
-          `Sign-in method names identify the sign-in method to the app's ` +
-          `callbacks and on sessions, so each sign-in method must have a ` +
-          `unique name.`,
+          `The app's callbacks get the name of the sign-in method as ` +
+          `\`method.name\`, so each sign-in method must have a unique name.`,
       );
     }
     boundMethodNames.add(name);
@@ -359,7 +358,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           component.public._internal_dangerous_signUp,
           {
             claims: {
-              providerName: name,
+              method: name,
               profile: args.profile,
             },
             componentPath: componentPathOf(args.verifiedBy),
@@ -378,7 +377,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           component.public._internal_dangerous_signIn,
           {
             claims: {
-              providerName: name,
+              method: name,
               profile: args.profile,
             },
             componentPath: componentPathOf(args.verifiedBy),
@@ -395,7 +394,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           component.public._internal_dangerous_signUpWithoutSession,
           {
             claims: {
-              providerName: name,
+              method: name,
               profile: args.profile,
             },
             createUserHandle: await createFunctionHandle(createUser),
@@ -451,6 +450,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     signOut,
     refreshSession,
     isAuthenticated,
-    bindProvider,
+    bindMethod,
   };
 }

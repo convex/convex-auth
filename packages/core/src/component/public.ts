@@ -140,8 +140,8 @@ async function createAppUser(
   createUser: CreateUserFunctionHandle,
 ): Promise<string> {
   return await ctx.runMutation(createUser, {
-    provider: {
-      name: claims.providerName,
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
   });
@@ -174,8 +174,8 @@ async function notifySignIn(
 ): Promise<void> {
   if (onSignInHandle === undefined) return;
   await ctx.runMutation(onSignInHandle as OnSignInFunctionHandle, {
-    provider: {
-      name: claims.providerName,
+    method: {
+      name: claims.method,
       profile: claims.profile,
     },
     userId: asUserId(userId),
