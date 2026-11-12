@@ -51,7 +51,7 @@ const RECOVERY_PURPOSE = "convexAuth/emailPassword/recovery";
 
 /**
  * How long a recovery link stays valid. OWASP ASVS v5 6.5.5 requires at most
- * 10 minutes for password-reset flows. TODO: review this value.
+ * 10 minutes for password-reset flows.
  */
 const RECOVERY_TTL_MS = 10 * 60 * 1000;
 
@@ -337,7 +337,7 @@ export function setupEmailPassword<UsersTable extends string>(
   /** The Resend runtime options `lib.sendEmail` requires. */
   const senderRuntimeOptions = () => ({
     apiKey: emailSender.apiKey,
-    // TODO: review these values (and make them configurable).
+    // TODO: make these values configurable.
     initialBackoffMs: 30 * 1000,
     retryAttempts: 5,
   });

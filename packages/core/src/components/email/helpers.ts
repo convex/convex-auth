@@ -17,7 +17,6 @@ import { EmailSenderConfig, landingUrlProblem } from "./validation.ts";
 
 /**
  * How long an `addEmail`, `changeEmail` or `signUp` link stays valid.
- * TODO: review this value.
  */
 export const ADD_EMAIL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -49,7 +48,6 @@ export const CUSTOM_TTL_MAX_MS = 24 * 60 * 60 * 1000; // 24 hours
 // that record an address (`addEmail`, `changeEmail`, `signUp`) share it. Each
 // sign-in uses a lookup, thus this limit is higher than the limits for the
 // challenges.
-// TODO: review these values.
 export const rateLimiter = new RateLimiter(components.rateLimiter, {
   startChallengePerEmail: { kind: "token bucket", rate: 5, period: HOUR },
   startChallengePerIp: { kind: "token bucket", rate: 20, period: HOUR },
