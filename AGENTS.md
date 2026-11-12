@@ -56,7 +56,13 @@ check:doc-examples`). It is not an example to copy.
   components: `server.ts` (Convex functions of the app), `react.tsx` or
   `react.ts` (hooks), and the browser code. A method is published at
   `@convex-dev/auth/methods/<method>/server` and
-  `@convex-dev/auth/methods/<method>/react`. A method whose backend and
+  `@convex-dev/auth/methods/<method>/react`. `username-passkey` also has a
+  `react-custom.tsx`, published at
+  `@convex-dev/auth/methods/username-passkey/react-custom`, whose
+  `createUsernamePasskeyHooks` makes the same hooks on top of passkey
+  ceremonies that the app provides (for example on a React Native passkey
+  library); it does not import the browser ceremony client (`client.ts`) or
+  `@simplewebauthn/browser`. A method whose backend and
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
   runtime can import.

@@ -17,7 +17,7 @@
  * handle every failure through one `userError` switch and never need their
  * own `try`/`catch`.
  *
- * {@link browserCeremonies} bundles them in the {@link PasskeyCeremonies}
+ * {@link browserCeremonies} bundles them in the {@link ResolvedPasskeyCeremonies}
  * shape that the flows and hooks take.
  *
  * @internal
@@ -45,7 +45,7 @@ import {
   pruneAuthenticationResponse,
   pruneRegistrationResponse,
   type PasskeyAuthenticationResult,
-  type PasskeyCeremonies,
+  type ResolvedPasskeyCeremonies,
   type PasskeyClientError,
   type PasskeyRegistrationResult,
 } from "./ceremonies.ts";
@@ -53,7 +53,7 @@ import {
 export {
   foldClientError,
   type PasskeyAuthenticationResult,
-  type PasskeyCeremonies,
+  type ResolvedPasskeyCeremonies,
   type PasskeyClientError,
   type PasskeyClientFailure,
   type PasskeyRegistrationResult,
@@ -265,7 +265,7 @@ const STALENESS_CHECK_DOCUMENT_EVENTS = [
   "focusin",
 ] as const;
 
-/** See {@link PasskeyCeremonies.onResume}. */
+/** See {@link ResolvedPasskeyCeremonies.onResume}. */
 function onPageResume(listener: () => void): () => void {
   for (const event of STALENESS_CHECK_WINDOW_EVENTS) {
     window.addEventListener(event, listener);
@@ -284,7 +284,7 @@ function onPageResume(listener: () => void): () => void {
 }
 
 /** The browser ceremonies, which the hooks of `react.tsx` run. */
-export const browserCeremonies: PasskeyCeremonies = {
+export const browserCeremonies: ResolvedPasskeyCeremonies = {
   isSupported: supportsWebAuthn,
   register,
   authenticate,
