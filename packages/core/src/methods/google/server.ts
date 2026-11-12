@@ -128,7 +128,8 @@ export function setupGoogle<UsersTable extends string>(
         authorizationEndpoint: AUTHORIZATION_ENDPOINT,
         scopes: SCOPES,
         createAuthorizationRequest:
-          options.component.provider.createAuthorizationRequest,
+          options.component.provider
+            ._internal_dangerous_createAuthorizationRequest,
       });
 
       const completeSignIn = buildCompleteSignIn<

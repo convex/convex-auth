@@ -13,9 +13,11 @@ const modules = import.meta.glob("./**/*.ts");
 const CLIENT_ID = "test-client-id";
 const PROVIDER_NAME = "test-provider";
 
-/** Everything `createAuthorizationRequest` takes except the state hash. */
+/** Everything `_internal_dangerous_createAuthorizationRequest` takes except the state hash. */
 type FlowRequest = Omit<
-  FunctionArgs<typeof api.provider.createAuthorizationRequest>,
+  FunctionArgs<
+    typeof api.provider._internal_dangerous_createAuthorizationRequest
+  >,
   "stateHash"
 >;
 
@@ -177,10 +179,13 @@ async function startFlow(
 ): Promise<{ state: string; stateHash: string }> {
   const state = "state-raw-1";
   const stateHash = await sha256Hex(state);
-  await t.mutation(api.provider.createAuthorizationRequest, {
-    ...request,
-    stateHash,
-  });
+  await t.mutation(
+    api.provider._internal_dangerous_createAuthorizationRequest,
+    {
+      ...request,
+      stateHash,
+    },
+  );
   return { state, stateHash };
 }
 

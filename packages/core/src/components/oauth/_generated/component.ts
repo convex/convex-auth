@@ -31,14 +31,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null,
         Name
       >;
-      claimTicket: FunctionReference<
-        "mutation",
-        "internal",
-        { providerName: string; stateHash: string; ticketCodeHash: string },
-        null | { encryptedPayload: string },
-        Name
-      >;
-      createAuthorizationRequest: FunctionReference<
+      _internal_dangerous_createAuthorizationRequest: FunctionReference<
         "mutation",
         "internal",
         {
@@ -51,6 +44,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           userInfoEndpoints?: Record<string, string>;
         },
         { callbackUrl: string; clientId: string },
+        Name
+      >;
+      claimTicket: FunctionReference<
+        "mutation",
+        "internal",
+        { providerName: string; stateHash: string; ticketCodeHash: string },
+        null | { encryptedPayload: string },
         Name
       >;
       getUserIdByAccount: FunctionReference<

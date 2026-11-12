@@ -206,8 +206,9 @@ export type ConvexAuthApi = {
  * authenticate users and the *core* component.
  *
  * After a sign-in method authenticates a user it produces this plain payload;
- * the app forwards it to the core's `signUp` or `signIn`. Sign-in methods
- * never call the core directly, they only know how to produce these claims.
+ * the app forwards it to the core's `_internal_dangerous_signUp` or `_internal_dangerous_signIn`.
+ * Sign-in methods never call the core directly, they only know how to produce
+ * these claims.
  */
 export const vAuthClaims = v.object({
   /**

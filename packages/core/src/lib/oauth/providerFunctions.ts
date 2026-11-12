@@ -52,8 +52,8 @@ type OnlyTheFieldsOf<Doc, Shared> = Shared &
 // account holds.
 
 /**
- * `createAuthorizationRequest` takes the request without the callback URL and
- * the deadline, which the component fills in itself.
+ * `_internal_dangerous_createAuthorizationRequest` takes the request without the
+ * callback URL and the deadline, which the component fills in itself.
  */
 const createRequestArgs = v
   .object(authorizationRequestFields)
@@ -105,7 +105,10 @@ export function buildProviderFunctions<
    */
   clientId: () => string;
 }) {
-  const createAuthorizationRequest = options.mutation({
+  // DANGER: see `_internal_dangerous_createAuthorizationRequest` in
+  // `components/oauth/provider.ts`.
+  // TODO: validate `redirectTo` in the component.
+  const _internal_dangerous_createAuthorizationRequest = options.mutation({
     args: createRequestArgs,
     returns: v.object({ clientId: v.string(), callbackUrl: v.string() }),
     handler: async (ctx, args) => {
@@ -177,7 +180,7 @@ export function buildProviderFunctions<
   });
 
   return {
-    createAuthorizationRequest,
+    _internal_dangerous_createAuthorizationRequest,
     claimAuthorizationRequest,
     createTicket,
     claimTicket,

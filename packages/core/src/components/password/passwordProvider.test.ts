@@ -29,11 +29,14 @@ function setup() {
 describe("setPassword + verifyPassword", () => {
   test("verifies the correct password after setting it", async () => {
     const t = setup();
-    const setResult = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: PASSWORD,
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const setResult = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(setResult).toEqual({ success: true });
     const result = await t.mutation(api.public.verifyPassword, {
       userId: "alice",
@@ -44,7 +47,7 @@ describe("setPassword + verifyPassword", () => {
 
   test("rejects a wrong password", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -71,13 +74,13 @@ describe("setPassword + verifyPassword", () => {
 
   test("upserts: setting a new password replaces the old one", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
     });
     const newPassword = "a whole new password here";
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: newPassword,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -110,11 +113,14 @@ describe("setPassword + verifyPassword", () => {
 describe("password validation (setPassword)", () => {
   test("rejects a too-short password", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "short",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "short",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 8 },
@@ -124,11 +130,14 @@ describe("password validation (setPassword)", () => {
   // The password methods require 10 characters, but the component accepts 8.
   test("accepts a password of 8 characters", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "kY7t-vQ2",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "kY7t-vQ2",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({ success: true });
     expect(
       await t.mutation(api.public.verifyPassword, {
@@ -140,11 +149,14 @@ describe("password validation (setPassword)", () => {
 
   test("rejects a password that is shorter than minimumLength", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "kY7t-vQ2m",
-      minimumLength: 10,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "kY7t-vQ2m",
+        minimumLength: 10,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_TOO_SHORT", minimumLength: 10 },
@@ -159,7 +171,7 @@ describe("password validation (setPassword)", () => {
   ])("throws when minimumLength is %s", async (_, minimumLength) => {
     const t = setup();
     await expect(
-      t.mutation(api.public.setPassword, {
+      t.mutation(api.public._internal_dangerous_setPassword, {
         userId: "alice",
         password: "kY7t-vQ2m",
         minimumLength,
@@ -172,11 +184,14 @@ describe("password validation (setPassword)", () => {
 
   test("rejects a frequent password of 8 characters", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "12345678",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "12345678",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_TOO_COMMON" },
@@ -185,11 +200,14 @@ describe("password validation (setPassword)", () => {
 
   test("rejects a password with leading whitespace", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: " leadingspace123",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: " leadingspace123",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_HAS_SURROUNDING_WHITESPACE" },
@@ -198,11 +216,14 @@ describe("password validation (setPassword)", () => {
 
   test("rejects one of the most frequent passwords", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "password123",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "password123",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_TOO_COMMON" },
@@ -211,11 +232,14 @@ describe("password validation (setPassword)", () => {
 
   test("rejects a frequent password that has a different case", async () => {
     const t = setup();
-    const result = await t.mutation(api.public.setPassword, {
-      userId: "alice",
-      password: "Password123",
-      minimumLength: MIN_PASSWORD_LENGTH,
-    });
+    const result = await t.mutation(
+      api.public._internal_dangerous_setPassword,
+      {
+        userId: "alice",
+        password: "Password123",
+        minimumLength: MIN_PASSWORD_LENGTH,
+      },
+    );
     expect(result).toEqual({
       success: false,
       userError: { error: "PASSWORD_TOO_COMMON" },
@@ -226,7 +250,7 @@ describe("password validation (setPassword)", () => {
 describe("password validation (verifyPassword)", () => {
   test("rejects a too-short password without touching the stored password", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -243,7 +267,7 @@ describe("password validation (verifyPassword)", () => {
 
   test("rejects a too-long password", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -260,7 +284,7 @@ describe("password validation (verifyPassword)", () => {
 
   test("rejects a password with surrounding whitespace", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -276,7 +300,8 @@ describe("password validation (verifyPassword)", () => {
   });
 
   // A user can have a frequent password from before this rule. That user must
-  // keep the possibility to log in. Only `setPassword` rejects such a password.
+  // keep the possibility to log in. Only `_internal_dangerous_setPassword` rejects such
+  // a password.
   test("accepts one of the most frequent passwords", async () => {
     const t = setup();
     const commonPassword = "password123";
@@ -302,7 +327,7 @@ describe("Unicode normalization", () => {
     expect(composed).not.toBe(decomposed);
     expect(composed.normalize("NFC")).toBe(decomposed.normalize("NFC"));
 
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: composed,
       minimumLength: MIN_PASSWORD_LENGTH,
@@ -437,7 +462,7 @@ describe("verifyPassword is lenient about the stored PHC string", () => {
 describe("rate limiting (verifyPassword only)", () => {
   test("returns RATE_LIMITED once the per-user bucket is exhausted", async () => {
     const t = setup();
-    await t.mutation(api.public.setPassword, {
+    await t.mutation(api.public._internal_dangerous_setPassword, {
       userId: "alice",
       password: PASSWORD,
       minimumLength: MIN_PASSWORD_LENGTH,
