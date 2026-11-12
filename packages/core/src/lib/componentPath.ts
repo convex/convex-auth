@@ -15,8 +15,10 @@ const CHILD_COMPONENT_PREFIX = "_reference/childComponent/";
  * Get the path of a component from its reference, for example `"authPassword"`
  * from `components.authPassword`.
  *
- * Give the reference of a component that the app mounts (`app.use`), not the
- * reference of one of its functions.
+ * Give the reference of a component that the app mounts (`app.use`). The
+ * reference only tells that it points inside a mounted component, so this
+ * function cannot refuse the reference of one of its functions:
+ * `components.authPassword.public.signIn` gives `"authPassword/public/signIn"`.
  */
 export function componentPathOf(component: object): string {
   let reference: string | undefined;
@@ -31,8 +33,8 @@ export function componentPathOf(component: object): string {
     reference.length === CHILD_COMPONENT_PREFIX.length
   ) {
     throw new Error(
-      "Expected the reference of a component that the app mounts, for " +
-        "example `components.authPassword`.",
+      "Expected a reference inside a component that the app mounts, such " +
+        "as `components.authPassword`.",
     );
   }
   return reference.slice(CHILD_COMPONENT_PREFIX.length);
