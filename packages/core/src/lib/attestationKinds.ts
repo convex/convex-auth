@@ -28,3 +28,15 @@ export const NEW_USER_ATTESTATION = {
   audience: "convex-auth/attestation/new-user",
   claims: userIdClaims,
 } satisfies AttestationKind;
+
+/**
+ * "User `userId` is signed in to this request." The core signs it in
+ * `attestCurrentUser`, from the identity of the request and the session of
+ * its access token. Components accept it to change the data of the signed-in
+ * user, and only from the core (`CORE_COMPONENT_PATH`). The core does not
+ * create a session from it.
+ */
+export const CURRENT_USER_ATTESTATION = {
+  audience: "convex-auth/attestation/current-user",
+  claims: userIdClaims,
+} satisfies AttestationKind;

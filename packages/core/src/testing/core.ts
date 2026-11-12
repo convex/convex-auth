@@ -30,9 +30,9 @@ export function registerCore(
 }
 /**
  * The identity Convex derives from the access token of a sign-in, for
- * `t.withIdentity`. The token's subject is the session id, and the core looks
- * the user up through the session, so a test signs in for real and calls as
- * that session:
+ * `t.withIdentity`: its subject (the session id) and its issuer (the core).
+ * The core looks the user up through the session, so a test signs in for real
+ * and calls as that session:
  *
  * ```ts
  * const result = await t.mutation(api.auth.signUpWithUsernamePassword, {
@@ -45,12 +45,48 @@ export function registerCore(
  */
 export function sessionIdentity(tokens: { accessToken: string }): {
   subject: string;
+  issuer: string;
 } {
-  const { sub } = decodeJwt(tokens.accessToken);
-  if (typeof sub !== "string") {
-    throw new Error("The access token has no subject.");
+  const { sub, iss } = decodeJwt(tokens.accessToken);
+  if (typeof sub !== "string" || typeof iss !== "string") {
+    throw new Error("The access token has no subject or no issuer.");
   }
-  return { subject: sub };
+  // The core attests the signed-in user only for an identity that it issued.
+  return { subject: sub, issuer: iss };
 }
 
-export default { registerCore, sessionIdentity, schema, modules };
+/**
+ * Authenticate the calls of `t` with the real access token of a session, as a
+ * client that signed in does:
+ *
+ * ```ts
+ * const { tokens } = await t.mutation(api.auth.signInAnonymously, {});
+ * const alice = withSession(t, tokens);
+ * ```
+ *
+ * The core's `attestCurrentUser` verifies the signature of the access token
+ * itself. `t.withIdentity(sessionIdentity(tokens))` sends a token that
+ * convex-test does not sign, thus the functions that need the signed-in user
+ * (for example `completeChangeEmail`) need this helper.
+ *
+ * Requires a version of convex-test with `withAuthToken`.
+ */
+export function withSession<T>(t: T, tokens: { accessToken: string }): T {
+  const withAuthToken = (t as { withAuthToken?: (token: string) => T })
+    .withAuthToken;
+  if (typeof withAuthToken !== "function") {
+    throw new Error(
+      "This version of convex-test cannot authenticate a call with a real " +
+        "access token (`withAuthToken`).",
+    );
+  }
+  return withAuthToken.call(t, tokens.accessToken);
+}
+
+export default {
+  registerCore,
+  sessionIdentity,
+  withSession,
+  schema,
+  modules,
+};

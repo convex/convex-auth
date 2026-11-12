@@ -24,6 +24,13 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      attestCurrentUser: FunctionReference<
+        "mutation",
+        "internal",
+        {},
+        string | null,
+        Name
+      >;
       createSession: FunctionReference<
         "mutation",
         "internal",

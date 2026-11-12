@@ -380,6 +380,9 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           ...ttl,
         });
       },
+      attestCurrentUser: async (): Promise<string | null> => {
+        return await ctx.runMutation(component.public.attestCurrentUser, {});
+      },
       revokeOtherSessions: async (): Promise<number> => {
         const identity = await ctx.auth.getUserIdentity();
         if (identity === null) {

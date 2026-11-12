@@ -20,9 +20,15 @@ import { sha256Hex } from "../lib/crypto.ts";
 import { assertMountedAsCore } from "../lib/coreComponent.ts";
 import { signAttestation, verifyAttestation } from "../lib/attestation.ts";
 import {
+  CURRENT_USER_ATTESTATION,
   NEW_USER_ATTESTATION,
   USER_ATTESTATION,
 } from "../lib/attestationKinds.ts";
+import { verifyDeploymentJwt } from "../lib/attestation.ts";
+import {
+  componentPathFromIssuer,
+  CORE_COMPONENT_PATH,
+} from "../lib/coreComponent.ts";
 import {
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
@@ -280,6 +286,56 @@ export const createSession = mutation({
     await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
     return await issueSession(ctx, userId, componentPath, ttl);
+  },
+});
+
+/**
+ * Attest the user that is signed in to this request
+ * (`CURRENT_USER_ATTESTATION`), or return `null` when no user is signed in.
+ *
+ * The function reads the raw auth token of the request (the request metadata
+ * propagates to the functions that the request calls), and verifies it
+ * itself against the deployment's keys: it must be an unexpired access token
+ * of this core. Thus the function does not depend on the identity of the
+ * caller reaching components. It refuses a session that no longer exists
+ * (signed out or revoked), even while its access token is still valid.
+ *
+ * Components accept the attestation to change the data of the signed-in user,
+ * for example to add an email address. The core does not create a session
+ * from it.
+ */
+export const attestCurrentUser = mutation({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx): Promise<string | null> => {
+    const { authToken } = await ctx.meta.getRequestMetadata();
+    if (authToken === null) return null;
+    let claims: Record<string, unknown>;
+    try {
+      claims = await verifyDeploymentJwt(authToken);
+    } catch {
+      // A token of another identity provider of the app, which the
+      // deployment did not sign.
+      return null;
+    }
+    // Only the access tokens of this core: the deployment also signs the
+    // attestations, and the tokens of other components.
+    if (componentPathFromIssuer(claims.iss) !== CORE_COMPONENT_PATH) {
+      return null;
+    }
+    const audiences = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+    if (!audiences.includes(AUDIENCE)) return null;
+    if (typeof claims.exp !== "number" || Date.now() / 1000 >= claims.exp) {
+      return null;
+    }
+    if (typeof claims.sub !== "string") return null;
+    const sessionId = ctx.db.normalizeId("sessions", claims.sub);
+    if (sessionId === null) return null;
+    const session = await ctx.db.get("sessions", sessionId);
+    if (session === null) return null;
+    return await signAttestation(ctx, CURRENT_USER_ATTESTATION, {
+      userId: session.userId,
+    });
   },
 });
 
