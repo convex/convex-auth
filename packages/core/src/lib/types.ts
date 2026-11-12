@@ -320,7 +320,14 @@ export type BoundAuthHelpers<Profile> = {
    * the sign-in method must record the returned `userId` in its component in
    * the same mutation.
    */
-  completeSignUp(args: { profile: Profile }): Promise<TokenBundle>;
+  completeSignUp(args: {
+    profile: Profile;
+    /**
+     * The component that verified the user, for example
+     * `components.authPassword`. The session records its path.
+     */
+    verifiedBy: object;
+  }): Promise<TokenBundle>;
   /**
    * Exchange a verified *existing* identity for a session.
    *
@@ -335,6 +342,11 @@ export type BoundAuthHelpers<Profile> = {
   completeSignIn(args: {
     userId: string;
     profile: Profile;
+    /**
+     * The component that verified the user, for example
+     * `components.authPassword`. The session records its path.
+     */
+    verifiedBy: object;
   }): Promise<TokenBundle>;
   /**
    * Create the app user for a verified identity without a session.

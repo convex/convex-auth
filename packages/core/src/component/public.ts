@@ -71,14 +71,14 @@ async function mintAccessToken(
 async function issueSession(
   ctx: MutationCtx,
   userId: string,
-  provider: string,
+  component: string,
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
   await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
-    provider,
+    component,
   });
   // Read back for its `_creationTime`, which its max lifetime counts from.
   const session = (await ctx.db.get("sessions", sessionId))!;
@@ -205,11 +205,15 @@ async function notifySignIn(
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
  *
+ * `componentPath` is the path of the component that verified the user, for
+ * example `"authPassword"`. The session records it as its `component`.
+ *
  * See {@link signIn} for the return-visit path.
  */
 export const signUp = mutation({
   args: {
     claims: vAuthClaims,
+    componentPath: v.string(),
     createUserHandle: v.string(),
     onSignInHandle: v.optional(v.string()),
     ...vTtlConfigFields,
@@ -224,7 +228,7 @@ export const signUp = mutation({
     );
     await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
-    return await issueSession(ctx, userId, args.claims.providerName, ttl);
+    return await issueSession(ctx, userId, args.componentPath, ttl);
   },
 });
 
@@ -241,6 +245,9 @@ export const signUp = mutation({
  * that user. Sign-in methods must pass only a user id they looked up after
  * verifying the identity.
  *
+ * `componentPath` is the path of the component that verified the user, for
+ * example `"authPassword"`. The session records it as its `component`.
+ *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
@@ -248,6 +255,7 @@ export const signUp = mutation({
 export const signIn = mutation({
   args: {
     claims: vAuthClaims,
+    componentPath: v.string(),
     userId: v.string(),
     onSignInHandle: v.optional(v.string()),
     ...vTtlConfigFields,
@@ -261,7 +269,7 @@ export const signIn = mutation({
     }
     await recordCreatedUserId(ctx, userId);
     await notifySignIn(ctx, claims, userId, args.onSignInHandle);
-    return await issueSession(ctx, userId, claims.providerName, ttl);
+    return await issueSession(ctx, userId, args.componentPath, ttl);
   },
 });
 

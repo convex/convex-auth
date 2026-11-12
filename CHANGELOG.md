@@ -8,7 +8,6 @@ Schema and sign-in method API breaking changes - see below
   (`authGoogle`, `authGithub`, `authApple`, `authOauth`) and the anonymous
   component now keeps its own `accounts` table, which connects its identities
   to app user ids.
-- replaced `accountId` with `provider` in the core's `sessions` table
 - the anonymous sign-in method no longer generates an id for each user. The
   `provider.accountId` passed to its `createUser` and `onSignIn` is now an
   empty string.

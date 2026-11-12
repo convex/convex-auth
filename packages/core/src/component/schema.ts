@@ -17,9 +17,9 @@ export default defineSchema({
   // refreshes.
   sessions: defineTable({
     userId: v.string(),
-    // The `name` passed to `bindProvider` by the sign-in method that created
-    // this session.
-    provider: v.string(),
+    // The path of the component that verified the user when the session was
+    // created, for example `"authPassword"`.
+    component: v.string(),
   }).index("by_user", ["userId"]),
 
   // Every refresh token a session has handed out and still remembers, by its

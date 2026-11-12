@@ -41,6 +41,8 @@ const ISSUER =
   process.env.CONVEX_CLOUD_URL ?? "https://some-deployment.convex.cloud";
 const AUDIENCE = "convex-auth";
 const CREATE_USER_HANDLE = "testApp:createUser";
+/** The path of the component that verified the users of the tests. */
+const COMPONENT_PATH = "authPassword";
 const ON_SIGN_IN_HANDLE = "testApp:onSignIn";
 const THROWING_ON_SIGN_IN_HANDLE = "testApp:onSignInThatThrows";
 
@@ -89,6 +91,7 @@ async function finishScheduledFunctions(t: ConvexTestApi) {
 async function signUp(t: ConvexTestApi, c: AuthClaims) {
   return await t.mutation(api.public.signUp, {
     claims: c,
+    componentPath: COMPONENT_PATH,
     createUserHandle: CREATE_USER_HANDLE,
     onSignInHandle: ON_SIGN_IN_HANDLE,
     ...DEFAULT_TTL,
@@ -99,6 +102,7 @@ async function signUp(t: ConvexTestApi, c: AuthClaims) {
 async function signIn(t: ConvexTestApi, c: AuthClaims, userId: string) {
   return await t.mutation(api.public.signIn, {
     claims: c,
+    componentPath: COMPONENT_PATH,
     userId,
     onSignInHandle: ON_SIGN_IN_HANDLE,
     ...DEFAULT_TTL,
@@ -165,12 +169,22 @@ async function redeemedHash(t: ConvexTestApi) {
   return redeemed[0]?.hash;
 }
 
-describe("created user IDs", () => {
+describe("sessions and created user IDs", () => {
   async function createdUserIds(t: ConvexTestApi) {
     return (
       await t.run(async (ctx) => ctx.db.query("createdUserIds").collect())
     ).map((row) => row.userId);
   }
+
+  test("a session records the path of the component that verified the user", async () => {
+    const t = setup();
+    const bundle = await signUp(t, claims());
+    const { payload } = await verifyAccessToken(t, bundle.accessToken);
+    const session = await t.run(async (ctx) =>
+      ctx.db.get(payload.sub as Id<"sessions">),
+    );
+    expect(session).toMatchObject({ component: COMPONENT_PATH });
+  });
 
   test("signUp, signIn, and signUpWithoutSession record the user ID once", async () => {
     const t = setup();
@@ -210,9 +224,11 @@ describe("signUp", () => {
     );
     expect(session).not.toBeNull();
     const sessionId = session!._id;
+    // The session holds the user id and the path of the component that
+    // verified the user, and nothing else about the identity.
     expect(session).toMatchObject({
       userId: bundle.userId,
-      provider: "password",
+      component: COMPONENT_PATH,
     });
 
     // The access token verifies against the deployment JWKS with the right
@@ -258,6 +274,7 @@ describe("signUp", () => {
 
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...DEFAULT_TTL,
     });
@@ -274,6 +291,7 @@ describe("signUp", () => {
     await expect(
       t.mutation(api.public.signUp, {
         claims: claims(),
+        componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
         onSignInHandle: THROWING_ON_SIGN_IN_HANDLE,
         ...DEFAULT_TTL,
@@ -302,9 +320,12 @@ describe("signIn", () => {
     const sessions = await t.run(
       async (ctx) => await ctx.db.query("sessions").collect(),
     );
-    expect(sessions.map((session) => session.userId)).toEqual([
-      first.userId,
-      first.userId,
+    expect(sessions).toHaveLength(2);
+    expect(
+      sessions.map(({ userId, component }) => ({ userId, component })),
+    ).toEqual([
+      { userId: first.userId, component: COMPONENT_PATH },
+      { userId: first.userId, component: COMPONENT_PATH },
     ]);
   });
 
@@ -336,6 +357,7 @@ describe("signIn", () => {
     // No `onSignInHandle` is what an app that left `onSignIn` out sends.
     const bundle = await t.mutation(api.public.signIn, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       userId: first.userId,
       ...DEFAULT_TTL,
     });
@@ -572,6 +594,7 @@ describe("refresh", () => {
     });
     let bundle: TokenBundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...lifetimes,
     });
@@ -626,6 +649,7 @@ describe("refresh", () => {
     const lifetimes = ttl({ refreshInactivityTimeoutSeconds: 60 * 60 });
     const bundle: TokenBundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...lifetimes,
     });
@@ -1190,14 +1214,14 @@ describe(`the cap of ${MAX_SESSIONS_PER_USER} sessions per user`, () => {
     const bundles = await signInUntil(t, MAX_SESSIONS_PER_USER);
     // Sessions from before the cap existed; not reachable by signing in.
     await t.run(async (ctx) => {
-      const { provider } = (await ctx.db.get(
+      const { component } = (await ctx.db.get(
         "sessions",
         sessionIdOf(bundles[0]) as Id<"sessions">,
       ))!;
       for (let i = 0; i < 2; i++) {
         const sessionId = await ctx.db.insert("sessions", {
           userId: bundles[0].userId,
-          provider,
+          component,
         });
         await ctx.db.insert("refreshTokens", {
           hash: `extra-${i}`,
@@ -1369,6 +1393,7 @@ describe("token lifetime configuration", () => {
     const before = Date.now();
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...ttl({
         accessTokenTtlSeconds: 300, // 5 minutes
@@ -1388,6 +1413,7 @@ describe("token lifetime configuration", () => {
     const before = Date.now();
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...ttl({
         refreshInactivityTimeoutSeconds: oneHourSeconds,
@@ -1424,6 +1450,7 @@ describe("token lifetime configuration", () => {
     });
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...lifetimes,
     });
@@ -1451,6 +1478,7 @@ describe("token lifetime configuration", () => {
     await expect(
       t.mutation(api.public.signUp, {
         claims: claims(),
+        componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
         ...DEFAULT_TTL,
         accessTokenTtlSeconds: 100,
@@ -1464,6 +1492,7 @@ describe("token lifetime configuration", () => {
     await expect(
       t.mutation(api.public.signUp, {
         claims: claims(),
+        componentPath: COMPONENT_PATH,
         createUserHandle: CREATE_USER_HANDLE,
         ...DEFAULT_TTL,
         refreshInactivityTimeoutSeconds: 2 * 60 * 60,
@@ -1476,6 +1505,7 @@ describe("token lifetime configuration", () => {
     const t = setup();
     const bundle = await t.mutation(api.public.signUp, {
       claims: claims(),
+      componentPath: COMPONENT_PATH,
       createUserHandle: CREATE_USER_HANDLE,
       ...ttl({
         refreshInactivityTimeoutSeconds: 60 * 60,
