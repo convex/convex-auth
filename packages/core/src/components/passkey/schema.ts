@@ -74,8 +74,6 @@ export default defineSchema({
         // at the finish step is a protocol violation.
         // The purpose string is expected to be a constant string identifying
         // a specific flow, and should not contain dynamic information.
-        // TODO(nicolas) Make `startAuthentication` return the challenge ID too
-        //               so that callers can attach additional info if needed
         purpose: v.string(),
         // The user that the challenge is for, if the app knows the user.
         // The field is not set for discoverable-credential ceremonies. In

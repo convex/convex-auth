@@ -190,10 +190,6 @@ export const finishAuthentication = mutation({
     // We need to parse the client data before we validate the signature
     // to extract the challenge it contains, so that we can get the
     // appropriate DB row.
-    // TODO(nicolas) After the wire format change, we’ll be able to avoid
-    //               the manual client data parsing by using the
-    //               callback variant of the `expectedChallenge`
-    //               argument of `verifyAuthenticationResponse`.`
     const clientData = okOrNull(() =>
       decodeClientDataJSON(args.response.response.clientDataJSON),
     );
@@ -329,7 +325,6 @@ export const finishAuthentication = mutation({
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
 
-    // TODO(nicolas) Also record `lastUsedAt` here when the field exists.
     await ctx.db.patch("passkeys", passkey._id, {
       counter: verification.authenticationInfo.newCounter,
     });

@@ -695,7 +695,6 @@ async function verifyAttestation(
  */
 export const listPasskeys = query({
   args: { userId: v.string() },
-  // TODO(nicolas) Also return `lastUsedAt` here when the field exists.
   returns: v.array(
     v.object({
       passkeyId: v.string(),
