@@ -23,7 +23,8 @@ const config: Config = {
   // host there. The pull request previews still serve this site.
   url: "https://auth-v2.previews.convex.dev",
   baseUrl: "/",
-  // TODO: Allow crawlers to index the docs.
+  // Only the pull request previews serve this site. Do not let search engines
+  // index them.
   noIndex: true,
 
   onBrokenLinks: "throw",
