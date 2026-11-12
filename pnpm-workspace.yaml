@@ -17,3 +17,14 @@ minimumReleaseAgeExclude:
   - convex-test
   # Renovate security update: vitest@4.1.11
   - vitest@4.1.11
+
+# `react-native-passkeys` is a dev dependency of `packages/core` for its types
+# only. Its peers `expo` and `react-native` are needed at runtime in an app,
+# not by `tsc`, so mark them optional to keep pnpm from installing them.
+packageExtensions:
+  react-native-passkeys:
+    peerDependenciesMeta:
+      expo:
+        optional: true
+      react-native:
+        optional: true
