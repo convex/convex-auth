@@ -207,8 +207,6 @@ export function setupUsernamePassword<UsersTable extends string>(
               // Unexpected: we pre-validated the password above,
               // so this call should not fail.
               // Throwing so that the transaction doesn’t commit.
-              //
-              // TODO(nicolas) can we improve this?
               throw new Error(
                 "Unexpected error when setting the password: " + userError,
                 { cause: userError },

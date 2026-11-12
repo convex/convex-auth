@@ -154,7 +154,6 @@ export function useSignInWithUsernamePasskey(
  * @param managementApi The app module that re-exports the
  *   passkey-management functions of the method, for example `api.auth`.
  */
-// TODO(nicolas) Change the return value to allow showing a different UI before creating the new passkey
 export function useAddPasskey(managementApi: AddPasskeyApi) {
   return useAddPasskeyImpl(managementApi, browserCeremonies);
 }
