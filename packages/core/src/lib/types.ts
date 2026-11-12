@@ -215,26 +215,11 @@ export const vAuthClaims = v.object({
    * "password" for the `usernamePassword` method.
    */
   providerName: v.string(),
-  /**
-   * Stable, provider-scoped account identifier (e.g. the Google account ID).
-   */
-  providerAccountId: v.string(),
   /** Arbitrary profile data the method learned about the user. */
   profile: v.any(),
 });
 
 export type AuthClaims = Infer<typeof vAuthClaims>;
-
-/**
- * Placeholder `providerAccountId` for sign-in methods whose identity is the
- * app user id. The user id doesn't exist yet at sign-up, so these methods
- * send this placeholder then, and the user id on later sign-ins.
- *
- * @TODO(nicolas) Consider dropping `accountId` from the app callbacks for
- * these sign-in methods, or making it optional, instead of sending a
- * placeholder.
- */
-export const USE_USER_ID_AS_ACCOUNT_ID = "";
 
 /**
  * The type of an app defined user-creating mutation: create the app's user
@@ -262,7 +247,6 @@ export type CreateUserFn<
   {
     provider: {
       name: ProviderName;
-      accountId: string;
       profile: Profile;
     };
   },
@@ -294,7 +278,6 @@ export type OnSignInFn<
   {
     provider: {
       name: ProviderName;
-      accountId: string;
       profile: Profile;
     };
     userId: GenericId<UsersTable>;
@@ -337,10 +320,7 @@ export type BoundAuthHelpers<Profile> = {
    * the sign-in method must record the returned `userId` in its component in
    * the same mutation.
    */
-  completeSignUp(args: {
-    providerAccountId: string;
-    profile: Profile;
-  }): Promise<TokenBundle>;
+  completeSignUp(args: { profile: Profile }): Promise<TokenBundle>;
   /**
    * Exchange a verified *existing* identity for a session.
    *
@@ -354,7 +334,6 @@ export type BoundAuthHelpers<Profile> = {
    */
   completeSignIn(args: {
     userId: string;
-    providerAccountId: string;
     profile: Profile;
   }): Promise<TokenBundle>;
   /**
@@ -366,10 +345,7 @@ export type BoundAuthHelpers<Profile> = {
    * method records the returned `userId` in its own component and signs the
    * user in later with `completeSignIn`.
    */
-  signUpWithoutSession(args: {
-    providerAccountId: string;
-    profile: Profile;
-  }): Promise<{ userId: string }>;
+  signUpWithoutSession(args: { profile: Profile }): Promise<{ userId: string }>;
   /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)

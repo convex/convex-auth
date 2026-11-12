@@ -26,6 +26,11 @@ Schema and sign-in method API breaking changes - see below
 - `completeSignIn` of the sign-in method API (`ctx.convexAuth`) now takes a
   `userId`, which the sign-in method gets from its component. This API isn't
   stable yet: expect its arguments to change again.
+- the user callbacks (`createUser` and `onSignIn`) no longer receive
+  `provider.accountId`: they receive `provider: { name, profile }`. Remove
+  `accountId: v.string()` from their argument validators. For OAuth,
+  `profile.id` is the account ID of the provider. The `ctx.convexAuth`
+  helpers no longer take `providerAccountId`.
 - removed `resolveUserId` from the sign-in method API, and removed the core's
   `getUserIdByAccount`. Each OAuth component has its own
   `getUserIdByAccount`.

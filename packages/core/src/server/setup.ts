@@ -351,13 +351,11 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     // The helpers close over the live ctx.
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
       completeSignUp: async (args: {
-        providerAccountId: string;
         profile: Profile;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signUp, {
           claims: {
             providerName: name,
-            providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
           createUserHandle: await createFunctionHandle(createUser),
@@ -367,13 +365,11 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       },
       completeSignIn: async (args: {
         userId: string;
-        providerAccountId: string;
         profile: Profile;
       }): Promise<TokenBundle> => {
         return await ctx.runMutation(component.public.signIn, {
           claims: {
             providerName: name,
-            providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
           userId: args.userId,
@@ -382,13 +378,11 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         });
       },
       signUpWithoutSession: async (args: {
-        providerAccountId: string;
         profile: Profile;
       }): Promise<{ userId: string }> => {
         return await ctx.runMutation(component.public.signUpWithoutSession, {
           claims: {
             providerName: name,
-            providerAccountId: args.providerAccountId,
             profile: args.profile,
           },
           createUserHandle: await createFunctionHandle(createUser),

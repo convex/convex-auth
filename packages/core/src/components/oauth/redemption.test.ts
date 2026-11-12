@@ -78,18 +78,10 @@ const fakeCore = {
   }): MethodBuilders<Profile> => {
     const record =
       (kind: HelperCall["kind"]) =>
-      async ({
-        userId,
-        providerAccountId,
-        profile,
-      }: {
-        userId?: string;
-        providerAccountId: string;
-        profile: Profile;
-      }) => {
+      async ({ userId, profile }: { userId?: string; profile: Profile }) => {
         helperCalls.push({
           kind,
-          claims: { providerName: name, providerAccountId, profile },
+          claims: { providerName: name, profile },
           ...(userId === undefined ? {} : { userId }),
         });
         if (helperFailure.error !== undefined) {
@@ -304,7 +296,6 @@ describe("completeSignIn", () => {
         kind: "signUp",
         claims: {
           providerName: "acme",
-          providerAccountId: "acme-sub-1",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
       },
@@ -336,7 +327,6 @@ describe("completeSignIn", () => {
         userId: "user-7",
         claims: {
           providerName: "acme",
-          providerAccountId: "acme-sub-1",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
       },
@@ -362,7 +352,6 @@ describe("completeSignIn", () => {
         kind: "signUp",
         claims: {
           providerName: "acmeInfo",
-          providerAccountId: "42",
           profile: { id: "42", login: "octocat" },
         },
       },
