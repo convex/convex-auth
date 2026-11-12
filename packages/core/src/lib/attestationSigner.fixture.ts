@@ -63,6 +63,11 @@ export function registerAttestationSigner(
   }>(componentPath, defineSchema({}), modules);
   const sign = component.signer.sign;
   return {
+    /**
+     * The function reference of the signer, for a test function that signs
+     * inside its own transaction (`ctx.runMutation(signRef, ...)`).
+     */
+    signRef: sign,
     /** Sign a token with any claims. */
     signJwt: async (
       claims: Record<string, unknown>,

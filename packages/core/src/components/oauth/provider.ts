@@ -3,6 +3,7 @@ import { env, internalMutation, mutation, query } from "./_generated/server.ts";
 import type { Doc } from "./_generated/dataModel.ts";
 import * as dbHelpers from "../../lib/oauth/dbHelpers.ts";
 import { accountFields } from "../../lib/oauth/schema.ts";
+import { providerConfig } from "./config.ts";
 
 /**
  * Record an in-flight authorization request. Called by the app-side
@@ -18,9 +19,6 @@ export const createAuthorizationRequest = mutation({
     stateHash: v.string(),
     redirectTo: v.string(),
     codeVerifier: v.string(),
-    tokenEndpoint: v.string(),
-    userInfoEndpoints: v.optional(v.record(v.string(), v.string())),
-    issuers: v.optional(v.array(v.string())),
   },
   returns: v.object({
     clientId: v.string(),
@@ -58,9 +56,6 @@ export const claimAuthorizationRequest = internalMutation({
       redirectTo: v.string(),
       callbackUrl: v.string(),
       codeVerifier: v.string(),
-      tokenEndpoint: v.string(),
-      userInfoEndpoints: v.optional(v.record(v.string(), v.string())),
-      issuers: v.optional(v.array(v.string())),
     }),
   ),
   handler: async (ctx, args) => {
@@ -81,9 +76,6 @@ export const claimAuthorizationRequest = internalMutation({
       redirectTo: doc.redirectTo,
       callbackUrl: doc.callbackUrl,
       codeVerifier: doc.codeVerifier,
-      tokenEndpoint: doc.tokenEndpoint,
-      userInfoEndpoints: doc.userInfoEndpoints,
-      issuers: doc.issuers,
     };
   },
 });
@@ -129,6 +121,55 @@ export const claimTicket = mutation({
       stateHash: args.stateHash,
       match: (ticket) => ticket.providerName === args.providerName,
     }),
+});
+
+const redeemTicketResult = v.union(
+  v.null(),
+  v.object({
+    kind: v.literal("existing"),
+    payload: v.string(),
+    providerAccountId: v.string(),
+    attestation: v.string(),
+  }),
+  v.object({
+    kind: v.literal("new"),
+    payload: v.string(),
+    providerAccountId: v.string(),
+  }),
+);
+
+/**
+ * Redeem a ticket: claim it, derive the provider account id from the
+ * identity that the provider attested (with `ACCOUNT_ID_FIELD`), and attest
+ * the user of the account. See `dbHelpers.redeemTicket`. The provider name
+ * must match the stored ticket, like for `claimTicket`.
+ */
+export const redeemTicket = mutation({
+  args: {
+    providerName: v.string(),
+    ticketCode: v.string(),
+    state: v.string(),
+  },
+  returns: redeemTicketResult,
+  handler: async (ctx, args) =>
+    await dbHelpers.redeemTicket<Doc<"tickets">, Doc<"accounts">>(ctx, {
+      ticketCode: args.ticketCode,
+      state: args.state,
+      // Read the settings only for a ticket that redeems.
+      accountId: (payload) => providerConfig().accountId(payload),
+      match: (ticket) => ticket.providerName === args.providerName,
+    }),
+});
+
+/**
+ * Connect the identity of a redeemed ticket to a new user, and attest the
+ * user. See `dbHelpers.linkAccount`.
+ */
+export const linkAccount = mutation({
+  args: { ticketCode: v.string(), newUser: v.string() },
+  returns: v.object({ attestation: v.string() }),
+  handler: async (ctx, args) =>
+    await dbHelpers.linkAccount<Doc<"tickets">, Doc<"accounts">>(ctx, args),
 });
 
 /**

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as config from "../config.js";
 import type * as http from "../http.js";
 import type * as provider from "../provider.js";
 
@@ -19,6 +20,7 @@ import type {
 import { anyApi, componentsGeneric } from "convex/server";
 
 const fullApi: ApiFromModules<{
+  config: typeof config;
   http: typeof http;
   provider: typeof provider;
 }> = anyApi as any;

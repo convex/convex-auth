@@ -37,8 +37,6 @@ const options = {
 /** An OIDC catalog that asks for scopes (like Google). */
 const scopedCatalog = {
   authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-  tokenEndpoint: "https://provider.example/token",
-  issuer: "https://provider.example",
   scopes: ["openid", "email"],
   profile: () => ({ id: "account-1" }),
 };
@@ -46,7 +44,6 @@ const scopedCatalog = {
 /** A catalog that asks for no scopes. */
 const bareCatalog = {
   authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-  tokenEndpoint: "https://provider.example/token",
   scopes: [],
   profile: () => ({ id: "account-1" }),
 };
@@ -54,7 +51,6 @@ const bareCatalog = {
 /** A catalog whose provider delivers the callback with a POST. */
 const formPostCatalog = {
   authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-  tokenEndpoint: "https://provider.example/token",
   scopes: [],
   callbackMethod: "POST",
   profile: () => ({ id: "account-1" }),

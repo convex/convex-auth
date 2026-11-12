@@ -13,11 +13,19 @@ const modules = import.meta.glob("./**/*.ts");
 const CLIENT_ID = "test-client-id";
 const PROVIDER_NAME = "test-provider";
 
-/** Everything `createAuthorizationRequest` takes except the state hash. */
+/**
+ * Everything `createAuthorizationRequest` takes except the state hash, and
+ * the provider settings that {@link startFlow} puts in the env of the
+ * component.
+ */
 type FlowRequest = Omit<
   FunctionArgs<typeof api.provider.createAuthorizationRequest>,
   "stateHash"
->;
+> & {
+  tokenEndpoint: string;
+  issuers?: string[];
+  userInfoEndpoints?: Record<string, string>;
+};
 
 /**
  * The component never branches on which provider it serves, so no fixture
@@ -177,8 +185,16 @@ async function startFlow(
 ): Promise<{ state: string; stateHash: string }> {
   const state = "state-raw-1";
   const stateHash = await sha256Hex(state);
+  const { tokenEndpoint, issuers, userInfoEndpoints, ...args } = request;
+  // The component reads the provider settings from its env.
+  vi.stubEnv("TOKEN_ENDPOINT", tokenEndpoint);
+  vi.stubEnv("ISSUERS", issuers?.join(",") ?? "");
+  vi.stubEnv(
+    "USERINFO_ENDPOINTS",
+    userInfoEndpoints === undefined ? "" : JSON.stringify(userInfoEndpoints),
+  );
   await t.mutation(api.provider.createAuthorizationRequest, {
-    ...request,
+    ...args,
     stateHash,
   });
   return { state, stateHash };

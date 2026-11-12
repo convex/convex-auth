@@ -11,18 +11,11 @@ export default defineSchema({
     ...authorizationRequestFields,
     /** Provider the request was issued for, e.g. "acme". */
     providerName: v.string(),
-    /** The provider's token endpoint URL. */
-    tokenEndpoint: v.string(),
-    /**
-     * Profile endpoints URLs to fetch with the access token after
-     * the exchange, keyed by the name the app's `profile` mapping receives
-     * each response under.
-     */
+    // Older versions stored the endpoints of the provider on the request.
+    // The component now reads them from its env. The fields stay optional,
+    // thus requests that exist during an upgrade keep the schema valid.
+    tokenEndpoint: v.optional(v.string()),
     userInfoEndpoints: v.optional(v.record(v.string(), v.string())),
-    /**
-     * Accepted `iss` (the OIDC issuer claim) values for the provider's
-     * id_tokens, copied from app-side config. Absent for non-oidc providers.
-     */
     issuers: v.optional(v.array(v.string())),
   }).index("stateHash", ["stateHash"]),
 

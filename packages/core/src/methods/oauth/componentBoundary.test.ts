@@ -52,7 +52,6 @@ const acme = setupOauth(
   "acme",
   {
     authorizationEndpoint: "https://provider.example/authorize",
-    tokenEndpoint: "https://provider.example/token",
     scopes: [],
     profile: () => ({ id: "account-1" }),
   },

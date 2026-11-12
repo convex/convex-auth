@@ -7,12 +7,11 @@ import {
 import { setupOauth, type OauthCatalog, type OauthOptions } from "./server.ts";
 
 /**
- * A minimal plain-OAuth catalog: no issuer and no openid scope. Tests
+ * A minimal plain-OAuth catalog: no openid scope. Tests
  * override individual fields to exercise each validation rule.
  */
 const minimalCatalog: OauthCatalog = {
   authorizationEndpoint: "https://provider.example/authorize",
-  tokenEndpoint: "https://provider.example/token",
   scopes: [],
   profile: () => ({ id: "account-1" }),
 };
@@ -74,32 +73,12 @@ describe("setupOauth validation", () => {
     );
   });
 
-  test("an openid catalog scope without a catalog issuer is rejected", () => {
-    expect(() => setup({}, { ...minimalCatalog, scopes: ["openid"] })).toThrow(
-      /sets no issuer/,
-    );
-  });
-
   describe.each([
     {
       field: "authorizationEndpoint",
       withEndpoint: (endpoint: string): OauthCatalog => ({
         ...minimalCatalog,
         authorizationEndpoint: endpoint,
-      }),
-    },
-    {
-      field: "tokenEndpoint",
-      withEndpoint: (endpoint: string): OauthCatalog => ({
-        ...minimalCatalog,
-        tokenEndpoint: endpoint,
-      }),
-    },
-    {
-      field: "userInfoEndpoints.user",
-      withEndpoint: (endpoint: string): OauthCatalog => ({
-        ...minimalCatalog,
-        userInfoEndpoints: { user: endpoint },
       }),
     },
   ])("catalog $field", ({ field, withEndpoint }) => {

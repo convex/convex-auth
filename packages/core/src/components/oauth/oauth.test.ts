@@ -14,7 +14,6 @@ const modules = import.meta.glob("./**/*.ts");
 // The component never branches on which provider it serves, so the fixtures
 // name none.
 const PROVIDER_NAME = "test-provider";
-const TOKEN_ENDPOINT = "https://provider.example.com/token";
 
 function setup() {
   vi.stubEnv("CLIENT_ID", "test-client-id");
@@ -33,7 +32,6 @@ const requestArgs = {
   stateHash: "0".repeat(64),
   redirectTo: "https://app.example.com/after",
   codeVerifier: "verifier-1",
-  tokenEndpoint: TOKEN_ENDPOINT,
 };
 
 afterEach(() => {
@@ -80,7 +78,6 @@ describe("oauth", () => {
       redirectTo: "https://app.example.com/after",
       callbackUrl: "https://test.convex.site/oauth/test-provider/callback",
       codeVerifier: "verifier-1",
-      tokenEndpoint: TOKEN_ENDPOINT,
     });
     const second = await t.mutation(
       internal.provider.claimAuthorizationRequest,

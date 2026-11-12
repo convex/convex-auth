@@ -11,7 +11,7 @@ import type { ComponentApi } from "../../components/oauth/_generated/component.t
 import { buildStartSignIn } from "../../lib/oauth/authorize.ts";
 import type { CallbackMethod } from "../../lib/oauth/http.ts";
 import {
-  buildCompleteSignIn,
+  buildAttestedCompleteSignIn,
   parseUrl,
   validateAllowedRedirectOrigins,
   type OidcClaims,
@@ -21,17 +21,18 @@ import {
 export type { OidcClaims };
 
 /**
- * Map what the provider attested about the user to the account identity used
- * at redemption. `claims` holds the id_token claims (`undefined` for
+ * Map what the provider attested about the user to the profile that the app's
+ * callbacks receive. `claims` holds the id_token claims (`undefined` for
  * non-OIDC providers). `userInfoResponses` holds the userinfo responses
- * keyed as configured (`undefined` unless the catalog sets
- * `userInfoEndpoints`). `id` becomes the provider account id.
+ * keyed as configured (`undefined` unless the component sets
+ * `USERINFO_ENDPOINTS`). `id` must be the account id that the component
+ * reads with its `ACCOUNT_ID_FIELD`; redemption throws when they differ.
  *
  * `Profile` is the exact shape the mapping emits, which is what the app's
  * create-or-update-user callback receives.
  *
  * `UserInfo` is the catalog's declared shape for the userinfo responses,
- * keyed like `userInfoEndpoints`. It types what the provider is trusted to
+ * keyed like `USERINFO_ENDPOINTS`. It types what the provider is trusted to
  * return. The responses are provider-attested JSON and are not validated
  * against it at runtime.
  */
@@ -46,8 +47,13 @@ export type OauthProfile<
 /**
  * Provider-defined config for interacting with an individual OAuth provider.
  *
- * `UserInfo` declares the shape of the userinfo responses, tying
- * `userInfoEndpoints` keys to what `profile` receives (see
+ * The token endpoint, the issuers, the userinfo endpoints, and the field of
+ * the account id are not here: they are in the env of the oauth component
+ * instance (see `components/oauth/convex.config.ts`), thus the code of the
+ * app cannot change them when it calls the component.
+ *
+ * `UserInfo` declares the shape of the userinfo responses, keyed like the
+ * `USERINFO_ENDPOINTS` of the component, which `profile` receives (see
  * {@link OauthProfile}).
  */
 export type OauthCatalog<
@@ -59,32 +65,6 @@ export type OauthCatalog<
    * `https://accounts.google.com/o/oauth2/v2/auth`.
    */
   authorizationEndpoint: string;
-  /**
-   * The provider's token endpoint (a full URL), e.g. Google's
-   * `https://oauth2.googleapis.com/token`.
-   */
-  tokenEndpoint: string;
-  /**
-   * Expected `iss` (the OIDC issuer claim) of the provider's id_tokens, e.g.
-   * Google's `https://accounts.google.com`. Some providers document more than
-   * one form (Google also uses `accounts.google.com`); an array accepts any
-   * of them. Present for OIDC providers; absent for plain-OAuth providers
-   * (e.g., GitHub), where identity comes from userinfo.
-   *
-   * All values must name the same issuing authority (aliases, or an issuer
-   * URL migration). Multiple values should only be used when a single provider
-   * has multiple potential issuer values, but is guaranteed to provide the same
-   * sub for a given account. Multiple issuers that use different `sub` values
-   * can lead to users being logged into the wrong account.
-   */
-  issuer?: string | string[];
-  /**
-   * Endpoints (full URLs) the callback fetches with the access token (GET
-   * with a bearer token), keyed by the name the `profile` mapping reads
-   * each response under. Present for providers whose identity comes from
-   * userinfo (GitHub). The keys must match `UserInfo`'s.
-   */
-  userInfoEndpoints?: { [K in keyof UserInfo & string]: string };
   /** Scopes to request. */
   scopes: string[];
   /**
@@ -148,30 +128,11 @@ export function setupOauth<
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
   );
-  const issuers =
-    catalog.issuer === undefined
-      ? undefined
-      : Array.isArray(catalog.issuer)
-        ? catalog.issuer
-        : [catalog.issuer];
-  // Per OIDC, requesting the `openid` scope makes the provider return an
-  // id_token, which must be validated against an expected issuer.
-  if (catalog.scopes.includes("openid") && (issuers?.length ?? 0) === 0) {
-    throw new Error(
-      `Provider "${providerName}" requests the "openid" scope, so the provider will return an id_token, but its catalog sets no issuer to validate it against`,
-    );
-  }
-  // Catalog endpoints must use https. Plain http is allowed on a loopback
-  // host for local testing.
+  // The authorization endpoint must use https. Plain http is allowed on a
+  // loopback host for local testing. The component checks the other
+  // endpoints, which come from its env.
   const endpoints: [string, string][] = [
     ["authorizationEndpoint", catalog.authorizationEndpoint],
-    ["tokenEndpoint", catalog.tokenEndpoint],
-    ...Object.entries(catalog.userInfoEndpoints ?? {}).map(
-      ([key, endpoint]): [string, string] => [
-        `userInfoEndpoints.${key}`,
-        endpoint,
-      ],
-    ),
   ];
   for (const [field, endpoint] of endpoints) {
     const url = parseUrl(endpoint);
@@ -205,9 +166,6 @@ export function setupOauth<
         stateHash: args.stateHash,
         redirectTo: args.redirectTo,
         codeVerifier: args.codeVerifier,
-        tokenEndpoint: catalog.tokenEndpoint,
-        userInfoEndpoints: catalog.userInfoEndpoints,
-        issuers,
       }),
   });
 
@@ -215,19 +173,19 @@ export function setupOauth<
    * Complete an OAuth sign-in by redeeming the one-time `code` from the
    * callback redirect together with the state held since `startSignIn`.
    */
-  const completeSignIn = buildCompleteSignIn<Profile, TicketPayload<UserInfo>>({
+  const completeSignIn = buildAttestedCompleteSignIn<
+    Profile,
+    TicketPayload<UserInfo>
+  >({
     providerName,
     authMutation,
-    component: options.component,
-    claimTicket: (ctx, args) =>
-      ctx.runMutation(options.component.provider.claimTicket, {
+    redeemTicket: (ctx, args) =>
+      ctx.runMutation(options.component.provider.redeemTicket, {
         providerName,
         ...args,
       }),
-    getUserIdByAccount: (ctx, args) =>
-      ctx.runQuery(options.component.provider.getUserIdByAccount, args),
-    createAccount: (ctx, args) =>
-      ctx.runMutation(options.component.provider.createAccount, args),
+    linkAccount: (ctx, args) =>
+      ctx.runMutation(options.component.provider.linkAccount, args),
     profile: (payload) =>
       catalog.profile(payload.claims, payload.userInfoResponses),
   });

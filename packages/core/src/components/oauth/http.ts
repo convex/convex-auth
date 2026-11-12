@@ -8,13 +8,11 @@ import { internal } from "./_generated/api.ts";
 import { env } from "./_generated/server.ts";
 import type { ClaimedRequest } from "../../lib/oauth/callback.ts";
 import { buildCallbackRouter } from "../../lib/oauth/http.ts";
+import { providerConfig } from "./config.ts";
 
 /** What this component's claimed authorization request has, past the basics. */
 type CustomProviderRequest = ClaimedRequest & {
   providerName: string;
-  tokenEndpoint: string;
-  userInfoEndpoints?: Record<string, string>;
-  issuers?: string[];
 };
 
 const http: HttpRouter = buildCallbackRouter<CustomProviderRequest>({
@@ -27,15 +25,18 @@ const http: HttpRouter = buildCallbackRouter<CustomProviderRequest>({
       stateHash: request.stateHash,
       ...ticket,
     }),
-  // The endpoints come from the app's catalog, which saved them on the request.
-  exchangeConfig: (request) => ({
-    providerName: request.providerName,
-    tokenEndpoint: request.tokenEndpoint,
-    clientId: env.CLIENT_ID,
-    clientSecret: () => env.CLIENT_SECRET,
-    issuers: request.issuers,
-    userInfoEndpoints: request.userInfoEndpoints,
-  }),
+  // The endpoints come from the env of the component instance.
+  exchangeConfig: (request) => {
+    const config = providerConfig();
+    return {
+      providerName: request.providerName,
+      tokenEndpoint: config.tokenEndpoint,
+      clientId: env.CLIENT_ID,
+      clientSecret: () => env.CLIENT_SECRET,
+      issuers: config.issuers,
+      userInfoEndpoints: config.userInfoEndpoints,
+    };
+  },
 });
 
 export default http;
