@@ -70,7 +70,8 @@ export function normalizeDiscordProfile(
   if (typeof user.id !== "string" || !/^[0-9]+$/.test(user.id)) {
     throw new Error("Discord userinfo `user` entry is missing a valid id");
   }
-  const email = user.email ?? undefined;
+  // `||` rather than `??`, so an empty email counts as no email.
+  const email = user.email || undefined;
   return {
     id: user.id,
     username: user.username,

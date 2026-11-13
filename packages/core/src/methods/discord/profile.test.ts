@@ -95,7 +95,7 @@ describe("normalizeDiscordProfile", () => {
   });
 
   test("leaves the email out when there is none", () => {
-    for (const email of [undefined, null]) {
+    for (const email of [undefined, null, ""]) {
       const profile = normalize({
         id: ID,
         username: "nelly",
