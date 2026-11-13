@@ -14,9 +14,31 @@ describe("normalizeGoogleProfile", () => {
       id: "123",
       email: "user@example.com",
       emailVerified: true,
+      hostedDomain: undefined,
       name: "A User",
       picture: "https://example.com/avatar.png",
     });
+  });
+
+  test("carries the Workspace domain of a Workspace account", () => {
+    const profile = normalizeGoogleProfile({
+      sub: "123",
+      email: "teacher@school.example",
+      email_verified: true,
+      hd: "school.example",
+    });
+    expect(profile.hostedDomain).toBe("school.example");
+  });
+
+  test("leaves the domain out for a personal account and for a malformed claim", () => {
+    expect(
+      normalizeGoogleProfile({ sub: "123", email: "user@gmail.com" })
+        .hostedDomain,
+    ).toBeUndefined();
+    expect(
+      normalizeGoogleProfile({ sub: "123", hd: ["school.example"] })
+        .hostedDomain,
+    ).toBeUndefined();
   });
 
   test("treats an absent email_verified claim as unverified", () => {
