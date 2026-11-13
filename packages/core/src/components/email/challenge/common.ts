@@ -69,13 +69,25 @@
  * stays. A challenge of another kind or purpose throws, because it is an
  * application bug and not a user error.
  *
+ * A challenge can send a short code that the person types instead of a link
+ * (`createCodeChallengeAndSendEmail`). The two secrets work the same way, but
+ * a short code can be guessed, thus the row counts the wrong codes in
+ * `attemptsLeft`, and the wrong code that uses the last attempt deletes the
+ * row. Only `checkCodeChallenge` and `claimCodeChallenge` complete such a
+ * challenge: they run in a mutation, which commits the count. The functions
+ * for links refuse it, because a query could try codes without a count.
+ *
  * @module
  */
 
 import { Infer, v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server.ts";
 import type { Doc, Id } from "../_generated/dataModel.ts";
-import { generateRandomToken, sha256Hex } from "../../../lib/crypto.ts";
+import {
+  generateNumericCode,
+  generateRandomToken,
+  sha256Hex,
+} from "../../../lib/crypto.ts";
 import { scheduleChallengeCleanup } from "../cleanup.ts";
 import {
   rateLimiter,
@@ -83,6 +95,8 @@ import {
   emailByNormalizedEmail,
   buildLink,
   sendChallengeEmail,
+  sendCodeEmail,
+  CODE_ATTEMPTS,
   type ChallengeEmailCopy,
 } from "../helpers.ts";
 import {
@@ -97,6 +111,7 @@ import {
   type StartChallengeUserError,
   type StartFreeAddressUserError,
   type CompleteChallengeUserError,
+  type CompleteCodeChallengeUserError,
   type WrongUserUserError,
   wrongUserUserError,
 } from "../validation.ts";
@@ -182,8 +197,8 @@ export type ChallengeOfKind<Kind extends ChallengePurpose["kind"]> =
 /**
  * The result of `findClaimableChallenge` and `claimChallenge`. The kinds
  * return `failure` as-is when the claim fails; it already has the shape of a
- * failed `complete` result. A `signUp` claim has no caller user, thus it
- * never fails with `WRONG_USER`.
+ * failed `complete` result. A `signUp` or `signIn` claim has no caller user,
+ * thus it never fails with `WRONG_USER`.
  */
 export type ClaimChallengeResult<
   Kind extends ChallengePurpose["kind"] = ChallengePurpose["kind"],
@@ -195,7 +210,7 @@ type ClaimFailure<Kind extends ChallengePurpose["kind"]> = {
   success: false;
   userError:
     | CompleteChallengeUserError
-    | (Kind extends "signUp" ? never : WrongUserUserError);
+    | (Kind extends "signUp" | "signIn" ? never : WrongUserUserError);
 };
 
 function claimFailure<
@@ -411,6 +426,45 @@ export async function createChallengeAndSendEmail(
   return { browserSecret, challengeId };
 }
 
+/** The purposes of the challenges that send a short code. */
+export type CodePurpose = Extract<ChallengePurpose, { kind: "signIn" }>;
+
+/**
+ * Store the hashed short code + secret and send the email with the code.
+ * Returns the secret that the starting browser keeps, and the ID of the new
+ * row. The row accepts `CODE_ATTEMPTS` wrong codes.
+ */
+export async function createCodeChallengeAndSendEmail(
+  ctx: MutationCtx,
+  args: {
+    email: string;
+    purpose: CodePurpose;
+    ttlMs: number;
+    codeLength: number;
+    emailSender: EmailSenderConfig;
+    copy: ChallengeEmailCopy;
+  },
+): Promise<{ browserSecret: string; challengeId: Id<"challenges"> }> {
+  const code = generateNumericCode(args.codeLength);
+  const browserSecret = generateRandomToken();
+  const challengeId = await ctx.db.insert("challenges", {
+    email: args.email,
+    purpose: args.purpose,
+    emailCodeHash: await sha256Hex(code),
+    browserSecretHash: await sha256Hex(browserSecret),
+    expiresAt: Date.now() + args.ttlMs,
+    attemptsLeft: CODE_ATTEMPTS,
+  });
+  await scheduleChallengeCleanup(ctx, args.ttlMs);
+  await sendCodeEmail(ctx, args.emailSender, {
+    to: args.email,
+    copy: args.copy,
+    code,
+    ttlMs: args.ttlMs,
+  });
+  return { browserSecret, challengeId };
+}
+
 //------------------------------------------------------------------------------
 // Complete
 //------------------------------------------------------------------------------
@@ -442,6 +496,11 @@ function sameUser(row: Doc<"challenges">, expected: ExpectedPurpose): boolean {
   if (expected.kind === "signUp" || actual.kind === "signUp") {
     return true;
   }
+  // A `signIn` challenge has no user: it gives access to the account of the
+  // address, whoever started it.
+  if (expected.kind === "signIn" || actual.kind === "signIn") {
+    return true;
+  }
   // A `custom` challenge that expects no user matches any caller: it does
   // not give access to an account.
   if (actual.kind === "custom" && actual.userId === undefined) {
@@ -465,8 +524,8 @@ function sameUser(row: Doc<"challenges">, expected: ExpectedPurpose): boolean {
  * have existed. The client cannot tell these apart, and the user action is
  * the same, start again. The server writes the difference to the log, to
  * help you find a bug or a misuse. `INCORRECT_CODE` means the row exists but the code
- * is not the one that the challenge sent. For a link, the link is not the
- * newest one this browser started. For a future short code, it is a typo.
+ * is not the one that the challenge sent: the link is not the newest one
+ * this browser started.
  *
  * `WRONG_USER` means that the challenge is for another user than the
  * caller. This occurs in normal use: a user starts a flow, signs out, and
@@ -477,6 +536,10 @@ function sameUser(row: Doc<"challenges">, expected: ExpectedPurpose): boolean {
  * string, throws. It is an application bug: the landing page called the
  * wrong function. A `signUp` call gives no `userId`, thus only the kind must
  * match. A `custom` challenge without a `userId` matches any `userId`.
+ *
+ * A challenge that sends a short code throws, before the code is compared.
+ * This function also runs in queries, which cannot count the wrong codes.
+ * Use `checkCodeChallenge` for it.
  */
 export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
   ctx: QueryCtx,
@@ -495,6 +558,13 @@ export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
         `secret. The challenge was already completed, or it never existed.`,
     );
     return claimFailure("INVALID_CHALLENGE");
+  }
+  if (row.attemptsLeft !== undefined) {
+    throw new Error(
+      `The email challenge ${row._id} for the purpose ` +
+        `"${row.purpose.kind}" sends a short code, not a link. Complete it ` +
+        `with the functions of its kind.`,
+    );
   }
   // At exactly `expiresAt` the link is expired, like in the cleanup loop.
   if (row.expiresAt <= Date.now()) {
@@ -543,4 +613,124 @@ export async function claimChallenge<Expected extends ExpectedPurpose>(
     await ctx.db.delete("challenges", claim.row._id);
   }
   return claim;
+}
+
+/**
+ * Remove the characters that a person can add when they type or paste a
+ * short code: spaces and hyphens.
+ */
+function normalizeTypedCode(code: string): string {
+  return code.replace(/[\s-]/g, "");
+}
+
+/**
+ * The result of `checkCodeChallenge` and `claimCodeChallenge`. Only the kinds
+ * without a user send a short code for now, thus it has no `WRONG_USER`.
+ */
+export type CheckCodeChallengeResult =
+  | { success: true; row: ChallengeOfKind<CodePurpose["kind"]> }
+  | {
+      success: false;
+      failure: { success: false; userError: CompleteCodeChallengeUserError };
+    };
+
+function codeFailure(
+  error: CompleteCodeChallengeUserError["error"],
+): CheckCodeChallengeResult {
+  return { success: false, failure: { success: false, userError: { error } } };
+}
+
+/**
+ * Check the short code that a person typed against the challenge of the
+ * secret from the starting browser, without claiming the challenge. Returns
+ * the row when all of the checks pass, or the failure that the `complete`
+ * mutation returns to the client.
+ *
+ * The checks are the same as in `findClaimableChallenge`, but a wrong code
+ * uses one attempt of the row. The wrong code that uses the last attempt
+ * deletes the row and gives `TOO_MANY_ATTEMPTS`. The count holds only if the
+ * mutation commits, thus the callers return a wrong code to the client, and
+ * never throw for it.
+ *
+ * A challenge of another kind throws before the code is compared, thus the
+ * call of a wrong function does not tell if a code is right. A challenge that
+ * sends a link throws too.
+ */
+export async function checkCodeChallenge(
+  ctx: MutationCtx,
+  args: { code: string; browserSecret: string; purpose: CodePurpose },
+): Promise<CheckCodeChallengeResult> {
+  const browserSecretHash = await sha256Hex(args.browserSecret);
+  const row = await ctx.db
+    .query("challenges")
+    .withIndex("by_browserSecretHash", (q) =>
+      q.eq("browserSecretHash", browserSecretHash),
+    )
+    .unique();
+  if (row === null) {
+    console.warn(
+      `Rejected the email code: there is no challenge for the browser ` +
+        `secret. The challenge was already completed, it ran out of ` +
+        `attempts, or it never existed.`,
+    );
+    return codeFailure("INVALID_CHALLENGE");
+  }
+  if (row.attemptsLeft === undefined) {
+    throw new Error(
+      `The email challenge ${row._id} for the purpose ` +
+        `"${row.purpose.kind}" sends a link, not a short code.`,
+    );
+  }
+  if (!sameKind(row, args.purpose)) {
+    throw new Error(
+      `Challenge purpose mismatch: the row is for "${row.purpose.kind}", but the complete call expects "${args.purpose.kind}"`,
+    );
+  }
+  // At exactly `expiresAt` the code is expired, like in the cleanup loop.
+  if (row.expiresAt <= Date.now()) {
+    console.warn(
+      `Rejected the email challenge ${row._id} for the purpose ` +
+        `"${row.purpose.kind}": it expired at ` +
+        `${new Date(row.expiresAt).toISOString()}.`,
+    );
+    return codeFailure("INVALID_CHALLENGE");
+  }
+  if (row.emailCodeHash !== (await sha256Hex(normalizeTypedCode(args.code)))) {
+    const attemptsLeft = row.attemptsLeft - 1;
+    if (attemptsLeft <= 0) {
+      console.warn(
+        `Deleted the email challenge ${row._id} for the purpose ` +
+          `"${row.purpose.kind}": the code is wrong, and it was the last ` +
+          `attempt.`,
+      );
+      await ctx.db.delete("challenges", row._id);
+      return codeFailure("TOO_MANY_ATTEMPTS");
+    }
+    console.warn(
+      `Rejected the email challenge ${row._id} for the purpose ` +
+        `"${row.purpose.kind}": the code is wrong. ${attemptsLeft} ` +
+        `attempts are left.`,
+    );
+    await ctx.db.patch("challenges", row._id, { attemptsLeft });
+    return codeFailure("INCORRECT_CODE");
+  }
+  // `sameKind` checked the kind above.
+  return { success: true, row: row as ChallengeOfKind<CodePurpose["kind"]> };
+}
+
+/**
+ * Claim a challenge that sends a short code: run the checks of
+ * {@link checkCodeChallenge}, then delete the row. The row is deleted only
+ * when the claim succeeds or when the code uses the last attempt, so a
+ * claimed code can never be replayed.
+ */
+export async function claimCodeChallenge(
+  ctx: MutationCtx,
+  args: { code: string; browserSecret: string; purpose: CodePurpose },
+): Promise<CheckCodeChallengeResult> {
+  const check = await checkCodeChallenge(ctx, args);
+  if (check.success) {
+    await ctx.db.delete("challenges", check.row._id);
+  }
+  return check;
 }

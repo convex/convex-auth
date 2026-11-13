@@ -36,6 +36,37 @@ export const CUSTOM_TTL_DEFAULT_MS = 15 * 60 * 1000; // 15 minutes
 export const CUSTOM_TTL_MIN_MS = 60 * 1000; // 1 minute
 export const CUSTOM_TTL_MAX_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+/**
+ * The length of a sign-in code when the app gives none, and the bounds for
+ * the value that an app can give.
+ *
+ * The start limits below allow 5 challenges for one address each hour, and
+ * each challenge accepts `CODE_ATTEMPTS` wrong codes. Thus a person who tries
+ * to guess the code of one address gets at most 25 tries an hour. With 8
+ * digits, the chance that one of them is right is 1 in 4 million each hour,
+ * and about 1 in 450 after a year of tries. With 6 digits, it is 1 in 40,000
+ * each hour, and about 1 in 5 after a year. Each challenge also sends an
+ * email to the address, thus its owner sees the tries.
+ */
+export const SIGN_IN_CODE_LENGTH_DEFAULT = 8;
+export const SIGN_IN_CODE_LENGTH_MIN = 6;
+export const SIGN_IN_CODE_LENGTH_MAX = 10;
+
+/**
+ * How many wrong codes a challenge with a short code accepts. The wrong code
+ * that uses the last attempt deletes the challenge.
+ */
+export const CODE_ATTEMPTS = 5;
+
+/**
+ * How long a sign-in code stays valid when the app gives no `ttlMs`, and the
+ * bounds for the value that an app can give. A person types the code soon
+ * after it arrives. The default leaves time for a slow mail server.
+ */
+export const SIGN_IN_TTL_DEFAULT_MS = 10 * 60 * 1000; // 10 minutes
+export const SIGN_IN_TTL_MIN_MS = 60 * 1000; // 1 minute
+export const SIGN_IN_TTL_MAX_MS = 30 * 60 * 1000; // 30 minutes
+
 // Throttle for starting challenges. Each flow sends an email, so the
 // limits protect the destination mailbox from flooding and the sender's
 // reputation from abuse:
@@ -121,6 +152,15 @@ export const VALIDATE_EMAIL_COPY: ChallengeEmailCopy = {
   intro: "Open this link to validate your email address:",
 };
 
+/**
+ * The copy of the sign-in code email. `{code}` in the subject is replaced by
+ * the code, thus a phone can show the code in the notification of the email.
+ */
+export const SIGN_IN_COPY: ChallengeEmailCopy = {
+  subject: "{code} is your sign-in code",
+  intro: "Enter this code to sign in:",
+};
+
 /** "10 minutes", "1 hour", "2 hours". */
 export function formatDuration(ms: number): string {
   const minutes = Math.round(ms / 60_000);
@@ -137,8 +177,6 @@ export function challengeEmailText(
   link: string,
   ttlMs: number,
 ): string {
-  // TODO: also offer a short code the user can type, with rate limiting on
-  // attempts (a short code is guessable, unlike the 256-bit link code).
   // TODO: let the app customize this copy. A React Native app starts the
   // challenge in the app, not in a browser, so it needs a different sentence.
   return (
@@ -146,6 +184,25 @@ export function challengeEmailText(
     `${link}\n\n` +
     `The link stops working after ${formatDuration(ttlMs)}, and works only ` +
     "in the browser you started from.\n\n" +
+    "If you did not request this email, you can safely ignore it."
+  );
+}
+
+/**
+ * The plain-text body of a sign-in code email. The code is alone on its line,
+ * so that it is easy to copy, and so that a mail app can offer to fill it in.
+ */
+export function codeEmailText(
+  intro: string,
+  code: string,
+  ttlMs: number,
+): string {
+  return (
+    `${intro}\n\n` +
+    `${code}\n\n` +
+    `The code stops working after ${formatDuration(ttlMs)}, and works only ` +
+    "in the app or browser where you asked for it. Do not share it with " +
+    "anyone.\n\n" +
     "If you did not request this email, you can safely ignore it."
   );
 }
@@ -190,6 +247,39 @@ export async function sendChallengeEmail(
     ttlMs: number;
   },
 ): Promise<void> {
+  await sendEmail(ctx, sender, {
+    to: message.to,
+    subject: message.copy.subject,
+    text: challengeEmailText(message.copy.intro, message.link, message.ttlMs),
+  });
+}
+
+/**
+ * Send the email of a challenge that carries a short code. `{code}` in the
+ * subject of `copy` is replaced by the code.
+ */
+export async function sendCodeEmail(
+  ctx: MutationCtx,
+  sender: EmailSenderConfig,
+  message: {
+    to: string;
+    copy: ChallengeEmailCopy;
+    code: string;
+    ttlMs: number;
+  },
+): Promise<void> {
+  await sendEmail(ctx, sender, {
+    to: message.to,
+    subject: message.copy.subject.split("{code}").join(message.code),
+    text: codeEmailText(message.copy.intro, message.code, message.ttlMs),
+  });
+}
+
+async function sendEmail(
+  ctx: MutationCtx,
+  sender: EmailSenderConfig,
+  message: { to: string; subject: string; text: string },
+): Promise<void> {
   await ctx.runMutation(sender.sendEmailHandle as SendEmailHandle, {
     options: {
       apiKey: sender.apiKey,
@@ -201,7 +291,7 @@ export async function sendChallengeEmail(
     },
     from: sender.from,
     to: [message.to],
-    subject: message.copy.subject,
-    text: challengeEmailText(message.copy.intro, message.link, message.ttlMs),
+    subject: message.subject,
+    text: message.text,
   });
 }

@@ -213,6 +213,77 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           Name
         >;
       };
+      signIn: {
+        _internal_dangerous_completeForNewUser: FunctionReference<
+          "mutation",
+          "internal",
+          { browserSecret: string; code: string; newUserId: string },
+          | { email: string; success: true; userId: string }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { error: "INCORRECT_CODE" }
+                | { error: "TOO_MANY_ATTEMPTS" };
+            },
+          Name
+        >;
+        check: FunctionReference<
+          "mutation",
+          "internal",
+          { browserSecret: string; code: string },
+          | { email: string; success: true; userId: string | null }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { error: "INCORRECT_CODE" }
+                | { error: "TOO_MANY_ATTEMPTS" };
+            },
+          Name
+        >;
+        complete: FunctionReference<
+          "mutation",
+          "internal",
+          { browserSecret: string; code: string },
+          | { email: string; success: true; userId: string }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { error: "INCORRECT_CODE" }
+                | { error: "TOO_MANY_ATTEMPTS" };
+            },
+          Name
+        >;
+        start: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            codeLength?: number;
+            email: string;
+            emailSender: {
+              apiKey: string;
+              from: string;
+              initialBackoffMs: number;
+              kind: "resend";
+              retryAttempts: number;
+              sendEmailHandle: string;
+            };
+            intro?: string;
+            subject?: string;
+            ttlMs?: number;
+          },
+          | { browserSecret: string; challengeId: string; success: true }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_EMAIL" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number };
+            },
+          Name
+        >;
+      };
       signUp: {
         _internal_dangerous_start: FunctionReference<
           "mutation",
