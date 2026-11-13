@@ -39,7 +39,11 @@ import {
 } from "../../../components/passkey/validation.ts";
 import { buildAuthenticationOptions } from "../options.ts";
 
-/** What the re-authentication functions of a passkey method close over. */
+/**
+ * What the re-authentication functions of a passkey method close over.
+ *
+ * @internal
+ */
 export type PasskeyReauthenticationConfig = {
   component: ComponentApi;
   coreComponent: CoreComponentApi;
@@ -87,6 +91,11 @@ export type FinishPasskeyReauthenticationResult = Infer<
   typeof finishPasskeyReauthenticationResult
 >;
 
+/**
+ * Make the `startPasskeyReauthentication` mutation of a passkey method.
+ *
+ * @internal
+ */
 export function startPasskeyReauthentication(
   config: PasskeyReauthenticationConfig,
 ) {
@@ -125,6 +134,11 @@ export function startPasskeyReauthentication(
   });
 }
 
+/**
+ * Make the `finishPasskeyReauthentication` mutation of a passkey method.
+ *
+ * @internal
+ */
 export function finishPasskeyReauthentication<Profile>(
   config: PasskeyReauthenticationConfig,
   authMutation: AuthMutationBuilder<Profile>,
