@@ -20,6 +20,9 @@ export const {
 
   startRemovePasskey,
   finishRemovePasskey,
+
+  startPasskeyReauthentication,
+  finishPasskeyReauthentication,
 } = setupUsernamePasskey(auth, {
   component: components.authPasskey,
   usernameComponent: components.authUsername,

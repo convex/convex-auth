@@ -1,5 +1,6 @@
 /**
- * The passkey management flows: adding and removing a passkey.
+ * The passkey management flows: adding and removing a passkey, and
+ * re-authenticating with one.
  *
  * @module
  */
@@ -23,6 +24,10 @@ import type {
   FinishRemovePasskeyResult,
   StartRemovePasskeyResult,
 } from "./remove.ts";
+import type {
+  FinishPasskeyReauthenticationResult,
+  StartPasskeyReauthenticationResult,
+} from "./reauthenticate.ts";
 
 type StartAddPasskeyMutation = FunctionReference<
   "mutation",
@@ -59,6 +64,26 @@ type FinishRemovePasskeyMutation = FunctionReference<
   FinishRemovePasskeyResult
 >;
 
+type StartPasskeyReauthenticationMutation = FunctionReference<
+  "mutation",
+  "public",
+  Record<string, never>,
+  StartPasskeyReauthenticationResult
+>;
+
+type FinishPasskeyReauthenticationMutation = FunctionReference<
+  "mutation",
+  "public",
+  { response: WireAuthenticationResponse },
+  FinishPasskeyReauthenticationResult
+>;
+
+/** The re-authentication functions that both passkey methods export. */
+export type PasskeyReauthenticationApi = {
+  startPasskeyReauthentication: StartPasskeyReauthenticationMutation;
+  finishPasskeyReauthentication: FinishPasskeyReauthenticationMutation;
+};
+
 export type AddPasskeyApi = {
   startAddPasskey: StartAddPasskeyMutation;
   verifyAddPasskey: VerifyAddPasskeyMutation;
@@ -81,6 +106,11 @@ export type AddPasskeyFlowResult =
   | FinishAddPasskeyResult
   | Extract<StartAddPasskeyResult, { success: false }>
   | Extract<VerifyAddPasskeyResult, { success: false }>
+  | PasskeyClientFailure;
+
+export type PasskeyReauthenticationFlowResult =
+  | FinishPasskeyReauthenticationResult
+  | Extract<StartPasskeyReauthenticationResult, { success: false }>
   | PasskeyClientFailure;
 
 export type RemovePasskeyFlowResult =
@@ -151,6 +181,32 @@ export async function runRemovePasskeyFlow(
   }
   return await convex.mutation(api.finishRemovePasskey, {
     passkeyId,
+    response: assertion.response,
+  });
+}
+
+/**
+ * Re-authenticates the signed-in user with one of their passkeys, and
+ * records it on the current session.
+ */
+export async function runPasskeyReauthenticationFlow(
+  ctx: ManagementFlowContext<PasskeyReauthenticationApi>,
+): Promise<PasskeyReauthenticationFlowResult> {
+  const { convex, api, ceremonies } = ctx;
+
+  if (!ceremonies.isSupported()) {
+    return { success: false, userError: { error: "WEBAUTHN_UNSUPPORTED" } };
+  }
+
+  const start = await convex.mutation(api.startPasskeyReauthentication, {});
+  if (!start.success) {
+    return start;
+  }
+  const assertion = await ceremonies.authenticate(start.options);
+  if (!assertion.success) {
+    return assertion;
+  }
+  return await convex.mutation(api.finishPasskeyReauthentication, {
     response: assertion.response,
   });
 }

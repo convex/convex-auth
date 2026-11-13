@@ -27,7 +27,9 @@ const listPasskeysResult = v.union(
 
 export type ListPasskeysResult = Infer<typeof listPasskeysResult>;
 
-export function listPasskeys(config: UsernamePasskeyConfig) {
+export function listPasskeys(
+  config: Pick<UsernamePasskeyConfig, "component" | "coreComponent">,
+) {
   return queryGeneric({
     args: {},
     returns: listPasskeysResult,

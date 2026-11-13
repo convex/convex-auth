@@ -13,11 +13,13 @@ import { convexTest } from "convex-test";
 import {
   componentsGeneric,
   internalMutationGeneric,
+  type AnyDataModel,
+  type GenericMutationCtx,
   makeFunctionReference,
   mutationGeneric,
   queryGeneric,
 } from "convex/server";
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Value } from "convex/values";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ComponentApi } from "../component/_generated/component.ts";
 import type { CreateUserFn, TokenBundle } from "../lib/types.ts";
@@ -142,6 +144,24 @@ function setup() {
   return t;
 }
 
+/**
+ * The components of the core's `reauthentications` rows. `convex-test`
+ * exposes `runInComponent` at runtime but does not declare it, hence the
+ * cast.
+ */
+async function reauthenticationComponents(t: ReturnType<typeof setup>) {
+  const testApi = t as unknown as {
+    runInComponent<Output>(
+      componentPath: string,
+      handler: (ctx: GenericMutationCtx<AnyDataModel>) => Promise<Output>,
+    ): Promise<Output>;
+  };
+  return await testApi.runInComponent("auth", async (ctx) => {
+    const rows = await ctx.db.query("reauthentications").collect();
+    return rows.map((row) => row.component as string).sort();
+  });
+}
+
 const signUpRef = makeFunctionReference<
   "mutation",
   { accountId: string },
@@ -206,7 +226,7 @@ async function convexErrorData(promise: Promise<unknown>) {
     (error: unknown) => error,
   );
   expect(error).toBeInstanceOf(ConvexError);
-  return (error as ConvexError<Record<string, unknown>>).data;
+  return (error as ConvexError<Record<string, Value>>).data;
 }
 
 describe("getAuthenticationTime", () => {
@@ -446,10 +466,7 @@ describe("ctx.convexAuth.recordReauthentication", () => {
     vi.advanceTimersByTime(MINUTE);
     await t.mutation(refreshSessionRef, { refreshToken: bundle.refreshToken });
 
-    const rows = await t.runInComponent("auth", async (ctx) =>
-      ctx.db.query("reauthentications").collect(),
-    );
-    expect(rows.map((row) => row.component).sort()).toEqual([
+    expect(await reauthenticationComponents(t)).toEqual([
       "authOther",
       "authTest",
     ]);
@@ -468,10 +485,7 @@ describe("ctx.convexAuth.recordReauthentication", () => {
       .mutation(reauthenticateRef, { userId: "alice" });
     await t.mutation(signOutRef, { refreshToken: bundle.refreshToken });
 
-    const rows = await t.runInComponent("auth", async (ctx) =>
-      ctx.db.query("reauthentications").collect(),
-    );
-    expect(rows).toEqual([]);
+    expect(await reauthenticationComponents(t)).toEqual([]);
   });
 });
 

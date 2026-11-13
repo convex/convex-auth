@@ -6,3 +6,9 @@ export const ADD_PASSKEY_PURPOSE = "usernamePasskey:addPasskey";
 
 /** The re-authentication that authorizes the removal of a passkey. */
 export const REMOVE_PASSKEY_PURPOSE = "usernamePasskey:removePasskey";
+
+/**
+ * The re-authentication that records a new authentication of the current
+ * session, before a sensitive action.
+ */
+export const REAUTHENTICATE_PURPOSE = "usernamePasskey:reauthenticate";

@@ -12,8 +12,10 @@ import type { UsernamePasskeyApi } from "./flows.ts";
 import { useSignInWithUsernamePasskeyImpl } from "./hooks.tsx";
 import {
   useAddPasskeyImpl,
+  useReauthenticateWithPasskeyImpl,
   useRemovePasskeyImpl,
   type AddPasskeyApi,
+  type PasskeyReauthenticationApi,
   type RemovePasskeyApi,
 } from "./management/react.tsx";
 
@@ -22,6 +24,8 @@ export type { RenamePasskeyResult } from "./management/rename.ts";
 export type {
   AddPasskeyApi,
   AddPasskeyResult,
+  PasskeyReauthenticationApi,
+  ReauthenticateWithPasskeyResult,
   RemovePasskeyApi,
   RemovePasskeyResult,
 } from "./management/react.tsx";
@@ -65,5 +69,7 @@ export function createUsernamePasskeyHooks(ceremonies: PasskeyCeremonies) {
     useAddPasskey: (api: AddPasskeyApi) => useAddPasskeyImpl(api, resolved),
     useRemovePasskey: (api: RemovePasskeyApi) =>
       useRemovePasskeyImpl(api, resolved),
+    useReauthenticateWithPasskey: (api: PasskeyReauthenticationApi) =>
+      useReauthenticateWithPasskeyImpl(api, resolved),
   };
 }

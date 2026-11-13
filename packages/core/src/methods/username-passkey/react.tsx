@@ -12,7 +12,8 @@
  *
  * {@link useAddPasskey} and {@link useRemovePasskey} (from
  * `management/react.tsx`) drive the passkey settings page of a signed-in
- * user.
+ * user. {@link useReauthenticateWithPasskey} asks the user for a passkey
+ * before a sensitive action.
  *
  * @module
  */
@@ -23,8 +24,10 @@ import type { UsernamePasskeyApi } from "./flows.ts";
 import { useSignInWithUsernamePasskeyImpl } from "./hooks.tsx";
 import {
   useAddPasskeyImpl,
+  useReauthenticateWithPasskeyImpl,
   useRemovePasskeyImpl,
   type AddPasskeyApi,
+  type PasskeyReauthenticationApi,
   type RemovePasskeyApi,
 } from "./management/react.tsx";
 
@@ -33,6 +36,8 @@ export type { RenamePasskeyResult } from "./management/rename.ts";
 export {
   type AddPasskeyApi,
   type AddPasskeyResult,
+  type PasskeyReauthenticationApi,
+  type ReauthenticateWithPasskeyResult,
   type RemovePasskeyApi,
   type RemovePasskeyResult,
 } from "./management/react.tsx";
@@ -191,4 +196,50 @@ export function useAddPasskey(managementApi: AddPasskeyApi) {
  */
 export function useRemovePasskey(managementApi: RemovePasskeyApi) {
   return useRemovePasskeyImpl(managementApi, browserCeremonies);
+}
+
+/**
+ * Hook that asks the signed-in user for one of their passkeys before a
+ * sensitive action. A verified passkey counts as a new authentication of the
+ * current session, which `requireRecentAuthentication` then accepts.
+ *
+ * ```tsx
+ * import { useReauthenticateWithPasskey } from "@convex-dev/auth/methods/username-passkey/react";
+ * import { isReauthenticationRequiredError } from "@convex-dev/auth/react";
+ * import { useMutation } from "convex/react";
+ * import { api } from "../convex/_generated/api";
+ *
+ * function DeleteAccountButton() {
+ *   const { reauthenticate, pending } = useReauthenticateWithPasskey(api.auth);
+ *   const deleteAccount = useMutation(api.users.deleteAccount);
+ *   return (
+ *     <button
+ *       disabled={pending}
+ *       onClick={async () => {
+ *         try {
+ *           await deleteAccount();
+ *         } catch (error) {
+ *           if (!isReauthenticationRequiredError(error)) throw error;
+ *           const result = await reauthenticate();
+ *           if (result.success) await deleteAccount();
+ *         }
+ *       }}
+ *     >
+ *       Delete my account
+ *     </button>
+ *   );
+ * }
+ * ```
+ *
+ * @param reauthenticationApi The app module that re-exports
+ *   `startPasskeyReauthentication` and `finishPasskeyReauthentication`, for
+ *   example `api.auth`.
+ */
+export function useReauthenticateWithPasskey(
+  reauthenticationApi: PasskeyReauthenticationApi,
+) {
+  return useReauthenticateWithPasskeyImpl(
+    reauthenticationApi,
+    browserCeremonies,
+  );
 }

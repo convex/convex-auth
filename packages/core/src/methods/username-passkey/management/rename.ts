@@ -26,7 +26,9 @@ const renamePasskeyResult = v.union(
 
 export type RenamePasskeyResult = Infer<typeof renamePasskeyResult>;
 
-export function renamePasskey(config: UsernamePasskeyConfig) {
+export function renamePasskey(
+  config: Pick<UsernamePasskeyConfig, "component" | "coreComponent">,
+) {
   return mutationGeneric({
     args: {
       passkeyId: v.string(),
