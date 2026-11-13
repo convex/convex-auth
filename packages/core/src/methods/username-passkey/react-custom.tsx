@@ -7,7 +7,10 @@
  */
 "use client";
 
-import { resolveCeremonies, type PasskeyCeremonies } from "./ceremonies.ts";
+import {
+  resolveCeremonies,
+  type PasskeyCeremonies,
+} from "../../lib/passkey/ceremonies.ts";
 import type { UsernamePasskeyApi } from "./flows.ts";
 import { useSignInWithUsernamePasskeyImpl } from "./hooks.tsx";
 import {
@@ -16,9 +19,13 @@ import {
   type AddPasskeyApi,
   type RemovePasskeyApi,
 } from "./management/react.tsx";
+import {
+  useReauthenticateWithPasskeyImpl,
+  type PasskeyReauthenticationApi,
+} from "../../lib/passkey/reauthenticationHook.tsx";
 
 export type { SignInWithUsernamePasskeyResult } from "./hooks.tsx";
-export type { RenamePasskeyResult } from "./management/rename.ts";
+export type { RenamePasskeyResult } from "../../lib/passkey/rename.ts";
 export type {
   AddPasskeyApi,
   AddPasskeyResult,
@@ -26,12 +33,16 @@ export type {
   RemovePasskeyResult,
 } from "./management/react.tsx";
 export type {
+  PasskeyReauthenticationApi,
+  ReauthenticateWithPasskeyResult,
+} from "../../lib/passkey/reauthenticationHook.tsx";
+export type {
   PasskeyAuthenticationResponse,
   PasskeyCeremonies,
   PasskeyClientError,
   PasskeyClientFailure,
   PasskeyRegistrationResponse,
-} from "./ceremonies.ts";
+} from "../../lib/passkey/ceremonies.ts";
 export type {
   WireCreationOptions,
   WireRequestOptions,
@@ -43,7 +54,7 @@ export type {
 export type {
   AlreadyPendingFailure,
   PasskeyAutofillStatus,
-} from "./react_impl.tsx";
+} from "../../lib/passkey/react_impl.tsx";
 
 /**
  * Make the passkey hooks on the given ceremonies. They take the same
@@ -65,5 +76,7 @@ export function createUsernamePasskeyHooks(ceremonies: PasskeyCeremonies) {
     useAddPasskey: (api: AddPasskeyApi) => useAddPasskeyImpl(api, resolved),
     useRemovePasskey: (api: RemovePasskeyApi) =>
       useRemovePasskeyImpl(api, resolved),
+    useReauthenticateWithPasskey: (api: PasskeyReauthenticationApi) =>
+      useReauthenticateWithPasskeyImpl(api, resolved),
   };
 }

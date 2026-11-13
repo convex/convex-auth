@@ -127,15 +127,31 @@ export async function evictLeastRecentlyRefreshedSessions(
 }
 
 /**
- * Erase a session, and schedule the erasure of every refresh token that points
- * at it.
+ * The re-authentications of a session, at most one per component (see the
+ * schema).
+ */
+export function sessionReauthentications(
+  ctx: QueryCtx,
+  sessionId: Id<"sessions">,
+): Promise<Doc<"reauthentications">[]> {
+  return ctx.db
+    .query("reauthentications")
+    .withIndex("by_session_component", (q) => q.eq("sessionId", sessionId))
+    .collect();
+}
+
+/**
+ * Erase a session and its re-authentications, and schedule the erasure of
+ * every refresh token that points at it.
  *
  * The session ends when its row is gone: `refresh` refuses a token whose
  * session is gone, thus no token can be added to it again. Its token rows only
  * linger until `deleteSessionTokens` gets to them. That keeps this function at
  * a few reads and writes however many rows the session holds, so a mutation
  * can erase many sessions at once (e.g. revoking a user's other sessions on a
- * password reset) without exceeding the transaction's limits.
+ * password reset) without exceeding the transaction's limits. A session has
+ * at most one re-authentication per component, thus erasing those here keeps
+ * to a few writes too.
  *
  * Idempotent, because callers can race: two replays of the same stolen token,
  * or a sign-out arriving alongside one, can both resolve the same session.
@@ -150,6 +166,9 @@ export async function deleteSession(
     return;
   }
   await ctx.db.delete("sessions", sessionId);
+  for (const row of await sessionReauthentications(ctx, sessionId)) {
+    await ctx.db.delete("reauthentications", row._id);
+  }
   await ctx.scheduler.runAfter(0, internal.sessions.deleteSessionTokens, {
     sessionId,
   });

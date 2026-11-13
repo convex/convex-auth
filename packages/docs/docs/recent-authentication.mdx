@@ -1,0 +1,103 @@
+---
+sidebar_position: 5.5
+title: Recent authentication
+description: Ask users to prove who they are again before a sensitive action.
+---
+
+A session can stay signed in for weeks. Before a sensitive action, such as
+changing an email address, removing a passkey, or deleting an account, you can
+check that the user proved who they are recently, and ask them to do it again
+if not. This is often called _step-up authentication_.
+
+## How it works
+
+Convex Auth keeps, for each session, when the user last authenticated and
+with which component:
+
+- The sign-in that created the session counts.
+- A re-authentication on the session counts too, for example a passkey
+  verified with `useReauthenticateWithPasskey`. It counts for its own session
+  only, not for the other sessions of the user.
+- Signing out, or revoking the session, deletes its records.
+
+The server records a re-authentication only after it verifies one. No
+function lets a client set the time.
+
+## Requiring a recent authentication
+
+Call `requireRecentAuthentication` at the top of a mutation or an action. It
+returns the user's id when the user authenticated in the last
+`maxAgeSeconds`, and throws otherwise:
+
+```ts title="convex/users.ts"
+import { requireRecentAuthentication } from "@convex-dev/auth/server";
+import { mutation } from "./_generated/server";
+
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await requireRecentAuthentication(ctx, {
+      maxAgeSeconds: 5 * 60,
+    });
+    await ctx.db.delete("users", userId);
+  },
+});
+```
+
+The error is a `ConvexError` whose `data` is
+`{ error: "REAUTHENTICATION_REQUIRED" }`, or `{ error: "NOT_LOGGED_IN" }` when
+the caller is not signed in.
+
+To accept only some components, pass them in `authenticatedBy`. For example,
+`authenticatedBy: [components.authPasskey]` accepts only a sign-in or a
+re-authentication with a passkey.
+
+Don't use it in a query: a query result stays cached while its data does not
+change, so the query would keep passing after the time is up.
+
+To read the time without throwing, call `getAuthenticationTime`. It returns
+`{ authenticatedAt, component }`, or `null` when the caller is not signed in
+or when no authentication matches `authenticatedBy`.
+
+## Re-authenticating on the client
+
+On the client, recognize the error with `isReauthenticationRequiredError`,
+ask the user to re-authenticate, and try again:
+
+```tsx title="src/DeleteAccountButton.tsx"
+import { isReauthenticationRequiredError } from "@convex-dev/auth/react";
+import { useReauthenticateWithPasskey } from "@convex-dev/auth/methods/passkey/react";
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
+
+export function DeleteAccountButton() {
+  const deleteAccount = useMutation(api.users.deleteAccount);
+  const { reauthenticate } = useReauthenticateWithPasskey(api.passkey);
+
+  return (
+    <button
+      onClick={async () => {
+        try {
+          await deleteAccount();
+        } catch (error) {
+          if (!isReauthenticationRequiredError(error)) throw error;
+          const result = await reauthenticate();
+          if (result.success) await deleteAccount();
+        }
+      }}
+    >
+      Delete my account
+    </button>
+  );
+}
+```
+
+`useReauthenticateWithPasskey` exists for the [`passkey`](./methods/passkey.mdx)
+and the [`usernamePasskey`](./methods/username-passkey.mdx) methods. Pass it
+the module that exports `startPasskeyReauthentication` and
+`finishPasskeyReauthentication`: `api.passkey` for the `passkey` method, or
+`api.auth` for the `usernamePasskey` method. The passkey must belong to the
+signed-in user.
+
+For the other methods, ask the user to sign out and sign in again. The new
+session starts with a fresh authentication.

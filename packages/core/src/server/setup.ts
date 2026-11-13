@@ -14,7 +14,10 @@ import {
   type TokenBundle,
   vRefreshResult,
   type RefreshResult,
-  type ConvexAuthCtx,
+  type BoundAuthHelpers,
+  type CreateUserFn,
+  type OnSignInFn,
+  type SignInAuthHelpers,
   type UserCallbacks,
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
@@ -33,9 +36,16 @@ import { componentPathOf } from "../lib/componentPath.ts";
  * scheme: with a validator, the handler's return is constrained to (a promise
  * of) its type; without one, it falls back to whatever the handler declares.
  *
+ * `Helpers` is the type of `ctx.convexAuth`: all the {@link BoundAuthHelpers}
+ * by default, or the {@link SignInAuthHelpers} of a method bound with
+ * {@link AuthCore.bindSignInMethod}.
+ *
  * @internal Not public until the API for custom methods is stable.
  */
-export type AuthMutationBuilder<Profile> = <
+export type AuthMutationBuilder<
+  Profile,
+  Helpers = BoundAuthHelpers<Profile>,
+> = <
   ArgsValidator extends PropertyValidators,
   ReturnsValidator extends
     PropertyValidators | Validator<unknown, "required", string> | void,
@@ -45,7 +55,7 @@ export type AuthMutationBuilder<Profile> = <
   args: ArgsValidator;
   returns?: ReturnsValidator;
   handler: (
-    ctx: GenericMutationCtx<GenericDataModel> & ConvexAuthCtx<Profile>,
+    ctx: GenericMutationCtx<GenericDataModel> & { convexAuth: Helpers },
     args: ObjectType<ArgsValidator>,
   ) => ReturnValue;
 }) => RegisteredMutation<"public", ObjectType<ArgsValidator>, ReturnValue>;
@@ -60,6 +70,17 @@ export type AuthMutationBuilder<Profile> = <
  */
 export type MethodBuilders<Profile> = {
   authMutation: AuthMutationBuilder<Profile>;
+};
+
+/**
+ * The function builders a method gets from {@link AuthCore.bindSignInMethod}.
+ * Their handlers get the {@link SignInAuthHelpers} on `ctx.convexAuth`, which
+ * cannot create users.
+ *
+ * @internal Not public until the API for custom methods is stable.
+ */
+export type SignInMethodBuilders<Profile> = {
+  authMutation: AuthMutationBuilder<Profile, SignInAuthHelpers<Profile>>;
 };
 
 /**
@@ -148,6 +169,22 @@ export type AuthCore<UsersTable extends string = string> = {
       name: MethodName;
     } & UserCallbacks<MethodName, Profile, UsersTable>,
   ): MethodBuilders<Profile>;
+  /**
+   * Register a sign-in method that only signs existing users in, such as the
+   * `passkey` method, which adds passkeys to the accounts of another method.
+   * It takes no `createUser`, and its handlers get no helper that creates
+   * users: `ctx.convexAuth` has no `completeSignUp` or
+   * `signUpWithoutSession`.
+   *
+   * The name must be unique on this core, as for {@link bindMethod}. It is
+   * not meant to be called by application code directly.
+   *
+   * @internal Not public until the API for custom methods is stable.
+   */
+  bindSignInMethod<MethodName extends string, Profile>(options: {
+    name: MethodName;
+    onSignIn?: OnSignInFn<MethodName, Profile, UsersTable>;
+  }): SignInMethodBuilders<Profile>;
 };
 
 /**
@@ -290,17 +327,15 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   // core.
   const boundMethodNames = new Set<string>();
 
-  const bindMethod = <MethodName extends string, Profile>({
-    name,
-    createUser,
-    onSignIn,
-  }: {
-    name: MethodName;
-  } & UserCallbacks<
-    MethodName,
-    Profile,
-    UsersTable
-  >): MethodBuilders<Profile> => {
+  /**
+   * Register a method name and make the helpers that its functions get on
+   * `ctx.convexAuth`. `bindMethod` gives a method all of them;
+   * `bindSignInMethod` leaves out the ones that create users.
+   */
+  const registerMethod = <MethodName extends string, Profile>(
+    name: MethodName,
+    onSignIn: OnSignInFn<MethodName, Profile, UsersTable> | undefined,
+  ) => {
     if (boundMethodNames.has(name)) {
       throw new Error(
         `A sign-in method named "${name}" is already bound to this auth core. ` +
@@ -349,25 +384,9 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     };
 
     // The helpers close over the live ctx.
-    const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
-      completeSignUp: async (args: {
-        profile: Profile;
-        authenticatedBy: object;
-      }): Promise<TokenBundle> => {
-        return await ctx.runMutation(
-          component.public._internal_dangerous_signUp,
-          {
-            claims: {
-              method: name,
-              profile: args.profile,
-            },
-            componentPath: componentPathOf(args.authenticatedBy),
-            createUserHandle: await createFunctionHandle(createUser),
-            onSignInHandle: await onSignInHandle(),
-            ...ttl,
-          },
-        );
-      },
+    const makeSignInHelpers = (
+      ctx: GenericMutationCtx<GenericDataModel>,
+    ): SignInAuthHelpers<Profile> => ({
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
@@ -384,20 +403,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             userId: args.userId,
             onSignInHandle: await onSignInHandle(),
             ...ttl,
-          },
-        );
-      },
-      signUpWithoutSession: async (args: {
-        profile: Profile;
-      }): Promise<{ userId: string }> => {
-        return await ctx.runMutation(
-          component.public._internal_dangerous_signUpWithoutSession,
-          {
-            claims: {
-              method: name,
-              profile: args.profile,
-            },
-            createUserHandle: await createFunctionHandle(createUser),
           },
         );
       },
@@ -428,9 +433,75 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         });
         return await revokeListedSessions(ctx, sessions);
       },
+      recordReauthentication: async (args: {
+        userId: string;
+        authenticatedBy: object;
+      }): Promise<{ authenticatedAt: number }> => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+          throw new Error(
+            "Cannot record a re-authentication: the caller is not signed in.",
+          );
+        }
+        // The core checks that the session exists and belongs to `userId`.
+        return await ctx.runMutation(
+          component.public._internal_dangerous_recordReauthentication,
+          {
+            sessionId: identity.subject,
+            userId: args.userId,
+            componentPath: componentPathOf(args.authenticatedBy),
+          },
+        );
+      },
     });
 
-    const authMutation: AuthMutationBuilder<Profile> = (fn) =>
+    const makeSignUpHelpers = (
+      ctx: GenericMutationCtx<GenericDataModel>,
+      createUser: CreateUserFn<MethodName, Profile, UsersTable>,
+    ): Omit<BoundAuthHelpers<Profile>, keyof SignInAuthHelpers<Profile>> => ({
+      completeSignUp: async (args: {
+        profile: Profile;
+        authenticatedBy: object;
+      }): Promise<TokenBundle> => {
+        return await ctx.runMutation(
+          component.public._internal_dangerous_signUp,
+          {
+            claims: {
+              method: name,
+              profile: args.profile,
+            },
+            componentPath: componentPathOf(args.authenticatedBy),
+            createUserHandle: await createFunctionHandle(createUser),
+            onSignInHandle: await onSignInHandle(),
+            ...ttl,
+          },
+        );
+      },
+      signUpWithoutSession: async (args: {
+        profile: Profile;
+      }): Promise<{ userId: string }> => {
+        return await ctx.runMutation(
+          component.public._internal_dangerous_signUpWithoutSession,
+          {
+            claims: {
+              method: name,
+              profile: args.profile,
+            },
+            createUserHandle: await createFunctionHandle(createUser),
+          },
+        );
+      },
+    });
+
+    return { makeSignInHelpers, makeSignUpHelpers };
+  };
+
+  /** The `authMutation` builder that injects the given helpers. */
+  const authMutationWith =
+    <Profile, Helpers>(
+      makeHelpers: (ctx: GenericMutationCtx<GenericDataModel>) => Helpers,
+    ): AuthMutationBuilder<Profile, Helpers> =>
+    (fn) =>
       mutationGeneric({
         args: fn.args as PropertyValidators,
         returns: fn.returns,
@@ -441,7 +512,47 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           ),
       });
 
-    return { authMutation };
+  const bindMethod = <MethodName extends string, Profile>({
+    name,
+    createUser,
+    onSignIn,
+  }: {
+    name: MethodName;
+  } & UserCallbacks<
+    MethodName,
+    Profile,
+    UsersTable
+  >): MethodBuilders<Profile> => {
+    const { makeSignInHelpers, makeSignUpHelpers } = registerMethod<
+      MethodName,
+      Profile
+    >(name, onSignIn);
+    return {
+      authMutation: authMutationWith<Profile, BoundAuthHelpers<Profile>>(
+        (ctx) => ({
+          ...makeSignInHelpers(ctx),
+          ...makeSignUpHelpers(ctx, createUser),
+        }),
+      ),
+    };
+  };
+
+  const bindSignInMethod = <MethodName extends string, Profile>({
+    name,
+    onSignIn,
+  }: {
+    name: MethodName;
+    onSignIn?: OnSignInFn<MethodName, Profile, UsersTable>;
+  }): SignInMethodBuilders<Profile> => {
+    const { makeSignInHelpers } = registerMethod<MethodName, Profile>(
+      name,
+      onSignIn,
+    );
+    return {
+      authMutation: authMutationWith<Profile, SignInAuthHelpers<Profile>>(
+        makeSignInHelpers,
+      ),
+    };
   };
 
   return {
@@ -451,5 +562,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     refreshSession,
     isAuthenticated,
     bindMethod,
+    bindSignInMethod,
   };
 }

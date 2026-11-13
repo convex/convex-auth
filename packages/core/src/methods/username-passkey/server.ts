@@ -25,20 +25,24 @@ import {
 import {
   buildAuthenticationOptions,
   buildRegistrationOptions,
-} from "./options.ts";
+} from "../../lib/passkey/options.ts";
 import {
   finishAddPasskey,
   startAddPasskey,
   verifyAddPasskey,
 } from "./management/add.ts";
-import { listPasskeys } from "./management/list.ts";
+import { listPasskeys } from "../../lib/passkey/list.ts";
 import {
   finishRemovePasskey,
   startRemovePasskey,
 } from "./management/remove.ts";
-import { renamePasskey } from "./management/rename.ts";
-import { SIGN_IN_PURPOSE } from "./purposes.ts";
-import { defaultPasskeyName } from "./aaguids.ts";
+import { renamePasskey } from "../../lib/passkey/rename.ts";
+import {
+  finishPasskeyReauthentication,
+  startPasskeyReauthentication,
+} from "../../lib/passkey/reauthenticate.ts";
+import { REAUTHENTICATE_PURPOSE, SIGN_IN_PURPOSE } from "./purposes.ts";
+import { defaultPasskeyName } from "../../lib/passkey/aaguids.ts";
 
 /**
  * Options for {@link setupUsernamePasskey}.
@@ -160,7 +164,8 @@ export type FinishSignInResult = Infer<typeof finishSignInResult>;
  * of that account; when the username is free, the user registers a new
  * account immediately.
  *
- * Logged in users can add or remove passkeys.
+ * Logged in users can add or remove passkeys, and re-authenticate with a
+ * passkey before a sensitive action (see `requireRecentAuthentication`).
  *
  * Wire it up in `convex/auth.ts`:
  *
@@ -183,6 +188,9 @@ export type FinishSignInResult = Infer<typeof finishSignInResult>;
  *
  *   startRemovePasskey,
  *   finishRemovePasskey,
+ *
+ *   startPasskeyReauthentication,
+ *   finishPasskeyReauthentication,
  * } = setupUsernamePasskey(auth, {
  *   component: components.authPasskey,
  *   usernameComponent: components.authUsername,
@@ -503,6 +511,18 @@ export function setupUsernamePasskey<UsersTable extends string>(
         finishAddPasskey: finishAddPasskey(config),
         startRemovePasskey: startRemovePasskey(config),
         finishRemovePasskey: finishRemovePasskey(config),
+
+        // Re-authenticate the signed-in user with one of their passkeys, and
+        // record it on the current session, for
+        // `requireRecentAuthentication`.
+        startPasskeyReauthentication: startPasskeyReauthentication({
+          ...config,
+          purpose: REAUTHENTICATE_PURPOSE,
+        }),
+        finishPasskeyReauthentication: finishPasskeyReauthentication(
+          { ...config, purpose: REAUTHENTICATE_PURPOSE },
+          authMutation,
+        ),
       };
     },
   };

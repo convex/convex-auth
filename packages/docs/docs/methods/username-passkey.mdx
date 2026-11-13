@@ -19,11 +19,8 @@ your login page has a single username field. A free username creates a new
 account with a new passkey; an existing username asks for a passkey of that
 account.
 
-:::info
-
-Support for email + passkey login is coming soon.
-
-:::
+To add passkeys to accounts that another method creates, such as Email +
+Password, use the [Passkey](./passkey.mdx) method instead.
 
 ## Setting up username + passkey login in your app
 
@@ -193,6 +190,14 @@ We recommend copying the following component into your app, adapting it to your 
 </Step>
 
 </StepByStep>
+
+### Confirming a sensitive action with a passkey
+
+Export `startPasskeyReauthentication` and `finishPasskeyReauthentication` from
+`convex/auth.ts`, next to the other functions of the method. Then
+`useReauthenticateWithPasskey(api.auth)` asks the user for one of their
+passkeys before a sensitive action. See
+[Recent authentication](../recent-authentication.mdx).
 
 ### Using passkeys in a React Native app
 

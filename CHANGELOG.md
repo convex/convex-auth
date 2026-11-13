@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- New `passkey` method, at `@convex-dev/auth/methods/passkey/server`,
+  `/react`, and `/react-custom`. It adds passkeys to the accounts of another
+  method: discoverable sign-in from a button or from autofill, and adding,
+  listing, renaming, and removing passkeys. Adding and removing a passkey
+  need a recent authentication.
+- New `getAuthenticationTime` and `requireRecentAuthentication` in
+  `@convex-dev/auth/server`, and `isReauthenticationRequiredError` in
+  `@convex-dev/auth/react`. The core keeps, for each session, when the user
+  last authenticated and with which component, in a new
+  `reauthentications` table.
+- `usernamePasskey` has two new functions, `startPasskeyReauthentication` and
+  `finishPasskeyReauthentication`, and a `useReauthenticateWithPasskey` hook:
+  the user confirms a sensitive action with one of their passkeys. Export the
+  two functions from `convex/auth.ts` to use the hook.
+
 ## 2.0.0
 
 First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.

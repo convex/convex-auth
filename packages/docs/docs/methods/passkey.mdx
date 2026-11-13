@@ -1,0 +1,283 @@
+---
+sidebar_position: 3.5
+title: Passkey
+description: Let users of another login method sign in with a passkey.
+---
+
+The `passkey` method adds passkeys to accounts that another method creates,
+such as [Email + Password](./email-password.mdx) or [OAuth](./oauth.mdx).
+Users sign up with that method, add a passkey from a settings page, and then
+sign in with the passkey alone.
+
+Sign-in is _discoverable_: the user does not type a username. The browser
+lists the passkeys it holds for your app, from a “Sign in with a passkey”
+button or from the autocompletion list of the email field, and the passkey the
+user picks names the account.
+
+The method creates no accounts. For accounts that only have a username and
+passkeys, use [Username + passkey](./username-passkey.mdx) instead.
+
+## Setting up passkey login in your app
+
+<StepByStep>
+
+<Step title="Set up another login method">
+
+Follow the guide of the method that creates your accounts, for example
+[Email + Password](./email-password.mdx).
+
+</Step>
+
+<Step title="Install the passkey component">
+
+Register the passkey component alongside the core in `convex/convex.config.ts`.
+It stores the passkeys and the challenges of their ceremonies:
+
+```ts title="convex/convex.config.ts"
+import { defineApp } from "convex/server";
+import auth from "@convex-dev/auth/convex.config.js";
+import authPasskey from "@convex-dev/auth/components/passkey/convex.config.js";
+
+const app = defineApp();
+app.use(auth);
+app.use(authPasskey);
+// The components of your other login methods
+
+export default app;
+```
+
+</Step>
+
+<Step title="Name the passkeys">
+
+When a user adds a passkey, the browser shows a name for the account, and
+stores it with the passkey. Write an internal query that returns the `name`
+(usually the email address) and the `displayName` (usually the full name) of
+a user. Both must be non-empty.
+
+```ts title="convex/users.ts"
+import { v } from "convex/values";
+import { internalQuery } from "./_generated/server";
+import { components } from "./_generated/api";
+
+export const passkeyUserName = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.object({ name: v.string(), displayName: v.string() }),
+  handler: async (ctx, { userId }) => {
+    const email = await ctx.runQuery(
+      components.authEmail.verifiedEmails.getPrimaryEmail,
+      { userId },
+    );
+    if (email === null) {
+      throw new Error(`User ${userId} has no email address`);
+    }
+    return { name: email, displayName: email };
+  },
+});
+```
+
+</Step>
+
+<Step title="Set up the public backend functions">
+
+Export the core from `convex/auth.ts`, so that another module can use it:
+
+```ts title="convex/auth.ts"
+export const auth = setupConvexAuth({ component: components.auth });
+```
+
+Then set up the `passkey` method with `setupPasskey` in a module of its own,
+`convex/passkey.ts`, so its functions are under `api.passkey`. `rpId` and
+`origin` bind the passkeys to your app, as the
+[Username + passkey](./username-passkey.mdx)
+guide explains.
+
+```ts title="convex/passkey.ts"
+import { setupPasskey } from "@convex-dev/auth/methods/passkey/server";
+import { components, internal } from "./_generated/api";
+import { auth } from "./auth";
+
+export const {
+  startSignInWithPasskey,
+  finishSignInWithPasskey,
+  listPasskeys,
+  renamePasskey,
+  startAddPasskey,
+  finishAddPasskey,
+  removePasskey,
+  startPasskeyReauthentication,
+  finishPasskeyReauthentication,
+} = setupPasskey(auth, {
+  component: components.authPasskey,
+  rpId: "localhost",
+  origin: "http://localhost:5173",
+}).attachUserCallbacks({ getUserName: internal.users.passkeyUserName });
+```
+
+`attachUserCallbacks` also takes an optional `onSignIn` mutation, called with
+the `userId` on every passkey sign-in.
+
+:::warning
+
+Passkeys are permanently bound to their `rpId`: a passkey created with `rpId:
+"localhost"` can never be used on your production domain. Set both values to
+the production domain before you deploy.
+
+:::
+
+</Step>
+
+<Step title="Add passkey sign-in to the login page">
+
+`useSignInWithPasskey` signs the user in from a button. While the hook is
+mounted, the browser also offers the passkeys in the autocompletion list of a
+field with `autoComplete="username webauthn"`, such as the email field of your
+sign-in form.
+
+```tsx title="src/SignIn.tsx"
+import { useSignInWithPasskey } from "@convex-dev/auth/methods/passkey/react";
+import { api } from "../convex/_generated/api";
+
+export function SignIn() {
+  const { signIn, pending, autofill } = useSignInWithPasskey(api.passkey);
+  return (
+    <>
+      <input type="email" name="email" autoComplete="username webauthn" />
+      {/* The rest of the form of your other method */}
+      {autofill.lastError !== null && (
+        <p role="alert">{autofill.lastError.error}</p>
+      )}
+      <button
+        disabled={pending}
+        onClick={async () => {
+          const result = await signIn();
+          if (result.status === "error") {
+            // map result.userError to a message
+          }
+        }}
+      >
+        Sign in with a passkey
+      </button>
+    </>
+  );
+}
+```
+
+:::warning
+
+The browser allows only one autofill request at a time, so you should not
+mount the `useSignInWithPasskey` hook multiple times simultaneously.
+
+:::
+
+</Step>
+
+</StepByStep>
+
+## Managing passkeys
+
+Users add, rename, and remove their passkeys from a settings page.
+`useAddPasskey` runs the browser ceremony that creates a passkey. To list the
+passkeys, read the `listPasskeys` query. To rename or remove one, call the
+`renamePasskey` and `removePasskey` mutations.
+
+```tsx title="src/PasskeySettings.tsx"
+import { useAddPasskey } from "@convex-dev/auth/methods/passkey/react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../convex/_generated/api";
+
+export function PasskeySettings() {
+  const list = useQuery(api.passkey.listPasskeys, {});
+  const { addPasskey, pending } = useAddPasskey(api.passkey);
+  const removePasskey = useMutation(api.passkey.removePasskey);
+
+  return (
+    <>
+      <ul>
+        {list?.success &&
+          list.passkeys.map((passkey) => (
+            <li key={passkey.passkeyId}>
+              {passkey.name ?? "Unnamed passkey"}
+              <button
+                onClick={async () => {
+                  const result = await removePasskey({
+                    passkeyId: passkey.passkeyId,
+                  });
+                  if (!result.success) {
+                    // map result.userError to a message
+                  }
+                }}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+      </ul>
+      <button
+        disabled={pending}
+        onClick={async () => {
+          const result = await addPasskey();
+          if (!result.success) {
+            // map result.userError to a message
+          }
+        }}
+      >
+        Add a passkey
+      </button>
+    </>
+  );
+}
+```
+
+Adding and removing a passkey changes how the account signs in, so both need a
+recent authentication: the user must have signed in, with any method, or
+re-authenticated in the last 10 minutes. Otherwise `addPasskey` and
+`removePasskey` return `REAUTHENTICATION_REQUIRED`. Ask the user to sign in
+again, or to confirm with a passkey as the next section shows, then try again.
+Change the window with the `maxAuthenticationAgeSeconds` option of
+`setupPasskey`.
+
+A user can remove their last passkey: the account still signs in with the
+method that created it.
+
+## Confirming a sensitive action with a passkey
+
+Before a sensitive action, ask the user for one of their passkeys with
+`useReauthenticateWithPasskey`. A verified passkey counts as a new
+authentication of the current session, which `requireRecentAuthentication`
+then accepts. See [Recent authentication](../recent-authentication.mdx).
+
+```tsx title="src/ConfirmButton.tsx"
+import { useReauthenticateWithPasskey } from "@convex-dev/auth/methods/passkey/react";
+import { api } from "../convex/_generated/api";
+
+export function ConfirmButton({ onConfirmed }: { onConfirmed: () => void }) {
+  const { reauthenticate, pending } = useReauthenticateWithPasskey(api.passkey);
+  return (
+    <button
+      disabled={pending}
+      onClick={async () => {
+        const result = await reauthenticate();
+        if (result.success) onConfirmed();
+      }}
+    >
+      Confirm with a passkey
+    </button>
+  );
+}
+```
+
+## Using passkeys in a React Native app
+
+`createPasskeyHooks` from `@convex-dev/auth/methods/passkey/react-custom`
+makes the same hooks on a native passkey layer that your app provides. It takes
+the same `PasskeyCeremonies` object as `createUsernamePasskeyHooks`: see
+[Using passkeys in a React Native app](./username-passkey.mdx#using-passkeys-in-a-react-native-app).
+
+```ts title="src/passkeys.ts"
+export const {
+  useSignInWithPasskey,
+  useAddPasskey,
+  useReauthenticateWithPasskey,
+} = createPasskeyHooks(ceremonies);
+```
