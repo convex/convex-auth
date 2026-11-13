@@ -11,7 +11,7 @@ const modules = import.meta.glob("./**/*.ts");
 const BUNDLE_ID = "com.example.app";
 const KEY_ID = "apple-key-1";
 const JWKS_ENDPOINT = "https://appleid.apple.com/auth/keys";
-const NONCE = "raw-nonce-1";
+const NONCE = "6f1c2a0e-5b7d-4e8a-9c3f-2d1b0a9e8f7c";
 
 /** Apple's signing key, and a key Apple never published. */
 let appleKey: KeyLike;
@@ -149,11 +149,18 @@ describe("_internal_dangerous_exchangeIdentityToken", () => {
     const t = convexTest(schema, modules);
     const result = await exchange(t, {
       identityToken: await identityToken(),
-      nonce: "someone-elses-nonce",
+      nonce: "someone-elses-nonce-0000",
     });
     expect(result).toEqual({
       status: "error",
       userError: { error: "INVALID_IDENTITY_TOKEN" },
     });
+  });
+
+  test("throws on a nonce too short to be random", async () => {
+    const t = convexTest(schema, modules);
+    await expect(
+      exchange(t, { identityToken: await identityToken(), nonce: "" }),
+    ).rejects.toThrow("at least 16 characters");
   });
 });

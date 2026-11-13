@@ -27,7 +27,7 @@ import { setupApple, type AppleProfile } from "./server.ts";
 const BUNDLE_ID = "com.example.app";
 const KEY_ID = "apple-key-1";
 const JWKS_ENDPOINT = "https://appleid.apple.com/auth/keys";
-const NONCE = "raw-nonce-1";
+const NONCE = "6f1c2a0e-5b7d-4e8a-9c3f-2d1b0a9e8f7c";
 const APPLE_SUB = "001234.abcdef.0123";
 
 const components = componentsGeneric() as unknown as {

@@ -213,40 +213,57 @@ export const {
 }).attachUserCallbacks({ createUser: internal.users.createUser });
 ```
 
-In the app, put the hex SHA-256 of a fresh random nonce in the sign-in
-request, and send the raw nonce with the token. A token is only accepted with
+In the app, put the hex SHA-256 of a fresh random nonce (at least 16
+characters) in the sign-in request, and send the raw nonce with the token. A token is only accepted with
 the nonce it was issued for. Apple gives the name to the app on the first
 authorization only; pass it along when it is there:
 
-```tsx
+```tsx title="useSignInWithApple.ts"
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useAction, useMutation } from "convex/react";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
+import { api } from "../convex/_generated/api";
 
-const nonce = Crypto.randomUUID();
-const credential = await AppleAuthentication.signInAsync({
-  requestedScopes: [
-    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-  ],
-  nonce: await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    nonce,
-  ),
-});
-const exchanged = await convex.action(api.auth.exchangeAppleIdentityToken, {
-  identityToken: credential.identityToken!,
-  nonce,
-  firstName: credential.fullName?.givenName ?? undefined,
-  lastName: credential.fullName?.familyName ?? undefined,
-});
-if (exchanged.status === "exchanged") {
-  const result = await convex.mutation(api.auth.completeSignInWithApple, {
-    code: exchanged.code,
-    state: exchanged.state,
-  });
-  if (result.status === "complete") {
-    await setSession(result.tokens);
-  }
+export function useSignInWithApple() {
+  const { setSession } = useAuthActions();
+  const exchange = useAction(api.auth.exchangeAppleIdentityToken);
+  const complete = useMutation(api.auth.completeSignInWithApple);
+
+  return async () => {
+    const nonce = Crypto.randomUUID();
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce: await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        nonce,
+      ),
+    });
+    if (credential.identityToken === null) {
+      throw new Error("Apple returned no identity token");
+    }
+    const exchanged = await exchange({
+      identityToken: credential.identityToken,
+      nonce,
+      firstName: credential.fullName?.givenName ?? undefined,
+      lastName: credential.fullName?.familyName ?? undefined,
+    });
+    if (exchanged.status === "error") {
+      // INVALID_IDENTITY_TOKEN: show the person a sign-in error.
+      return exchanged;
+    }
+    const result = await complete({
+      code: exchanged.code,
+      state: exchanged.state,
+    });
+    if (result.status === "complete") {
+      await setSession(result.tokens);
+    }
+    return result;
+  };
 }
 ```
 

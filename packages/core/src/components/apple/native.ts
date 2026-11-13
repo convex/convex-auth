@@ -40,6 +40,9 @@ async function fetchAppleKeys() {
   return createLocalJWKSet(JSON.parse(response.bodyText) as JSONWebKeySet);
 }
 
+/** Shortest raw nonce accepted. A random UUID is 36 characters. */
+const MIN_NONCE_LENGTH = 16;
+
 const exchangeResult = v.union(
   v.object({
     status: v.literal("exchanged"),
@@ -82,6 +85,13 @@ export const _internal_dangerous_exchangeIdentityToken = action({
   handler: async (ctx, args) => {
     if (args.audiences.length === 0) {
       throw new Error("No native app bundle ids to accept identity tokens for");
+    }
+    // A guessable nonce binds the token to nothing, so a short one is a bug in
+    // the app rather than a bad token.
+    if (args.nonce.length < MIN_NONCE_LENGTH) {
+      throw new Error(
+        `The nonce must be a fresh random value of at least ${MIN_NONCE_LENGTH} characters`,
+      );
     }
     // Apple being unreachable is not the token's fault, so it throws.
     const appleKeys = await fetchAppleKeys();
