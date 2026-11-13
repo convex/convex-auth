@@ -12,6 +12,7 @@ Supported sign-in methods:
 
 - Username + password
 - Email + password, with email verification and password recovery
+- Email code: sign in or sign up with a code sent by email
 - Username + passkey
 - OAuth: Google, Apple and GitHub
 
@@ -136,6 +137,8 @@ directory (see the example's own README):
 - `examples/react-email-password` — the core, password, and email components
   with the `emailPassword` method: sign-up with email validation, change
   password/email, and password recovery.
+- `examples/react-email-code` — the core and email components with the
+  `emailCode` method: sign-in and sign-up with a code sent by email.
 - `examples/react-passkey` and `examples/react-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
 - `examples/react-google`, `examples/react-apple`, and `examples/react-github`
