@@ -175,6 +175,13 @@ in their own browser, thus the code signs them in. A phishing site that relays
 the code to your app in real time also works. If this matters for your app,
 offer [passkeys](./username-passkey.mdx) too.
 
+Anyone who knows an address can use up its limit of codes, and thus block
+codes for that address for a while. The limit gives back one code every 12
+minutes, thus the block lasts as long as they keep asking. The
+same limit is what keeps guessing slow, thus don't loosen it to avoid the
+block. If the email code is the only way to sign in to your app, add passkeys
+as a second way in, so that a user whose codes are blocked can still sign in.
+
 ## What the response hides
 
 Starting a sign-in returns the same response whether or not a user has
