@@ -128,7 +128,11 @@ export type FinishSignInWithPasskeyResult = Infer<typeof finishSignInResult>;
  * function names do not collide with the ones of another method:
  *
  * ```ts
- * const {
+ * // convex/passkey.ts. `convex/auth.ts` exports the result of
+ * // `setupConvexAuth` as `auth`.
+ * import { auth } from "./auth";
+ *
+ * export const {
  *   startSignInWithPasskey,
  *   finishSignInWithPasskey,
  *

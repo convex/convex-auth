@@ -29,6 +29,9 @@ export type NotLoggedInErrorData = { error: "NOT_LOGGED_IN" };
  * ```ts
  * import { isReauthenticationRequiredError } from "@convex-dev/auth/react";
  *
+ * // In a component
+ * const deleteAccount = useMutation(api.users.deleteAccount);
+ *
  * try {
  *   await deleteAccount();
  * } catch (error) {
