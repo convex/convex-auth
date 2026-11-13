@@ -101,7 +101,11 @@ const testApp = {
     scopes: [],
     extraAuthorizationParams: {
       state: "x",
+      client_id: "x",
       redirect_uri: "https://evil.example",
+      response_type: "token",
+      code_challenge: "x",
+      code_challenge_method: "plain",
     },
     createAuthorizationRequest: (ctx, args) =>
       ctx.runMutation(
@@ -271,9 +275,15 @@ describe("startSignIn", () => {
 
     const params = new URL(redirect).searchParams;
     expect(params.getAll("state")).toEqual([state]);
+    expect(params.getAll("client_id")).toEqual([CLIENT_ID]);
     expect(params.getAll("redirect_uri")).toEqual([CALLBACK_URL]);
+    expect(params.getAll("response_type")).toEqual(["code"]);
+    expect(params.getAll("code_challenge_method")).toEqual(["S256"]);
     const request = await storedRequest(t);
     expect(request?.stateHash).toBe(await sha256Hex(state));
+    expect(params.getAll("code_challenge")).toEqual([
+      await sha256Base64Url(request!.codeVerifier),
+    ]);
   });
 
   test("the returned state hashes to the recorded state hash", async () => {
