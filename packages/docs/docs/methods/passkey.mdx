@@ -187,23 +187,31 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
 export function PasskeySettings() {
-  const passkeys = useQuery(api.passkey.listPasskeys);
+  const list = useQuery(api.passkey.listPasskeys, {});
   const { addPasskey, pending } = useAddPasskey(api.passkey);
   const removePasskey = useMutation(api.passkey.removePasskey);
 
   return (
     <>
       <ul>
-        {passkeys?.map((passkey) => (
-          <li key={passkey.passkeyId}>
-            {passkey.name ?? "Unnamed passkey"}
-            <button
-              onClick={() => removePasskey({ passkeyId: passkey.passkeyId })}
-            >
-              Remove
-            </button>
-          </li>
-        ))}
+        {list?.success &&
+          list.passkeys.map((passkey) => (
+            <li key={passkey.passkeyId}>
+              {passkey.name ?? "Unnamed passkey"}
+              <button
+                onClick={async () => {
+                  const result = await removePasskey({
+                    passkeyId: passkey.passkeyId,
+                  });
+                  if (!result.success) {
+                    // map result.userError to a message
+                  }
+                }}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
       </ul>
       <button
         disabled={pending}

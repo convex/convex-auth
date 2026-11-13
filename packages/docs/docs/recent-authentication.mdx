@@ -56,7 +56,8 @@ Don't use it in a query: a query result stays cached while its data does not
 change, so the query would keep passing after the time is up.
 
 To read the time without throwing, call `getAuthenticationTime`. It returns
-`{ authenticatedAt, component }`, or `null` when the caller is not signed in.
+`{ authenticatedAt, component }`, or `null` when the caller is not signed in
+or when no authentication matches `authenticatedBy`.
 
 ## Re-authenticating on the client
 
