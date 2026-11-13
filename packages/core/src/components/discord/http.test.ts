@@ -151,6 +151,20 @@ describe("discord callback", () => {
     expect(params.get(OAUTH_CODE_PARAM)).toBeNull();
   });
 
+  test("refuses a token response with no access_token", async () => {
+    const t = setup();
+    const state = await startFlow(t);
+    stubFetch({
+      ...discordRoutes(),
+      [TOKEN_ENDPOINT]: () => jsonResponse({ token_type: "Bearer" }),
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const params = redirectParams(await callback(t, { state, code: "code-1" }));
+    expect(params.get(OAUTH_ERROR_PARAM)).toBe("oauth_error");
+    expect(params.get(OAUTH_CODE_PARAM)).toBeNull();
+  });
+
   test("passes a declined sign-in back as access_denied", async () => {
     const t = setup();
     const state = await startFlow(t);
