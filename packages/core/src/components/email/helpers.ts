@@ -40,13 +40,15 @@ export const CUSTOM_TTL_MAX_MS = 24 * 60 * 60 * 1000; // 24 hours
  * The length of a sign-in code when the app gives none, and the bounds for
  * the value that an app can give.
  *
- * The start limits below allow 5 challenges for one address each hour, and
- * each challenge accepts `CODE_ATTEMPTS` wrong codes. Thus a person who tries
- * to guess the code of one address gets at most 25 tries an hour. With 8
- * digits, the chance that one of them is right is 1 in 4 million each hour,
- * and about 1 in 450 after a year of tries. With 6 digits, it is 1 in 40,000
- * each hour, and about 1 in 5 after a year. Each challenge also sends an
- * email to the address, thus its owner sees the tries.
+ * The start limits below allow 5 challenges for one address at once, then 1
+ * every 12 minutes, and each challenge accepts `CODE_ATTEMPTS` wrong codes.
+ * Thus a person who tries to guess the code of one address gets 50 tries in
+ * the first hour, then 25 an hour. With 8 digits, the chance that one of them
+ * is right is 1 in 2 million in the first hour, 1 in 4 million each hour
+ * after, and about 1 in 450 after a year of tries. With 6 digits, it is 1 in
+ * 20,000 in the first hour, 1 in 40,000 each hour after, and about 1 in 5
+ * after a year. Each challenge also sends an email to the address, thus its
+ * owner sees the tries.
  */
 export const SIGN_IN_CODE_LENGTH_DEFAULT = 8;
 export const SIGN_IN_CODE_LENGTH_MIN = 6;

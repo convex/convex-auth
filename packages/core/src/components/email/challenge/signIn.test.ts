@@ -169,6 +169,19 @@ describe("challenge.signIn.start", () => {
     });
     expect(await sentEmails(t)).toHaveLength(5);
   });
+
+  test("limits the starts from one client IP", async () => {
+    const t = setup();
+    for (let i = 0; i < 20; i++) {
+      expect(await start(t, `user${i}@example.com`)).toMatchObject({
+        success: true,
+      });
+    }
+    expect(await start(t, "another@example.com")).toMatchObject({
+      success: false,
+      userError: { error: "RATE_LIMITED" },
+    });
+  });
 });
 
 describe("challenge.signIn.check", () => {
@@ -460,6 +473,34 @@ describe("the functions for links", () => {
       ).rejects.toThrow(/sends a short code, not a link/);
     }
     // The row and its attempts stay.
+    const rows = await t.run((ctx) => ctx.db.query("challenges").collect());
+    expect(rows).toMatchObject([{ attemptsLeft: CODE_ATTEMPTS }]);
+  });
+
+  test("complete throws for a challenge that sends a code, and leaves it", async () => {
+    const t = setup();
+    await seedChallenge(t, {
+      email: "alice@example.com",
+      purpose: { kind: "signIn" },
+      emailCode: "12345678",
+      browserSecret: "secret1",
+      attemptsLeft: CODE_ATTEMPTS,
+    });
+
+    await expect(
+      t.mutation(api.challenge.custom.complete, {
+        emailCode: "12345678",
+        browserSecret: "secret1",
+        purpose: "myApp/recovery",
+        currentUserId: null,
+      }),
+    ).rejects.toThrow(/sends a short code, not a link/);
+    await expect(
+      t.mutation(api.challenge.signUp.complete, {
+        emailCode: "87654321",
+        browserSecret: "secret1",
+      }),
+    ).rejects.toThrow(/sends a short code, not a link/);
     const rows = await t.run((ctx) => ctx.db.query("challenges").collect());
     expect(rows).toMatchObject([{ attemptsLeft: CODE_ATTEMPTS }]);
   });
