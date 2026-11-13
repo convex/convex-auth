@@ -1,5 +1,6 @@
 import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
+import { setupDiscord } from "@convex-dev/auth/methods/discord/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
 import { setupGoogle } from "@convex-dev/auth/methods/google/server";
@@ -85,6 +86,12 @@ export const { startSignInWithApple, completeSignInWithApple } = setupApple(
   auth,
   { component: components.authApple, allowedRedirectOrigins },
 ).attachUserCallbacks({ createUser: internal.users.createUserApple });
+
+export const { startSignInWithDiscord, completeSignInWithDiscord } =
+  setupDiscord(auth, {
+    component: components.authDiscord,
+    allowedRedirectOrigins,
+  }).attachUserCallbacks({ createUser: internal.users.createUserDiscord });
 
 export const { startSignInWithGithub, completeSignInWithGithub } = setupGithub(
   auth,

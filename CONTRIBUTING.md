@@ -20,6 +20,7 @@ so the first `pnpm dev` prompts you to pick or create a deployment.
 - `examples/react-passkey-basic` adds the passkey provider.
 - `examples/react-github` adds the GitHub Oauth provider.
 - `examples/react-google` adds the Google OAuth provider.
+- `examples/react-discord` adds the Discord OAuth provider.
 - `examples/nextjs` covers the Next.js integration.
 
 ## Common tasks

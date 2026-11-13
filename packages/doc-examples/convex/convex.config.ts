@@ -2,6 +2,7 @@ import { defineApp } from "convex/server";
 import { v } from "convex/values";
 import auth from "@convex-dev/auth/convex.config.js";
 import authApple from "@convex-dev/auth/components/apple/convex.config.js";
+import authDiscord from "@convex-dev/auth/components/discord/convex.config.js";
 import authEmail from "@convex-dev/auth/components/email/convex.config.js";
 import authGithub from "@convex-dev/auth/components/github/convex.config.js";
 import authGoogle from "@convex-dev/auth/components/google/convex.config.js";
@@ -18,6 +19,8 @@ const app = defineApp({
     AUTH_APPLE_TEAM_ID: v.string(),
     AUTH_APPLE_KEY_ID: v.string(),
     AUTH_APPLE_PRIVATE_KEY: v.string(),
+    AUTH_DISCORD_CLIENT_ID: v.string(),
+    AUTH_DISCORD_CLIENT_SECRET: v.string(),
     AUTH_GITHUB_CLIENT_ID: v.string(),
     AUTH_GITHUB_CLIENT_SECRET: v.string(),
     RESEND_API_KEY: v.string(),
@@ -47,6 +50,13 @@ app.use(authApple, {
     TEAM_ID: app.env.AUTH_APPLE_TEAM_ID,
     KEY_ID: app.env.AUTH_APPLE_KEY_ID,
     PRIVATE_KEY: app.env.AUTH_APPLE_PRIVATE_KEY,
+  },
+});
+app.use(authDiscord, {
+  httpPrefix: "/oauth/discord",
+  env: {
+    CLIENT_ID: app.env.AUTH_DISCORD_CLIENT_ID,
+    CLIENT_SECRET: app.env.AUTH_DISCORD_CLIENT_SECRET,
   },
 });
 app.use(authGithub, {

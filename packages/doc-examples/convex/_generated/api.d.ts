@@ -57,6 +57,7 @@ export declare const components: {
   authPasskey: import("@convex-dev/auth/components/passkey/_generated/component.js").ComponentApi<"authPasskey">;
   authGoogle: import("@convex-dev/auth/components/google/_generated/component.js").ComponentApi<"authGoogle">;
   authApple: import("@convex-dev/auth/components/apple/_generated/component.js").ComponentApi<"authApple">;
+  authDiscord: import("@convex-dev/auth/components/discord/_generated/component.js").ComponentApi<"authDiscord">;
   authGithub: import("@convex-dev/auth/components/github/_generated/component.js").ComponentApi<"authGithub">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };
