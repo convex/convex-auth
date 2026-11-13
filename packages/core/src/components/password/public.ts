@@ -153,6 +153,26 @@ export const verifyPassword = mutation({
   },
 });
 
+/**
+ * Delete the password of a user, for an app that deletes the user.
+ *
+ * The function is idempotent: `deleted` is `false` when the user had no
+ * password. A user with no password can no longer sign in with one, and
+ * `_internal_dangerous_setPassword` can give them a new one.
+ */
+export const deletePassword = mutation({
+  args: { userId: v.string() },
+  returns: v.object({ deleted: v.boolean() }),
+  handler: async (ctx, { userId }): Promise<{ deleted: boolean }> => {
+    const row = await passwordByUserId(ctx, userId);
+    if (row === null) {
+      return { deleted: false };
+    }
+    await ctx.db.delete("passwords", row._id);
+    return { deleted: true };
+  },
+});
+
 function passwordByUserId(
   ctx: QueryCtx,
   userId: string,
