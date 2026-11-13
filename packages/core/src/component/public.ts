@@ -19,6 +19,7 @@ import {
 import { sha256Hex } from "../lib/crypto.ts";
 import { assertMountedAsCore } from "../lib/coreComponent.ts";
 import {
+  recordTtlConfig,
   refreshTokenInactivityExpiresAt,
   sessionMaxLifetimeExpiresAt,
 } from "./expiry.ts";
@@ -79,6 +80,7 @@ async function issueSession(
   ttl: TtlConfig,
 ): Promise<TokenBundle> {
   const now = Date.now();
+  await recordTtlConfig(ctx, ttl);
   await evictLeastRecentlyRefreshedSessions(ctx, userId);
   const sessionId = await ctx.db.insert("sessions", {
     userId,
@@ -404,6 +406,7 @@ export const refresh = mutation({
     // throw unconditionally.
     const ttl = validateTtlConfig(args);
     const now = Date.now();
+    await recordTtlConfig(ctx, ttl);
 
     const token = await lookupRefreshTokenByHash(
       ctx,
