@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3.5
+sidebar_position: 4
 title: Email code
 description: Sign users in with a code sent to their email address, with no password.
 ---
@@ -162,10 +162,12 @@ and a line that tells the user not to share the code.
 - When the user asks for a new code, the client keeps only the newest secret.
   Tell the user to use the newest email.
 
-With 8 digits, 5 attempts per code, and the limit of 5 codes per address per
-hour, an attacker who knows the address has about 1 chance in 4 million per
-hour to guess a code, and each try sends an email to the owner of the address.
-With 6 digits, the chance is about 1 in 40,000 per hour.
+With 8 digits, 5 attempts per code, and the limit of codes per address (see
+below), an attacker who knows the address gets 50 guesses in the first hour,
+then 25 an hour. The chance that one is right is about 1 in 2 million in the
+first hour, 1 in 4 million each hour after, and 1 in 450 over a year. Each
+code they ask for also sends an email to the owner of the address. With 6
+digits, the chances are 1 in 20,000, 1 in 40,000, and about 1 in 5.
 
 A code does not protect against a user who reads it out to someone else, for
 example to a caller who pretends to be support. That person asked for the code
