@@ -16,11 +16,11 @@
  */
 "use client";
 
-import { browserCeremonies } from "../username-passkey/client.ts";
+import { browserCeremonies } from "../../lib/passkey/client.ts";
 import {
   useReauthenticateWithPasskeyImpl,
   type PasskeyReauthenticationApi,
-} from "../username-passkey/management/react.tsx";
+} from "../../lib/passkey/reauthenticationHook.tsx";
 import type { AddPasskeyApi, PasskeySignInApi } from "./flows.ts";
 import { useAddPasskeyImpl, useSignInWithPasskeyImpl } from "./hooks.tsx";
 
@@ -33,17 +33,17 @@ export type {
 export type {
   PasskeyReauthenticationApi,
   ReauthenticateWithPasskeyResult,
-} from "../username-passkey/management/react.tsx";
-export type { RenamePasskeyResult } from "../username-passkey/management/rename.ts";
+} from "../../lib/passkey/reauthenticationHook.tsx";
+export type { RenamePasskeyResult } from "../../lib/passkey/rename.ts";
 export type { RemovePasskeyResult } from "./management.ts";
 export type {
   PasskeyClientError,
   PasskeyClientFailure,
-} from "../username-passkey/client.ts";
+} from "../../lib/passkey/client.ts";
 export type {
   AlreadyPendingFailure,
   PasskeyAutofillStatus,
-} from "../username-passkey/react_impl.tsx";
+} from "../../lib/passkey/react_impl.tsx";
 
 /**
  * Hook for signing in with a passkey, without a username.

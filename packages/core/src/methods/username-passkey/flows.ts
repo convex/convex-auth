@@ -17,7 +17,7 @@ import type {
 import type {
   ResolvedPasskeyCeremonies,
   PasskeyClientError,
-} from "./ceremonies.ts";
+} from "../../lib/passkey/ceremonies.ts";
 import type {
   FinishSignInResult,
   FinishSignUpResult,

@@ -210,7 +210,8 @@ export function pruneAuthenticationResponse(
 
 /**
  * The passkey ceremonies of a platform, which an app implements to run the
- * passkey hooks outside a browser. `createUsernamePasskeyHooks` takes one.
+ * passkey hooks outside a browser. `createUsernamePasskeyHooks` and
+ * `createPasskeyHooks` take one.
  *
  * `register` and `authenticate` return the response of the platform as it is:
  * the hooks keep only the fields the server accepts. For a failure they

@@ -14,13 +14,13 @@ import {
   vAuthenticationResponseJSON,
   vPublicKeyCredentialRequestOptionsJSON,
 } from "../../components/passkey/validation.ts";
-import { buildAuthenticationOptions } from "../username-passkey/options.ts";
-import { listPasskeys } from "../username-passkey/management/list.ts";
-import { renamePasskey } from "../username-passkey/management/rename.ts";
+import { buildAuthenticationOptions } from "../../lib/passkey/options.ts";
+import { listPasskeys } from "../../lib/passkey/list.ts";
+import { renamePasskey } from "../../lib/passkey/rename.ts";
 import {
   finishPasskeyReauthentication,
   startPasskeyReauthentication,
-} from "../username-passkey/management/reauthenticate.ts";
+} from "../../lib/passkey/reauthenticate.ts";
 import {
   finishAddPasskey,
   removePasskey,

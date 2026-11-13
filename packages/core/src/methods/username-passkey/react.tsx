@@ -19,28 +19,32 @@
  */
 "use client";
 
-import { browserCeremonies } from "./client.ts";
+import { browserCeremonies } from "../../lib/passkey/client.ts";
 import type { UsernamePasskeyApi } from "./flows.ts";
 import { useSignInWithUsernamePasskeyImpl } from "./hooks.tsx";
 import {
   useAddPasskeyImpl,
-  useReauthenticateWithPasskeyImpl,
   useRemovePasskeyImpl,
   type AddPasskeyApi,
-  type PasskeyReauthenticationApi,
   type RemovePasskeyApi,
 } from "./management/react.tsx";
+import {
+  useReauthenticateWithPasskeyImpl,
+  type PasskeyReauthenticationApi,
+} from "../../lib/passkey/reauthenticationHook.tsx";
 
 export type { SignInWithUsernamePasskeyResult } from "./hooks.tsx";
-export type { RenamePasskeyResult } from "./management/rename.ts";
+export type { RenamePasskeyResult } from "../../lib/passkey/rename.ts";
 export {
   type AddPasskeyApi,
   type AddPasskeyResult,
-  type PasskeyReauthenticationApi,
-  type ReauthenticateWithPasskeyResult,
   type RemovePasskeyApi,
   type RemovePasskeyResult,
 } from "./management/react.tsx";
+export type {
+  PasskeyReauthenticationApi,
+  ReauthenticateWithPasskeyResult,
+} from "../../lib/passkey/reauthenticationHook.tsx";
 // Apps read the WebAuthn JSON types and the browser-side failure shapes
 // from here, so they never depend on `@simplewebauthn/*` directly.
 export type {
@@ -54,7 +58,7 @@ export type {
   WireCreationOptions,
   WireRegistrationResponse,
   WireRequestOptions,
-} from "./client.ts";
+} from "../../lib/passkey/client.ts";
 export type {
   UsernamePasskeyApi,
   UsernamePasskeyAutofillError,
@@ -62,7 +66,7 @@ export type {
 export type {
   AlreadyPendingFailure,
   PasskeyAutofillStatus,
-} from "./react_impl.tsx";
+} from "../../lib/passkey/react_impl.tsx";
 
 /**
  * Client for the log in page in the “username + passkey” auth flow.

@@ -64,7 +64,7 @@ check:doc-examples`). It is not an example to copy.
   ceremonies that the app provides (for example on a React Native passkey
   library); it does not import the browser ceremony client (`client.ts`) or
   `@simplewebauthn/browser`. `passkey` has the same three entry points, with
-  `createPasskeyHooks`, and reuses the code of `username-passkey`. A method whose backend and
+  `createPasskeyHooks`. A method whose backend and
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
   runtime can import.
@@ -73,7 +73,7 @@ check:doc-examples`). It is not an example to copy.
 - `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
   `ssr/nextjs/` holds the Next.js bindings.
 - `lib/` — internal code that several layers share (`lib/oauth/` for the
-  OAuth components and methods).
+  OAuth components and methods, `lib/passkey/` for the two passkey methods).
 - `testing/` — the `convex-test` helpers, which ship as source.
 
 The Convex CLI deploys every module in a component directory, and codegen

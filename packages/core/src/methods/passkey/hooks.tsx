@@ -15,13 +15,13 @@ import type { SignInError } from "../../lib/types.ts";
 import type {
   PasskeyClientError,
   ResolvedPasskeyCeremonies,
-} from "../username-passkey/ceremonies.ts";
+} from "../../lib/passkey/ceremonies.ts";
 import {
   usePasskeyAutofill,
   usePasskeyCeremonySlot,
   type AlreadyPendingError,
   type AlreadyPendingFailure,
-} from "../username-passkey/react_impl.tsx";
+} from "../../lib/passkey/react_impl.tsx";
 import {
   runAddPasskeyFlow,
   runSignInWithPasskeyFlow,

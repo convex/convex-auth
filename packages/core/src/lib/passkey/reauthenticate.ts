@@ -26,30 +26,27 @@
  */
 import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
-import type { AuthMutationBuilder } from "../../../server/setup.ts";
-import type { SignInAuthHelpers } from "../../../lib/types.ts";
-import type { ComponentApi } from "../../../components/passkey/_generated/component.ts";
-import type { ComponentApi as CoreComponentApi } from "../../../component/_generated/component.ts";
+import { getAuthUserId } from "../../server/userId.ts";
+import type { AuthMutationBuilder } from "../../server/setup.ts";
+import type { SignInAuthHelpers } from "../types.ts";
+import type { PasskeyConfig } from "./config.ts";
 import {
   finishAuthenticationUserError,
   notLoggedInUserError,
   vAuthenticationResponseJSON,
   vPublicKeyCredentialRequestOptionsJSON,
-  type ExpectedOrigin,
-} from "../../../components/passkey/validation.ts";
-import { buildAuthenticationOptions } from "../options.ts";
+} from "../../components/passkey/validation.ts";
+import { buildAuthenticationOptions } from "./options.ts";
 
 /**
  * What the re-authentication functions of a passkey method close over.
  *
  * @internal
  */
-export type PasskeyReauthenticationConfig = {
-  component: ComponentApi;
-  coreComponent: CoreComponentApi;
-  rpId: string;
-  origin: ExpectedOrigin;
+export type PasskeyReauthenticationConfig = Pick<
+  PasskeyConfig,
+  "component" | "coreComponent" | "rpId" | "origin"
+> & {
   /** The purpose of the challenge, a constant of the method. */
   purpose: string;
 };

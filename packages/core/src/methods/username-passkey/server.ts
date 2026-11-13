@@ -25,24 +25,24 @@ import {
 import {
   buildAuthenticationOptions,
   buildRegistrationOptions,
-} from "./options.ts";
+} from "../../lib/passkey/options.ts";
 import {
   finishAddPasskey,
   startAddPasskey,
   verifyAddPasskey,
 } from "./management/add.ts";
-import { listPasskeys } from "./management/list.ts";
+import { listPasskeys } from "../../lib/passkey/list.ts";
 import {
   finishRemovePasskey,
   startRemovePasskey,
 } from "./management/remove.ts";
-import { renamePasskey } from "./management/rename.ts";
+import { renamePasskey } from "../../lib/passkey/rename.ts";
 import {
   finishPasskeyReauthentication,
   startPasskeyReauthentication,
-} from "./management/reauthenticate.ts";
+} from "../../lib/passkey/reauthenticate.ts";
 import { REAUTHENTICATE_PURPOSE, SIGN_IN_PURPOSE } from "./purposes.ts";
-import { defaultPasskeyName } from "./aaguids.ts";
+import { defaultPasskeyName } from "../../lib/passkey/aaguids.ts";
 
 /**
  * Options for {@link setupUsernamePasskey}.

@@ -46,7 +46,7 @@ import {
   hasTooManyPasskeys,
   startPasskeyRegistration,
   tooManyPasskeysUserError,
-} from "../username-passkey/management/add.ts";
+} from "../../lib/passkey/registration.ts";
 
 /**
  * The names that the browser shows for a new passkey in its passkey manager.

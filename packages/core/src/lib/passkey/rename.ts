@@ -9,12 +9,12 @@
  */
 import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
-import type { UsernamePasskeyConfig } from "../server.ts";
+import { getAuthUserId } from "../../server/userId.ts";
+import type { PasskeyConfig } from "./config.ts";
 import {
   notLoggedInUserError,
   renamePasskeyUserError,
-} from "../../../components/passkey/validation.ts";
+} from "../../components/passkey/validation.ts";
 
 const renamePasskeyResult = v.union(
   v.object({ success: v.literal(true) }),
@@ -27,7 +27,7 @@ const renamePasskeyResult = v.union(
 export type RenamePasskeyResult = Infer<typeof renamePasskeyResult>;
 
 export function renamePasskey(
-  config: Pick<UsernamePasskeyConfig, "component" | "coreComponent">,
+  config: Pick<PasskeyConfig, "component" | "coreComponent">,
 ) {
   return mutationGeneric({
     args: {

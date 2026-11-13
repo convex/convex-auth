@@ -6,9 +6,9 @@
 
 import { queryGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
-import type { UsernamePasskeyConfig } from "../server.ts";
-import { notLoggedInUserError } from "../../../components/passkey/validation.ts";
+import { getAuthUserId } from "../../server/userId.ts";
+import type { PasskeyConfig } from "./config.ts";
+import { notLoggedInUserError } from "../../components/passkey/validation.ts";
 
 /**
  * The passkey metadata shown to the user when managing their passkeys.
@@ -28,7 +28,7 @@ const listPasskeysResult = v.union(
 export type ListPasskeysResult = Infer<typeof listPasskeysResult>;
 
 export function listPasskeys(
-  config: Pick<UsernamePasskeyConfig, "component" | "coreComponent">,
+  config: Pick<PasskeyConfig, "component" | "coreComponent">,
 ) {
   return queryGeneric({
     args: {},

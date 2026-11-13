@@ -6,7 +6,7 @@ import type { ConvexReactClient } from "convex/react";
 import { anyApi, getFunctionName } from "convex/server";
 import { describe, expect, test, vi } from "vitest";
 import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
-import type { ResolvedPasskeyCeremonies } from "../username-passkey/ceremonies.ts";
+import type { ResolvedPasskeyCeremonies } from "../../lib/passkey/ceremonies.ts";
 import {
   runAddPasskeyFlow,
   runSignInWithPasskeyFlow,

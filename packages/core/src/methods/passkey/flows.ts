@@ -18,7 +18,7 @@ import type {
   PasskeyClientError,
   PasskeyClientFailure,
   ResolvedPasskeyCeremonies,
-} from "../username-passkey/ceremonies.ts";
+} from "../../lib/passkey/ceremonies.ts";
 import type {
   WireAuthenticationResponse,
   WireRegistrationResponse,
