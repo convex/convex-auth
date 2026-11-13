@@ -1,14 +1,14 @@
 ---
 sidebar_position: 4
 title: OAuth (Apple, Google, GitHub, and Discord)
-description: Allow users to sign-in with an account on a supported provider.
+description: Allow users to sign in with an account on a supported provider.
 ---
 
 import Tabs from "@theme/Tabs";
 import TabItem from "@theme/TabItem";
 
 The OAuth components and their sign-in methods (set up with `setupApple`,
-`setupGoogle`, `setupGithub`, and `setupDiscord`) allow your users to login via
+`setupGoogle`, `setupGithub`, and `setupDiscord`) allow your users to log in via
 their existing Apple, Google, GitHub, or Discord accounts.
 
 The steps below will guide you through configuring Apple, Google, GitHub,
@@ -108,7 +108,7 @@ localhost, needs a public HTTPS hostname before Apple will accept its callback.
 4. **Note your team id**, the 10-character value in the top right of the
    developer account page.
 
-You can get the site host the return URL is built from with:
+Print your `CONVEX_SITE_URL`, which holds that site host, with the Convex CLI.
 
 ```sh
 npx convex env get CONVEX_SITE_URL
@@ -139,9 +139,8 @@ npx convex env set AUTH_APPLE_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
 <Step title="Install the component">
 
 Register the Apple OAuth component alongside the core in
-`convex/convex.config.ts`. You will declare the environment variables that you
-created above as part of your application's `env` and then pass those values to
-the component.
+`convex/convex.config.ts`. Declare the environment variables from the previous
+step in your application's `env`, then pass their values to the component.
 
 ```ts file="examples/react-apple/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authApple from" highlight="app.use(authApple, {...});" highlight="AUTH_APPLE_CLIENT_ID:...AUTH_APPLE_PRIVATE_KEY: v.string(),"
 ```
@@ -156,7 +155,7 @@ returns its id. The method calls it the first time it sees an account.
 Apple is different from the other providers here. It sends the user's name
 only on the very first authorization and never again, so store it when it
 arrives and leave the stored one alone on later sign-ins. The `onSignIn`
-mutation below does exactly that. The name is also the one part of the profile
+mutation in this example does exactly that. The name is also the one part of the profile
 that reaches you through the browser rather than from Apple directly, so treat
 it as untrusted text entered by a user.
 
@@ -178,9 +177,9 @@ callbacks, in `convex/auth.ts`:
 
 <Step title="Set up the authentication UI">
 
-In your front-end, install hooks and attach listeners for initiating OAuth login.
-
-Include an `App.tsx` like the following in your application:
+Start the sign-in from a button with the `signIn` function of
+`useSignInWithApple`. A flow that fails after the redirect back is reported in
+the `flowError` of `useOauth`.
 
 ```tsx file="examples/react-apple/src/App.tsx" title="src/App.tsx"
 ```
@@ -197,22 +196,14 @@ Include an `App.tsx` like the following in your application:
 
 <Step title="Register the OAuth app">
 
-To allow users to login to your app via Google, you'll need to register an
-OAuth application with Google.
+To allow users to log in to your app via Google, register an OAuth application
+with Google by following the [Google OIDC
+instructions](https://developers.google.com/identity/openid-connect/openid-connect#appsetup).
 
-:::info
-
-Follow the [Google OIDC
-instructions](https://developers.google.com/identity/openid-connect/openid-connect#appsetup)
-before proceeding.
-
-Google will require you to provide a redirect URI when registering your
-application.
-
-:::
-
-The redirect URI will be based on your `CONVEX_SITE_URL`; something like
-`https://happy-animal-123.convex.site/oauth/google/callback`. You can get your actual `CONVEX_SITE_URL` with this command:
+Google asks for a redirect URI when you register the application. Use your
+`CONVEX_SITE_URL` followed by `/oauth/google/callback`, for example
+`https://happy-animal-123.convex.site/oauth/google/callback`. Print your
+`CONVEX_SITE_URL` with the Convex CLI.
 
 ```sh
 npx convex env get CONVEX_SITE_URL
@@ -236,10 +227,9 @@ npx convex env set AUTH_GOOGLE_CLIENT_SECRET # Press Enter then enter your Googl
 
 <Step title="Install the component">
 
-Register the Google oauth component alongside the core in
-`convex/convex.config.ts`. You will declare the environment variables that you
-created above as part of your application's `env` and then pass those values to
-the component.
+Register the Google OAuth component alongside the core in
+`convex/convex.config.ts`. Declare the environment variables from the previous
+step in your application's `env`, then pass their values to the component.
 
 ```ts file="examples/react-google/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGoogle from" highlight="app.use(authGoogle, {...});" highlight="AUTH_GOOGLE_CLIENT_ID:" highlight="AUTH_GOOGLE_CLIENT_SECRET:"
 ```
@@ -262,11 +252,10 @@ Set up the `google` method with `setupGoogle` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callback that creates your user rows, in `convex/auth.ts`.
 
-Just like `createUser` is attached below, you can also attach an optional
-`onSignIn` mutation, called with the resolved `userId` on every sign-in, the
-first one included. Anything you want to happen each time someone signs in
-belongs there, so `createUser` only has to handle what is true at creation
-time. This example doesn't use it, but it's available if you need it.
+Next to `createUser`, you can also attach an optional `onSignIn` mutation,
+called with the resolved `userId` on every sign-in, the first one included.
+Anything you want to happen each time someone signs in belongs there, so
+`createUser` only has to handle what is true at creation time.
 
 ```ts file="examples/react-google/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGoogle }" highlight="export const { startSignInWithGoogle...).attachUserCallbacks({ createUser: internal.users.createUser });"
 ```
@@ -275,9 +264,9 @@ time. This example doesn't use it, but it's available if you need it.
 
 <Step title="Set up the authentication UI">
 
-In your front-end, install hooks and attach listeners for initiating OAuth login.
-
-Include an `App.tsx` like the following in your application:
+Start the sign-in from a button with the `signIn` function of
+`useSignInWithGoogle`. A flow that fails after the redirect back is reported in
+the `flowError` of `useOauth`.
 
 ```tsx file="examples/react-google/src/App.tsx" title="src/App.tsx"
 ```
@@ -294,22 +283,14 @@ Include an `App.tsx` like the following in your application:
 
 <Step title="Register the OAuth app">
 
-To allow users to login to your app via GitHub, you'll need to register an
-OAuth application with GitHub.
+To allow users to log in to your app via GitHub, register an OAuth application
+with GitHub by following the [GitHub OAuth registration
+instructions](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authenticating-to-the-rest-api-with-an-oauth-app#registering-your-app).
 
-:::info
-
-Follow the [GitHub OAuth registration
-instructions](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authenticating-to-the-rest-api-with-an-oauth-app#registering-your-app)
-before proceeding.
-
-GitHub will require you to provide a redirect URI when registering your
-application.
-
-:::
-
-The redirect URI will be based on your `CONVEX_SITE_URL`; something like
-`https://happy-animal-123.convex.site/oauth/github/callback`. You can get your actual `CONVEX_SITE_URL` with this command:
+GitHub asks for a redirect URI when you register the application. Use your
+`CONVEX_SITE_URL` followed by `/oauth/github/callback`, for example
+`https://happy-animal-123.convex.site/oauth/github/callback`. Print your
+`CONVEX_SITE_URL` with the Convex CLI.
 
 ```sh
 npx convex env get CONVEX_SITE_URL
@@ -333,10 +314,9 @@ npx convex env set AUTH_GITHUB_CLIENT_SECRET # Press Enter then enter your GitHu
 
 <Step title="Install the component">
 
-Register the GitHub oauth component alongside the core in
-`convex/convex.config.ts`. You will declare the environment variables that you
-created above as part of your application's `env` and then pass those values to
-the component.
+Register the GitHub OAuth component alongside the core in
+`convex/convex.config.ts`. Declare the environment variables from the previous
+step in your application's `env`, then pass their values to the component.
 
 ```ts file="examples/react-github/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGithub from" highlight="app.use(authGithub, {...});" highlight="AUTH_GITHUB_CLIENT_ID:" highlight="AUTH_GITHUB_CLIENT_SECRET:"
 ```
@@ -359,11 +339,10 @@ Set up the `github` method with `setupGithub` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callback that creates your user rows, in `convex/auth.ts`.
 
-Just like `createUser` is attached below, you can also attach an optional
-`onSignIn` mutation, called with the resolved `userId` on every sign-in, the
-first one included. Anything you want to happen each time someone signs in
-belongs there, so `createUser` only has to handle what is true at creation
-time. This example doesn't use it, but it's available if you need it.
+Next to `createUser`, you can also attach an optional `onSignIn` mutation,
+called with the resolved `userId` on every sign-in, the first one included.
+Anything you want to happen each time someone signs in belongs there, so
+`createUser` only has to handle what is true at creation time.
 
 ```ts file="examples/react-github/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGithub }" highlight="export const { startSignInWithGithub...).attachUserCallbacks({ createUser: internal.users.createUser });"
 ```
@@ -372,9 +351,9 @@ time. This example doesn't use it, but it's available if you need it.
 
 <Step title="Set up the authentication UI">
 
-In your front-end, install hooks and attach listeners for initiating OAuth login.
-
-Include an `App.tsx` like the following in your application:
+Start the sign-in from a button with the `signIn` function of
+`useSignInWithGithub`. A flow that fails after the redirect back is reported in
+the `flowError` of `useOauth`.
 
 ```tsx file="examples/react-github/src/App.tsx" title="src/App.tsx"
 ```
@@ -391,20 +370,13 @@ Include an `App.tsx` like the following in your application:
 
 <Step title="Register the OAuth app">
 
-To allow users to login to your app via Discord, you'll need to register an
-application with Discord.
+To allow users to log in to your app via Discord, create an application in
+the [Discord Developer Portal](https://discord.com/developers/applications).
 
-:::info
-
-Create an application in the [Discord Developer
-Portal](https://discord.com/developers/applications) before proceeding.
-
-On the application's OAuth2 page, add a redirect URI under Redirects.
-
-:::
-
-The redirect URI will be based on your `CONVEX_SITE_URL`; something like
-`https://happy-animal-123.convex.site/oauth/discord/callback`. You can get your actual `CONVEX_SITE_URL` with this command:
+On the application's OAuth2 page, add a redirect URI under Redirects. Use your
+`CONVEX_SITE_URL` followed by `/oauth/discord/callback`, for example
+`https://happy-animal-123.convex.site/oauth/discord/callback`. Print your
+`CONVEX_SITE_URL` with the Convex CLI.
 
 ```sh
 npx convex env get CONVEX_SITE_URL
@@ -429,10 +401,9 @@ npx convex env set AUTH_DISCORD_CLIENT_SECRET # Press Enter then enter your Disc
 
 <Step title="Install the component">
 
-Register the Discord oauth component alongside the core in
-`convex/convex.config.ts`. You will declare the environment variables that you
-created above as part of your application's `env` and then pass those values to
-the component.
+Register the Discord OAuth component alongside the core in
+`convex/convex.config.ts`. Declare the environment variables from the previous
+step in your application's `env`, then pass their values to the component.
 
 ```ts file="examples/react-discord/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authDiscord from" highlight="app.use(authDiscord, {...});" highlight="AUTH_DISCORD_CLIENT_ID:" highlight="AUTH_DISCORD_CLIENT_SECRET:"
 ```
@@ -459,11 +430,10 @@ Set up the `discord` method with `setupDiscord` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callback that creates your user rows, in `convex/auth.ts`.
 
-Just like `createUser` is attached below, you can also attach an optional
-`onSignIn` mutation, called with the resolved `userId` on every sign-in, the
-first one included. Anything you want to happen each time someone signs in
-belongs there, so `createUser` only has to handle what is true at creation
-time. This example doesn't use it, but it's available if you need it.
+Next to `createUser`, you can also attach an optional `onSignIn` mutation,
+called with the resolved `userId` on every sign-in, the first one included.
+Anything you want to happen each time someone signs in belongs there, so
+`createUser` only has to handle what is true at creation time.
 
 ```ts file="examples/react-discord/convex/auth.ts" title="convex/auth.ts" highlight="import { setupDiscord }" highlight="export const { startSignInWithDiscord...}).attachUserCallbacks({ createUser: internal.users.createUser });"
 ```
@@ -472,9 +442,9 @@ time. This example doesn't use it, but it's available if you need it.
 
 <Step title="Set up the authentication UI">
 
-In your front-end, install hooks and attach listeners for initiating OAuth login.
-
-Include an `App.tsx` like the following in your application:
+Start the sign-in from a button with the `signIn` function of
+`useSignInWithDiscord`. A flow that fails after the redirect back is reported in
+the `flowError` of `useOauth`.
 
 ```tsx file="examples/react-discord/src/App.tsx" title="src/App.tsx"
 ```
