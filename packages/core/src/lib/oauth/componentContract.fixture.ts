@@ -127,6 +127,12 @@ const createAccount = makeFunctionReference<
   null
 >("provider:_internal_dangerous_createAccount");
 
+const deleteUserAccounts = makeFunctionReference<
+  "mutation",
+  { userId: string },
+  { deleted: number }
+>("provider:deleteUserAccounts");
+
 /**
  * Define tests for the functions registered by a component built with
  * `buildProviderFunctions`. Every argument and every returned field goes
@@ -238,6 +244,39 @@ export function testAccountsContract(
           userId: "user-2",
         }),
       ).rejects.toThrow(/already exists/);
+    });
+
+    test("deleting a user's accounts frees them and leaves other users' alone", async () => {
+      const t = setup(schema, modules);
+      for (const [providerAccountId, userId] of [
+        ["sub-1", "user-1"],
+        ["sub-2", "user-1"],
+        ["sub-3", "user-2"],
+      ]) {
+        await t.mutation(createAccount, { providerAccountId, userId });
+      }
+
+      expect(
+        await t.mutation(deleteUserAccounts, { userId: "user-1" }),
+      ).toEqual({ deleted: 2 });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBeNull();
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-3" }),
+      ).toBe("user-2");
+      expect(
+        await t.mutation(deleteUserAccounts, { userId: "user-1" }),
+      ).toEqual({ deleted: 0 });
+
+      // A deleted account's provider account can connect to a new user.
+      await t.mutation(createAccount, {
+        providerAccountId: "sub-1",
+        userId: "user-3",
+      });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-3");
     });
   });
 }
