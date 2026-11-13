@@ -289,6 +289,83 @@ Include an `App.tsx` like the following in your application:
 
 </StepByStep>
 
+### Native iOS and Android apps
+
+A native app signs in with Google's own SDK instead of a redirect: the Google
+Sign-In SDK on iOS, or Credential Manager on Android. The SDK hands the app an
+id_token, which `exchangeGoogleIdToken` verifies against Google's signing keys
+and turns into the same one-time `code` and `state` that the web callback
+produces. The app then redeems them with `completeSignInWithGoogle`, so a
+person reaches the same account from the web and from the app.
+
+Add the OAuth client ids that your apps request tokens for to `setupGoogle`,
+and export the exchange too. On iOS that is the iOS client id. On Android it
+is the `serverClientId` you pass to Credential Manager, usually your web
+client id.
+
+```ts title="convex/auth.ts"
+export const {
+  startSignInWithGoogle,
+  completeSignInWithGoogle,
+  exchangeGoogleIdToken,
+} = setupGoogle(auth, {
+  component: components.authGoogle,
+  allowedRedirectOrigins: ["https://app.example.com"],
+  nativeAppClientIds: [
+    "1234-ios.apps.googleusercontent.com",
+    "1234-web.apps.googleusercontent.com",
+  ],
+}).attachUserCallbacks({ createUser: internal.users.createUser });
+```
+
+In the app, put the hex SHA-256 of a fresh random nonce (at least 16
+characters) in the sign-in request, and send the raw nonce with the token. A
+token is only accepted with the nonce it was issued for. On iOS, pass the hash
+as the `nonce` of `GIDSignIn.signIn`; on Android, to `setNonce` of
+`GetGoogleIdOption.Builder`:
+
+```tsx title="useSignInWithGoogle.ts"
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useAction, useMutation } from "convex/react";
+import * as Crypto from "expo-crypto";
+import { api } from "../convex/_generated/api";
+
+/** `getIdToken` runs Google's native sign-in with the hashed nonce. */
+export function useSignInWithGoogle(
+  getIdToken: (hashedNonce: string) => Promise<string>,
+) {
+  const { setSession } = useAuthActions();
+  const exchange = useAction(api.auth.exchangeGoogleIdToken);
+  const complete = useMutation(api.auth.completeSignInWithGoogle);
+
+  return async () => {
+    const nonce = Crypto.randomUUID();
+    const idToken = await getIdToken(
+      await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce),
+    );
+    const exchanged = await exchange({ idToken, nonce });
+    if (exchanged.status === "error") {
+      // INVALID_ID_TOKEN: show the person a sign-in error.
+      return exchanged;
+    }
+    const result = await complete({
+      code: exchanged.code,
+      state: exchanged.state,
+    });
+    if (result.status === "complete") {
+      await setSession(result.tokens);
+    }
+    return result;
+  };
+}
+```
+
+Some Google sign-in libraries cannot put a nonce in the request. If yours
+can't, set `allowIdTokensWithoutNonce: true` and call the exchange with the
+token alone. Without a nonce, a token that leaks can be exchanged until it
+expires (about an hour), so prefer a library that sets one.
+
+
 </TabItem>
 
 <TabItem value="GitHub" label="GitHub">
