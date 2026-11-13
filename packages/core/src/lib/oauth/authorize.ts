@@ -67,6 +67,14 @@ export function buildStartSignIn(options: {
    */
   callbackMethod?: CallbackMethod;
   /**
+   * Provider-specific parameters added to the authorization URL. They are set
+   * before the flow parameters, so every flow parameter the URL carries wins
+   * over an extra one of the same name: `state`, `client_id`, `redirect_uri`,
+   * `response_type`, the PKCE parameters, and `scope` and `response_mode`
+   * when the flow sends them.
+   */
+  extraAuthorizationParams?: Record<string, string>;
+  /**
    * Record the request in the provider's component, and return what the
    * authorization URL needs.
    *
@@ -134,7 +142,12 @@ export function buildStartSignIn(options: {
       }
 
       const url = new URL(options.authorizationEndpoint);
-      for (const [key, value] of Object.entries(params)) {
+      // The flow parameters are set last, so they win over an extra parameter
+      // of the same name.
+      for (const [key, value] of Object.entries({
+        ...options.extraAuthorizationParams,
+        ...params,
+      })) {
         url.searchParams.set(key, value);
       }
 
