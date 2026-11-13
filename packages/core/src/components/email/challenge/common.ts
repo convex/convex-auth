@@ -73,7 +73,7 @@
  * (`createCodeChallengeAndSendEmail`). The two secrets work the same way, but
  * a short code can be guessed, thus the row counts the wrong codes in
  * `attemptsLeft`, and the wrong code that uses the last attempt deletes the
- * row. Only `checkCodeChallenge` and `claimCodeChallenge` complete such a
+ * row. Only `verifyCodeChallenge` and `claimCodeChallenge` complete such a
  * challenge: they run in a mutation, which commits the count. The functions
  * for links refuse it, because a query could try codes without a count.
  *
@@ -539,7 +539,7 @@ function sameUser(row: Doc<"challenges">, expected: ExpectedPurpose): boolean {
  *
  * A challenge that sends a short code throws, before the code is compared.
  * This function also runs in queries, which cannot count the wrong codes.
- * Use `checkCodeChallenge` for it.
+ * Use `verifyCodeChallenge` for it.
  */
 export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
   ctx: QueryCtx,
@@ -624,10 +624,10 @@ function normalizeTypedCode(code: string): string {
 }
 
 /**
- * The result of `checkCodeChallenge` and `claimCodeChallenge`. Only the kinds
+ * The result of `verifyCodeChallenge` and `claimCodeChallenge`. Only the kinds
  * without a user send a short code for now, thus it has no `WRONG_USER`.
  */
-export type CheckCodeChallengeResult =
+export type VerifyCodeChallengeResult =
   | { success: true; row: ChallengeOfKind<CodePurpose["kind"]> }
   | {
       success: false;
@@ -636,7 +636,7 @@ export type CheckCodeChallengeResult =
 
 function codeFailure(
   error: CompleteCodeChallengeUserError["error"],
-): CheckCodeChallengeResult {
+): VerifyCodeChallengeResult {
   return { success: false, failure: { success: false, userError: { error } } };
 }
 
@@ -656,10 +656,10 @@ function codeFailure(
  * call of a wrong function does not tell if a code is right. A challenge that
  * sends a link throws too.
  */
-export async function checkCodeChallenge(
+export async function verifyCodeChallenge(
   ctx: MutationCtx,
   args: { code: string; browserSecret: string; purpose: CodePurpose },
-): Promise<CheckCodeChallengeResult> {
+): Promise<VerifyCodeChallengeResult> {
   const browserSecretHash = await sha256Hex(args.browserSecret);
   const row = await ctx.db
     .query("challenges")
@@ -720,17 +720,17 @@ export async function checkCodeChallenge(
 
 /**
  * Claim a challenge that sends a short code: run the checks of
- * {@link checkCodeChallenge}, then delete the row. The row is deleted only
+ * {@link verifyCodeChallenge}, then delete the row. The row is deleted only
  * when the claim succeeds or when the code uses the last attempt, so a
  * claimed code can never be replayed.
  */
 export async function claimCodeChallenge(
   ctx: MutationCtx,
   args: { code: string; browserSecret: string; purpose: CodePurpose },
-): Promise<CheckCodeChallengeResult> {
-  const check = await checkCodeChallenge(ctx, args);
-  if (check.success) {
-    await ctx.db.delete("challenges", check.row._id);
+): Promise<VerifyCodeChallengeResult> {
+  const verified = await verifyCodeChallenge(ctx, args);
+  if (verified.success) {
+    await ctx.db.delete("challenges", verified.row._id);
   }
-  return check;
+  return verified;
 }

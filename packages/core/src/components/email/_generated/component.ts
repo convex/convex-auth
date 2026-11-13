@@ -228,20 +228,6 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             },
           Name
         >;
-        check: FunctionReference<
-          "mutation",
-          "internal",
-          { browserSecret: string; code: string },
-          | { email: string; success: true; userId: string | null }
-          | {
-              success: false;
-              userError:
-                | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
-                | { error: "TOO_MANY_ATTEMPTS" };
-            },
-          Name
-        >;
         complete: FunctionReference<
           "mutation",
           "internal",
@@ -280,6 +266,20 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               userError:
                 | { error: "INVALID_EMAIL" }
                 | { error: "RATE_LIMITED"; retryAfterMs: number };
+            },
+          Name
+        >;
+        verifyCode: FunctionReference<
+          "mutation",
+          "internal",
+          { browserSecret: string; code: string },
+          | { email: string; success: true; userId: string | null }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { error: "INCORRECT_CODE" }
+                | { error: "TOO_MANY_ATTEMPTS" };
             },
           Name
         >;

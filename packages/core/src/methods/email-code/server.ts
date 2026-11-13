@@ -93,7 +93,7 @@ const completeResult = v.union(
 export type CompleteSignInWithEmailCodeResult = Infer<typeof completeResult>;
 
 /**
- * Throw when the completion of a challenge failed after `check` passed, in
+ * Throw when the completion of a challenge failed after `verifyCode` passed, in
  * the same transaction. It cannot happen, and throwing rolls back the
  * session and any new user.
  */
@@ -235,23 +235,23 @@ export function setupEmailCode<UsersTable extends string>(
           ): Promise<CompleteSignInWithEmailCodeResult> => {
             // A wrong code must return, not throw: the count of attempts
             // commits only with the transaction.
-            const check = await ctx.runMutation(
-              component.challenge.signIn.check,
+            const verified = await ctx.runMutation(
+              component.challenge.signIn.verifyCode,
               { code, browserSecret },
             );
-            if (!check.success) {
-              return { status: "error", userError: check.userError };
+            if (!verified.success) {
+              return { status: "error", userError: verified.userError };
             }
-            const profile = { email: check.email };
+            const profile = { email: verified.email };
 
-            if (check.userId !== null) {
+            if (verified.userId !== null) {
               const complete = await ctx.runMutation(
                 component.challenge.signIn.complete,
                 { code, browserSecret },
               );
               throwUnlessCompleted(complete);
               const tokens = await ctx.convexAuth.completeSignIn({
-                userId: check.userId,
+                userId: verified.userId,
                 profile,
                 authenticatedBy: component,
               });

@@ -184,7 +184,7 @@ describe("challenge.signIn.start", () => {
   });
 });
 
-describe("challenge.signIn.check", () => {
+describe("challenge.signIn.verifyCode", () => {
   test("gives the owner of the address, without claiming", async () => {
     const t = setup();
     await seedEmail(t, "user1", "alice@example.com", true);
@@ -194,7 +194,10 @@ describe("challenge.signIn.check", () => {
     );
 
     expect(
-      await t.mutation(api.challenge.signIn.check, { code, browserSecret }),
+      await t.mutation(api.challenge.signIn.verifyCode, {
+        code,
+        browserSecret,
+      }),
     ).toEqual({ success: true, email: "alice@example.com", userId: "user1" });
     expect(await challengeCount(t)).toBe(1);
   });
@@ -207,7 +210,10 @@ describe("challenge.signIn.check", () => {
     );
 
     expect(
-      await t.mutation(api.challenge.signIn.check, { code, browserSecret }),
+      await t.mutation(api.challenge.signIn.verifyCode, {
+        code,
+        browserSecret,
+      }),
     ).toEqual({ success: true, email: "new@example.com", userId: null });
   });
 
@@ -220,7 +226,7 @@ describe("challenge.signIn.check", () => {
     const typed = ` ${code.slice(0, 4)}-${code.slice(4)} `;
 
     expect(
-      await t.mutation(api.challenge.signIn.check, {
+      await t.mutation(api.challenge.signIn.verifyCode, {
         code: typed,
         browserSecret,
       }),
@@ -236,7 +242,7 @@ describe("challenge.signIn.check", () => {
     );
 
     expect(
-      await t.mutation(api.challenge.signIn.check, {
+      await t.mutation(api.challenge.signIn.verifyCode, {
         code: wrongCode(code),
         browserSecret,
       }),
@@ -247,7 +253,10 @@ describe("challenge.signIn.check", () => {
 
     // The right code still works.
     expect(
-      await t.mutation(api.challenge.signIn.check, { code, browserSecret }),
+      await t.mutation(api.challenge.signIn.verifyCode, {
+        code,
+        browserSecret,
+      }),
     ).toMatchObject({ success: true });
   });
 
@@ -261,14 +270,14 @@ describe("challenge.signIn.check", () => {
 
     for (let i = 1; i < CODE_ATTEMPTS; i++) {
       expect(
-        await t.mutation(api.challenge.signIn.check, {
+        await t.mutation(api.challenge.signIn.verifyCode, {
           code: wrongCode(code),
           browserSecret,
         }),
       ).toEqual({ success: false, userError: { error: "INCORRECT_CODE" } });
     }
     expect(
-      await t.mutation(api.challenge.signIn.check, {
+      await t.mutation(api.challenge.signIn.verifyCode, {
         code: wrongCode(code),
         browserSecret,
       }),
@@ -277,7 +286,10 @@ describe("challenge.signIn.check", () => {
 
     // The right code no longer works.
     expect(
-      await t.mutation(api.challenge.signIn.check, { code, browserSecret }),
+      await t.mutation(api.challenge.signIn.verifyCode, {
+        code,
+        browserSecret,
+      }),
     ).toEqual({ success: false, userError: { error: "INVALID_CHALLENGE" } });
   });
 
@@ -292,7 +304,10 @@ describe("challenge.signIn.check", () => {
     vi.setSystemTime(Date.now() + SIGN_IN_TTL_DEFAULT_MS);
 
     expect(
-      await t.mutation(api.challenge.signIn.check, { code, browserSecret }),
+      await t.mutation(api.challenge.signIn.verifyCode, {
+        code,
+        browserSecret,
+      }),
     ).toEqual({ success: false, userError: { error: "INVALID_CHALLENGE" } });
   });
 
@@ -304,14 +319,14 @@ describe("challenge.signIn.check", () => {
     const other = await startAndReadCode(t, "new@example.com");
 
     expect(
-      await t.mutation(api.challenge.signIn.check, {
+      await t.mutation(api.challenge.signIn.verifyCode, {
         code,
         browserSecret: "a secret that no challenge has",
       }),
     ).toEqual({ success: false, userError: { error: "INVALID_CHALLENGE" } });
     // The code of the first email is wrong for the second challenge.
     expect(
-      await t.mutation(api.challenge.signIn.check, {
+      await t.mutation(api.challenge.signIn.verifyCode, {
         code,
         browserSecret: other.browserSecret,
       }),
@@ -328,7 +343,7 @@ describe("challenge.signIn.check", () => {
     });
 
     await expect(
-      t.mutation(api.challenge.signIn.check, {
+      t.mutation(api.challenge.signIn.verifyCode, {
         code: "code1",
         browserSecret: "secret1",
       }),

@@ -18,7 +18,7 @@
 //    │                        │                                            │
 //    │  the code + secret     │                                            │
 //    ├───────────────────────▶│                                            │
-//    │                        │  check                                     │
+//    │                        │  verifyCode                                │
 //    │                        ├───────────────────────────────────────────▶│     verify the code, count a wrong one
 //    │                        │◀───────────────────────────────────────────┤     the owner of the address, or null
 //    │                        │                                            │
@@ -54,7 +54,7 @@ import {
   startChallengeResult,
   startPreconditions,
   createCodeChallengeAndSendEmail,
-  checkCodeChallenge,
+  verifyCodeChallenge,
   claimCodeChallenge,
   type StartChallengeResult,
 } from "./common.ts";
@@ -132,7 +132,7 @@ export const start = mutation({
   },
 });
 
-/** The arguments of `check`, `complete`, and `completeForNewUser`. */
+/** The arguments of `verifyCode`, `complete`, and `completeForNewUser`. */
 const vCodeArgs = {
   // The code that the person typed. Spaces and hyphens are ignored.
   code: v.string(),
@@ -145,7 +145,7 @@ const codeFailure = v.object({
   userError: completeCodeChallengeUserError,
 });
 
-const checkResult = v.union(
+const verifyCodeResult = v.union(
   v.object({
     success: v.literal(true),
     email: v.string(),
@@ -154,7 +154,7 @@ const checkResult = v.union(
   }),
   codeFailure,
 );
-type CheckResult = Infer<typeof checkResult>;
+type VerifyCodeResult = Infer<typeof verifyCodeResult>;
 
 /** The owner of the address of the row, or `null`. */
 async function ownerOf(ctx: MutationCtx, email: string) {
@@ -163,25 +163,32 @@ async function ownerOf(ctx: MutationCtx, email: string) {
 }
 
 /**
- * Check the code without claiming the challenge, and give the user that owns
- * the address, or `null` when no user does. The method calls it first, then
- * `complete` for an owner, or `_internal_dangerous_completeForNewUser` for a
- * user that it creates, in the same mutation.
+ * Verify the typed code without claiming the challenge, and give the user
+ * that owns the address, or `null` when no user does. The method calls it
+ * first, then `complete` for an owner, or
+ * `_internal_dangerous_completeForNewUser` for a user that it creates, in the
+ * same mutation.
  *
- * It is a mutation, because a wrong code uses one attempt of the challenge.
+ * Unlike the `check` of the other challenges, which tells whether `start`
+ * would fail and uses nothing, this function uses an attempt for a wrong
+ * code. Thus it is a mutation.
+ *
  * The wrong code that uses the last attempt deletes the challenge and gives
  * `TOO_MANY_ATTEMPTS`. The count holds only if the caller's mutation commits,
  * thus the caller must return a failure to the client, not throw.
  */
-export const check = mutation({
+export const verifyCode = mutation({
   args: vCodeArgs,
-  returns: checkResult,
-  handler: async (ctx, args): Promise<CheckResult> => {
-    const check = await checkCodeChallenge(ctx, { ...args, purpose: PURPOSE });
-    if (!check.success) {
-      return check.failure;
+  returns: verifyCodeResult,
+  handler: async (ctx, args): Promise<VerifyCodeResult> => {
+    const verified = await verifyCodeChallenge(ctx, {
+      ...args,
+      purpose: PURPOSE,
+    });
+    if (!verified.success) {
+      return verified.failure;
     }
-    const { email } = check.row;
+    const { email } = verified.row;
     return { success: true, email, userId: await ownerOf(ctx, email) };
   },
 });
@@ -198,10 +205,10 @@ type CompleteResult = Infer<typeof completeResult>;
 
 /**
  * Complete a `signIn` challenge for an address that a user owns, and return
- * this user. A wrong code counts as in `check`.
+ * this user. A wrong code counts as in `verifyCode`.
  *
  * Throws when no user owns the address: it is an application bug. Call
- * `check` first, and `_internal_dangerous_completeForNewUser` when it gives
+ * `verifyCode` first, and `_internal_dangerous_completeForNewUser` when it gives
  * no user.
  */
 export const complete = mutation({
@@ -227,10 +234,10 @@ export const complete = mutation({
 /**
  * Complete a `signIn` challenge for an address that no user owns: record the
  * address as the primary email address of `newUserId`, a user that the
- * sign-in has just created. A wrong code counts as in `check`.
+ * sign-in has just created. A wrong code counts as in `verifyCode`.
  *
  * Throws when a user owns the address, or when `newUserId` already has an
- * email address: both are application bugs. Call `check` first, and call this
+ * email address: both are application bugs. Call `verifyCode` first, and call this
  * function only when it gives no user.
  *
  * DANGER: this records the address on `newUserId` with no further check, thus
