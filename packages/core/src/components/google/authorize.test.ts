@@ -14,7 +14,7 @@ import {
   fakeCallbacks,
   fakeCore,
   testAuthorizationUrl,
-} from "../../lib/oauth/componentContract.test.ts";
+} from "../../lib/oauth/componentContract.fixture.ts";
 
 const modules = import.meta.glob("./**/*.ts");
 

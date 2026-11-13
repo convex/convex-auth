@@ -1,5 +1,5 @@
 import schema from "./schema.ts";
-import { testProviderFunctionsContract } from "../../lib/oauth/componentContract.test.ts";
+import { testProviderFunctionsContract } from "../../lib/oauth/componentContract.fixture.ts";
 
 /**
  * Google's component keeps the shared tables and registers the shared

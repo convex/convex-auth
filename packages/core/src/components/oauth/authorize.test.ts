@@ -9,7 +9,7 @@ import {
   asComponentApi,
   fakeCallbacks,
   fakeCore,
-} from "../../lib/oauth/componentContract.test.ts";
+} from "../../lib/oauth/componentContract.fixture.ts";
 import { sha256Base64Url } from "../../lib/oauth/crypto.ts";
 import { sha256Hex } from "../../lib/crypto.ts";
 

@@ -32,7 +32,7 @@ import {
   ALLOWED_ORIGINS,
   fakeCallbacks,
   fakeCore,
-} from "../../lib/oauth/componentContract.test.ts";
+} from "../../lib/oauth/componentContract.fixture.ts";
 import { CALLBACK_PATH } from "../../lib/oauth/constants.ts";
 
 const CLIENT_ID = "test-client-id";
