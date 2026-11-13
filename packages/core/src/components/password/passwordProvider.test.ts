@@ -489,3 +489,65 @@ describe("rate limiting (verifyPassword only)", () => {
     }
   });
 });
+
+describe("deletePassword", () => {
+  test("deletes the password of a user, who can no longer sign in with it", async () => {
+    const t = setup();
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    expect(
+      await t.mutation(api.public.deletePassword, { userId: "alice" }),
+    ).toEqual({ deleted: true });
+    await expect(
+      t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).rejects.toThrow("No password stored for userId alice.");
+  });
+
+  test("reports deleted: false when the user has no password", async () => {
+    const t = setup();
+    expect(
+      await t.mutation(api.public.deletePassword, { userId: "nobody" }),
+    ).toEqual({ deleted: false });
+  });
+
+  test("deletes only the password of the given user", async () => {
+    const t = setup();
+    for (const userId of ["alice", "bob"]) {
+      await t.mutation(api.public._internal_dangerous_setPassword, {
+        userId,
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      });
+    }
+    await t.mutation(api.public.deletePassword, { userId: "alice" });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "bob",
+        password: PASSWORD,
+      }),
+    ).toEqual({ success: true });
+  });
+
+  test("lets the user set a new password afterwards", async () => {
+    const t = setup();
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    await t.mutation(api.public.deletePassword, { userId: "alice" });
+    expect(
+      await t.mutation(api.public._internal_dangerous_setPassword, {
+        userId: "alice",
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).toEqual({ success: true });
+  });
+});
