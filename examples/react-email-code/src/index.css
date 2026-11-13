@@ -1,0 +1,41 @@
+body {
+  background-color: oklch(96.8% 0.007 247.896);
+}
+
+main {
+  font-family: system-ui, sans-serif;
+  max-width: 480px;
+  margin: 4rem auto;
+  padding: 0 1rem;
+  line-height: 1.5;
+}
+
+/*
+In this demo, we apply a few basic styles on elements themselves
+so that the layout looks okay.
+
+In a real app, you should replace these elements by elements of
+your app’s design system, so that the auth UIs look consistent
+with the rest of your app.
+*/
+
+label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
+
+input[type="checkbox"] {
+  display: inline;
+  width: auto;
+  margin: 0 0.5rem 0 0;
+}

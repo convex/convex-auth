@@ -1,0 +1,223 @@
+---
+sidebar_position: 4
+title: Email code
+description: Sign users in with a code sent to their email address, with no password.
+---
+
+The email code sign-in method signs users in with a short code sent to their
+email address. There is no password. The same two steps sign up a new user and
+sign in an existing one:
+
+1. The user enters their email address, and the app sends a code to it.
+2. The user types the code in the app, and the app signs them in.
+
+When a user has already verified the address, they sign in to their account,
+whichever method they signed up with. Otherwise, the method creates a user
+with your `createUser` mutation, and the address becomes its primary email
+address.
+
+The user types the code where they started, so the flow works where a link
+does not: in an installed web app, when the mail app opens links in its own
+browser, on another device, or in a native app.
+
+Emails are sent through the
+[`@convex-dev/resend`](https://www.convex.dev/components/resend) component.
+
+## Setting up email code login in your app
+
+<StepByStep>
+
+<Step title="Follow the “Getting started” guide">
+
+First, install Convex Auth and set up the core as described in the
+[Getting started](../getting-started.mdx) guide.
+
+</Step>
+
+<Step title="Set up Resend">
+
+This method uses [Resend](https://resend.com) to send the codes. You will need
+a domain to send them from.
+
+Before going further:
+
+1. [Create a Resend account](https://resend.com/signup)
+2. [Set up your domain in Resend](https://resend.com/docs/add-a-domain)
+3. [Create a Resend API key](https://resend.com/docs/create-an-api-key)
+
+Then connect Resend to your Convex deployment:
+
+```bash
+npm install @convex-dev/resend
+npx convex env set RESEND_API_KEY # Press Enter then enter your Resend API key
+npx convex env set SENDER_EMAIL no-reply@my-domain.example # Replace this with an email address in your verified domain
+npx convex env set SENDER_NAME "My App" # Optional: replace this with the sender name of your emails
+```
+
+</Step>
+
+<Step title="Register the components">
+
+Register the email component and the Resend component alongside the core in
+`convex/convex.config.ts`.
+
+```ts file="examples/react-email-code/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authEmail from" highlight="import resend from" highlight="app.use(authEmail)" highlight="app.use(resend)"
+
+```
+
+</Step>
+
+<Step title={<>Add a <code>users</code> table to the schema</>}>
+
+Add a `users` table to your schema in `convex/schema.ts`. You don’t need to add any fields to it.
+
+```ts file="examples/react-email-code/convex/schema.ts" title="convex/schema.ts" highlight="users: defineTable({}),"
+
+```
+
+</Step>
+
+<Step title="Set up user creation">
+
+Write a `createUser` mutation that creates a row in your `users` table and
+returns its id. The method calls it when an address that no user has verified
+signs in for the first time. Its profile has the address.
+
+```ts file="examples/react-email-code/convex/users.ts" title="convex/users.ts"
+
+```
+
+</Step>
+
+<Step title="Set up the public backend functions">
+
+Set up the `emailCode` method with `setupEmailCode` and export the mutations
+it hands back once you attach the callback that creates your user rows, in
+`convex/auth.ts`:
+
+```ts file="examples/react-email-code/convex/auth.ts" title="convex/auth.ts" highlight="import { setupEmailCode }" highlight="}).attachUserCallbacks({"
+
+```
+
+</Step>
+
+<Step title="Set up the provider on the client">
+
+Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
+`signOut` mutations and the `isAuthenticated` query in `src/main.tsx`:
+
+```tsx file="examples/react-email-code/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
+
+```
+
+</Step>
+
+<Step title="Set up the sign-in page">
+
+Set up one page for both steps. Copy the following component into your app.
+Feel free to customize it, for instance to use your app’s design system.
+
+```tsx file="examples/react-email-code/src/routes/signIn.tsx" title="src/routes/signIn.tsx"
+
+```
+
+Give the code field `autoComplete="one-time-code"` and
+`inputMode="numeric"`, so that phones show a number pad and can offer the
+code from the email.
+
+</Step>
+
+</StepByStep>
+
+## Options
+
+`setupEmailCode` takes these options besides `component` and `emailSender`:
+
+| Option          | Default                         | Bounds          |
+| --------------- | ------------------------------- | --------------- |
+| `codeLength`    | 8 digits                        | 6 to 10 digits  |
+| `ttlMs`         | 10 minutes                      | 1 to 30 minutes |
+| `email.subject` | `"{code} is your sign-in code"` |                 |
+| `email.intro`   | `"Enter this code to sign in:"` |                 |
+
+`{code}` in the subject is replaced by the code. A code in the subject shows
+in the notification of the email, and some phones offer to fill it in. Remove
+`{code}` from the subject if you don't want the code to show on a locked
+screen.
+
+The email has the intro, the code on its own line, how long the code works,
+and a line that tells the user not to share the code.
+
+## How a code is protected
+
+- A code works only in the browser or app that asked for it. When it asks,
+  the client gets a secret and keeps it in its storage. The code works only
+  with that secret, thus a code read from the email alone cannot sign anyone
+  in.
+- A code works once, and only until it expires.
+- After 5 wrong codes, the code stops working, and the user must ask for a new
+  one.
+- The code is drawn uniformly at random. The component stores only hashes of
+  the code and of the secret.
+- When the user asks for a new code, the client keeps only the newest secret.
+  Tell the user to use the newest email.
+
+With 8 digits, 5 attempts per code, and the limit of codes per address (see
+below), an attacker who knows the address gets 50 guesses in the first hour,
+then 25 an hour. The chance that one is right is about 1 in 2 million in the
+first hour, 1 in 4 million each hour after, and 1 in 450 over a year. Each
+code they ask for also sends an email to the owner of the address. With 6
+digits, the chances are 1 in 20,000, 1 in 40,000, and about 1 in 5.
+
+A code does not protect against a user who reads it out to someone else, for
+example to a caller who pretends to be support. That person asked for the code
+in their own browser, thus the code signs them in. A phishing site that relays
+the code to your app in real time also works. If this matters for your app,
+offer [passkeys](./username-passkey.mdx) too.
+
+Anyone who knows an address can use up its limit of codes, and thus block
+codes for that address for a while. The limit gives back one code every 12
+minutes, thus the block lasts as long as they keep asking. The
+same limit is what keeps guessing slow, thus don't loosen it to avoid the
+block. If the email code is the only way to sign in to your app, add passkeys
+as a second way in, so that a user whose codes are blocked can still sign in.
+
+## What the response hides
+
+Starting a sign-in returns the same response whether or not a user has
+verified the address. It fails only for a malformed address or when a rate
+limit is reached, and these limits count every address the same.
+
+Other parts of your app can still tell whether an address has an account. For
+example, the sign-up of the [email + password](./email-password.mdx) method
+returns `EMAIL_TAKEN`. And once the user types the code, your app knows
+whether they signed in to an existing account or a new one.
+
+## Which account a code signs in to
+
+The method looks the address up in the verified addresses of the email
+component. An address that a user verified with the email + password method,
+or that your app added to their account, signs in to that user.
+
+An address that only an OAuth provider gave you, for example in the Google
+profile, is not a verified address of the email component. A code sent to it
+creates a new user, unless your app adds the address to the existing one.
+
+## Rate limits
+
+When a limit is reached, the start returns a `RATE_LIMITED` error with
+`retryAfterMs`, the number of milliseconds until the next attempt can succeed.
+
+| Limit                          | Applies to                          | Capacity | Refill         |
+| ------------------------------ | ----------------------------------- | -------- | -------------- |
+| Emails per destination address | Codes and links sent to one address | 5        | 1 every 12 min |
+| Emails per client IP           | Codes and links sent from one IP    | 20       | 1 every 3 min  |
+| Attempts per code              | Wrong codes typed for one code      | 5        | None           |
+
+The limits per address and per IP are shared with the links that the email
+component sends for other methods.
+
+## Next.js
+
+With [server-side rendering](../ssr-nextjs/methods.mdx), add
+`completeSignInWithEmailCode` to the `signIn` list.

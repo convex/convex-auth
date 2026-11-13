@@ -45,11 +45,12 @@ sign-in method:
 | Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`                               |
 | Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`                     |
 | Email + password | `signInWithEmailPassword`, `completeSignUpWithEmailPassword`, `completePasswordRecovery` |
+| Email code       | `completeSignInWithEmailCode`                                                            |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
 
 Only list functions that create a session. The other functions a method
 exports, like `changePassword`, passkey `startSignInWithUsernamePasskey`, OAuth
-`startSignInWithGithub`, or `startChangeEmail`,
+`startSignInWithGithub`, `startChangeEmail`, or `startSignInWithEmailCode`,
 are called through the Convex client as usual and don't need to be listed.
 
 ### Adapt the authentication UI to Next.js
