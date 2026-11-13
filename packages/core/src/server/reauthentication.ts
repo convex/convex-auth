@@ -145,28 +145,62 @@ export async function requireRecentAuthentication<
   ctx: AuthCtx,
   options: RequireRecentAuthenticationOptions,
 ): Promise<AuthenticationTime & { userId: GenericId<UsersTable> }> {
-  const { maxAgeSeconds } = options;
-  if (!Number.isFinite(maxAgeSeconds) || maxAgeSeconds < 0) {
-    throw new Error(
-      `\`maxAgeSeconds\` must be a finite number of seconds, 0 or more. ` +
-        `Got ${maxAgeSeconds}.`,
-    );
+  const result = await checkRecentAuthentication(ctx, options);
+  if (!result.success) {
+    throw new ConvexError<
+      NotLoggedInErrorData | ReauthenticationRequiredErrorData
+    >({ error: result.error });
   }
+  return {
+    ...result.authentication,
+    userId: result.userId as GenericId<UsersTable>,
+  };
+}
+
+/**
+ * The check of {@link requireRecentAuthentication}, as a result instead of an
+ * error, for the methods whose functions return a `userError`.
+ *
+ * @internal
+ */
+export async function checkRecentAuthentication(
+  ctx: AuthCtx,
+  options: RequireRecentAuthenticationOptions,
+): Promise<
+  | { success: true; userId: string; authentication: AuthenticationTime }
+  | {
+      success: false;
+      error:
+        | NotLoggedInErrorData["error"]
+        | ReauthenticationRequiredErrorData["error"];
+    }
+> {
+  const { maxAgeSeconds } = options;
+  validateMaxAgeSeconds(maxAgeSeconds, "maxAgeSeconds");
   const result = await readAuthenticationTime(ctx, options);
   if (result === null) {
-    throw new ConvexError<NotLoggedInErrorData>({ error: "NOT_LOGGED_IN" });
+    return { success: false, error: "NOT_LOGGED_IN" };
   }
   const { authentication } = result;
   if (
     authentication === null ||
     Date.now() - authentication.authenticatedAt > maxAgeSeconds * 1000
   ) {
-    throw new ConvexError<ReauthenticationRequiredErrorData>({
-      error: "REAUTHENTICATION_REQUIRED",
-    });
+    return { success: false, error: "REAUTHENTICATION_REQUIRED" };
   }
-  return {
-    ...authentication,
-    userId: result.userId as GenericId<UsersTable>,
-  };
+  return { success: true, userId: result.userId, authentication };
+}
+
+/**
+ * Throw when `seconds` is not a finite number of seconds, 0 or more.
+ *
+ * @internal
+ */
+export function validateMaxAgeSeconds(seconds: number, name: string) {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    throw new Error(
+      `\`${name}\` must be a finite number of seconds, 0 or more. ` +
+        `Got ${seconds}.`,
+    );
+  }
 }

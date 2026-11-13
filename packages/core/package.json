@@ -177,6 +177,27 @@
       "types": "./dist/methods/username-passkey/react-custom.d.ts",
       "default": "./dist/methods/username-passkey/react-custom.js"
     },
+    "./methods/passkey/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/passkey/server.d.ts"
+      },
+      "types": "./dist/methods/passkey/server.d.ts",
+      "default": "./dist/methods/passkey/server.js"
+    },
+    "./methods/passkey/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/passkey/react.d.ts"
+      },
+      "types": "./dist/methods/passkey/react.d.ts",
+      "default": "./dist/methods/passkey/react.js"
+    },
+    "./methods/passkey/react-custom": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/passkey/react-custom.d.ts"
+      },
+      "types": "./dist/methods/passkey/react-custom.d.ts",
+      "default": "./dist/methods/passkey/react-custom.js"
+    },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/oauth/react.d.ts"

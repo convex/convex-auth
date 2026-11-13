@@ -27,7 +27,11 @@
  *
  * @module
  */
-import { mutationGeneric } from "convex/server";
+import {
+  mutationGeneric,
+  type GenericDataModel,
+  type GenericMutationCtx,
+} from "convex/server";
 import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../../server/userId.ts";
 import { ADD_PASSKEY_PURPOSE } from "../purposes.ts";
@@ -65,7 +69,7 @@ export const MAX_PASSKEYS_PER_USER = 20;
  * The user-facing error when the user already holds the largest number of
  * passkeys.
  */
-const tooManyPasskeysUserError = v.object({
+export const tooManyPasskeysUserError = v.object({
   error: v.literal("TOO_MANY_PASSKEYS"),
 });
 
@@ -112,6 +116,118 @@ const finishAddPasskeyResult = v.union(
 
 export type FinishAddPasskeyResult = Infer<typeof finishAddPasskeyResult>;
 
+/**
+ * What the registration helpers below need from a passkey method.
+ *
+ * @internal
+ */
+export type PasskeyRegistrationConfig = Pick<
+  UsernamePasskeyConfig,
+  "component" | "rpId" | "rpName" | "origin"
+>;
+
+type MutationCtx = GenericMutationCtx<GenericDataModel>;
+
+/**
+ * Whether `userId` already holds the largest number of passkeys.
+ *
+ * @internal
+ */
+export async function hasTooManyPasskeys(
+  ctx: MutationCtx,
+  config: Pick<PasskeyRegistrationConfig, "component">,
+  userId: string,
+): Promise<boolean> {
+  const passkeys = await ctx.runQuery(
+    config.component.registration.listPasskeys,
+    { userId },
+  );
+  return passkeys.length >= MAX_PASSKEYS_PER_USER;
+}
+
+/**
+ * Start the registration of a new passkey for `userId`, whom the caller has
+ * verified, and build the options of the `create()` call.
+ *
+ * `user` is what the browser shows for the new passkey in its passkey
+ * manager.
+ *
+ * @internal
+ */
+export async function startPasskeyRegistration(
+  ctx: MutationCtx,
+  config: PasskeyRegistrationConfig,
+  userId: string,
+  user: { name: string; displayName: string },
+) {
+  const { challenge, userHandle, excludeCredentials } = await ctx.runMutation(
+    config.component.registration.startRegistrationForExistingUser,
+    { verifiedUserId: userId },
+  );
+  return buildRegistrationOptions({
+    rpId: config.rpId,
+    rpName: config.rpName,
+    challenge,
+    userHandle,
+    userName: user.name,
+    userDisplayName: user.displayName,
+    excludeCredentials,
+  });
+}
+
+/**
+ * Verify the `create()` response of a registration that
+ * {@link startPasskeyRegistration} started for `userId`, and store the new
+ * passkey.
+ *
+ * @internal
+ */
+export async function finishPasskeyRegistration(
+  ctx: MutationCtx,
+  config: PasskeyRegistrationConfig,
+  userId: string,
+  response: Infer<typeof vRegistrationResponseJSON>,
+): Promise<FinishAddPasskeyResult> {
+  if (await hasTooManyPasskeys(ctx, config, userId)) {
+    return { success: false, userError: { error: "TOO_MANY_PASSKEYS" } };
+  }
+
+  const registrationResult = await ctx.runMutation(
+    config.component.registration
+      ._internal_dangerous_finishRegistrationForExistingUser,
+    {
+      expectedRpId: config.rpId,
+      expectedOrigin: config.origin,
+      verifiedUserId: userId,
+      response,
+      // The app does not name a new passkey yet, thus the method names
+      // it after the authenticator model.
+      // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
+      name: defaultPasskeyName(response),
+    },
+  );
+  if (!registrationResult.success) {
+    const { userError } = registrationResult;
+    if (userError.error === "INVALID_NAME") {
+      // Not possible: the only name that this function passes is a
+      // default name, and every default name is a short label that the
+      // component stores.
+      throw new Error(
+        "Unexpected error when storing the passkey: INVALID_NAME",
+        { cause: userError },
+      );
+    }
+    // A `PROTOCOL_ERROR` here also covers a registration ceremony that
+    // belongs to a different user than the caller, which happens when the
+    // caller signs in as a different user after the registration started.
+    // `_internal_dangerous_finishRegistrationForExistingUser` compares the
+    // owner of the ceremony with `verifiedUserId`, thus the callers need no
+    // check of their own.
+    return { success: false, userError };
+  }
+  return { success: true, passkeyId: registrationResult.passkeyId };
+}
+
 export function startAddPasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {},
@@ -121,12 +237,7 @@ export function startAddPasskey(config: UsernamePasskeyConfig) {
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
-      const passkeys = await ctx.runQuery(
-        config.component.registration.listPasskeys,
-        { userId },
-      );
-
-      if (passkeys.length >= MAX_PASSKEYS_PER_USER) {
+      if (await hasTooManyPasskeys(ctx, config, userId)) {
         return { success: false, userError: { error: "TOO_MANY_PASSKEYS" } };
       }
 
@@ -191,11 +302,6 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
         return { success: false, userError: { error: "PROTOCOL_ERROR" } };
       }
 
-      const { challenge, userHandle, excludeCredentials } =
-        await ctx.runMutation(
-          config.component.registration.startRegistrationForExistingUser,
-          { verifiedUserId: userId },
-        );
       const username = await ctx.runQuery(
         config.usernameComponent.public.getUsername,
         { userId },
@@ -204,24 +310,16 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
         // WebAuthn requires `user.name` and `user.displayName`, and the
         // browser keeps them in its passkey manager for the life of the
         // passkey. Only the app can remove a username, so this is an app
-        // state the flow cannot serve, not a user error. Throwing rolls
-        // back the registration challenge.
+        // state the flow cannot serve, not a user error.
         throw new Error(
           "The signed-in user has no username. Give them a username before they add a passkey.",
         );
       }
       return {
         success: true,
-        options: buildRegistrationOptions({
-          rpId: config.rpId,
-          rpName: config.rpName,
-          challenge,
-          userHandle,
-          // What the browser shows for the new passkey in its passkey
-          // manager.
-          userName: username,
-          userDisplayName: username,
-          excludeCredentials,
+        options: await startPasskeyRegistration(ctx, config, userId, {
+          name: username,
+          displayName: username,
         }),
       };
     },
@@ -239,48 +337,12 @@ export function finishAddPasskey(config: UsernamePasskeyConfig) {
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
-      const passkeys = await ctx.runQuery(
-        config.component.registration.listPasskeys,
-        { userId },
+      return await finishPasskeyRegistration(
+        ctx,
+        config,
+        userId,
+        args.response,
       );
-      if (passkeys.length >= MAX_PASSKEYS_PER_USER) {
-        return { success: false, userError: { error: "TOO_MANY_PASSKEYS" } };
-      }
-
-      const registrationResult = await ctx.runMutation(
-        config.component.registration
-          ._internal_dangerous_finishRegistrationForExistingUser,
-        {
-          expectedRpId: config.rpId,
-          expectedOrigin: config.origin,
-          verifiedUserId: userId,
-          response: args.response,
-          // The app does not name a new passkey yet, thus the method names
-          // it after the authenticator model.
-          // TODO(nicolas) Allow the user to provide a custom name when creating a passkey
-          name: defaultPasskeyName(args.response),
-        },
-      );
-      if (!registrationResult.success) {
-        const { userError } = registrationResult;
-        if (userError.error === "INVALID_NAME") {
-          // Not possible: the only name that this function passes is a
-          // default name, and every default name is a short label that the
-          // component stores.
-          throw new Error(
-            "Unexpected error when storing the passkey: INVALID_NAME",
-            { cause: userError },
-          );
-        }
-        // A `PROTOCOL_ERROR` here also covers a registration ceremony that
-        // belongs to a different user than the caller, which happens when the
-        // caller signs in as a different user after the `verifyAddPasskey`
-        // call. `_internal_dangerous_finishRegistrationForExistingUser` compares the
-        // owner of the ceremony with `verifiedUserId`, thus this call needs no
-        // check of its own. See the same case in `verifyAddPasskey`.
-        return { success: false, userError };
-      }
-      return { success: true, passkeyId: registrationResult.passkeyId };
     },
   });
 }
