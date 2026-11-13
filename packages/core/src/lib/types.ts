@@ -418,6 +418,17 @@ export type BoundAuthHelpers<Profile> = {
 };
 
 /**
+ * The helpers of a method that only signs existing users in: the
+ * {@link BoundAuthHelpers} without the ones that create users.
+ *
+ * @internal Not public until the API for custom methods is stable.
+ */
+export type SignInAuthHelpers<Profile> = Omit<
+  BoundAuthHelpers<Profile>,
+  "completeSignUp" | "signUpWithoutSession"
+>;
+
+/**
  * The ctx additions that `authMutation` provides to the handlers of a
  * method.
  *

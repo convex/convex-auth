@@ -28,6 +28,7 @@ import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../../server/userId.ts";
 import type { AuthMutationBuilder } from "../../../server/setup.ts";
+import type { SignInAuthHelpers } from "../../../lib/types.ts";
 import type { ComponentApi } from "../../../components/passkey/_generated/component.ts";
 import type { ComponentApi as CoreComponentApi } from "../../../component/_generated/component.ts";
 import {
@@ -141,7 +142,7 @@ export function startPasskeyReauthentication(
  */
 export function finishPasskeyReauthentication<Profile>(
   config: PasskeyReauthenticationConfig,
-  authMutation: AuthMutationBuilder<Profile>,
+  authMutation: AuthMutationBuilder<Profile, SignInAuthHelpers<Profile>>,
 ) {
   return authMutation({
     args: {

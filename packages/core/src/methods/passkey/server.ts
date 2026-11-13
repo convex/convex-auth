@@ -184,7 +184,7 @@ export function setupPasskey<UsersTable extends string>(
       onSignIn,
     }: PasskeyUserCallbacks<UsersTable>) {
       // No `createUser`: a passkey only signs in a user that exists.
-      const { authMutation } = core.bindMethod({
+      const { authMutation } = core.bindSignInMethod({
         name: METHOD_NAME,
         onSignIn,
       });

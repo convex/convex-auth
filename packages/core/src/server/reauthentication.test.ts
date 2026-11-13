@@ -54,7 +54,7 @@ const { authMutation } = core.bindMethod({
 });
 
 // A method that only signs existing users in.
-const { authMutation: signInOnlyMutation } = core.bindMethod({
+const { authMutation: signInOnlyMutation } = core.bindSignInMethod({
   name: "signInOnly",
 });
 
@@ -79,14 +79,18 @@ const signIn = authMutation({
     }),
 });
 
-const signUpWithSignInOnly = signInOnlyMutation({
+// The helpers that a sign-in-only method gets. Creating a user is a type
+// error there.
+const signInOnlyHelpers = signInOnlyMutation({
   args: {},
-  returns: v.any(),
-  handler: async (ctx) =>
-    await ctx.convexAuth.completeSignUp({
-      profile: {},
-      authenticatedBy: components.authTest,
-    }),
+  returns: v.array(v.string()),
+  handler: async (ctx) => {
+    // @ts-expect-error A sign-in-only method cannot create users.
+    void ctx.convexAuth.completeSignUp;
+    // @ts-expect-error A sign-in-only method cannot create users.
+    void ctx.convexAuth.signUpWithoutSession;
+    return Object.keys(ctx.convexAuth).sort();
+  },
 });
 
 // For testing only: a real method calls the helper right after it verifies
@@ -125,7 +129,7 @@ const testApp = {
   createUser,
   signUp,
   signIn,
-  signUpWithSignInOnly,
+  signInOnlyHelpers,
   reauthenticate,
   authenticationTime,
   requireRecent,
@@ -172,9 +176,11 @@ const signInRef = makeFunctionReference<
   { accountId: string },
   TokenBundle
 >("testApp:signIn");
-const signUpWithSignInOnlyRef = makeFunctionReference<"mutation">(
-  "testApp:signUpWithSignInOnly",
-);
+const signInOnlyHelpersRef = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  string[]
+>("testApp:signInOnlyHelpers");
 const reauthenticateRef = makeFunctionReference<
   "mutation",
   { userId: string; other?: boolean },
@@ -489,11 +495,14 @@ describe("ctx.convexAuth.recordReauthentication", () => {
   });
 });
 
-describe("bindMethod without createUser", () => {
-  test("cannot sign a user up", async () => {
+describe("bindSignInMethod", () => {
+  test("gives no helper that creates users", async () => {
     const t = setup();
-    await expect(t.mutation(signUpWithSignInOnlyRef, {})).rejects.toThrow(
-      /has no `createUser` callback/,
-    );
+    expect(await t.mutation(signInOnlyHelpersRef, {})).toEqual([
+      "completeSignIn",
+      "recordReauthentication",
+      "revokeAllSessions",
+      "revokeOtherSessions",
+    ]);
   });
 });
