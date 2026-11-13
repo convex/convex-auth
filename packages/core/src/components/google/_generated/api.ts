@@ -10,6 +10,7 @@
 
 import type * as constants from "../constants.js";
 import type * as http from "../http.js";
+import type * as native from "../native.js";
 import type * as provider from "../provider.js";
 
 import type {
@@ -22,6 +23,7 @@ import { anyApi, componentsGeneric } from "convex/server";
 const fullApi: ApiFromModules<{
   constants: typeof constants;
   http: typeof http;
+  native: typeof native;
   provider: typeof provider;
 }> = anyApi as any;
 

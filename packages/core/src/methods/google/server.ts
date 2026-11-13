@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { actionGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
 import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -64,6 +65,22 @@ export function normalizeGoogleProfile(
   };
 }
 
+/**
+ * Check the client ids at setup, so a mistake fails at deploy time. A Google
+ * OAuth client id ends in `.apps.googleusercontent.com`.
+ */
+function validateNativeAppClientIds(clientIds: string[]): string[] {
+  for (const clientId of clientIds) {
+    if (!/^[A-Za-z0-9-]+\.apps\.googleusercontent\.com$/.test(clientId)) {
+      throw new Error(
+        `nativeAppClientIds entry is not a Google OAuth client id: "${clientId}" ` +
+          `(expected e.g. "1234-abc.apps.googleusercontent.com")`,
+      );
+    }
+  }
+  return clientIds;
+}
+
 /** App-defined config for setting up the `google` method. */
 export type GoogleOptions = {
   /** The Google oauth component instance, i.e. `components.authGoogle`. */
@@ -73,6 +90,21 @@ export type GoogleOptions = {
    * for open-redirect prevention.
    */
   allowedRedirectOrigins: string[];
+  /**
+   * OAuth client ids that the native apps request id_tokens for, e.g.
+   * `["1234-ios.apps.googleusercontent.com"]`. The Google Sign-In SDK on iOS
+   * addresses its token to the iOS client id. Android's Credential Manager
+   * addresses it to the `serverClientId` it is given, usually the web client
+   * id. `exchangeGoogleIdToken` accepts a token only for one of these.
+   */
+  nativeAppClientIds?: string[];
+  /**
+   * Accept a native id_token without a nonce. Some Google sign-in libraries
+   * cannot put a nonce in the request. Without one, a token that leaks can
+   * be exchanged by anyone until it expires (about an hour), so leave this
+   * off when your library can set a nonce. Defaults to `false`.
+   */
+  allowIdTokensWithoutNonce?: boolean;
 };
 
 /**
@@ -97,6 +129,10 @@ export type GoogleOptions = {
  *    Google.
  *
  * The `httpPrefix` alone determines the callback URL.
+ *
+ * A native iOS or Android app signs in with Google's own SDK instead. Set
+ * `nativeAppClientIds`, export `exchangeGoogleIdToken` too, and redeem what
+ * it returns with `completeSignInWithGoogle`.
  */
 export function setupGoogle<UsersTable extends string>(
   core: AuthCore<UsersTable>,
@@ -107,6 +143,10 @@ export function setupGoogle<UsersTable extends string>(
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
   );
+  const nativeAppClientIds = validateNativeAppClientIds(
+    options.nativeAppClientIds ?? [],
+  );
+  const allowIdTokensWithoutNonce = options.allowIdTokensWithoutNonce ?? false;
 
   return {
     /**
@@ -151,9 +191,37 @@ export function setupGoogle<UsersTable extends string>(
         profile: (payload) => normalizeGoogleProfile(payload.claims),
       });
 
+      /**
+       * Exchange the id_token of a native sign-in for the `code` and `state`
+       * that `completeSignIn` redeems. `nonce` is the raw nonce whose hex
+       * SHA-256 the app put in the sign-in request.
+       */
+      const exchangeIdToken = actionGeneric({
+        args: { idToken: v.string(), nonce: v.optional(v.string()) },
+        handler: async (ctx, args) => {
+          if (nativeAppClientIds.length === 0) {
+            throw new Error(
+              "Set `nativeAppClientIds` in the options of `setupGoogle` to " +
+                "accept id_tokens from native apps",
+            );
+          }
+          if (args.nonce === undefined && !allowIdTokensWithoutNonce) {
+            throw new Error(
+              "Send the nonce of the sign-in request, or set " +
+                "`allowIdTokensWithoutNonce` in the options of `setupGoogle`",
+            );
+          }
+          return await ctx.runAction(
+            options.component.native._internal_dangerous_exchangeIdToken,
+            { ...args, audiences: nativeAppClientIds },
+          );
+        },
+      });
+
       return {
         startSignInWithGoogle: startSignIn,
         completeSignInWithGoogle: completeSignIn,
+        exchangeGoogleIdToken: exchangeIdToken,
       };
     },
   };
