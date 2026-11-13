@@ -4,6 +4,7 @@
  *
  * @module
  */
+import { actionGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
 import type { UserCallbacks } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
@@ -91,6 +92,22 @@ export function normalizeAppleProfile(
   };
 }
 
+/**
+ * Check the bundle ids at setup, so a mistake fails at deploy time. A bundle
+ * id is reverse-DNS: letters, digits, hyphens, and dots.
+ */
+function validateNativeAppBundleIds(bundleIds: string[]): string[] {
+  for (const bundleId of bundleIds) {
+    if (!/^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/.test(bundleId)) {
+      throw new Error(
+        `nativeAppBundleIds entry is not a bundle id: "${bundleId}" ` +
+          `(expected e.g. "com.example.app")`,
+      );
+    }
+  }
+  return bundleIds;
+}
+
 /** App-defined config for setting up the `apple` method. */
 export type AppleOptions = {
   /** The Apple oauth component instance, i.e. `components.authApple`. */
@@ -100,6 +117,13 @@ export type AppleOptions = {
    * for open-redirect prevention.
    */
   allowedRedirectOrigins: string[];
+  /**
+   * Bundle ids of the native apps that sign in with Apple's system sheet,
+   * e.g. `["com.example.app"]`. Their identity tokens are addressed to the
+   * bundle id rather than to the Services ID, so
+   * `exchangeAppleIdentityToken` accepts a token only for one of these.
+   */
+  nativeAppBundleIds?: string[];
 };
 
 /**
@@ -129,6 +153,10 @@ export type AppleOptions = {
  * rejects `localhost` and IP addresses, so the deployment has to be publicly
  * reachable. The app the flow returns to is unaffected and can stay on
  * localhost.
+ *
+ * A native iOS app signs in with Apple's system sheet instead. Set
+ * `nativeAppBundleIds`, export `exchangeAppleIdentityToken` too, and redeem
+ * what it returns with `completeSignInWithApple`.
  */
 export function setupApple<UsersTable extends string>(
   core: AuthCore<UsersTable>,
@@ -138,6 +166,9 @@ export function setupApple<UsersTable extends string>(
   // time.
   const allowedOrigins = validateAllowedRedirectOrigins(
     options.allowedRedirectOrigins,
+  );
+  const nativeAppBundleIds = validateNativeAppBundleIds(
+    options.nativeAppBundleIds ?? [],
   );
 
   return {
@@ -198,9 +229,37 @@ export function setupApple<UsersTable extends string>(
         },
       });
 
+      /**
+       * Exchange the identity token of a native sign-in for the `code` and
+       * `state` that `completeSignIn` redeems. `nonce` is the raw nonce whose
+       * hex SHA-256 the app put in the sign-in request. The name, which Apple
+       * gives the app on the first authorization only, is optional.
+       */
+      const exchangeIdentityToken = actionGeneric({
+        args: {
+          identityToken: v.string(),
+          nonce: v.string(),
+          firstName: v.optional(v.string()),
+          lastName: v.optional(v.string()),
+        },
+        handler: async (ctx, args) => {
+          if (nativeAppBundleIds.length === 0) {
+            throw new Error(
+              "Set `nativeAppBundleIds` in the options of `setupApple` to " +
+                "accept identity tokens from native apps",
+            );
+          }
+          return await ctx.runAction(
+            options.component.native._internal_dangerous_exchangeIdentityToken,
+            { ...args, audiences: nativeAppBundleIds },
+          );
+        },
+      });
+
       return {
         startSignInWithApple: startSignIn,
         completeSignInWithApple: completeSignIn,
+        exchangeAppleIdentityToken: exchangeIdentityToken,
       };
     },
   };

@@ -68,8 +68,20 @@ export function sanitizeAppleUser(
   if (typeof name !== "object" || name === null) {
     return undefined;
   }
-  const firstName = namePart((name as { firstName?: unknown }).firstName);
-  const lastName = namePart((name as { lastName?: unknown }).lastName);
+  return sanitizeAppleName(name as { firstName?: unknown; lastName?: unknown });
+}
+
+/**
+ * Keep the usable parts of a name. A native app gets the name from the
+ * system sheet and passes it on, so it is user-controlled input too.
+ * Returns undefined when neither part is usable.
+ */
+export function sanitizeAppleName(name: {
+  firstName?: unknown;
+  lastName?: unknown;
+}): SanitizedAppleUser | undefined {
+  const firstName = namePart(name.firstName);
+  const lastName = namePart(name.lastName);
   if (firstName === undefined && lastName === undefined) {
     return undefined;
   }

@@ -189,6 +189,70 @@ Include an `App.tsx` like the following in your application:
 
 </StepByStep>
 
+### Native iOS apps
+
+A native iOS app signs in with Apple's system sheet
+(`ASAuthorizationAppleIDProvider`, or `expo-apple-authentication` in Expo)
+instead of a redirect. The sheet hands the app an identity token, which
+`exchangeAppleIdentityToken` verifies against Apple's signing keys and turns
+into the same one-time `code` and `state` that the web callback produces. The
+app then redeems them with `completeSignInWithApple`, so a person reaches the
+same account from the web and from the app.
+
+Add the bundle ids of your apps to `setupApple`, and export the exchange too:
+
+```ts title="convex/auth.ts"
+export const {
+  startSignInWithApple,
+  completeSignInWithApple,
+  exchangeAppleIdentityToken,
+} = setupApple(auth, {
+  component: components.authApple,
+  allowedRedirectOrigins: ["https://app.example.com"],
+  nativeAppBundleIds: ["com.example.app"],
+}).attachUserCallbacks({ createUser: internal.users.createUser });
+```
+
+In the app, put the hex SHA-256 of a fresh random nonce in the sign-in
+request, and send the raw nonce with the token. A token is only accepted with
+the nonce it was issued for. Apple gives the name to the app on the first
+authorization only; pass it along when it is there:
+
+```tsx
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
+
+const nonce = Crypto.randomUUID();
+const credential = await AppleAuthentication.signInAsync({
+  requestedScopes: [
+    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+  ],
+  nonce: await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    nonce,
+  ),
+});
+const exchanged = await convex.action(api.auth.exchangeAppleIdentityToken, {
+  identityToken: credential.identityToken!,
+  nonce,
+  firstName: credential.fullName?.givenName ?? undefined,
+  lastName: credential.fullName?.familyName ?? undefined,
+});
+if (exchanged.status === "exchanged") {
+  const result = await convex.mutation(api.auth.completeSignInWithApple, {
+    code: exchanged.code,
+    state: exchanged.state,
+  });
+  if (result.status === "complete") {
+    await setSession(result.tokens);
+  }
+}
+```
+
+The name comes from the app, so treat it as untrusted text entered by a user,
+like the name of the web flow.
+
 </TabItem>
 
 <TabItem value="Google" label="Google">
