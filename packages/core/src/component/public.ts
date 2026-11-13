@@ -36,6 +36,7 @@ import {
   lookupRefreshTokenByHash,
   newestIssuedToken,
   redeem,
+  sessionReauthentications,
 } from "./sessions.ts";
 
 // --- Configuration ---------------------------------------------------------
@@ -361,6 +362,130 @@ export const getSession = query({
     if (id === null) return null;
     const session = await ctx.db.get("sessions", id);
     return session === null ? null : { userId: session.userId };
+  },
+});
+
+/**
+ * When the user of a session last proved who they are, and with which
+ * component.
+ *
+ * The candidates are the session's sign-in (its `_creationTime` and
+ * `component`) and its re-authentications (see
+ * {@link _internal_dangerous_recordReauthentication}). With `components`, only
+ * those of the listed component paths count.
+ *
+ * Returns `null` when there is no row for the session id. Otherwise returns
+ * the session's `userId` and the latest matching `authentication`, which is
+ * `null` when none matches.
+ *
+ * The query does not read the clock, so its result stays cached until the
+ * session or a re-authentication changes. Callers compare `authenticatedAt`
+ * to the current time themselves.
+ *
+ * This is a component function callable by the app, not by end-user clients.
+ */
+export const getAuthenticationTime = query({
+  args: {
+    sessionId: v.string(),
+    components: v.optional(v.array(v.string())),
+  },
+  returns: v.union(
+    v.object({
+      userId: v.string(),
+      authentication: v.union(
+        v.object({ authenticatedAt: v.number(), component: v.string() }),
+        v.null(),
+      ),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, { sessionId, components }) => {
+    const id = ctx.db.normalizeId("sessions", sessionId);
+    if (id === null) return null;
+    const session = await ctx.db.get("sessions", id);
+    if (session === null) return null;
+    const candidates = [
+      { authenticatedAt: session._creationTime, component: session.component },
+      ...(await sessionReauthentications(ctx, id)).map((row) => ({
+        authenticatedAt: row._creationTime,
+        component: row.component,
+      })),
+    ].filter(
+      ({ component }) =>
+        components === undefined || components.includes(component),
+    );
+    let latest: (typeof candidates)[number] | null = null;
+    for (const candidate of candidates) {
+      if (
+        latest === null ||
+        candidate.authenticatedAt > latest.authenticatedAt
+      ) {
+        latest = candidate;
+      }
+    }
+    return { userId: session.userId, authentication: latest };
+  },
+});
+
+/**
+ * Record that the user of a session proved again who they are, with the
+ * component at `componentPath` (for example `"authPasskey"`). Returns when.
+ *
+ * The session keeps the latest re-authentication of each component, which
+ * {@link getAuthenticationTime} reads. The session row itself is not written,
+ * and refreshing the session does not change the record. Deleting the session
+ * erases it.
+ *
+ * Throws when the session is gone or belongs to a different user than
+ * `userId`, so a re-authentication can only count for the session of the user
+ * who made it.
+ *
+ * Sign-in methods don't typically call this API directly, but instead use the
+ * framework's `recordReauthentication` helper, which passes the session of
+ * the caller.
+ *
+ * DANGER: This trusts that the caller verified `userId` in this request. The
+ * name says so because app code must not call it: only the sign-in methods of
+ * this package do, right after they verify the user.
+ */
+export const _internal_dangerous_recordReauthentication = mutation({
+  args: {
+    sessionId: v.string(),
+    userId: v.string(),
+    componentPath: v.string(),
+  },
+  returns: v.object({ authenticatedAt: v.number() }),
+  handler: async (ctx, args) => {
+    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
+    const session =
+      sessionId === null ? null : await ctx.db.get("sessions", sessionId);
+    if (sessionId === null || session === null) {
+      throw new Error(
+        "Cannot record a re-authentication: the session does not exist.",
+      );
+    }
+    if (session.userId !== args.userId) {
+      throw new Error(
+        "Cannot record a re-authentication: the session belongs to a " +
+          "different user than the one who re-authenticated.",
+      );
+    }
+    const previous = await ctx.db
+      .query("reauthentications")
+      .withIndex("by_session_component", (q) =>
+        q.eq("sessionId", sessionId).eq("component", args.componentPath),
+      )
+      .collect();
+    for (const row of previous) {
+      await ctx.db.delete("reauthentications", row._id);
+    }
+    const rowId = await ctx.db.insert("reauthentications", {
+      sessionId,
+      component: args.componentPath,
+    });
+    // Read back for its `_creationTime`, which is the time of the record.
+    const row = (await ctx.db.get("reauthentications", rowId))!;
+    return { authenticatedAt: row._creationTime };
   },
 });
 

@@ -15,6 +15,7 @@ import {
   vRefreshResult,
   type RefreshResult,
   type ConvexAuthCtx,
+  type CreateUserFn,
   type UserCallbacks,
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
@@ -61,6 +62,22 @@ export type AuthMutationBuilder<Profile> = <
 export type MethodBuilders<Profile> = {
   authMutation: AuthMutationBuilder<Profile>;
 };
+
+/**
+ * The options of {@link AuthCore.bindMethod}: the method's name and the app's
+ * user callbacks, with `createUser` left out for a method that never creates
+ * users.
+ *
+ * @internal Not public until the API for custom methods is stable.
+ */
+export type BindMethodOptions<
+  MethodName extends string,
+  Profile,
+  UsersTable extends string,
+> = {
+  name: MethodName;
+  createUser?: CreateUserFn<MethodName, Profile, UsersTable>;
+} & Omit<UserCallbacks<MethodName, Profile, UsersTable>, "createUser">;
 
 /**
  * The core auth API returned by {@link setupConvexAuth}: the session handlers the
@@ -135,18 +152,20 @@ export type AuthCore<UsersTable extends string = string> = {
    *
    * `createUser` is the app's user-creating callback for this method and
    * `onSignIn` is its optional per-sign-in hook (see {@link UserCallbacks}).
+   * A method that only signs existing users in (the `passkey` method, which
+   * adds a passkey to an account made another way) passes no `createUser`.
+   * Its `completeSignUp` and `signUpWithoutSession` helpers then throw.
    *
    * Method setup functions call this from inside their `attachUserCallbacks`,
    * once the app has supplied the callbacks, so the builders can close over
-   * them and a method with no way to create users cannot exist. It is not
-   * meant to be called by application code directly.
+   * them. A method that creates users requires `createUser` in its
+   * `attachUserCallbacks`, so it cannot exist without one. It is not meant to
+   * be called by application code directly.
    *
    * @internal Not public until the API for custom methods is stable.
    */
   bindMethod<MethodName extends string, Profile>(
-    options: {
-      name: MethodName;
-    } & UserCallbacks<MethodName, Profile, UsersTable>,
+    options: BindMethodOptions<MethodName, Profile, UsersTable>,
   ): MethodBuilders<Profile>;
 };
 
@@ -294,9 +313,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     name,
     createUser,
     onSignIn,
-  }: {
-    name: MethodName;
-  } & UserCallbacks<
+  }: BindMethodOptions<
     MethodName,
     Profile,
     UsersTable
@@ -309,6 +326,17 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       );
     }
     boundMethodNames.add(name);
+
+    // A method bound without `createUser` signs existing users in only.
+    const createUserHandle = async (): Promise<string> => {
+      if (createUser === undefined) {
+        throw new Error(
+          `The sign-in method "${name}" has no \`createUser\` callback, ` +
+            `so it cannot create users.`,
+        );
+      }
+      return await createFunctionHandle(createUser);
+    };
 
     // Undefined when the app attached no `onSignIn`, which tells the core to
     // mint the session without notifying the app.
@@ -362,7 +390,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
               profile: args.profile,
             },
             componentPath: componentPathOf(args.authenticatedBy),
-            createUserHandle: await createFunctionHandle(createUser),
+            createUserHandle: await createUserHandle(),
             onSignInHandle: await onSignInHandle(),
             ...ttl,
           },
@@ -397,7 +425,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
               method: name,
               profile: args.profile,
             },
-            createUserHandle: await createFunctionHandle(createUser),
+            createUserHandle: await createUserHandle(),
           },
         );
       },
@@ -427,6 +455,26 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           userId,
         });
         return await revokeListedSessions(ctx, sessions);
+      },
+      recordReauthentication: async (args: {
+        userId: string;
+        authenticatedBy: object;
+      }): Promise<{ authenticatedAt: number }> => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (identity === null) {
+          throw new Error(
+            "Cannot record a re-authentication: the caller is not signed in.",
+          );
+        }
+        // The core checks that the session exists and belongs to `userId`.
+        return await ctx.runMutation(
+          component.public._internal_dangerous_recordReauthentication,
+          {
+            sessionId: identity.subject,
+            userId: args.userId,
+            componentPath: componentPathOf(args.authenticatedBy),
+          },
+        );
       },
     });
 

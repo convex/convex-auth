@@ -389,6 +389,32 @@ export type BoundAuthHelpers<Profile> = {
    * @internal until we solidify the full session lifecycle
    */
   revokeAllSessions(userId: string): Promise<number>;
+  /**
+   * Record that the signed-in user proved again who they are, on the current
+   * session (the JWT's subject). Returns when, in milliseconds since the
+   * epoch.
+   *
+   * Call it once the method has verified the user its own way (an assertion
+   * of one of the user's passkeys, say) for a re-authentication, not a
+   * sign-in: a sign-in records its time with the new session.
+   * `getAuthenticationTime` and `requireRecentAuthentication` then report this
+   * time for the current session, until a later one or until the session
+   * ends. The other sessions of the user are not affected.
+   *
+   * Throws when the caller is not signed in, or when `userId` is not the
+   * user of the current session.
+   *
+   * @internal Not public until the API for custom methods is stable.
+   */
+  recordReauthentication(args: {
+    /** The user that the method verified. */
+    userId: string;
+    /**
+     * The component that verified the user, for example
+     * `components.authPasskey`. The record keeps its path.
+     */
+    authenticatedBy: object;
+  }): Promise<{ authenticatedAt: number }>;
 };
 
 /**

@@ -24,6 +24,13 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      _internal_dangerous_recordReauthentication: FunctionReference<
+        "mutation",
+        "internal",
+        { componentPath: string; sessionId: string; userId: string },
+        { authenticatedAt: number },
+        Name
+      >;
       _internal_dangerous_signIn: FunctionReference<
         "mutation",
         "internal",
@@ -69,6 +76,16 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         "internal",
         { claims: { method: string; profile: any }; createUserHandle: string },
         { userId: string },
+        Name
+      >;
+      getAuthenticationTime: FunctionReference<
+        "query",
+        "internal",
+        { components?: Array<string>; sessionId: string },
+        {
+          authentication: { authenticatedAt: number; component: string } | null;
+          userId: string;
+        } | null,
         Name
       >;
       getSession: FunctionReference<

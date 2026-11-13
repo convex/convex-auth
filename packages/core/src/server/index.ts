@@ -6,6 +6,8 @@
  * lists.
  * {@link getAuthUserId} reads the user id of the caller in a query, a
  * mutation, or an action.
+ * {@link getAuthenticationTime} and {@link requireRecentAuthentication} read
+ * when the caller last proved who they are.
  *
  * @module
  */
@@ -13,3 +15,10 @@
 export { convexAuthProvider } from "./authProvider.ts";
 export { setupConvexAuth, type AuthCore } from "./setup.ts";
 export { getAuthUserId } from "./userId.ts";
+export {
+  getAuthenticationTime,
+  requireRecentAuthentication,
+  type AuthenticationTime,
+  type GetAuthenticationTimeOptions,
+  type RequireRecentAuthenticationOptions,
+} from "./reauthentication.ts";

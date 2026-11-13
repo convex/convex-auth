@@ -22,6 +22,22 @@ export default defineSchema({
     component: v.string(),
   }).index("by_user", ["userId"]),
 
+  // When a user proved again who they are during a session, by component: a
+  // step-up that the session's sign-in does not count as. A session keeps at
+  // most one row per component, its latest, thus a few rows at most. The
+  // time is the row's `_creationTime`. The session's sign-in is the session
+  // row's own `_creationTime` and `component`, so the session row stays
+  // written only on create and delete.
+  //
+  // `deleteSession` erases the rows with their session, so a sign-out or a
+  // revocation drops them.
+  reauthentications: defineTable({
+    sessionId: v.id("sessions"),
+    // The path of the component that verified the user, for example
+    // `"authPasskey"`.
+    component: v.string(),
+  }).index("by_session_component", ["sessionId", "component"]),
+
   // Every refresh token a session has handed out and still remembers, by its
   // SHA-256 hash. The raw refresh token is never stored.
   //
