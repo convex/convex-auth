@@ -5,7 +5,6 @@
  * @module
  */
 import {
-  createFunctionHandle,
   queryGeneric,
   type GenericMutationCtx,
   type GenericDataModel,
@@ -35,9 +34,12 @@ import {
   emailNotFoundUserError,
   validateEmailFormat,
   landingUrlProblem,
-  type EmailSenderConfig,
 } from "../../components/email/validation.ts";
-import type { SendEmailRef } from "../../components/email/helpers.ts";
+import {
+  senderConfig,
+  senderRuntimeOptions,
+  type EmailSenderOptions,
+} from "../../lib/emailSender.ts";
 
 /** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
 const METHOD_NAME = "emailPassword";
@@ -60,34 +62,7 @@ const RECOVERY_EMAIL = {
   intro: "Open this link to reset your password:",
 };
 
-/**
- * How the method sends emails: challenge links (through the email
- * component) and security notifications (directly).
- *
- * Only Resend is supported for now, through the `@convex-dev/resend`
- * component. Mount that component in the app and pass its `sendEmail`
- * reference and your Resend API key here.
- *
- * TODO: support other email providers.
- * TODO: offer a first-party zero-configuration email service.
- * TODO: let applications customize the email templates.
- */
-export type EmailSenderOptions = {
-  kind: "resend";
-  /** The mounted Resend component's `lib.sendEmail` reference. */
-  sendEmail: SendEmailRef;
-  /**
-   * The Resend API key. Read it from an environment variable of the
-   * deployment (e.g. `env.RESEND_API_KEY`) rather than writing it in the
-   * source.
-   */
-  apiKey: string;
-  /**
-   * The From address, e.g. `"My App <auth@example.com>"`. The address must be
-   * on a domain you verified with Resend.
-   */
-  from: string;
-};
+export type { EmailSenderOptions } from "../../lib/emailSender.ts";
 
 /**
  * The landing pages the emailed links point at. The link's `code` query
@@ -334,28 +309,6 @@ export function setupEmailPassword<UsersTable extends string>(
     }
   }
 
-  /** The Resend runtime options `lib.sendEmail` requires. */
-  const senderRuntimeOptions = () => ({
-    apiKey: emailSender.apiKey,
-    // TODO: make these values configurable.
-    initialBackoffMs: 30 * 1000,
-    retryAttempts: 5,
-  });
-
-  /**
-   * The sender config the email component's `start` mutations accept.
-   *
-   * This is a function because `createFunctionHandle` is asynchronous, and
-   * it works only while a Convex function runs, not when `convex/auth.ts`
-   * is imported and this setup runs.
-   */
-  const senderConfig = async (): Promise<EmailSenderConfig> => ({
-    kind: "resend",
-    sendEmailHandle: await createFunctionHandle(emailSender.sendEmail),
-    from: emailSender.from,
-    ...senderRuntimeOptions(),
-  });
-
   /**
    * Send a security notification (ASVS 6.3.7) directly through the Resend
    * reference. Notifications do not go through the email component: they
@@ -368,7 +321,7 @@ export function setupEmailPassword<UsersTable extends string>(
     text: string,
   ): Promise<void> => {
     await ctx.runMutation(emailSender.sendEmail, {
-      options: { ...senderRuntimeOptions(), testMode: false },
+      options: { ...senderRuntimeOptions(emailSender), testMode: false },
       from: emailSender.from,
       to: [to],
       subject,
@@ -462,7 +415,7 @@ export function setupEmailPassword<UsersTable extends string>(
                 // The user is new, so this first address becomes primary.
                 userId,
                 url: urls.signUp,
-                emailSender: await senderConfig(),
+                emailSender: await senderConfig(emailSender),
               },
             );
             if (!start.success) {
@@ -689,7 +642,7 @@ export function setupEmailPassword<UsersTable extends string>(
                 email: newEmail,
                 userId,
                 url: urls.changeEmail,
-                emailSender: await senderConfig(),
+                emailSender: await senderConfig(emailSender),
               },
             );
             if (!start.success) {
@@ -786,7 +739,7 @@ export function setupEmailPassword<UsersTable extends string>(
                 // verified address at completion.
                 expectedUserId: null,
                 url: urls.recovery,
-                emailSender: await senderConfig(),
+                emailSender: await senderConfig(emailSender),
                 ttlMs: RECOVERY_TTL_MS,
                 ...RECOVERY_EMAIL,
               },

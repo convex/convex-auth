@@ -5,7 +5,6 @@
  *
  * @module
  */
-import { createFunctionHandle } from "convex/server";
 import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
@@ -17,11 +16,13 @@ import type { ComponentApi } from "../../components/email/_generated/component.j
 import {
   completeCodeChallengeUserError,
   startChallengeUserError,
-  type EmailSenderConfig,
 } from "../../components/email/validation.ts";
-import type { EmailSenderOptions } from "../email-password/server.ts";
+import {
+  senderConfig,
+  type EmailSenderOptions,
+} from "../../lib/emailSender.ts";
 
-export type { EmailSenderOptions } from "../email-password/server.ts";
+export type { EmailSenderOptions } from "../../lib/emailSender.ts";
 
 /** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
 const METHOD_NAME = "emailCode";
@@ -151,23 +152,6 @@ export function setupEmailCode<UsersTable extends string>(
 ) {
   const { component, emailSender, codeLength, ttlMs } = options;
 
-  /**
-   * The sender config the email component's `start` mutations accept.
-   *
-   * This is a function because `createFunctionHandle` is asynchronous, and
-   * it works only while a Convex function runs, not when `convex/auth.ts`
-   * is imported and this setup runs.
-   */
-  const senderConfig = async (): Promise<EmailSenderConfig> => ({
-    kind: "resend",
-    sendEmailHandle: await createFunctionHandle(emailSender.sendEmail),
-    from: emailSender.from,
-    apiKey: emailSender.apiKey,
-    // TODO: make these values configurable.
-    initialBackoffMs: 30 * 1000,
-    retryAttempts: 5,
-  });
-
   return {
     /**
      * Supply the app's user callbacks (see {@link UserCallbacks} for how their
@@ -201,7 +185,7 @@ export function setupEmailCode<UsersTable extends string>(
               component.challenge.signIn.start,
               {
                 email,
-                emailSender: await senderConfig(),
+                emailSender: await senderConfig(emailSender),
                 codeLength,
                 ttlMs,
                 subject: options.email?.subject,
