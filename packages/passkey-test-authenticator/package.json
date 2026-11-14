@@ -15,9 +15,9 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@edge-runtime/vm": "^5.0.0",
-    "@types/node": "^24.12.4",
-    "typescript": "^6.0.3",
-    "vitest": "^5.0.0"
+    "@edge-runtime/vm": "5.0.0",
+    "@types/node": "24.13.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
   }
 }
