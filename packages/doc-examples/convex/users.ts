@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { vAppleProfile } from "@convex-dev/auth/methods/apple/server";
+import { vDiscordProfile } from "@convex-dev/auth/methods/discord/server";
 import { vGithubProfile } from "@convex-dev/auth/methods/github/server";
 import { vGoogleProfile } from "@convex-dev/auth/methods/google/server";
 import { internalMutation } from "./_generated/server";
@@ -66,6 +67,17 @@ export const createUserGithub = internalMutation({
     method: v.object({
       name: v.literal("github"),
       profile: vGithubProfile,
+    }),
+  },
+  returns: v.id("users"),
+  handler: async (ctx) => await ctx.db.insert("users", {}),
+});
+
+export const createUserDiscord = internalMutation({
+  args: {
+    method: v.object({
+      name: v.literal("discord"),
+      profile: vDiscordProfile,
     }),
   },
   returns: v.id("users"),

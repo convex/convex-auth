@@ -1,0 +1,23 @@
+body {
+  background-color: oklch(96.8% 0.007 247.896);
+}
+
+main {
+  font-family: system-ui, sans-serif;
+  max-width: 480px;
+  margin: 4rem auto;
+  padding: 0 1rem;
+  line-height: 1.5;
+}
+
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.75rem;
+  box-sizing: border-box;
+  font-size: 1rem;
+}
