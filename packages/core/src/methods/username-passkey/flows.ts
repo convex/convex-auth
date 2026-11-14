@@ -69,7 +69,7 @@ export type UsernamePasskeyApi = {
 
 /** What the sign-in flows need from their caller. */
 export type SignInFlowContext = {
-  /** The Convex client of the surrounding provider. */
+  /** Runs the mutations that mint no session, like the start mutations. */
   convex: ConvexMutationApi;
   /** The mutation references the app re-exported from its `setupConvexAuth`. */
   api: UsernamePasskeyApi;

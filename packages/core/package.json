@@ -186,10 +186,10 @@
     },
     "./methods/oauth": {
       "convex-auth-internal-types": {
-        "types": "./dist/internal-types/methods/oauth/client.d.ts"
+        "types": "./dist/internal-types/methods/oauth/index.d.ts"
       },
-      "types": "./dist/methods/oauth/client.d.ts",
-      "default": "./dist/methods/oauth/client.js"
+      "types": "./dist/methods/oauth/index.d.ts",
+      "default": "./dist/methods/oauth/index.js"
     },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {
