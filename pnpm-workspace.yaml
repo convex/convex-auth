@@ -17,3 +17,11 @@ minimumReleaseAgeExclude:
   - convex-test
   # Renovate security update: vitest@4.1.11
   - vitest@4.1.11
+
+# Dependencies whose install scripts we don't need. pnpm fails the install on
+# any build script that isn't listed here, so new ones must be reviewed.
+allowBuilds:
+  "@swc/core": false
+  core-js: false
+  esbuild: false
+  sharp: false
