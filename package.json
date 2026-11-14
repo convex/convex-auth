@@ -20,19 +20,19 @@
     "release": "pnpm --filter @convex-dev/auth release"
   },
   "devDependencies": {
-    "@convex-dev/eslint-plugin": "^2.0.0",
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^26.1.0",
-    "convex": "1.48.0",
-    "eslint": "^10.6.0",
-    "listr2": "^11.0.0",
-    "prettier": "^3.9.4",
-    "tsx": "^4.23.12",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.62.1",
-    "vite": "^8.1.2",
+    "@convex-dev/eslint-plugin": "2.0.0",
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.1.0",
+    "convex": "1.49.0",
+    "eslint": "10.6.0",
+    "listr2": "11.0.0",
+    "prettier": "3.9.4",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1",
+    "vite": "8.1.6",
     "vite-plugin-wasm-module": "workspace:*",
-    "vitest": "^5.0.0"
+    "vitest": "5.1.0"
   },
   "engines": {
     "node": ">=20"

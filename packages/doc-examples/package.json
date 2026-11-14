@@ -9,17 +9,17 @@
   "dependencies": {
     "@convex-dev/auth": "workspace:*",
     "@convex-dev/resend": "^0.2.8",
-    "convex": "1.48.0",
+    "convex": "1.49.0",
     "next": "^16.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
-    "@types/node": "^24.12.4",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.0.0",
-    "convex-test": "^0.0.65",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "@types/node": "24.13.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "convex-test": "0.0.65",
+    "typescript": "6.0.3",
+    "vite": "8.1.6"
   }
 }
