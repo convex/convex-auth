@@ -156,6 +156,13 @@
       "types": "./dist/methods/email-password/react.d.ts",
       "default": "./dist/methods/email-password/react.js"
     },
+    "./methods/username-passkey": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-passkey/index.d.ts"
+      },
+      "types": "./dist/methods/username-passkey/index.d.ts",
+      "default": "./dist/methods/username-passkey/index.js"
+    },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/server.d.ts"
@@ -176,6 +183,13 @@
       },
       "types": "./dist/methods/username-passkey/react-custom.d.ts",
       "default": "./dist/methods/username-passkey/react-custom.js"
+    },
+    "./methods/oauth": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/oauth/client.d.ts"
+      },
+      "types": "./dist/methods/oauth/client.d.ts",
+      "default": "./dist/methods/oauth/client.js"
     },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {

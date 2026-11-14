@@ -154,7 +154,11 @@ function callbackFlowError(param: string): OauthFlowError {
 /** Storage key for the saved sign-in flow. */
 const OAUTH_FLOW_STORAGE_KEY = "flow";
 
-/** What `signIn` saves before it navigates to the identity provider. */
+/**
+ * What `signIn` saves before it navigates to the identity provider.
+ *
+ * @internal
+ */
 export type PendingFlow = {
   /** Which provider the flow belongs to. */
   providerName: string;
