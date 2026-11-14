@@ -39,6 +39,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
         Name
       >;
+      deletePassword: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        { deleted: boolean },
+        Name
+      >;
       verifyPassword: FunctionReference<
         "mutation",
         "internal",
