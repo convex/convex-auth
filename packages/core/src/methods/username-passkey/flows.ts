@@ -5,9 +5,11 @@
  * @module
  */
 
-import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
+import type {
+  AuthSignInApi,
+  ConvexMutationApi,
+} from "../../browser/ambientSignInClient.ts";
 import type {
   ClientView,
   SignInError,
@@ -65,10 +67,10 @@ export type UsernamePasskeyApi = {
   finishSignUpWithUsernamePasskey: FinishSignUpMutation;
 };
 
-/** What the sign-in flows need from the surrounding React tree. */
+/** What the sign-in flows need from their caller. */
 export type SignInFlowContext = {
-  /** The Convex client of the surrounding provider. */
-  convex: ConvexReactClient;
+  /** Runs the mutations that mint no session, like the start mutations. */
+  convex: ConvexMutationApi;
   /** The mutation references the app re-exported from its `setupConvexAuth`. */
   api: UsernamePasskeyApi;
   /**
