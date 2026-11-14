@@ -437,7 +437,7 @@
     "@simplewebauthn/server": "^14.0.0",
     "password-hash-wasm": "0.0.0",
     "cookie": "1.1.1",
-    "jose": "^5.2.2"
+    "jose": "^6.0.0"
   },
   "devDependencies": {
     "@convex-dev/passkey-test-authenticator": "workspace:*",
