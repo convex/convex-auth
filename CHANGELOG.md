@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Sign in with Apple from a native iOS app: `setupApple` takes
+  `nativeAppBundleIds` and returns `exchangeAppleIdentityToken`, which verifies
+  an identity token from Apple's system sheet and returns a `code` and `state`
+  for `completeSignInWithApple`. Native and web sign-ins reach the same account.
+
 ## 2.0.0
 
 First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.
