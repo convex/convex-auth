@@ -165,3 +165,14 @@ export const _internal_dangerous_createAccount = mutation({
   handler: async (ctx, args) =>
     await dbHelpers.insertAccount<Doc<"accounts">>(ctx, args),
 });
+
+/**
+ * Delete every account of an app user, for an app that deletes the user.
+ * Returns how many there were; `0` when the user connected none.
+ */
+export const deleteUserAccounts = mutation({
+  args: { userId: v.string() },
+  returns: v.object({ deleted: v.number() }),
+  handler: async (ctx, args) =>
+    await dbHelpers.deleteUserAccounts<Doc<"accounts">>(ctx, args),
+});

@@ -53,6 +53,13 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | { encryptedPayload: string },
         Name
       >;
+      deleteUserAccounts: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        { deleted: number },
+        Name
+      >;
       getUserIdByAccount: FunctionReference<
         "query",
         "internal",
