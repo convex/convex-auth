@@ -19,6 +19,8 @@ minimumReleaseAgeExclude:
   - vitest@4.1.11
   # Renovate security update: next@16.4.1
   - next@16.4.1
+  # Renovate security update: vite@8.1.6
+  - vite@8.1.6
 
 # Dependencies whose install scripts we don't need. pnpm fails the install on
 # any build script that isn't listed here, so new ones must be reviewed.
