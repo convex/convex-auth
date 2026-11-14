@@ -4,7 +4,7 @@
  *
  * {@link useSignInWithUsernamePasskey} is the batteries-included hook for the
  * username + passkey login form. It drives the browser-side WebAuthn
- * ceremonies (through the internal client module built on
+ * ceremonies (through `@convex-dev/auth/methods/username-passkey`, built on
  * `@simplewebauthn/browser`) against the mutations of a passkey recipe,
  * and it handles both the identifier-first modal flow and passkey autofill
  * (conditional mediation), where the user selects an account directly in
