@@ -28,3 +28,11 @@ test.each(entries)("%s loads without React", async (_key, file) => {
   expect(modules[file]).toBeDefined();
   await modules[file]!();
 });
+
+test("the OAuth and passkey entries export their clients", async () => {
+  const { oauth } = await import("./methods/oauth/index.ts");
+  const { runSignInOrSignUpFlow } =
+    await import("./methods/username-passkey/index.ts");
+  expect(oauth).toBeTypeOf("function");
+  expect(runSignInOrSignUpFlow).toBeTypeOf("function");
+});
