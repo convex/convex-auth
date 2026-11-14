@@ -168,7 +168,7 @@ importers:
     devDependencies:
       '@convex-dev/eslint-plugin':
         specifier: ^2.0.0
-        version: 2.0.0(convex@1.48.0(react@19.2.7))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+        version: 2.0.0(convex@1.48.0(react@19.2.7))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))
@@ -191,11 +191,11 @@ importers:
         specifier: ^4.23.12
         version: 4.23.12
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
       typescript-eslint:
         specifier: ^8.62.1
-        version: 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+        version: 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       vite:
         specifier: ^8.1.2
         version: 8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
@@ -536,7 +536,7 @@ importers:
     dependencies:
       '@convex-dev/batch-worker':
         specifier: ^0.3.2
-        version: 0.3.4(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+        version: 0.3.4(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3)
       '@convex-dev/rate-limiter':
         specifier: ^0.3.2
         version: 0.3.2(convex@1.48.0(react@19.2.7))(react@19.2.7)
@@ -561,7 +561,7 @@ importers:
         version: link:../passkey-test-authenticator
       '@convex-dev/resend':
         specifier: ^0.2.8
-        version: 0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
+        version: 0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
       '@edge-runtime/vm':
         specifier: ^5.0.0
         version: 5.0.0
@@ -602,8 +602,8 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
       vite:
         specifier: ^8.0.16
         version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
@@ -618,7 +618,7 @@ importers:
         version: link:../core
       '@convex-dev/resend':
         specifier: ^0.2.8
-        version: 0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
+        version: 0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
       convex:
         specifier: 1.48.0
         version: 1.48.0(react@19.2.7)
@@ -645,8 +645,8 @@ importers:
         specifier: ^0.0.65
         version: 0.0.65(convex@1.48.0(react@19.2.7))
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
       vite:
         specifier: ^8.0.16
         version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
@@ -655,22 +655,22 @@ importers:
     dependencies:
       '@docusaurus/core':
         specifier: ~3.10.1
-        version: 3.10.2(f465bae802031e58a0cbf62377c4580b)
+        version: 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/faster':
         specifier: ~3.10.1
         version: 3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5)
       '@docusaurus/plugin-content-docs':
         specifier: ~3.10.2
-        version: 3.10.2(f465bae802031e58a0cbf62377c4580b)
+        version: 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/preset-classic':
         specifier: ~3.10.1
-        version: 3.10.2(b20fe6d0c669601e433db4e7c3af973c)
+        version: 3.10.2(3e51d78005d951d6f74f7b09ddf99c04)
       '@mdx-js/react':
         specifier: ^3.1.0
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
       '@signalwire/docusaurus-plugin-llms-txt':
         specifier: ^1.1.0
-        version: 1.2.2(@docusaurus/core@3.10.2(f465bae802031e58a0cbf62377c4580b))(supports-color@8.1.1)
+        version: 1.2.2(@docusaurus/core@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(supports-color@8.1.1)
       prism-react-renderer:
         specifier: ^2.4.1
         version: 2.4.1(react@19.2.7)
@@ -686,7 +686,7 @@ importers:
         version: 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/theme-classic':
         specifier: ~3.10.2
-        version: 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@6.0.3)
+        version: 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@7.0.2)
       '@docusaurus/types':
         specifier: ~3.10.1
         version: 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -698,16 +698,16 @@ importers:
         version: 19.2.17
       typedoc:
         specifier: ^0.28.20
-        version: 0.28.20(typescript@6.0.3)
+        version: 0.28.20(typescript@7.0.2)
       typedoc-plugin-frontmatter:
         specifier: ^1.3.2
-        version: 1.3.2(typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3))
+        version: 1.3.2(typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@7.0.2)))(typedoc@0.28.20(typescript@7.0.2))
       typedoc-plugin-markdown:
         specifier: ^4.13.0
-        version: 4.13.0(typedoc@0.28.20(typescript@6.0.3))
+        version: 4.13.0(typedoc@0.28.20(typescript@7.0.2))
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
 
   packages/passkey-test-authenticator:
     devDependencies:
@@ -718,8 +718,8 @@ importers:
         specifier: ^24.12.4
         version: 24.13.2
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
       vitest:
         specifier: ^5.0.0
         version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@24.13.2)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
@@ -730,8 +730,8 @@ importers:
         specifier: ^24.12.4
         version: 24.13.2
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
 
   packages/vite-plugin-wasm-module:
     devDependencies:
@@ -739,8 +739,8 @@ importers:
         specifier: ^26.1.0
         version: 26.1.0
       typescript:
-        specifier: ^6.0.3
-        version: 6.0.3
+        specifier: ^7.0.0
+        version: 7.0.2
       vite:
         specifier: 8.1.6
         version: 8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
@@ -3653,6 +3653,126 @@ packages:
   '@typescript-eslint/visitor-keys@8.62.1':
     resolution: {integrity: sha512-4g3BLxfdTMy8iZG0MaBkadnlRrCJ74cQiFbyEVMrkwIoqdyaXXQM22cotDvrl4x28wgIZ9rEJRoM+mmhSJpJ1g==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@typescript/typescript-aix-ppc64@7.0.2':
+    resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [ppc64]
+    os: [aix]
+
+  '@typescript/typescript-darwin-arm64@7.0.2':
+    resolution: {integrity: sha512-gowzar9MwS/aRWp6f3a4KUqzRjAZjOsmGNCM6LcTgXum+dBfgsBVMN+AgvOCCbguXyick6LJhpBszxMebJ8syA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@typescript/typescript-darwin-x64@7.0.2':
+    resolution: {integrity: sha512-SZ9xZInqApNlNGc9s0W1VSsktYSOe9cFqNOIqmN1Gs8SmkjKZYFt017G4VwPxASInODuAdbTW7sXiFUf893RgA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@typescript/typescript-freebsd-arm64@7.0.2':
+    resolution: {integrity: sha512-W5NH4y/J0plIIS5b2xvTEkU7JFxyqdMAOgf+Ilhl0vHQXKO5dZoxd+C/jEtq56c4F3wk71RB4BMRQ2XdI+bwYQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [freebsd]
+
+  '@typescript/typescript-freebsd-x64@7.0.2':
+    resolution: {integrity: sha512-UMGDx5sTpzNw3WiPebH7l90IWfJggEd+egHt/q6p7/Cm3zqoV7VxkGXt+3DxPIw8CcmvAB0j3sVVfbhX+M4Tpw==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@typescript/typescript-linux-arm64@7.0.2':
+    resolution: {integrity: sha512-Qh4eU4/y3yDjnfjjyPYihMj5/ODIlmt+Bzu17OI+fiSRDW57QmU5SiN63exPRNJPKUzcc1INa1NXdrJ+MqHjUQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@typescript/typescript-linux-arm@7.0.2':
+    resolution: {integrity: sha512-gffT3xPz9sR7j/YJExkyPntrI0P2EP9XbOyWzth2/Gs0RstK+90RBcO0ncXoXy/beYll1SXw846Nf2zdnEz0QQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@typescript/typescript-linux-loong64@7.0.2':
+    resolution: {integrity: sha512-uEHck9i8hoAzXPiYRib1O7miOnz23SxIeVl6F4LXox+qov1K35jHcEW6VHKvZI+pyvl7fZEP4MCU5LYvIq1GuQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [loong64]
+    os: [linux]
+
+  '@typescript/typescript-linux-mips64el@7.0.2':
+    resolution: {integrity: sha512-R4KvAMnE43W5Qeqb0Ly56O3mWMWIAgsMyz36DCaycd5nbg/9kzm0liw3JocfRqyJY0KPmzFjbswozXyW0DnIYA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [mips64el]
+    os: [linux]
+
+  '@typescript/typescript-linux-ppc64@7.0.2':
+    resolution: {integrity: sha512-DORx5b3sd/4S7eayxm4FQv+A7CrkUIGRaHiwI8oiHTAI1fAPWhF4J0vAlkC8biAlHSVVwxMQ3tjZ2/DVbnQiiA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [ppc64]
+    os: [linux]
+
+  '@typescript/typescript-linux-riscv64@7.0.2':
+    resolution: {integrity: sha512-wf0jqEDOjrPRnKwYRyyJDRo11KMbvMFrU+q4zqKyChODBzvlkbhNQfKvLxQCcwTpdDaXSHZTVuh0JoCrKCUMHQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [riscv64]
+    os: [linux]
+
+  '@typescript/typescript-linux-s390x@7.0.2':
+    resolution: {integrity: sha512-IkwJc3L7yhytWd/ewjyxNDfOmswCm9GWMJT/ue/dU4aZNbwZeYAetq42VyLmsmSjvoX7z74X6ZaYCtzAr0EuGw==}
+    engines: {node: '>=16.20.0'}
+    cpu: [s390x]
+    os: [linux]
+
+  '@typescript/typescript-linux-x64@7.0.2':
+    resolution: {integrity: sha512-EYdf2cNg7rgCWJnxCdJ+F3V39O8ihb37eHAu1LK8oAFizgTQbPOK7zHHXbPt8rX24COqODXeI3sIf0fCXG7H/A==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@typescript/typescript-netbsd-arm64@7.0.2':
+    resolution: {integrity: sha512-+polYF4MF04aPpO5FTkHran9yUQDSXqy5GiSDKpsll5jy3l3+g9QLhpf39T+ePtefhXLOGrLl0QIjkQP6VnelA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [netbsd]
+
+  '@typescript/typescript-netbsd-x64@7.0.2':
+    resolution: {integrity: sha512-8YIT0EHM/3dq10ZOVF/A7pc/YSMtbcecct4rWtexrnSCHOPcpC2KTLXfTCR6vDpnSiY12heNb1GiN/wu+T/FyA==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [netbsd]
+
+  '@typescript/typescript-openbsd-arm64@7.0.2':
+    resolution: {integrity: sha512-APT8+ClYnuYm1u9+kgGXoMj2VzWzcymwh2gNSQVySHfkRDGOTVkoWLjCmOQSaO+PoqQ57B0flRp9SA+7GnnkzQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [openbsd]
+
+  '@typescript/typescript-openbsd-x64@7.0.2':
+    resolution: {integrity: sha512-yX7s+Q0Dln0Dt9tEzZsAjXXR/+ytBM7AlglaqyeMPxQszJ1JhlJdZ6jLA+IzldHtflX81em7lDao1xXu+aRRkg==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [openbsd]
+
+  '@typescript/typescript-sunos-x64@7.0.2':
+    resolution: {integrity: sha512-dLJDGaLZ1D4HPQn62u1n8mBDkJREwMsAkCdkwd4Ieqw+x3TUyTsqY0YiBCtE6H6OzzgGk3iuZ3vFWRS+E8/d1g==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [sunos]
+
+  '@typescript/typescript-win32-arm64@7.0.2':
+    resolution: {integrity: sha512-Gyl1Vy6OsWesLzmq+EP0Fb7b4Nid5232AvcA2SFcdYreldpNtYFFofPjnt62y9hQy7VTaZp65ICJjuAQRaVcIQ==}
+    engines: {node: '>=16.20.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@typescript/typescript-win32-x64@7.0.2':
+    resolution: {integrity: sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g==}
+    engines: {node: '>=16.20.0'}
+    cpu: [x64]
+    os: [win32]
 
   '@ungap/structured-clone@1.3.2':
     resolution: {integrity: sha512-5jsZFwgR5rTdKwidH9Qmat75RKwqfpKlWWB1frDkljN127mwqBu8K0PYo7/hFpF03IEJpfVPpCQDY/eDx3iHvA==}
@@ -7495,6 +7615,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@7.0.2:
+    resolution: {integrity: sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==}
+    engines: {node: '>=16.20.0'}
+    hasBin: true
+
   uc.micro@2.1.0:
     resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==}
 
@@ -8821,10 +8946,21 @@ snapshots:
       - typescript
       - zod
 
-  '@convex-dev/eslint-plugin@2.0.0(convex@1.48.0(react@19.2.7))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@convex-dev/batch-worker@0.3.4(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3)':
+    dependencies:
+      convex: 1.48.0(react@19.2.7)
+      convex-helpers: 0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3)
+    transitivePeerDependencies:
+      - '@standard-schema/spec'
+      - hono
+      - react
+      - typescript
+      - zod
+
+  '@convex-dev/eslint-plugin@2.0.0(convex@1.48.0(react@19.2.7))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/types': 8.58.2
-      '@typescript-eslint/utils': 8.58.2(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/utils': 8.58.2(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       convex: 1.48.0(react@19.2.7)
     transitivePeerDependencies:
       - eslint
@@ -8850,12 +8986,12 @@ snapshots:
       - '@react-email/render'
       - react
 
-  '@convex-dev/resend@0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)':
+  '@convex-dev/resend@0.2.8(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@convex-dev/rate-limiter': 0.3.2(convex@1.48.0(react@19.2.7))(react@19.2.7)
-      '@convex-dev/workpool': 0.4.11(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
+      '@convex-dev/workpool': 0.4.11(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)
       convex: 1.48.0(react@19.2.7)
-      convex-helpers: 0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+      convex-helpers: 0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3)
       remeda: 2.39.0
       resend: 6.18.1
       svix: 1.99.1
@@ -8863,11 +8999,11 @@ snapshots:
       - '@react-email/render'
       - react
 
-  '@convex-dev/workpool@0.4.11(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)':
+  '@convex-dev/workpool@0.4.11(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@convex-dev/batch-worker': 0.2.2(convex@1.48.0(react@19.2.7))(react@19.2.7)
       convex: 1.48.0(react@19.2.7)
-      convex-helpers: 0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3)
+      convex-helpers: 0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3)
     transitivePeerDependencies:
       - react
 
@@ -9250,7 +9386,7 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@docusaurus/bundler@3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(csso@5.0.5)(esbuild@0.28.1)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@6.0.3)':
+  '@docusaurus/bundler@3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(csso@5.0.5)(esbuild@0.28.1)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@7.0.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       '@docusaurus/babel': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9269,7 +9405,7 @@ snapshots:
       mini-css-extract-plugin: 2.10.2(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))
       null-loader: 4.0.1(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))
       postcss: 8.5.16
-      postcss-loader: 7.3.4(postcss@8.5.16)(typescript@6.0.3)(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))
+      postcss-loader: 7.3.4(postcss@8.5.16)(typescript@7.0.2)(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))
       postcss-preset-env: 10.6.1(postcss@8.5.16)
       terser-webpack-plugin: 5.6.1(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))
       tslib: 2.8.1
@@ -9299,10 +9435,10 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@docusaurus/core@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/core@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
       '@docusaurus/babel': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/bundler': 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(csso@5.0.5)(esbuild@0.28.1)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@6.0.3)
+      '@docusaurus/bundler': 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(csso@5.0.5)(esbuild@0.28.1)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@7.0.2)
       '@docusaurus/logger': 3.10.2
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9494,13 +9630,13 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@docusaurus/plugin-content-blog@3.10.2(211a67085f7e88eb7aa08d2176a4597c)':
+  '@docusaurus/plugin-content-blog@3.10.2(b13b3f37ab97545718ea7d1a2fb0ccd0)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/logger': 3.10.2
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/plugin-content-docs': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
+      '@docusaurus/plugin-content-docs': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-common': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9546,13 +9682,13 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/logger': 3.10.2
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/module-type-aliases': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
+      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-common': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9596,9 +9732,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-content-pages@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-content-pages@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9636,9 +9772,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-css-cascade-layers@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-css-cascade-layers@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9673,9 +9809,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-debug@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-debug@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       fs-extra: 11.4.1
@@ -9711,9 +9847,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-google-analytics@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-google-analytics@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       react: 19.2.7
@@ -9747,9 +9883,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-google-gtag@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-google-gtag@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       react: 19.2.7
@@ -9783,9 +9919,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-google-tag-manager@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-google-tag-manager@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       react: 19.2.7
@@ -9819,9 +9955,9 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-sitemap@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-sitemap@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/logger': 3.10.2
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -9860,14 +9996,14 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/plugin-svgr@3.10.2(f465bae802031e58a0cbf62377c4580b)':
+  '@docusaurus/plugin-svgr@3.10.2(60441885e2c3a2b915d9b7dac5a921b8)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@6.0.3)
-      '@svgr/webpack': 8.1.0(supports-color@8.1.1)(typescript@6.0.3)
+      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@7.0.2)
+      '@svgr/webpack': 8.1.0(supports-color@8.1.1)(typescript@7.0.2)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       tslib: 2.8.1
@@ -9900,22 +10036,22 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/preset-classic@3.10.2(b20fe6d0c669601e433db4e7c3af973c)':
+  '@docusaurus/preset-classic@3.10.2(3e51d78005d951d6f74f7b09ddf99c04)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-content-blog': 3.10.2(211a67085f7e88eb7aa08d2176a4597c)
-      '@docusaurus/plugin-content-docs': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-content-pages': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-css-cascade-layers': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-debug': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-google-analytics': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-google-gtag': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-google-tag-manager': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-sitemap': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-svgr': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/theme-classic': 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@6.0.3)
-      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/theme-search-algolia': 3.10.2(b20fe6d0c669601e433db4e7c3af973c)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-content-blog': 3.10.2(b13b3f37ab97545718ea7d1a2fb0ccd0)
+      '@docusaurus/plugin-content-docs': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-content-pages': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-css-cascade-layers': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-debug': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-google-analytics': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-google-gtag': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-google-tag-manager': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-sitemap': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-svgr': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/theme-classic': 3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@7.0.2)
+      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
+      '@docusaurus/theme-search-algolia': 3.10.2(3e51d78005d951d6f74f7b09ddf99c04)
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -9955,16 +10091,16 @@ snapshots:
       '@types/react': 19.2.17
       react: 19.2.7
 
-  '@docusaurus/theme-classic@3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@6.0.3)':
+  '@docusaurus/theme-classic@3.10.2(@docusaurus/faster@3.10.2(@docusaurus/types@3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5))(@swc/helpers@0.5.23)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5))(@rspack/core@1.7.12(@swc/helpers@0.5.23))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(@types/react@19.2.17)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)(typescript@7.0.2)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/logger': 3.10.2
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/module-type-aliases': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/plugin-content-blog': 3.10.2(211a67085f7e88eb7aa08d2176a4597c)
-      '@docusaurus/plugin-content-docs': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/plugin-content-pages': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
+      '@docusaurus/plugin-content-blog': 3.10.2(b13b3f37ab97545718ea7d1a2fb0ccd0)
+      '@docusaurus/plugin-content-docs': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/plugin-content-pages': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/theme-translations': 3.10.2
       '@docusaurus/types': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -10012,11 +10148,11 @@ snapshots:
       - utf-8-validate
       - webpack-cli
 
-  '@docusaurus/theme-common@3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)':
+  '@docusaurus/theme-common@3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)':
     dependencies:
       '@docusaurus/mdx-loader': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/module-type-aliases': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
-      '@docusaurus/plugin-content-docs': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/plugin-content-docs': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-common': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@types/history': 4.7.11
@@ -10049,14 +10185,14 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@docusaurus/theme-search-algolia@3.10.2(b20fe6d0c669601e433db4e7c3af973c)':
+  '@docusaurus/theme-search-algolia@3.10.2(3e51d78005d951d6f74f7b09ddf99c04)':
     dependencies:
       '@algolia/autocomplete-core': 1.19.12(@algolia/client-search@5.60.0)(algoliasearch@5.60.0)(search-insights@2.17.3)
       '@docsearch/react': 4.7.1(@algolia/client-search@5.60.0)(@types/react@19.2.17)(algoliasearch@5.60.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(search-insights@2.17.3)
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       '@docusaurus/logger': 3.10.2
-      '@docusaurus/plugin-content-docs': 3.10.2(f465bae802031e58a0cbf62377c4580b)
-      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(f465bae802031e58a0cbf62377c4580b))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
+      '@docusaurus/plugin-content-docs': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
+      '@docusaurus/theme-common': 3.10.2(@docusaurus/plugin-content-docs@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/theme-translations': 3.10.2
       '@docusaurus/utils': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
       '@docusaurus/utils-validation': 3.10.2(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(sharp@0.35.5(@types/node@26.1.0))(supports-color@8.1.1)(svgo@3.3.5)
@@ -11137,9 +11273,9 @@ snapshots:
 
   '@sideway/pinpoint@2.0.0': {}
 
-  '@signalwire/docusaurus-plugin-llms-txt@1.2.2(@docusaurus/core@3.10.2(f465bae802031e58a0cbf62377c4580b))(supports-color@8.1.1)':
+  '@signalwire/docusaurus-plugin-llms-txt@1.2.2(@docusaurus/core@3.10.2(60441885e2c3a2b915d9b7dac5a921b8))(supports-color@8.1.1)':
     dependencies:
-      '@docusaurus/core': 3.10.2(f465bae802031e58a0cbf62377c4580b)
+      '@docusaurus/core': 3.10.2(60441885e2c3a2b915d9b7dac5a921b8)
       fs-extra: 11.4.1
       hast-util-select: 6.0.4
       hast-util-to-html: 9.0.5
@@ -11239,12 +11375,12 @@ snapshots:
       '@svgr/babel-plugin-transform-react-native-svg': 8.1.0(@babel/core@7.29.7(supports-color@8.1.1))
       '@svgr/babel-plugin-transform-svg-component': 8.0.0(@babel/core@7.29.7(supports-color@8.1.1))
 
-  '@svgr/core@8.1.0(supports-color@8.1.1)(typescript@6.0.3)':
+  '@svgr/core@8.1.0(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       '@svgr/babel-preset': 8.1.0(@babel/core@7.29.7(supports-color@8.1.1))
       camelcase: 6.3.0
-      cosmiconfig: 8.3.6(typescript@6.0.3)
+      cosmiconfig: 8.3.6(typescript@7.0.2)
       snake-case: 3.0.4
     transitivePeerDependencies:
       - supports-color
@@ -11255,35 +11391,35 @@ snapshots:
       '@babel/types': 7.29.8
       entities: 4.5.0
 
-  '@svgr/plugin-jsx@8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@6.0.3))(supports-color@8.1.1)':
+  '@svgr/plugin-jsx@8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@7.0.2))(supports-color@8.1.1)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       '@svgr/babel-preset': 8.1.0(@babel/core@7.29.7(supports-color@8.1.1))
-      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@6.0.3)
+      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@7.0.2)
       '@svgr/hast-util-to-babel-ast': 8.0.0
       svg-parser: 2.1.0
     transitivePeerDependencies:
       - supports-color
 
-  '@svgr/plugin-svgo@8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@6.0.3))(typescript@6.0.3)':
+  '@svgr/plugin-svgo@8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@7.0.2))(typescript@7.0.2)':
     dependencies:
-      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@6.0.3)
-      cosmiconfig: 8.3.6(typescript@6.0.3)
+      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@7.0.2)
+      cosmiconfig: 8.3.6(typescript@7.0.2)
       deepmerge: 4.3.1
       svgo: 3.3.5
     transitivePeerDependencies:
       - typescript
 
-  '@svgr/webpack@8.1.0(supports-color@8.1.1)(typescript@6.0.3)':
+  '@svgr/webpack@8.1.0(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       '@babel/plugin-transform-react-constant-elements': 7.29.7(@babel/core@7.29.7(supports-color@8.1.1))
       '@babel/preset-env': 7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)
       '@babel/preset-react': 7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)
       '@babel/preset-typescript': 7.29.7(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1)
-      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@6.0.3)
-      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@6.0.3))(supports-color@8.1.1)
-      '@svgr/plugin-svgo': 8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@6.0.3))(typescript@6.0.3)
+      '@svgr/core': 8.1.0(supports-color@8.1.1)(typescript@7.0.2)
+      '@svgr/plugin-jsx': 8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@7.0.2))(supports-color@8.1.1)
+      '@svgr/plugin-svgo': 8.1.0(@svgr/core@8.1.0(supports-color@8.1.1)(typescript@7.0.2))(typescript@7.0.2)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -11615,49 +11751,49 @@ snapshots:
     dependencies:
       '@types/yargs-parser': 21.0.3
 
-  '@typescript-eslint/eslint-plugin@8.62.1(@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/eslint-plugin@8.62.1(@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@eslint-community/regexpp': 4.12.2
-      '@typescript-eslint/parser': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/parser': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       '@typescript-eslint/scope-manager': 8.62.1
-      '@typescript-eslint/type-utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/type-utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       '@typescript-eslint/visitor-keys': 8.62.1
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
       ignore: 7.0.5
       natural-compare: 1.4.0
-      ts-api-utils: 2.5.0(typescript@6.0.3)
-      typescript: 6.0.3
+      ts-api-utils: 2.5.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.62.1
       '@typescript-eslint/types': 8.62.1
-      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@7.0.2)
       '@typescript-eslint/visitor-keys': 8.62.1
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.58.2(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/project-service@8.58.2(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@6.0.3)
+      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@7.0.2)
       '@typescript-eslint/types': 8.58.2
       debug: 4.4.3(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.62.1(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/project-service@8.62.1(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.62.1(typescript@6.0.3)
+      '@typescript-eslint/tsconfig-utils': 8.62.1(typescript@7.0.2)
       '@typescript-eslint/types': 8.62.1
       debug: 4.4.3(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -11671,23 +11807,23 @@ snapshots:
       '@typescript-eslint/types': 8.62.1
       '@typescript-eslint/visitor-keys': 8.62.1
 
-  '@typescript-eslint/tsconfig-utils@8.58.2(typescript@6.0.3)':
+  '@typescript-eslint/tsconfig-utils@8.58.2(typescript@7.0.2)':
     dependencies:
-      typescript: 6.0.3
+      typescript: 7.0.2
 
-  '@typescript-eslint/tsconfig-utils@8.62.1(typescript@6.0.3)':
+  '@typescript-eslint/tsconfig-utils@8.62.1(typescript@7.0.2)':
     dependencies:
-      typescript: 6.0.3
+      typescript: 7.0.2
 
-  '@typescript-eslint/type-utils@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/type-utils@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@typescript-eslint/types': 8.62.1
-      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
-      ts-api-utils: 2.5.0(typescript@6.0.3)
-      typescript: 6.0.3
+      ts-api-utils: 2.5.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -11695,55 +11831,55 @@ snapshots:
 
   '@typescript-eslint/types@8.62.1': {}
 
-  '@typescript-eslint/typescript-estree@8.58.2(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/typescript-estree@8.58.2(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
-      '@typescript-eslint/project-service': 8.58.2(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@6.0.3)
+      '@typescript-eslint/project-service': 8.58.2(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.58.2(typescript@7.0.2)
       '@typescript-eslint/types': 8.58.2
       '@typescript-eslint/visitor-keys': 8.58.2
       debug: 4.4.3(supports-color@8.1.1)
       minimatch: 10.2.5
       semver: 7.8.5
       tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@6.0.3)
-      typescript: 6.0.3
+      ts-api-utils: 2.5.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.62.1(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/typescript-estree@8.62.1(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
-      '@typescript-eslint/project-service': 8.62.1(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/tsconfig-utils': 8.62.1(typescript@6.0.3)
+      '@typescript-eslint/project-service': 8.62.1(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/tsconfig-utils': 8.62.1(typescript@7.0.2)
       '@typescript-eslint/types': 8.62.1
       '@typescript-eslint/visitor-keys': 8.62.1
       debug: 4.4.3(supports-color@8.1.1)
       minimatch: 10.2.5
       semver: 7.8.5
       tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@6.0.3)
-      typescript: 6.0.3
+      ts-api-utils: 2.5.0(typescript@7.0.2)
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.58.2(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/utils@8.58.2(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))
       '@typescript-eslint/scope-manager': 8.58.2
       '@typescript-eslint/types': 8.58.2
-      '@typescript-eslint/typescript-estree': 8.58.2(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/typescript-estree': 8.58.2(supports-color@8.1.1)(typescript@7.0.2)
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)':
+  '@typescript-eslint/utils@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
       '@eslint-community/eslint-utils': 4.9.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))
       '@typescript-eslint/scope-manager': 8.62.1
       '@typescript-eslint/types': 8.62.1
-      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@7.0.2)
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
@@ -11756,6 +11892,66 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.62.1
       eslint-visitor-keys: 5.0.1
+
+  '@typescript/typescript-aix-ppc64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-darwin-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-darwin-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-freebsd-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-freebsd-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-arm@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-loong64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-mips64el@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-ppc64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-riscv64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-s390x@7.0.2':
+    optional: true
+
+  '@typescript/typescript-linux-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-netbsd-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-netbsd-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-openbsd-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-openbsd-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-sunos-x64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-win32-arm64@7.0.2':
+    optional: true
+
+  '@typescript/typescript-win32-x64@7.0.2':
+    optional: true
 
   '@ungap/structured-clone@1.3.2': {}
 
@@ -12362,6 +12558,15 @@ snapshots:
       typescript: 6.0.3
       zod: 4.4.3
 
+  convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@7.0.2)(zod@4.4.3):
+    dependencies:
+      convex: 1.48.0(react@19.2.7)
+    optionalDependencies:
+      '@standard-schema/spec': 1.1.0
+      react: 19.2.7
+      typescript: 7.0.2
+      zod: 4.4.3
+
   convex-test@0.0.65(convex@1.48.0(react@19.2.7)):
     dependencies:
       convex: 1.48.0(react@19.2.7)
@@ -12403,14 +12608,14 @@ snapshots:
 
   core-util-is@1.0.3: {}
 
-  cosmiconfig@8.3.6(typescript@6.0.3):
+  cosmiconfig@8.3.6(typescript@7.0.2):
     dependencies:
       import-fresh: 3.3.1
       js-yaml: 4.3.2
       parse-json: 5.2.0
       path-type: 4.0.0
     optionalDependencies:
-      typescript: 6.0.3
+      typescript: 7.0.2
 
   cross-spawn@7.0.6:
     dependencies:
@@ -14951,9 +15156,9 @@ snapshots:
       '@csstools/utilities': 2.0.0(postcss@8.5.16)
       postcss: 8.5.16
 
-  postcss-loader@7.3.4(postcss@8.5.16)(typescript@6.0.3)(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5)):
+  postcss-loader@7.3.4(postcss@8.5.16)(typescript@7.0.2)(webpack@5.112.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(@swc/html@1.16.18)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.28.1)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(sharp@0.35.5(@types/node@26.1.0))(svgo@3.3.5)):
     dependencies:
-      cosmiconfig: 8.3.6(typescript@6.0.3)
+      cosmiconfig: 8.3.6(typescript@7.0.2)
       jiti: 1.21.7
       postcss: 8.5.16
       semver: 7.8.5
@@ -16188,9 +16393,9 @@ snapshots:
 
   trough@2.2.0: {}
 
-  ts-api-utils@2.5.0(typescript@6.0.3):
+  ts-api-utils@2.5.0(typescript@7.0.2):
     dependencies:
-      typescript: 6.0.3
+      typescript: 7.0.2
 
   tslib@1.14.1: {}
 
@@ -16223,37 +16428,60 @@ snapshots:
     dependencies:
       is-typedarray: 1.0.0
 
-  typedoc-plugin-frontmatter@1.3.2(typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3)):
+  typedoc-plugin-frontmatter@1.3.2(typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@7.0.2)))(typedoc@0.28.20(typescript@7.0.2)):
     dependencies:
-      typedoc: 0.28.20(typescript@6.0.3)
-      typedoc-plugin-markdown: 4.13.0(typedoc@0.28.20(typescript@6.0.3))
+      typedoc: 0.28.20(typescript@7.0.2)
+      typedoc-plugin-markdown: 4.13.0(typedoc@0.28.20(typescript@7.0.2))
       yaml: 2.9.0
 
-  typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@6.0.3)):
+  typedoc-plugin-markdown@4.13.0(typedoc@0.28.20(typescript@7.0.2)):
     dependencies:
-      typedoc: 0.28.20(typescript@6.0.3)
+      typedoc: 0.28.20(typescript@7.0.2)
 
-  typedoc@0.28.20(typescript@6.0.3):
+  typedoc@0.28.20(typescript@7.0.2):
     dependencies:
       '@gerrit0/mini-shiki': 3.23.0
       lunr: 2.3.9
       markdown-it: 14.3.1
       minimatch: 10.2.5
-      typescript: 6.0.3
+      typescript: 7.0.2
       yaml: 2.9.0
 
-  typescript-eslint@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3):
+  typescript-eslint@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2):
     dependencies:
-      '@typescript-eslint/eslint-plugin': 8.62.1(@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/parser': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@6.0.3)
-      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+      '@typescript-eslint/eslint-plugin': 8.62.1(@typescript-eslint/parser@8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2))(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/parser': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/typescript-estree': 8.62.1(supports-color@8.1.1)(typescript@7.0.2)
+      '@typescript-eslint/utils': 8.62.1(eslint@10.6.0(jiti@1.21.7)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@7.0.2)
       eslint: 10.6.0(jiti@1.21.7)(supports-color@8.1.1)
-      typescript: 6.0.3
+      typescript: 7.0.2
     transitivePeerDependencies:
       - supports-color
 
   typescript@6.0.3: {}
+
+  typescript@7.0.2:
+    optionalDependencies:
+      '@typescript/typescript-aix-ppc64': 7.0.2
+      '@typescript/typescript-darwin-arm64': 7.0.2
+      '@typescript/typescript-darwin-x64': 7.0.2
+      '@typescript/typescript-freebsd-arm64': 7.0.2
+      '@typescript/typescript-freebsd-x64': 7.0.2
+      '@typescript/typescript-linux-arm': 7.0.2
+      '@typescript/typescript-linux-arm64': 7.0.2
+      '@typescript/typescript-linux-loong64': 7.0.2
+      '@typescript/typescript-linux-mips64el': 7.0.2
+      '@typescript/typescript-linux-ppc64': 7.0.2
+      '@typescript/typescript-linux-riscv64': 7.0.2
+      '@typescript/typescript-linux-s390x': 7.0.2
+      '@typescript/typescript-linux-x64': 7.0.2
+      '@typescript/typescript-netbsd-arm64': 7.0.2
+      '@typescript/typescript-netbsd-x64': 7.0.2
+      '@typescript/typescript-openbsd-arm64': 7.0.2
+      '@typescript/typescript-openbsd-x64': 7.0.2
+      '@typescript/typescript-sunos-x64': 7.0.2
+      '@typescript/typescript-win32-arm64': 7.0.2
+      '@typescript/typescript-win32-x64': 7.0.2
 
   uc.micro@2.1.0: {}
 
