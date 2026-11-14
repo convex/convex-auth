@@ -575,8 +575,8 @@ importers:
         specifier: ^7.27.0
         version: 7.27.0
       '@types/node':
-        specifier: ^24.12.4
-        version: 24.13.2
+        specifier: ^26.0.0
+        version: 26.1.0
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -594,7 +594,7 @@ importers:
         version: 31.0.0(@noble/hashes@1.8.0)
       next:
         specifier: ^16.0.0
-        version: 16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.13.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@26.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -606,10 +606,10 @@ importers:
         version: 6.0.3
       vite:
         specifier: ^8.0.16
-        version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
+        version: 8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
       vitest:
         specifier: ^5.0.0
-        version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@24.13.2)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
+        version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@26.1.0)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/doc-examples:
     dependencies:
@@ -624,7 +624,7 @@ importers:
         version: 1.48.0(react@19.2.7)
       next:
         specifier: ^16.0.0
-        version: 16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@24.13.2)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        version: 16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@26.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -633,8 +633,8 @@ importers:
         version: 19.2.7(react@19.2.7)
     devDependencies:
       '@types/node':
-        specifier: ^24.12.4
-        version: 24.13.2
+        specifier: ^26.0.0
+        version: 26.1.0
       '@types/react':
         specifier: ^19.2.17
         version: 19.2.17
@@ -649,7 +649,7 @@ importers:
         version: 6.0.3
       vite:
         specifier: ^8.0.16
-        version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
+        version: 8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
 
   packages/docs:
     dependencies:
@@ -715,20 +715,20 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       '@types/node':
-        specifier: ^24.12.4
-        version: 24.13.2
+        specifier: ^26.0.0
+        version: 26.1.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
         specifier: ^5.0.0
-        version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@24.13.2)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
+        version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@26.1.0)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/password-hash-wasm:
     devDependencies:
       '@types/node':
-        specifier: ^24.12.4
-        version: 24.13.2
+        specifier: ^26.0.0
+        version: 26.1.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -11764,15 +11764,6 @@ snapshots:
       '@rolldown/pluginutils': 1.0.1
       vite: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
 
-  '@vitest/mocker@5.1.0(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))':
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.1.0
-      estree-walker: 3.0.3
-      magic-string: 1.4.5
-    optionalDependencies:
-      vite: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
-
   '@vitest/mocker@5.1.0(vite@8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))':
     dependencies:
       '@jridgewell/trace-mapping': 0.3.31
@@ -14575,6 +14566,31 @@ snapshots:
       - '@types/node'
       - babel-plugin-macros
 
+  next@16.4.1(@babel/core@7.29.7(supports-color@8.1.1))(@types/node@26.1.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      '@next/env': 16.4.1
+      '@swc/helpers': 0.5.23
+      baseline-browser-mapping: 2.11.29
+      caniuse-lite: 1.0.30001816
+      postcss: 8.5.23
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      styled-jsx: 5.1.6(@babel/core@7.29.7(supports-color@8.1.1))(react@19.2.7)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 16.4.1
+      '@next/swc-darwin-x64': 16.4.1
+      '@next/swc-linux-arm64-gnu': 16.4.1
+      '@next/swc-linux-arm64-musl': 16.4.1
+      '@next/swc-linux-x64-gnu': 16.4.1
+      '@next/swc-linux-x64-musl': 16.4.1
+      '@next/swc-win32-arm64-msvc': 16.4.1
+      '@next/swc-win32-x64-msvc': 16.4.1
+      sharp: 0.35.5(@types/node@26.1.0)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@types/node'
+      - babel-plugin-macros
+
   no-case@3.0.4:
     dependencies:
       lower-case: 2.0.2
@@ -16422,29 +16438,6 @@ snapshots:
       terser: 5.51.2
       tsx: 4.23.12
       yaml: 2.9.0
-
-  vitest@5.1.0(@edge-runtime/vm@5.0.0)(@types/node@24.13.2)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)):
-    dependencies:
-      '@types/chai': 5.2.3
-      '@vitest/mocker': 5.1.0(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
-      chai: 6.3.0
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 1.4.5
-      obug: 3.0.0
-      picomatch: 4.0.7
-      std-env: 4.3.0
-      tinybench: 6.2.3
-      tinyexec: 1.3.1
-      tinyglobby: 0.2.17
-      vite: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
-      why-is-node-running: 3.2.1
-    optionalDependencies:
-      '@edge-runtime/vm': 5.0.0
-      '@types/node': 24.13.2
-      jsdom: 31.0.0(@noble/hashes@1.8.0)
-    transitivePeerDependencies:
-      - msw
 
   vitest@5.1.0(@edge-runtime/vm@5.0.0)(@types/node@26.1.0)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@26.1.0)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)):
     dependencies:
