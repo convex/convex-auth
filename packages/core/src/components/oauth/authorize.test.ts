@@ -98,9 +98,12 @@ const testApp = {
     providerName: "overriding",
     allowedOrigins: ALLOWED_ORIGINS,
     authorizationEndpoint: AUTHORIZATION_ENDPOINT,
-    scopes: [],
+    scopes: ["openid"],
+    callbackMethod: "POST",
     extraAuthorizationParams: {
       state: "x",
+      scope: "x",
+      response_mode: "query",
       client_id: "x",
       redirect_uri: "https://evil.example",
       response_type: "token",
@@ -279,6 +282,8 @@ describe("startSignIn", () => {
     expect(params.getAll("redirect_uri")).toEqual([CALLBACK_URL]);
     expect(params.getAll("response_type")).toEqual(["code"]);
     expect(params.getAll("code_challenge_method")).toEqual(["S256"]);
+    expect(params.getAll("scope")).toEqual(["openid"]);
+    expect(params.getAll("response_mode")).toEqual(["form_post"]);
     const request = await storedRequest(t);
     expect(request?.stateHash).toBe(await sha256Hex(state));
     expect(params.getAll("code_challenge")).toEqual([
