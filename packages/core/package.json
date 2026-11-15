@@ -78,6 +78,13 @@
       "types": "./dist/ssr/index.d.ts",
       "default": "./dist/ssr/index.js"
     },
+    "./ssr/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/ssr/react.d.ts"
+      },
+      "types": "./dist/ssr/react.d.ts",
+      "default": "./dist/ssr/react.js"
+    },
     "./ssr/nextjs": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/ssr/nextjs/index.d.ts"
