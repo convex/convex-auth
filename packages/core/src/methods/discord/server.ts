@@ -88,8 +88,8 @@ export function normalizeDiscordProfile(
  * Discord's default avatars, picked the way Discord picks it.
  */
 function avatarUrl(user: DiscordUserInfo["user"]): string {
-  // The hash goes into a URL path, so only a well-formed one is used.
-  if (typeof user.avatar === "string" && /^(a_)?[0-9a-f]+$/.test(user.avatar)) {
+  // Discord does not document the format of the hash, so it is used as given.
+  if (typeof user.avatar === "string" && user.avatar !== "") {
     const extension = user.avatar.startsWith("a_") ? "gif" : "png";
     return `${CDN_URL}/avatars/${user.id}/${user.avatar}.${extension}`;
   }

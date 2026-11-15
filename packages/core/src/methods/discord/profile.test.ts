@@ -176,18 +176,27 @@ describe("normalizeDiscordProfile", () => {
     );
   });
 
-  test("falls back to the default avatar for a hash with unexpected characters", () => {
-    for (const avatar of ["../../evil", "ABCDEF", "a_", "", "abc?x=1"]) {
-      const profile = normalize({
-        id: ID,
-        username: "nelly",
-        discriminator: "0",
-        avatar,
-      });
-      expect(profile.avatarUrl).toBe(
-        "https://cdn.discordapp.com/embed/avatars/5.png",
-      );
-    }
+  test("uses a hash in a format other than today's as given", () => {
+    const profile = normalize({
+      id: ID,
+      username: "nelly",
+      avatar: "v2_ABC-xyz",
+    });
+    expect(profile.avatarUrl).toBe(
+      `https://cdn.discordapp.com/avatars/${ID}/v2_ABC-xyz.png`,
+    );
+  });
+
+  test("falls back to the default avatar for an empty hash", () => {
+    const profile = normalize({
+      id: ID,
+      username: "nelly",
+      discriminator: "0",
+      avatar: "",
+    });
+    expect(profile.avatarUrl).toBe(
+      "https://cdn.discordapp.com/embed/avatars/5.png",
+    );
   });
 
   test("throws when the user response is missing", () => {
