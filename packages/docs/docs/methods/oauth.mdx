@@ -398,7 +398,8 @@ Include an `App.tsx` like the following in your application:
 <Step title="Register the OAuth app">
 
 To allow users to login to your app via Discord, you'll need to register an
-application with Discord.
+application with Discord. The method asks Discord for the `identify` and
+`email` scopes.
 
 :::info
 
@@ -415,8 +416,6 @@ The redirect URI will be based on your `CONVEX_SITE_URL`; something like
 ```sh
 npx convex env get CONVEX_SITE_URL
 ```
-
-The method asks Discord for the `identify` and `email` scopes.
 
 </Step>
 
