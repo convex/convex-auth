@@ -184,6 +184,13 @@
       "types": "./dist/methods/oauth/react.d.ts",
       "default": "./dist/methods/oauth/react.js"
     },
+    "./methods/oauth/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/oauth/browser.d.ts"
+      },
+      "types": "./dist/methods/oauth/browser.d.ts",
+      "default": "./dist/methods/oauth/browser.js"
+    },
     "./methods/google/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/google/server.d.ts"
@@ -197,6 +204,13 @@
       },
       "types": "./dist/methods/google/react.d.ts",
       "default": "./dist/methods/google/react.js"
+    },
+    "./methods/google/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/google/browser.d.ts"
+      },
+      "types": "./dist/methods/google/browser.d.ts",
+      "default": "./dist/methods/google/browser.js"
     },
     "./methods/apple/server": {
       "convex-auth-internal-types": {
@@ -212,6 +226,13 @@
       "types": "./dist/methods/apple/react.d.ts",
       "default": "./dist/methods/apple/react.js"
     },
+    "./methods/apple/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/apple/browser.d.ts"
+      },
+      "types": "./dist/methods/apple/browser.d.ts",
+      "default": "./dist/methods/apple/browser.js"
+    },
     "./methods/github/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/github/server.d.ts"
@@ -225,6 +246,13 @@
       },
       "types": "./dist/methods/github/react.d.ts",
       "default": "./dist/methods/github/react.js"
+    },
+    "./methods/github/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/github/browser.d.ts"
+      },
+      "types": "./dist/methods/github/browser.d.ts",
+      "default": "./dist/methods/github/browser.js"
     },
     "./components/username/convex.config.js": {
       "convex-auth-internal-types": {
