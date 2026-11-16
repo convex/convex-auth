@@ -88,10 +88,11 @@ export function normalizeDiscordProfile(
  * Discord's default avatars, picked the way Discord picks it.
  */
 function avatarUrl(user: DiscordUserInfo["user"]): string {
-  // Discord does not document the format of the hash, so it is used as given.
+  // Discord does not document the format of the hash, so any hash is used,
+  // encoded so that it stays one segment of the path.
   if (typeof user.avatar === "string" && user.avatar !== "") {
     const extension = user.avatar.startsWith("a_") ? "gif" : "png";
-    return `${CDN_URL}/avatars/${user.id}/${user.avatar}.${extension}`;
+    return `${CDN_URL}/avatars/${user.id}/${encodeURIComponent(user.avatar)}.${extension}`;
   }
   // A user on the new username system has the discriminator "0".
   const legacyDiscriminator =
