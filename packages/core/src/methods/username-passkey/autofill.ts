@@ -32,7 +32,9 @@ import {
 /**
  * The states of the autofill flow:
  *
- * - `"idle"`: the flow has not started yet, or autofill is off.
+ * - `"idle"`: the flow has not started yet, autofill is off, or `stop()`
+ *   ended it. A pick that still verified at the stop comes back to `"idle"`
+ *   with its `lastError` when it fails, or to `"signedIn"`.
  * - `"waiting"`: the autofill request is pending in the browser.
  * - `"signingIn"`: a picked assertion is being handled (`onAssertion` is
  *   running, usually a server verification).
@@ -426,15 +428,20 @@ export function createPasskeyAutofill<E = never>(
               ? null
               : ended.outcome.userError;
         if (!alive) {
-          // Stopped mid-verification. Unless a newer loop runs, which
-          // publishes its own state, settle the state of this pick, so it
-          // doesn't stay on "signingIn" for good.
-          if (stopRunning === null && state.get().status === "signingIn") {
-            update(
-              error === null
-                ? { lastError: null, status: "signedIn" }
-                : { lastError: error, status: "idle" },
-            );
+          // Stopped mid-verification. Settle the state of this pick, so it
+          // doesn't stay on "signingIn" for good: by its end when no loop
+          // runs, or as "waiting" for the newer loop, which may sit parked on
+          // a pause and publish nothing until the resume.
+          if (state.get().status === "signingIn") {
+            if (stopRunning !== null) {
+              update({ status: "waiting" });
+            } else {
+              update(
+                error === null
+                  ? { lastError: null, status: "signedIn" }
+                  : { lastError: error, status: "idle" },
+              );
+            }
           }
           return;
         }
@@ -468,9 +475,15 @@ export function createPasskeyAutofill<E = never>(
       alive = false;
       stopRunning = null;
       // A request that waits ends with the stop. A pick that verifies keeps
-      // "signingIn" until its loop settles it.
+      // "signingIn" until its loop settles it. Checked a microtask later, so
+      // a restart in the same tick (an effect's cleanup, then its next run)
+      // keeps "waiting" instead of flickering through "idle".
       if (state.get().status === "waiting") {
-        update({ status: "idle" });
+        queueMicrotask(() => {
+          if (stopRunning === null && state.get().status === "waiting") {
+            update({ status: "idle" });
+          }
+        });
       }
       activeController?.abort();
       // Never leave the loop parked; it exits on `alive`.

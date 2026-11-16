@@ -377,7 +377,21 @@ describe("createPasskeyAutofill", () => {
     await flush();
     expect(waiting.state.get().status).toBe("waiting");
     stopWaiting();
+    await flush();
     expect(waiting.state.get().status).toBe("idle");
+
+    // A restart in the same tick, like an effect that runs again, stays on
+    // "waiting".
+    const stopAgain = waiting.start();
+    await flush();
+    const statuses: string[] = [];
+    waiting.state.subscribe(() => statuses.push(waiting.state.get().status));
+    stopAgain();
+    const stopLast = waiting.start();
+    await flush();
+    expect(statuses).not.toContain("idle");
+    expect(waiting.state.get().status).toBe("waiting");
+    stopLast();
 
     let fail!: (outcome: {
       success: false;
@@ -413,6 +427,33 @@ describe("createPasskeyAutofill", () => {
       lastError: { error: "OTHER_ERROR" },
     });
     expect(verifying.isAutofillSigningIn()).toBe(false);
+  });
+
+  test("a loop parked on a pause leaves signingIn once an older pick ends", async () => {
+    let succeed!: (outcome: { success: true }) => void;
+    const autofill = createPasskeyAutofill({
+      ceremonies: fakeCeremonies({
+        authenticateWithAutofill: vi.fn(async () => ({
+          success: true as const,
+          response: authenticationResponse,
+        })),
+      }),
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(
+        () => new Promise<{ success: true }>((resolve) => (succeed = resolve)),
+      ),
+    });
+    autofill.start();
+    await flush();
+    autofill.start();
+    autofill.pauseAutofillFlow();
+    await flush();
+    expect(autofill.state.get().status).toBe("signingIn");
+
+    succeed({ success: true });
+    await flush();
+    expect(autofill.isAutofillSigningIn()).toBe(false);
+    expect(autofill.state.get().status).toBe("waiting");
   });
 
   test("a thrown verification unlocks before it reports stopped", async () => {
