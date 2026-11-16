@@ -719,7 +719,7 @@ describe("createSignInWithUsernamePasskey", () => {
   });
 
   test("signs in a known username with its passkey", async () => {
-    const { mock, client, setSession } = setup();
+    const { mock, client, setSession, ceremonies } = setup();
     mock("startSignInWithUsernamePasskey").mockResolvedValue({
       success: true,
       step: "authenticate",
@@ -733,6 +733,14 @@ describe("createSignInWithUsernamePasskey", () => {
       status: "complete",
       tokens: bundle,
       flow: "signIn",
+    });
+    expect(mock("startSignInWithUsernamePasskey")).toHaveBeenCalledWith({
+      username: "ada",
+    });
+    expect(ceremonies.authenticate).toHaveBeenCalledWith(requestOptions);
+    expect(ceremonies.register).not.toHaveBeenCalled();
+    expect(mock("finishSignInWithUsernamePasskey")).toHaveBeenCalledWith({
+      response: authenticationResponse,
     });
     expect(setSession).toHaveBeenCalledWith(bundle);
   });
@@ -880,20 +888,28 @@ describe("passkey management", () => {
     expect(client.pending.get()).toBe(true);
     expect(await running).toEqual({ success: true, passkeyId: "pk-1" });
     expect(client.pending.get()).toBe(false);
+    expect(mock("startAddPasskey")).toHaveBeenCalledWith({});
+    expect(ceremonies.authenticate).toHaveBeenCalledWith(requestOptions);
     expect(mock("verifyAddPasskey")).toHaveBeenCalledWith({
       response: authenticationResponse,
     });
+    expect(ceremonies.register).toHaveBeenCalledWith(creationOptions);
     expect(mock("finishAddPasskey")).toHaveBeenCalledWith({
       response: registrationResponse,
     });
+    // Re-authenticate first, then register.
+    expect(
+      vi.mocked(ceremonies.authenticate).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(ceremonies.register).mock.invocationCallOrder[0]);
   });
 
   test("createRemovePasskey authenticates, then removes", async () => {
     const { mock, convex } = transports();
+    const ceremonies = fakeCeremonies();
     const client = createRemovePasskey({
       convex,
       api: anyApi.auth as unknown as RemovePasskeyApi,
-      ceremonies: fakeCeremonies(),
+      ceremonies,
     });
     mock("startRemovePasskey").mockResolvedValue({
       success: true,
@@ -902,6 +918,10 @@ describe("passkey management", () => {
     mock("finishRemovePasskey").mockResolvedValue({ success: true });
 
     expect(await client.removePasskey("pk-1")).toEqual({ success: true });
+    expect(mock("startRemovePasskey")).toHaveBeenCalledWith({
+      passkeyId: "pk-1",
+    });
+    expect(ceremonies.authenticate).toHaveBeenCalledWith(requestOptions);
     expect(mock("finishRemovePasskey")).toHaveBeenCalledWith({
       passkeyId: "pk-1",
       response: authenticationResponse,
