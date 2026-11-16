@@ -431,13 +431,14 @@ describe("createPasskeyAutofill", () => {
 
   test("a loop parked on a pause leaves signingIn once an older pick ends", async () => {
     let succeed!: (outcome: { success: true }) => void;
+    const ceremonies = fakeCeremonies({
+      authenticateWithAutofill: vi.fn(async () => ({
+        success: true as const,
+        response: authenticationResponse,
+      })),
+    });
     const autofill = createPasskeyAutofill({
-      ceremonies: fakeCeremonies({
-        authenticateWithAutofill: vi.fn(async () => ({
-          success: true as const,
-          response: authenticationResponse,
-        })),
-      }),
+      ceremonies,
       start: vi.fn(async () => requestOptions),
       onAssertion: vi.fn(
         () => new Promise<{ success: true }>((resolve) => (succeed = resolve)),
@@ -450,10 +451,19 @@ describe("createPasskeyAutofill", () => {
     await flush();
     expect(autofill.state.get().status).toBe("signingIn");
 
+    const requests = vi.mocked(ceremonies.authenticateWithAutofill).mock.calls
+      .length;
     succeed({ success: true });
     await flush();
     expect(autofill.isAutofillSigningIn()).toBe(false);
     expect(autofill.state.get().status).toBe("waiting");
+    // Still parked: no new request until the resume.
+    expect(ceremonies.authenticateWithAutofill).toHaveBeenCalledTimes(requests);
+    autofill.resumeAutofillFlow();
+    await flush();
+    expect(ceremonies.authenticateWithAutofill).toHaveBeenCalledTimes(
+      requests + 1,
+    );
   });
 
   test("a thrown verification unlocks before it reports stopped", async () => {
@@ -478,6 +488,95 @@ describe("createPasskeyAutofill", () => {
     autofill.start();
     await flush();
     expect(lockedOnStop).toEqual([false]);
+  });
+
+  test("disable stops a running loop", async () => {
+    const ceremonies = fakeCeremonies();
+    const autofill = createPasskeyAutofill({
+      ceremonies,
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(),
+    });
+    autofill.start();
+    await flush();
+    autofill.disable();
+    const signal = vi.mocked(ceremonies.authenticateWithAutofill).mock
+      .calls[0][1];
+    expect(signal.aborted).toBe(true);
+    await flush();
+    expect(autofill.state.get()).toMatchObject({
+      available: false,
+      status: "idle",
+    });
+  });
+
+  test("a stop, a start and a stop in one tick end on idle", async () => {
+    const autofill = createPasskeyAutofill({
+      ceremonies: fakeCeremonies(),
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(),
+    });
+    const first = autofill.start();
+    await flush();
+    first();
+    const second = autofill.start();
+    second();
+    await flush();
+    expect(autofill.state.get().status).toBe("idle");
+  });
+
+  describe("a pick that verifies while a newer loop finds no autofill", () => {
+    function setup() {
+      let available = true;
+      let succeed!: (outcome: { success: true }) => void;
+      const autofill = createPasskeyAutofill({
+        ceremonies: fakeCeremonies({
+          isAutofillAvailable: vi.fn(async () => available),
+          authenticateWithAutofill: vi.fn(async () => ({
+            success: true as const,
+            response: authenticationResponse,
+          })),
+        }),
+        start: vi.fn(async () => requestOptions),
+        onAssertion: vi.fn(
+          () =>
+            new Promise<{ success: true }>((resolve) => (succeed = resolve)),
+        ),
+      });
+      autofill.start();
+      return {
+        autofill,
+        restartUnavailable: async () => {
+          await flush();
+          available = false;
+          const stop = autofill.start();
+          await flush();
+          expect(autofill.state.get().status).toBe("stopped");
+          return stop;
+        },
+        succeed: () => succeed({ success: true }),
+      };
+    }
+
+    test("keeps the newer loop's stopped while it is not stopped", async () => {
+      const { autofill, restartUnavailable, succeed } = setup();
+      await restartUnavailable();
+      succeed();
+      await flush();
+      expect(autofill.state.get().status).toBe("stopped");
+    });
+
+    test("reports its end once the newer loop is stopped too", async () => {
+      const { autofill, restartUnavailable, succeed } = setup();
+      const stop = await restartUnavailable();
+      stop();
+      succeed();
+      await flush();
+      expect(autofill.state.get()).toMatchObject({
+        status: "signedIn",
+        lastError: null,
+      });
+    });
   });
 
   test("disable reports the flow as off", () => {

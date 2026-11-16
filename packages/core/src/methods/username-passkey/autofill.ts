@@ -33,8 +33,11 @@ import {
  * The states of the autofill flow:
  *
  * - `"idle"`: the flow has not started yet, autofill is off, or `stop()`
- *   ended it. A pick that still verified at the stop comes back to `"idle"`
- *   with its `lastError` when it fails, or to `"signedIn"`.
+ *   ended it (a microtask after the call, unless the flow started again in
+ *   the meantime). A pick that still verified at the stop reports its end
+ *   once no loop runs any more: `"idle"` with its `lastError` when it fails,
+ *   or `"signedIn"`. While a newer loop runs, the state moves on to
+ *   `"waiting"` instead.
  * - `"waiting"`: the autofill request is pending in the browser.
  * - `"signingIn"`: a picked assertion is being handled (`onAssertion` is
  *   running, usually a server verification).
@@ -432,16 +435,16 @@ export function createPasskeyAutofill<E = never>(
           // doesn't stay on "signingIn" for good: by its end when no loop
           // runs, or as "waiting" for the newer loop, which may sit parked on
           // a pause and publish nothing until the resume.
-          if (state.get().status === "signingIn") {
-            if (stopRunning !== null) {
-              update({ status: "waiting" });
-            } else {
-              update(
-                error === null
-                  ? { lastError: null, status: "signedIn" }
-                  : { lastError: error, status: "idle" },
-              );
-            }
+          if (stopRunning === null) {
+            // No loop runs, so this pick is the latest news: report its end,
+            // whatever a newer loop that ran in between published.
+            update(
+              error === null
+                ? { lastError: null, status: "signedIn" }
+                : { lastError: error, status: "idle" },
+            );
+          } else if (state.get().status === "signingIn") {
+            update({ status: "waiting" });
           }
           return;
         }
@@ -497,6 +500,8 @@ export function createPasskeyAutofill<E = never>(
     state: { get: state.get, subscribe: state.subscribe },
     start,
     disable: () => {
+      // A running loop would still hand a pick to `onAssertion`.
+      stopRunning?.();
       // No detection runs and the autocompletion list will not offer
       // passkeys. Report `false`, so `available` does not stay on `null`
       // ("detection runs") forever.
