@@ -36,6 +36,10 @@ import {
 
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
+export {
+  isReauthenticationRequiredError,
+  type ReauthenticationRequiredErrorData,
+} from "../lib/reauthentication.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";
 
 /**

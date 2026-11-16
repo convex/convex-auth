@@ -13,11 +13,11 @@
 import { useConvex } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { useStableFunctionReference } from "../../../react/functionReference.ts";
-import type { ResolvedPasskeyCeremonies } from "../ceremonies.ts";
+import type { ResolvedPasskeyCeremonies } from "../../../lib/passkey/ceremonies.ts";
 import {
   usePasskeyCeremonySlot,
   type AlreadyPendingFailure,
-} from "../react_impl.tsx";
+} from "../../../lib/passkey/react_impl.tsx";
 import {
   runAddPasskeyFlow,
   runRemovePasskeyFlow,
@@ -27,7 +27,7 @@ import {
   type RemovePasskeyFlowResult,
 } from "./flows.ts";
 
-export type { AlreadyPendingFailure } from "../react_impl.tsx";
+export type { AlreadyPendingFailure } from "../../../lib/passkey/react_impl.tsx";
 export type { AddPasskeyApi, RemovePasskeyApi } from "./flows.ts";
 
 export type AddPasskeyResult = AddPasskeyFlowResult | AlreadyPendingFailure;

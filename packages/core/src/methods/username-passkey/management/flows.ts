@@ -9,7 +9,7 @@ import type { FunctionReference } from "convex/server";
 import type {
   ResolvedPasskeyCeremonies,
   PasskeyClientFailure,
-} from "../ceremonies.ts";
+} from "../../../lib/passkey/ceremonies.ts";
 import type {
   WireAuthenticationResponse,
   WireRegistrationResponse,

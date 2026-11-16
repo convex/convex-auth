@@ -18,7 +18,9 @@ const allowedRedirectOrigins = ["http://localhost:5173"];
 // environment variables).
 const SITE_URL = env.SITE_URL ?? "http://localhost:5173";
 
-const auth = setupConvexAuth({ component: components.auth });
+// Exported for `passkey.ts`, which sets up the `passkey` method in a module of
+// its own: its function names are the same as some of `usernamePasskey`.
+export const auth = setupConvexAuth({ component: components.auth });
 export const { signOut, refreshSession, isAuthenticated } = auth;
 
 export const {
@@ -69,6 +71,8 @@ export const {
   finishAddPasskey,
   startRemovePasskey,
   finishRemovePasskey,
+  startPasskeyReauthentication,
+  finishPasskeyReauthentication,
 } = setupUsernamePasskey(auth, {
   component: components.authPasskey,
   usernameComponent: components.authUsername,

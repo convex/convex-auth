@@ -22,12 +22,12 @@ import {
   AlreadyPendingFailure,
   usePasskeyAutofill,
   usePasskeyCeremonySlot,
-} from "./react_impl.tsx";
+} from "../../lib/passkey/react_impl.tsx";
 import {
   ResolvedPasskeyCeremonies,
   PasskeyClientError,
   PasskeyClientFailure,
-} from "./ceremonies.ts";
+} from "../../lib/passkey/ceremonies.ts";
 import { SignInError } from "../../lib/types.ts";
 
 /**

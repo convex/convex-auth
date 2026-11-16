@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { vAppleProfile } from "@convex-dev/auth/methods/apple/server";
 import { vGithubProfile } from "@convex-dev/auth/methods/github/server";
 import { vGoogleProfile } from "@convex-dev/auth/methods/google/server";
-import { internalMutation } from "./_generated/server";
+import { requireRecentAuthentication } from "@convex-dev/auth/server";
+import { internalMutation, internalQuery, mutation } from "./_generated/server";
 
 // The `createUser` callback of each sign-in method of `auth.ts`.
 
@@ -70,4 +71,24 @@ export const createUserGithub = internalMutation({
   },
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
+});
+
+// The `getUserName` callback of the `passkey` method of `passkey.ts`.
+export const passkeyUserName = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.object({ name: v.string(), displayName: v.string() }),
+  handler: async (_ctx, { userId }) => ({ name: userId, displayName: userId }),
+});
+
+// A sensitive action, for the examples of `requireRecentAuthentication`.
+export const deleteAccount = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const { userId } = await requireRecentAuthentication(ctx, {
+      maxAgeSeconds: 5 * 60,
+    });
+    await ctx.db.delete("users", userId);
+    return null;
+  },
 });

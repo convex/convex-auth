@@ -15,10 +15,13 @@ import {
   SignInWithUsernamePasskeyResult,
   useSignInWithUsernamePasskey,
 } from "./react.tsx";
-import { usePasskeyAutofill, usePasskeyCeremonySlot } from "./react_impl.tsx";
+import {
+  usePasskeyAutofill,
+  usePasskeyCeremonySlot,
+} from "../../lib/passkey/react_impl.tsx";
 
-import { toBase64URL } from "./base64url.ts";
-import { browserCeremonies } from "./client.ts";
+import { toBase64URL } from "../../lib/passkey/base64url.ts";
+import { browserCeremonies } from "../../lib/passkey/client.ts";
 
 const noopAutofill = {
   pauseAutofillFlow: () => {},

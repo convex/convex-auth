@@ -27,7 +27,7 @@ import { Infer, v } from "convex/values";
 import { getAuthUserId } from "../../../server/userId.ts";
 import { REMOVE_PASSKEY_PURPOSE } from "../purposes.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
-import { toBase64URL } from "../base64url.ts";
+import { toBase64URL } from "../../../lib/passkey/base64url.ts";
 import {
   deletePasskeyUserError,
   finishAuthenticationUserError,
@@ -35,7 +35,7 @@ import {
   vAuthenticationResponseJSON,
   vPublicKeyCredentialRequestOptionsJSON,
 } from "../../../components/passkey/validation.ts";
-import { buildAuthenticationOptions } from "../options.ts";
+import { buildAuthenticationOptions } from "../../../lib/passkey/options.ts";
 
 /**
  * The user-facing error when the user tries to remove their only passkey.
