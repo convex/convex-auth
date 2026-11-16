@@ -187,6 +187,21 @@ describe("normalizeDiscordProfile", () => {
     );
   });
 
+  test("encodes a hash that would change the path or add a query", () => {
+    const profile = normalize({
+      id: ID,
+      username: "nelly",
+      avatar: "../x?y=1#z",
+    });
+    expect(profile.avatarUrl).toBe(
+      `https://cdn.discordapp.com/avatars/${ID}/..%2Fx%3Fy%3D1%23z.png`,
+    );
+    const url = new URL(profile.avatarUrl);
+    expect(url.pathname).toBe(`/avatars/${ID}/..%2Fx%3Fy%3D1%23z.png`);
+    expect(url.search).toBe("");
+    expect(url.hash).toBe("");
+  });
+
   test("falls back to the default avatar for an empty hash", () => {
     const profile = normalize({
       id: ID,
