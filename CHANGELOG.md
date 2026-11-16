@@ -16,9 +16,11 @@
     (`createPasskeyAutofill`), and the wire and result types.
   - `@convex-dev/auth/browser` exports `AmbientSignInClient`,
     `AmbientSignInContext`, `AuthSignInApi`, `ConvexMutationApi`,
-    `SignInFunction`, `SignInStorage`, and `ReadableStore`.
+    `SignInFunction`, `SignInStorage`, `SignInValues`, `SignInValuesReader`,
+    and `ReadableStore`.
   - `AuthClient.methodStorage`: the storage for the client-side secrets of
-    sign-in methods, under the namespace of the session.
+    sign-in methods, under the namespace of the session. The keys of the
+    session tokens and of the ambient sign-ins are refused.
 
 ## 2.0.0
 

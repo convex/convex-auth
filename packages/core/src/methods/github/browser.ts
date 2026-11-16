@@ -76,7 +76,7 @@ export function createSignInWithGithub(options: {
     });
   // Throw now when `oauth()` isn't registered.
   client();
-  const signIn = ((signInOptions?: SignInOptions) =>
+  const signIn = (async (signInOptions?: SignInOptions) =>
     client().signIn(signInOptions as never)) as OauthSignIn;
   return { signIn };
 }

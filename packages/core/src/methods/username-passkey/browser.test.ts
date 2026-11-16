@@ -326,6 +326,119 @@ describe("createPasskeyAutofill", () => {
     expect(lockedOut).toEqual([true]);
   });
 
+  test("a restart mid-verification waits for that verification, and keeps the lock", async () => {
+    const ceremonies = fakeCeremonies({
+      authenticateWithAutofill: vi.fn(async () => ({
+        success: true as const,
+        response: authenticationResponse,
+      })),
+    });
+    const verifications: Array<(outcome: { success: true }) => void> = [];
+    const onAssertion = vi.fn(
+      () =>
+        new Promise<{ success: true }>((resolve) =>
+          verifications.push(resolve),
+        ),
+    );
+    const autofill = createPasskeyAutofill({
+      ceremonies,
+      start: vi.fn(async () => requestOptions),
+      onAssertion,
+    });
+    autofill.start();
+    await flush();
+    expect(onAssertion).toHaveBeenCalledTimes(1);
+
+    // A restart while the first pick verifies asks for no second pick yet.
+    autofill.start();
+    await flush();
+    expect(onAssertion).toHaveBeenCalledTimes(1);
+    expect(autofill.isAutofillSigningIn()).toBe(true);
+    expect(autofill.state.get().status).toBe("signingIn");
+
+    // Once it ends, the new loop takes over, and the lock follows its pick.
+    verifications[0]({ success: true });
+    await flush();
+    expect(onAssertion).toHaveBeenCalledTimes(2);
+    expect(autofill.isAutofillSigningIn()).toBe(true);
+    verifications[1]({ success: true });
+    await flush();
+    expect(autofill.isAutofillSigningIn()).toBe(false);
+    expect(autofill.state.get().status).toBe("signedIn");
+  });
+
+  test("a stop settles the state: idle while waiting, the pick's end while verifying", async () => {
+    const waiting = createPasskeyAutofill({
+      ceremonies: fakeCeremonies(),
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(),
+    });
+    const stopWaiting = waiting.start();
+    await flush();
+    expect(waiting.state.get().status).toBe("waiting");
+    stopWaiting();
+    expect(waiting.state.get().status).toBe("idle");
+
+    let fail!: (outcome: {
+      success: false;
+      userError: { error: "OTHER_ERROR"; cause: unknown };
+    }) => void;
+    const verifying = createPasskeyAutofill<{
+      error: "OTHER_ERROR";
+      cause: unknown;
+    }>({
+      ceremonies: fakeCeremonies({
+        authenticateWithAutofill: vi.fn(async () => ({
+          success: true as const,
+          response: authenticationResponse,
+        })),
+      }),
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(
+        () =>
+          new Promise<{
+            success: false;
+            userError: { error: "OTHER_ERROR"; cause: unknown };
+          }>((resolve) => (fail = resolve)),
+      ),
+    });
+    const stopVerifying = verifying.start();
+    await flush();
+    stopVerifying();
+    expect(verifying.state.get().status).toBe("signingIn");
+    fail({ success: false, userError: { error: "OTHER_ERROR", cause: 1 } });
+    await flush();
+    expect(verifying.state.get()).toMatchObject({
+      status: "idle",
+      lastError: { error: "OTHER_ERROR" },
+    });
+    expect(verifying.isAutofillSigningIn()).toBe(false);
+  });
+
+  test("a thrown verification unlocks before it reports stopped", async () => {
+    const autofill = createPasskeyAutofill({
+      ceremonies: fakeCeremonies({
+        authenticateWithAutofill: vi.fn(async () => ({
+          success: true as const,
+          response: authenticationResponse,
+        })),
+      }),
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(async () => {
+        throw new Error("network");
+      }),
+    });
+    const lockedOnStop: boolean[] = [];
+    autofill.state.subscribe(() => {
+      if (autofill.state.get().status === "stopped") {
+        lockedOnStop.push(autofill.isAutofillSigningIn());
+      }
+    });
+    autofill.start();
+    await flush();
+    expect(lockedOnStop).toEqual([false]);
+  });
+
   test("disable reports the flow as off", () => {
     const autofill = createPasskeyAutofill({
       ceremonies: fakeCeremonies(),

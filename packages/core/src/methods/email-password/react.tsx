@@ -393,7 +393,13 @@ export function useCompletePasswordRecovery(
   useEffect(() => client.start(), [client]);
   // Render again when the secret is read, or the completion moves on.
   useReadableStore(client.progress);
-  const check = useQuery(recoveryApi.checkPasswordRecovery, client.checkArgs());
+  // The client reads the options of the last committed render, so take the
+  // code of this render: the subscription must follow a new code right away.
+  const args = client.checkArgs();
+  const check = useQuery(
+    recoveryApi.checkPasswordRecovery,
+    args === "skip" ? args : { ...args, emailCode },
+  );
   return client.stateFor(check);
 }
 

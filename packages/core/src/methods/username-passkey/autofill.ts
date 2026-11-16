@@ -227,10 +227,15 @@ export function createPasskeyAutofill<E = never>(
   // request: this flow aborts this controller and nobody else does, so an
   // abort here is never another ceremony taking the browser's ceremony slot.
   let activeController: AbortController | null = null;
-  // `true` while `onAssertion` runs. A variable, not the `status` of the
+  // How many `onAssertion` calls run. A variable, not the `status` of the
   // state, so that a modal flow started in the same tick as the pick sees
-  // it.
-  let signingIn = false;
+  // it. A count, because a loop that was stopped mid-verification keeps
+  // verifying, and its end must not unlock the verification of a newer loop.
+  let verifying = 0;
+  // The verification that runs, if any. A new loop waits for it before it
+  // asks the browser for another assertion, so two picks never verify at
+  // once.
+  let verification: Promise<void> | null = null;
 
   const pauseAutofillFlow = () => {
     pauseCount += 1;
@@ -244,7 +249,7 @@ export function createPasskeyAutofill<E = never>(
     }
   };
 
-  const isAutofillSigningIn = () => signingIn;
+  const isAutofillSigningIn = () => verifying > 0;
 
   // The stop of the running loop. A second `start` stops the first loop, so
   // two loops never compete for the browser's single conditional request.
@@ -292,6 +297,11 @@ export function createPasskeyAutofill<E = never>(
       while (alive) {
         if (pauseCount > 0) {
           await park();
+          continue;
+        }
+        if (verification !== null) {
+          // A stopped loop still verifies its pick. Wait for its end.
+          await verification;
           continue;
         }
 
@@ -388,23 +398,51 @@ export function createPasskeyAutofill<E = never>(
 
         // Lock out the modal flow before telling subscribers: a listener
         // runs synchronously and may call `signIn` right away.
-        signingIn = true;
+        verifying += 1;
         update({ status: "signingIn" });
-        let outcome;
-        try {
-          outcome = await options.onAssertion(result.response);
-        } catch (cause) {
-          if (!alive) {
-            return;
+        const run = (async (): Promise<
+          | { outcome: Awaited<ReturnType<typeof options.onAssertion>> }
+          | { thrown: unknown }
+        > => {
+          try {
+            return { outcome: await options.onAssertion(result.response) };
+          } catch (cause) {
+            return { thrown: cause };
+          } finally {
+            // Unlock before anything below tells subscribers.
+            verifying -= 1;
           }
-          update({ lastError: foldClientError(cause), status: "stopped" });
-          return;
-        } finally {
-          signingIn = false;
+        })();
+        const settled = run.then(() => {});
+        verification = settled;
+        const ended = await run;
+        if (verification === settled) {
+          verification = null;
         }
+        const error =
+          "thrown" in ended
+            ? foldClientError(ended.thrown)
+            : ended.outcome.success
+              ? null
+              : ended.outcome.userError;
         if (!alive) {
+          // Stopped mid-verification. Unless a newer loop runs, which
+          // publishes its own state, settle the state of this pick, so it
+          // doesn't stay on "signingIn" for good.
+          if (stopRunning === null && state.get().status === "signingIn") {
+            update(
+              error === null
+                ? { lastError: null, status: "signedIn" }
+                : { lastError: error, status: "idle" },
+            );
+          }
           return;
         }
+        if ("thrown" in ended) {
+          update({ lastError: error, status: "stopped" });
+          return;
+        }
+        const outcome = ended.outcome;
         if (outcome.success) {
           // A failed attempt earlier in this loop can have set
           // `lastError`. The flow succeeded, so clear it.
@@ -429,6 +467,11 @@ export function createPasskeyAutofill<E = never>(
       if (!alive) return;
       alive = false;
       stopRunning = null;
+      // A request that waits ends with the stop. A pick that verifies keeps
+      // "signingIn" until its loop settles it.
+      if (state.get().status === "waiting") {
+        update({ status: "idle" });
+      }
       activeController?.abort();
       // Never leave the loop parked; it exits on `alive`.
       wake?.();
