@@ -15,25 +15,15 @@
  */
 "use client";
 
-import { FunctionReference } from "convex/server";
-import { useCallback } from "react";
-import type { ClientView, SignInComplete } from "../../lib/types.ts";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
-import { useStableFunctionReference } from "../../react/functionReference.ts";
+import { useMethodClient } from "../../react/store.ts";
+import {
+  createSignInAnonymously,
+  type SignInAnonymouslyMutation,
+} from "./browser.ts";
 
-/**
- * The `signInAnonymously` mutation the anonymous method adds to the app's API.
- *
- * Its bundle is the access-only {@link ClientView}, which is what both session
- * models have in common. Hand it to `setSession`, the only supported consumer.
- */
-export type SignInAnonymouslyMutation = FunctionReference<
-  "mutation",
-  "public",
-  Record<string, never>,
-  ClientView<SignInComplete>
->;
+export type { SignInAnonymouslyMutation } from "./browser.ts";
 
 /**
  * Client for the anonymous method: wire its sign-in mutation to the core
@@ -65,14 +55,14 @@ export type SignInAnonymouslyMutation = FunctionReference<
 export function useSignInAnonymously(api: {
   signInAnonymously: SignInAnonymouslyMutation;
 }) {
-  const signInMutation = useStableFunctionReference(api.signInAnonymously);
   const { setSession } = useAuthActions();
   // Running through the signInApi rather than `useMutation` is what lets this one
   // hook serve both session models. See {@link useAuthSignInApi}.
   const signInApi = useAuthSignInApi();
-  const signIn = useCallback(async () => {
-    const result = await signInApi.mutation(signInMutation, {});
-    await setSession(result.tokens);
-  }, [signInApi, signInMutation, setSession]);
+  const { signIn } = useMethodClient(createSignInAnonymously, {
+    authClient: { setSession },
+    signInApi,
+    api,
+  });
   return { signIn };
 }

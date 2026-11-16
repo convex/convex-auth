@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { ReadableStore } from "../browser/store.ts";
 
 /**
@@ -10,4 +10,33 @@ import type { ReadableStore } from "../browser/store.ts";
  */
 export function useReadableStore<T>(store: ReadableStore<T>): T {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/**
+ * Make the client of a method flow once per hook instance, so the state of
+ * the client (its `pending`, the progress of a link flow) lives as long as
+ * the component, like the `useState` of a hook would.
+ *
+ * The client reads its options when it uses them, and this hands it the
+ * options of the latest render. A callback of the client thus always runs
+ * with the latest arguments of the hook, the way a `useCallback` over them
+ * would, without its identity ever changing.
+ */
+export function useMethodClient<Options extends object, Client>(
+  create: (options: Options) => Client,
+  options: Options,
+): Client {
+  // Read through a ref: the arguments of the hook change identity on every
+  // render (an inline `api` object, for example), and the client must not be
+  // made again for that.
+  const latest = useRef(options);
+  latest.current = options;
+  const [client] = useState(() =>
+    create(
+      new Proxy({} as Options, {
+        get: (_target, key) => latest.current[key as keyof Options],
+      }),
+    ),
+  );
+  return client;
 }

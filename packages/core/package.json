@@ -135,6 +135,13 @@
       "types": "./dist/methods/username-password/react.d.ts",
       "default": "./dist/methods/username-password/react.js"
     },
+    "./methods/username-password/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-password/browser.d.ts"
+      },
+      "types": "./dist/methods/username-password/browser.d.ts",
+      "default": "./dist/methods/username-password/browser.js"
+    },
     "./methods/email-password": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/email-password/index.d.ts"
