@@ -43,6 +43,12 @@ export default defineSchema({
       // of a user that a sign-up has just created (and fails if they already have an email address).
       // The user has no session yet, thus the completion takes the user from this row, not from the caller.
       v.object({ kind: v.literal("signUp"), userId: v.string() }),
+      // On completion, signs in the user that owns the address, or records
+      // the address as the primary email address of a user that the
+      // completion creates. Nobody is signed in at start, thus the row has no
+      // user. The email carries a short code that the person types, not a
+      // link.
+      v.object({ kind: v.literal("signIn") }),
       // Custom flow: doesn’t do anything in the component itself on completion,
       // the caller will implement the right behavior instead.
       v.object({
@@ -55,14 +61,22 @@ export default defineSchema({
         purpose: v.string(),
       }),
     ),
-    // SHA-256 of the code that travels in the emailed link.
+    // SHA-256 of the code that travels in the emailed link, or of the short
+    // code that the person types.
     // Storing the hash, so that even if database rows leak they can’t be used to complete the challenge.
+    // A short code has few values, thus its hash does not hide it: the
+    // `browserSecretHash` is what keeps a leaked row from completing.
     emailCodeHash: v.string(),
     // SHA-256 of the secret that stays in the starting browser’s storage.
     // Completion finds the row by this hash, then requires the code too.
     // Storing the hash, so that even if database rows leak they can’t be used to complete the challenge.
     browserSecretHash: v.string(),
     expiresAt: v.number(),
+    // How many more wrong codes the challenge accepts before it is deleted.
+    // Present only for a challenge that sends a short code, which a person
+    // could guess. Absent for a link: its code has 256 bits, thus it needs
+    // no limit.
+    attemptsLeft: v.optional(v.number()),
   })
     .index("by_browserSecretHash", ["browserSecretHash"])
     .index("by_purpose_userId", ["purpose.userId"])

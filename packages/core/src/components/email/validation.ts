@@ -96,8 +96,8 @@ export type StartFreeAddressUserError = Infer<typeof startFreeAddressUserError>;
  *
  * `INCORRECT_CODE` means that the challenge exists but the code does not
  * match. For a link, the link is not the newest one this browser started,
- * and the user must open the newest email. For a future short code, it is
- * a typo.
+ * and the user must open the newest email. For a short code, it is a typo,
+ * or a code from an older email.
  */
 export const completeChallengeUserError = v.union(
   v.object({ error: v.literal("INVALID_CHALLENGE") }),
@@ -105,6 +105,22 @@ export const completeChallengeUserError = v.union(
 );
 export type CompleteChallengeUserError = Infer<
   typeof completeChallengeUserError
+>;
+
+/**
+ * The user-facing errors for the completion of a challenge that sends a
+ * short code: the shared errors, plus `TOO_MANY_ATTEMPTS`.
+ *
+ * `TOO_MANY_ATTEMPTS` means that the code is wrong, and that it was the last
+ * attempt of the challenge. The challenge is deleted, thus the user must ask
+ * for a new code. A later attempt gets `INVALID_CHALLENGE`.
+ */
+export const completeCodeChallengeUserError = v.union(
+  completeChallengeUserError,
+  v.object({ error: v.literal("TOO_MANY_ATTEMPTS") }),
+);
+export type CompleteCodeChallengeUserError = Infer<
+  typeof completeCodeChallengeUserError
 >;
 
 /**

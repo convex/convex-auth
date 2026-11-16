@@ -219,8 +219,8 @@ describe("deleteUser with challenges", () => {
     await t.mutation(api.verifiedEmails.deleteUser, { userId: "user1" });
 
     const remaining = await t.run(async (ctx) =>
-      (await ctx.db.query("challenges").collect()).map(
-        (row) => row.purpose.userId,
+      (await ctx.db.query("challenges").collect()).map((row) =>
+        "userId" in row.purpose ? row.purpose.userId : undefined,
       ),
     );
     expect(remaining).toEqual(["user2"]);

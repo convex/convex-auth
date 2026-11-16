@@ -1,5 +1,6 @@
 import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
+import { setupEmailCode } from "@convex-dev/auth/methods/email-code/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
 import { setupGoogle } from "@convex-dev/auth/methods/google/server";
@@ -56,6 +57,17 @@ export const {
     recovery: `${SITE_URL}/reset-password`,
   },
 }).attachUserCallbacks({ createUser: internal.users.createUserEmailPassword });
+
+export const { startSignInWithEmailCode, completeSignInWithEmailCode } =
+  setupEmailCode(auth, {
+    component: components.authEmail,
+    emailSender: {
+      kind: "resend",
+      sendEmail: components.resend.lib.sendEmail,
+      apiKey: env.RESEND_API_KEY,
+      from: "My App <auth@example.com>",
+    },
+  }).attachUserCallbacks({ createUser: internal.users.createUserEmailCode });
 
 export const {
   startSignInWithUsernamePasskey,

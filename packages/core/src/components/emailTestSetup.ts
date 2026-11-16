@@ -76,11 +76,12 @@ export type ChallengePurposeRow =
   | { kind: "addEmail"; userId: string }
   | { kind: "changeEmail"; userId: string }
   | { kind: "signUp"; userId: string }
+  | { kind: "signIn" }
   | { kind: "custom"; userId?: string; purpose: string };
 
 /**
  * Seed a pending challenge row directly, with the hashes of the code and the
- * secret.
+ * secret. Give `attemptsLeft` for a challenge that sends a short code.
  */
 export async function seedChallenge(
   t: TestClient,
@@ -90,6 +91,7 @@ export async function seedChallenge(
     emailCode: string;
     browserSecret: string;
     expiresAt?: number;
+    attemptsLeft?: number;
   },
 ) {
   await t.run(async (ctx) => {
@@ -99,6 +101,9 @@ export async function seedChallenge(
       emailCodeHash: await sha256Hex(args.emailCode),
       browserSecretHash: await sha256Hex(args.browserSecret),
       expiresAt: args.expiresAt ?? Date.now() + 60_000,
+      ...(args.attemptsLeft === undefined
+        ? {}
+        : { attemptsLeft: args.attemptsLeft }),
     });
   });
 }

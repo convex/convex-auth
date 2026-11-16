@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { vAppleProfile } from "@convex-dev/auth/methods/apple/server";
+import { vEmailCodeProfile } from "@convex-dev/auth/methods/email-code/server";
 import { vGithubProfile } from "@convex-dev/auth/methods/github/server";
 import { vGoogleProfile } from "@convex-dev/auth/methods/google/server";
 import { internalMutation } from "./_generated/server";
@@ -22,6 +23,17 @@ export const createUserEmailPassword = internalMutation({
     method: v.object({
       name: v.literal("emailPassword"),
       profile: v.object({}),
+    }),
+  },
+  returns: v.id("users"),
+  handler: async (ctx) => await ctx.db.insert("users", {}),
+});
+
+export const createUserEmailCode = internalMutation({
+  args: {
+    method: v.object({
+      name: v.literal("emailCode"),
+      profile: vEmailCodeProfile,
     }),
   },
   returns: v.id("users"),

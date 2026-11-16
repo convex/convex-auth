@@ -33,3 +33,23 @@ function base64UrlEncode(bytes: Uint8Array): string {
 export function generateRandomToken(): string {
   return base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
 }
+
+/**
+ * Cryptographically random code of `length` decimal digits, for a code that a
+ * person types. Each digit is uniform: a random byte of 250 or more is drawn
+ * again, so that `byte % 10` has no bias toward the low digits.
+ */
+export function generateNumericCode(length: number): string {
+  if (!Number.isInteger(length) || length < 1) {
+    throw new Error(`The code length must be a positive integer: ${length}`);
+  }
+  let code = "";
+  while (code.length < length) {
+    for (const byte of crypto.getRandomValues(new Uint8Array(length))) {
+      if (byte < 250 && code.length < length) {
+        code += String(byte % 10);
+      }
+    }
+  }
+  return code;
+}
