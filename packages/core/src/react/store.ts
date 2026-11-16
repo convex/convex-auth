@@ -1,6 +1,11 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import {
+  useInsertionEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ReadableStore } from "../browser/store.ts";
 
 /**
@@ -18,9 +23,10 @@ export function useReadableStore<T>(store: ReadableStore<T>): T {
  * the component, like the `useState` of a hook would.
  *
  * The client reads its options when it uses them, and this hands it the
- * options of the latest render. A callback of the client thus always runs
- * with the latest arguments of the hook, the way a `useCallback` over them
- * would, without its identity ever changing.
+ * options of the latest committed render. A callback of the client thus runs
+ * with the arguments of the hook that the UI shows, the way a `useCallback`
+ * over them would, without its identity ever changing. A render that React
+ * throws away never reaches the client.
  */
 export function useMethodClient<Options extends object, Client>(
   create: (options: Options) => Client,
@@ -30,7 +36,11 @@ export function useMethodClient<Options extends object, Client>(
   // render (an inline `api` object, for example), and the client must not be
   // made again for that.
   const latest = useRef(options);
-  latest.current = options;
+  // Before any layout effect, so a child's layout effect that calls the
+  // client already sees the new options.
+  useInsertionEffect(() => {
+    latest.current = options;
+  });
   const [client] = useState(() =>
     create(
       new Proxy({} as Options, {

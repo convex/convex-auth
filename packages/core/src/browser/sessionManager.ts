@@ -12,6 +12,7 @@ import type {
 } from "./ambientSignInClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
 import {
+  AMBIENT_SIGN_IN_STORAGE_PREFIX,
   JWT_STORAGE_KEY,
   NamespacedStorage,
   REFRESH_TOKEN_STORAGE_KEY,
@@ -288,15 +289,18 @@ export class AuthClient {
    * uses `__convexAuthEmailPassword`), and use only characters in
    * `[A-Za-z0-9._-]`. An ambient sign-in gets its own prefixed view in its
    * setup instead.
+   *
+   * The keys of the session tokens and of the ambient sign-ins are off
+   * limits: using one throws.
    */
   get methodStorage(): SignInStorage {
     return this.#methodStorage;
   }
 
   readonly #methodStorage: SignInStorage = {
-    get: (key) => this.#storage.get(key),
-    set: (key, value) => this.#storage.set(key, value),
-    remove: (key) => this.#storage.remove(key),
+    get: (key) => this.#storage.get(methodStorageKey(key)),
+    set: (key, value) => this.#storage.set(methodStorageKey(key), value),
+    remove: (key) => this.#storage.remove(methodStorageKey(key)),
   };
 
   // --- Ambient sign-in surface ----------------------------------------------
@@ -645,4 +649,22 @@ export class AuthClient {
       console.debug(`${new Date().toISOString()} [convex-auth] ${message}`);
     }
   }
+}
+
+/**
+ * Check that a key of {@link AuthClient.methodStorage} leaves the session
+ * tokens and the ambient sign-ins' storage alone.
+ */
+function methodStorageKey(key: string): string {
+  if (
+    key === JWT_STORAGE_KEY ||
+    key === REFRESH_TOKEN_STORAGE_KEY ||
+    key.startsWith(AMBIENT_SIGN_IN_STORAGE_PREFIX)
+  ) {
+    throw new Error(
+      `[convex-auth] "${key}" is reserved for the session and the ambient ` +
+        "sign-ins. Give the keys of a method a prefix of its own.",
+    );
+  }
+  return key;
 }

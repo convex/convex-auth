@@ -8,6 +8,9 @@
  * `subscribe`. A value is replaced, never mutated, so two reads without a
  * change in between return the same value.
  *
+ * It is not Svelte's store contract: `subscribe` doesn't call the listener
+ * right away, nor pass it the value, so `$store` doesn't work on it.
+ *
  * @module
  */
 

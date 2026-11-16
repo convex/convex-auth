@@ -246,7 +246,12 @@ export function createPasskeyAutofill<E = never>(
 
   const isAutofillSigningIn = () => signingIn;
 
+  // The stop of the running loop. A second `start` stops the first loop, so
+  // two loops never compete for the browser's single conditional request.
+  let stopRunning: (() => void) | null = null;
+
   const start = () => {
+    stopRunning?.();
     const ceremonies = options.ceremonies;
     // The stop flips this, which makes the loop safe to start again (as
     // React's StrictMode does) by construction: the stopped loop sees
@@ -381,8 +386,10 @@ export function createPasskeyAutofill<E = never>(
           return;
         }
 
-        update({ status: "signingIn" });
+        // Lock out the modal flow before telling subscribers: a listener
+        // runs synchronously and may call `signIn` right away.
         signingIn = true;
+        update({ status: "signingIn" });
         let outcome;
         try {
           outcome = await options.onAssertion(result.response);
@@ -416,12 +423,18 @@ export function createPasskeyAutofill<E = never>(
 
     void runLoop();
 
-    return () => {
+    const stop = () => {
+      // A second call, or the stop of a loop that a later `start` already
+      // stopped, must not abort the request of the loop that runs now.
+      if (!alive) return;
       alive = false;
+      stopRunning = null;
       activeController?.abort();
       // Never leave the loop parked; it exits on `alive`.
       wake?.();
     };
+    stopRunning = stop;
+    return stop;
   };
 
   return {

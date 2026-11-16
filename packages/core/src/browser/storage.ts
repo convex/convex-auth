@@ -99,6 +99,9 @@ export type SignInStorage = {
   remove(key: string): ReturnType<TokenStorage["removeItem"]>;
 };
 
+/** The start of every storage key of an ambient sign-in. */
+export const AMBIENT_SIGN_IN_STORAGE_PREFIX = "__convexAuthProvider_";
+
 /**
  * A view over a {@link TokenStorage} that suffixes every key with a sanitized
  * namespace. Keying by (e.g.) the deployment URL keeps tokens for different
@@ -143,7 +146,7 @@ export class NamespacedStorage {
    * or another sign-in's.
    */
   forSignIn(id: string): SignInStorage {
-    const prefix = `__convexAuthProvider_${id}_`;
+    const prefix = `${AMBIENT_SIGN_IN_STORAGE_PREFIX}${id}_`;
     return {
       get: (key) => this.get(`${prefix}${key}`),
       set: (key, value) => this.set(`${prefix}${key}`, value),

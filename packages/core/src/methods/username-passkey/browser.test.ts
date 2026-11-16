@@ -273,6 +273,59 @@ describe("createPasskeyAutofill", () => {
     stopAgain();
   });
 
+  test("a second start stops the first loop, whose stop then leaves the second alone", async () => {
+    const ceremonies = fakeCeremonies();
+    const start = vi.fn(async () => requestOptions);
+    const autofill = createPasskeyAutofill({
+      ceremonies,
+      start,
+      onAssertion: vi.fn(),
+    });
+    const stopFirst = autofill.start();
+    await flush();
+    const stopSecond = autofill.start();
+    await flush();
+    const signals = vi
+      .mocked(ceremonies.authenticateWithAutofill)
+      .mock.calls.map(([, signal]) => signal);
+    expect(signals.map((signal) => signal.aborted)).toEqual([true, false]);
+
+    // The first loop's stop comes late, e.g. from a component that unmounts
+    // after another one started the flow. It must not end the second loop.
+    stopFirst();
+    await flush();
+    expect(signals[1].aborted).toBe(false);
+    expect(autofill.state.get().status).toBe("waiting");
+
+    // A pause still reaches the request that runs.
+    autofill.pauseAutofillFlow();
+    expect(signals[1].aborted).toBe(true);
+    stopSecond();
+  });
+
+  test("subscribers hear of signingIn once the modal flow is locked out", async () => {
+    const ceremonies = fakeCeremonies({
+      authenticateWithAutofill: vi.fn(async () => ({
+        success: true as const,
+        response: authenticationResponse,
+      })),
+    });
+    const autofill = createPasskeyAutofill({
+      ceremonies,
+      start: vi.fn(async () => requestOptions),
+      onAssertion: vi.fn(async () => ({ success: true as const })),
+    });
+    const lockedOut: boolean[] = [];
+    autofill.state.subscribe(() => {
+      if (autofill.state.get().status === "signingIn") {
+        lockedOut.push(autofill.isAutofillSigningIn());
+      }
+    });
+    autofill.start();
+    await flush();
+    expect(lockedOut).toEqual([true]);
+  });
+
   test("disable reports the flow as off", () => {
     const autofill = createPasskeyAutofill({
       ceremonies: fakeCeremonies(),

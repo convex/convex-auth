@@ -13,7 +13,12 @@
  */
 
 import type { AuthClient } from "../../browser/sessionManager.ts";
-import { createOauthSignIn, type OauthSignInClient } from "../oauth/browser.ts";
+import {
+  createOauthSignIn,
+  type OauthSignIn,
+  type OauthSignInClient,
+  type SignInOptions,
+} from "../oauth/browser.ts";
 import type { OauthProviderApi } from "../oauth/client.ts";
 
 export {
@@ -61,10 +66,17 @@ export function createSignInWithGoogle(options: {
     completeSignInWithGoogle: OauthProviderApi["completeSignIn"];
   };
 }): OauthSignInClient {
-  const { authClient, api } = options;
-  return createOauthSignIn(authClient, {
-    providerName: "google",
-    startSignIn: api.startSignInWithGoogle,
-    completeSignIn: api.completeSignInWithGoogle,
-  });
+  // Like the other method clients, read the options when signing in, so a
+  // binding can pass getters.
+  const client = () =>
+    createOauthSignIn(options.authClient, {
+      providerName: "google",
+      startSignIn: options.api.startSignInWithGoogle,
+      completeSignIn: options.api.completeSignInWithGoogle,
+    });
+  // Throw now when `oauth()` isn't registered.
+  client();
+  const signIn = ((signInOptions?: SignInOptions) =>
+    client().signIn(signInOptions as never)) as OauthSignIn;
+  return { signIn };
 }

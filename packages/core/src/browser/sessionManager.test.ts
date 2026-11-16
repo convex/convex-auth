@@ -820,4 +820,17 @@ describe("AuthClient.methodStorage", () => {
     await client.methodStorage.remove("__convexAuthTestSecret");
     expect(storage.getItem(`__convexAuthTestSecret_${SUFFIX}`)).toBe(null);
   });
+
+  test("refuses the keys of the session and of the ambient sign-ins", () => {
+    const { client } = makeClient();
+    for (const key of [
+      "__convexAuthJWT",
+      "__convexAuthRefreshToken",
+      "__convexAuthProvider_oauth_verifier",
+    ]) {
+      expect(() => client.methodStorage.get(key)).toThrow(/reserved/);
+      expect(() => client.methodStorage.set(key, "x")).toThrow(/reserved/);
+      expect(() => client.methodStorage.remove(key)).toThrow(/reserved/);
+    }
+  });
 });
