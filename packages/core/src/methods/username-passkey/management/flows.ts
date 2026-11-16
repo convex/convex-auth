@@ -4,8 +4,8 @@
  * @module
  */
 
-import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
+import type { ConvexMutationApi } from "../../../browser/ambientSignInClient.ts";
 import type {
   ResolvedPasskeyCeremonies,
   PasskeyClientFailure,
@@ -70,8 +70,10 @@ export type RemovePasskeyApi = {
   finishRemovePasskey: FinishRemovePasskeyMutation;
 };
 
+/** What the management flows need from the binding. */
 export type ManagementFlowContext<Api> = {
-  convex: ConvexReactClient;
+  /** Runs the mutations of the flow on the Convex client of the app. */
+  convex: ConvexMutationApi;
   api: Api;
   /** The passkey ceremonies of the platform. */
   ceremonies: ResolvedPasskeyCeremonies;

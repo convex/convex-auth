@@ -15,6 +15,7 @@ import {
   JWT_STORAGE_KEY,
   NamespacedStorage,
   REFRESH_TOKEN_STORAGE_KEY,
+  type SignInStorage,
   TokenStorage,
 } from "./storage.ts";
 
@@ -275,6 +276,28 @@ export class AuthClient {
   get storage(): NamespacedStorage {
     return this.#storage;
   }
+
+  /**
+   * Persistent storage for the client-side secrets of sign-in methods, like
+   * the browser secret of an email link flow. It is the storage of the
+   * session, under the same namespace, so a secret lives exactly as long and
+   * as wide (one tab, or every tab of the origin) as the session it leads to.
+   *
+   * The keys share that namespace with the session tokens. Start each key
+   * with a prefix that is unique to the method (the email + password method
+   * uses `__convexAuthEmailPassword`), and use only characters in
+   * `[A-Za-z0-9._-]`. An ambient sign-in gets its own prefixed view in its
+   * setup instead.
+   */
+  get methodStorage(): SignInStorage {
+    return this.#methodStorage;
+  }
+
+  readonly #methodStorage: SignInStorage = {
+    get: (key) => this.#storage.get(key),
+    set: (key, value) => this.#storage.set(key, value),
+    remove: (key) => this.#storage.remove(key),
+  };
 
   // --- Ambient sign-in surface ----------------------------------------------
 

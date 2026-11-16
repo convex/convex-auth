@@ -120,4 +120,47 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // The framework-agnostic client code: the core client, the shared code,
+    // and the browser clients of the methods, which every binding (React or
+    // another framework) builds on. It must thus not import React, or a
+    // module of a React binding (a `react/` directory, a `react*` module, or
+    // a `.tsx` module).
+    files: [
+      "packages/core/src/browser/**/*.ts",
+      "packages/core/src/lib/**/*.ts",
+      "packages/core/src/methods/**/*.ts",
+    ],
+    ignores: [
+      "**/*.test.ts",
+      "**/*.fixture.ts",
+      // The React hooks of the OAuth providers.
+      "packages/core/src/methods/*/react.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["react", "react-dom", "convex/react", "next"].map((name) => ({
+            name,
+            message:
+              "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
+          })),
+          patterns: [
+            {
+              group: ["react/*", "react-dom/*", "next/*"],
+              message:
+                "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
+            },
+            {
+              regex:
+                "^\\.{1,2}/(?:.*/)?(?:react/|react(?:[._-][^/]*)?$|[^/]*\\.tsx$)",
+              message:
+                "A framework-agnostic client module must not import a module of the React bindings.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

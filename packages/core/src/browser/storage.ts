@@ -83,9 +83,9 @@ export function defaultStorage(): TokenStorage {
 }
 
 /**
- * A read/write view over a {@link NamespacedStorage} for one ambient sign-in,
- * with every key prefixed by that sign-in's id. The shape handed to an
- * ambient sign-in's setup.
+ * A read/write view over the namespaced storage of an `AuthClient`. An
+ * ambient sign-in's setup gets one with every key prefixed by that sign-in's
+ * id, and `AuthClient.methodStorage` is one without a prefix.
  *
  * Keys are stored as-is, so use only characters in `[A-Za-z0-9._-]` to stay
  * compatible with React Native storage backends like Expo SecureStore.

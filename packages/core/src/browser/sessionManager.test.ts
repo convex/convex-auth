@@ -808,3 +808,16 @@ describe("AuthClient (async storage)", () => {
     expect(storage.entries.size).toBe(0);
   });
 });
+
+describe("AuthClient.methodStorage", () => {
+  test("stores under the namespace of the session, without a prefix", async () => {
+    const { client, storage } = makeClient();
+
+    await client.methodStorage.set("__convexAuthTestSecret", "s1");
+    expect(storage.getItem(`__convexAuthTestSecret_${SUFFIX}`)).toBe("s1");
+    expect(await client.methodStorage.get("__convexAuthTestSecret")).toBe("s1");
+
+    await client.methodStorage.remove("__convexAuthTestSecret");
+    expect(storage.getItem(`__convexAuthTestSecret_${SUFFIX}`)).toBe(null);
+  });
+});
