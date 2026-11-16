@@ -57,7 +57,7 @@ export type {
 export type {
   AlreadyPendingFailure,
   PasskeyAutofillStatus,
-} from "./react_impl.tsx";
+} from "./autofill.ts";
 
 /**
  * Client for the log in page in the “username + passkey” auth flow.

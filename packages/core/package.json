@@ -191,6 +191,13 @@
       "types": "./dist/methods/username-passkey/react-custom.d.ts",
       "default": "./dist/methods/username-passkey/react-custom.js"
     },
+    "./methods/username-passkey/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-passkey/browser.d.ts"
+      },
+      "types": "./dist/methods/username-passkey/browser.d.ts",
+      "default": "./dist/methods/username-passkey/browser.js"
+    },
     "./methods/oauth/react": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/oauth/react.d.ts"
