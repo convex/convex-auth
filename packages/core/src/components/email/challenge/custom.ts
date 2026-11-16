@@ -55,6 +55,15 @@ export const check = mutation({
 /**
  * Start a `custom` challenge.
  *
+ * When a user has verified the address, the link goes to the address as
+ * that user verified it, which can differ from `email` in case or in Unicode
+ * form. `complete` finds the owner of an address without regard to case, but
+ * a mail server can treat `Alice@` and `alice@` as two mailboxes. Thus only
+ * the mailbox that the owner verified receives a link that can give the
+ * owner in `emailOwnerId`. The challenge stores that form of the address,
+ * and `complete` returns it. When no user has verified the address, the link
+ * goes to `email` as given.
+ *
  * `subject` and `intro` are the first lines of the email; the component
  * appends the link and the expiry. `ttlMs` bounds how long the link works;
  * it must stay between `CUSTOM_TTL_MIN_MS` and `CUSTOM_TTL_MAX_MS`. A value
@@ -98,8 +107,9 @@ export const start = mutation({
     if (error !== null) {
       return { success: false, userError: error };
     }
+    const owner = await emailByNormalizedEmail(ctx, normalizeEmail(args.email));
     const created = await createChallengeAndSendEmail(ctx, {
-      email: args.email,
+      email: owner === null ? args.email : owner.email,
       purpose: {
         kind: "custom",
         userId: args.expectedUserId ?? undefined,
