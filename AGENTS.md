@@ -15,7 +15,7 @@ This is a pnpm monorepo:
     export `anonymous` and the generic `oauth` component for now either.
   - The sign-in methods, which the app wires up: `anonymous` (not exported
     for now), `username-password`, `email-password`, `username-passkey`, `oauth`
-    (only its shared React client is exported for now; the API for custom
+    (only its shared clients are exported for now; the API for custom
     providers is not), `google`, `apple`, and `github`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
@@ -53,10 +53,15 @@ check:doc-examples`). It is not an example to copy.
   `password`, `email`, `passkey`, `totp`, `anonymous`, `oauth`, `google`,
   `apple`, `github`).
 - `methods/<method>/` — the sign-in methods, which use one or more
-  components: `server.ts` (Convex functions of the app), `react.tsx` or
-  `react.ts` (hooks), and the browser code. A method is published at
-  `@convex-dev/auth/methods/<method>/server` and
-  `@convex-dev/auth/methods/<method>/react`. `username-passkey` also has a
+  components: `server.ts` (Convex functions of the app), `browser.ts` (the
+  framework-agnostic clients, one `create…` factory per flow, which return
+  plain async functions and their state as a `ReadableStore`), and
+  `react.tsx` or `react.ts` (the React hooks, built on the same layer). A
+  method is published at `@convex-dev/auth/methods/<method>/server`,
+  `@convex-dev/auth/methods/<method>/browser`, and
+  `@convex-dev/auth/methods/<method>/react`. The `.ts` modules of
+  `methods/` (except the `react.ts` hooks), `browser/`, and `lib/` must not
+  import React; ESLint checks it. `username-passkey` also has a
   `react-custom.tsx`, published at
   `@convex-dev/auth/methods/username-passkey/react-custom`, whose
   `createUsernamePasskeyHooks` makes the same hooks on top of passkey

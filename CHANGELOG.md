@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- Framework-agnostic method clients, for bindings to other frameworks
+  (Svelte, Vue, Solid). The React hooks now wrap them, with no change in
+  behaviour.
+  - `@convex-dev/auth/methods/<method>/browser` for `username-password`,
+    `email-password`, `username-passkey`, `oauth`, `google`, `apple`, and
+    `github`: one `create…` factory per hook, returning plain async functions
+    and its state (like `pending`) as a `ReadableStore`.
+  - The passkey entry also exports the ceremonies (`browserCeremonies`,
+    `resolveCeremonies`), the flows, the autofill loop
+    (`createPasskeyAutofill`), and the wire and result types.
+  - `@convex-dev/auth/browser` exports `AmbientSignInClient`,
+    `AmbientSignInContext`, `AuthSignInApi`, `ConvexMutationApi`,
+    `SignInFunction`, `SignInStorage`, and `ReadableStore`.
+  - `AuthClient.methodStorage`: the storage for the client-side secrets of
+    sign-in methods, under the namespace of the session.
+
 ## 2.0.0
 
 First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.

@@ -72,6 +72,39 @@ The code was designed with extension to other frameworks in mind though, so
 let us know on [Ship](https://ship.convex.dev/) if there are other frameworks
 you'd like to see supported!
 
+You can also write the bindings for another framework (Svelte, Vue, Solid, …)
+yourself. Only the React hooks are React: what they do lives in
+framework-agnostic entry points, which the hooks wrap.
+
+- `@convex-dev/auth/browser` has the session client, `AuthClient`. A binding
+  makes one, calls its `init()` on mount and `dispose()` on unmount, and
+  reads its state with `subscribe` and `getSnapshot`. `@convex-dev/auth/ssr`
+  has the server side of SSR.
+- `@convex-dev/auth/methods/<method>/browser` has a factory for each flow of
+  the method, the counterpart of its `use…` hook: `createSignInWithUsernamePassword`
+  for `useSignInWithUsernamePassword`, and so on. A factory takes the
+  `AuthClient`, the `AuthSignInApi` that runs the sign-in functions, and the
+  app's `api.auth`. It returns plain async functions, and its state (like
+  `pending`) as a store with `get()` and `subscribe(listener)`.
+
+A binding makes one client per component instance, and binds each store to
+the reactivity of its framework:
+
+```ts
+const login = createSignInWithUsernamePassword({
+  authClient,
+  signInApi,
+  api: api.auth,
+});
+// Read `login.pending.get()` in the template, and render again when
+// `login.pending.subscribe` calls back.
+const result = await login.signIn({ username, password });
+```
+
+A client that runs on its own while its page is open, like passkey autofill
+or the landing page of an email link, has a `start()` to call on mount. It
+returns the function to call on unmount.
+
 ### How is it different compared to…
 
 #### …WorkOS/Clerk/Auth0?
