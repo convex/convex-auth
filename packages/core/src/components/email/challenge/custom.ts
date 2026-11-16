@@ -55,14 +55,12 @@ export const check = mutation({
 /**
  * Start a `custom` challenge.
  *
- * When a user has verified the address, the link goes to the address as
- * that user verified it, which can differ from `email` in case or in Unicode
- * form. `complete` finds the owner of an address without regard to case, but
- * a mail server can treat `Alice@` and `alice@` as two mailboxes. Thus only
- * the mailbox that the owner verified receives a link that can give the
- * owner in `emailOwnerId`. The challenge stores that form of the address,
- * and `complete` returns it. When no user has verified the address, the link
- * goes to `email` as given.
+ * When `email` was previously verified, the link goes to the address as
+ * the user verified it. When no user has verified the address, the link
+ * goes to `email` as given. The verified form can differ from `email` in
+ * case: a mail server can treat `Alice@` and `alice@` as two mailboxes.
+ * `complete` finds the owner without regard to case, and returns the form
+ * of the address that the link went to.
  *
  * `subject` and `intro` are the first lines of the email; the component
  * appends the link and the expiry. `ttlMs` bounds how long the link works;
