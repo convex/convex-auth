@@ -13,7 +13,7 @@ Supported sign-in methods:
 - Username + password
 - Email + password, with email verification and password recovery
 - Username + passkey
-- OAuth: Google, Apple and GitHub
+- OAuth: Google, Apple, GitHub and Discord
 
 ## Getting Started
 
@@ -138,9 +138,9 @@ directory (see the example's own README):
   password/email, and password recovery.
 - `examples/react-passkey` and `examples/react-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
-- `examples/react-google`, `examples/react-apple`, and `examples/react-github`
-  — the core and OAuth components with the `google`, `apple`, and `github`
-  methods.
+- `examples/react-google`, `examples/react-apple`, `examples/react-github`, and
+  `examples/react-discord` — the core and OAuth components with the `google`,
+  `apple`, `github`, and `discord` methods.
 - `examples/nextjs` — a Next.js app with SSR sign-in.
 
 The tests of the examples run as part of `pnpm test` at the repo root.

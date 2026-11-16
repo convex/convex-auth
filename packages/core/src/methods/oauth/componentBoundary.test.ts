@@ -17,11 +17,14 @@ import { convexTest } from "convex-test";
 import { componentsGeneric, makeFunctionReference } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { registerAppleOauth } from "../../testing/apple.ts";
+import { registerDiscordOauth } from "../../testing/discord.ts";
 import { registerGithubOauth } from "../../testing/github.ts";
 import { registerGoogleOauth } from "../../testing/google.ts";
 import { registerOauth } from "../../testing/oauth.ts";
 import type { ComponentApi as AppleComponentApi } from "../../components/apple/_generated/component.ts";
 import { setupApple } from "../apple/server.ts";
+import type { ComponentApi as DiscordComponentApi } from "../../components/discord/_generated/component.ts";
+import { setupDiscord } from "../discord/server.ts";
 import type { ComponentApi as OauthComponentApi } from "../../components/oauth/_generated/component.ts";
 import { setupOauth } from "./server.ts";
 import type { ComponentApi as GithubComponentApi } from "../../components/github/_generated/component.ts";
@@ -43,6 +46,7 @@ const REDIRECT_TO = `${ALLOWED_ORIGINS[0]}/after`;
 const components = componentsGeneric() as unknown as {
   authOauth: OauthComponentApi<"authOauth">;
   authApple: AppleComponentApi<"authApple">;
+  authDiscord: DiscordComponentApi<"authDiscord">;
   authGithub: GithubComponentApi<"authGithub">;
   authGoogle: GoogleComponentApi<"authGoogle">;
 };
@@ -67,6 +71,10 @@ const testApp = {
     component: components.authApple,
     allowedRedirectOrigins: ALLOWED_ORIGINS,
   }).attachUserCallbacks(fakeCallbacks),
+  ...setupDiscord(fakeCore, {
+    component: components.authDiscord,
+    allowedRedirectOrigins: ALLOWED_ORIGINS,
+  }).attachUserCallbacks(fakeCallbacks),
   ...setupGithub(fakeCore, {
     component: components.authGithub,
     allowedRedirectOrigins: ALLOWED_ORIGINS,
@@ -88,7 +96,7 @@ const modules = {
 };
 
 /**
- * An app with all four components registered. The components read the
+ * An app with all five components registered. The components read the
  * credentials their instance binds and the site URL from `process.env`, so
  * both are stubbed the way the backend would present them.
  */
@@ -98,6 +106,7 @@ function setup() {
   const t = convexTest(undefined, modules);
   registerOauth(t);
   registerAppleOauth(t);
+  registerDiscordOauth(t);
   registerGithubOauth(t);
   registerGoogleOauth(t);
   return t;
@@ -110,6 +119,7 @@ afterEach(() => {
 describe.each([
   { component: "authOauth", provider: "Acme" },
   { component: "authApple", provider: "Apple" },
+  { component: "authDiscord", provider: "Discord" },
   { component: "authGithub", provider: "Github" },
   { component: "authGoogle", provider: "Google" },
 ])("the $component component", ({ provider }) => {

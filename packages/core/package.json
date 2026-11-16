@@ -226,6 +226,20 @@
       "types": "./dist/methods/github/react.d.ts",
       "default": "./dist/methods/github/react.js"
     },
+    "./methods/discord/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/discord/server.d.ts"
+      },
+      "types": "./dist/methods/discord/server.d.ts",
+      "default": "./dist/methods/discord/server.js"
+    },
+    "./methods/discord/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/discord/react.d.ts"
+      },
+      "types": "./dist/methods/discord/react.d.ts",
+      "default": "./dist/methods/discord/react.js"
+    },
     "./components/username/convex.config.js": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/components/username/convex.config.d.ts"
@@ -428,7 +442,36 @@
       "types": "./dist/components/github/_generated/component.d.ts",
       "default": "./dist/components/github/_generated/component.js"
     },
-    "./components/github/test": "./src/testing/github.ts"
+    "./components/github/test": "./src/testing/github.ts",
+    "./components/discord/convex.config.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/convex.config.d.ts"
+      },
+      "types": "./dist/components/discord/convex.config.d.ts",
+      "default": "./dist/components/discord/convex.config.js"
+    },
+    "./components/discord/convex.config": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/convex.config.d.ts"
+      },
+      "types": "./dist/components/discord/convex.config.d.ts",
+      "default": "./dist/components/discord/convex.config.js"
+    },
+    "./components/discord/_generated/component.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/_generated/component.d.ts"
+      },
+      "types": "./dist/components/discord/_generated/component.d.ts",
+      "default": "./dist/components/discord/_generated/component.js"
+    },
+    "./components/discord/_generated/component": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/_generated/component.d.ts"
+      },
+      "types": "./dist/components/discord/_generated/component.d.ts",
+      "default": "./dist/components/discord/_generated/component.js"
+    },
+    "./components/discord/test": "./src/testing/discord.ts"
   },
   "dependencies": {
     "@convex-dev/batch-worker": "^0.3.2",
