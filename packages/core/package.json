@@ -163,6 +163,13 @@
       "types": "./dist/methods/email-password/react.d.ts",
       "default": "./dist/methods/email-password/react.js"
     },
+    "./methods/email-password/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-password/browser.d.ts"
+      },
+      "types": "./dist/methods/email-password/browser.d.ts",
+      "default": "./dist/methods/email-password/browser.js"
+    },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/server.d.ts"
