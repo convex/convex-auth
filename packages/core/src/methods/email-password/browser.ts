@@ -297,6 +297,17 @@ export type CompletePasswordRecoveryState =
       userError: PasswordRecoveryLinkError | MissingSecretError;
     };
 
+/**
+ * The state of the landing page of a password-reset link when the check of
+ * the link failed, for example because the backend threw. Only a binding
+ * whose query returns its error, rather than throwing it, gets this state
+ * from {@link CompletePasswordRecoveryClient.stateFor}.
+ */
+export type PasswordRecoveryCheckFailedState = {
+  status: "error";
+  userError: OtherError;
+};
+
 //------------------------------------------------------------------------------
 // Client shapes
 //------------------------------------------------------------------------------
@@ -400,11 +411,19 @@ export type CompletePasswordRecoveryClient = {
   checkArgs: () => { emailCode: string; browserSecret: string } | "skip";
   /**
    * The state of the page for the latest result of the
-   * `checkPasswordRecovery` subscription (`undefined` while it loads).
+   * `checkPasswordRecovery` subscription (`undefined` while it loads). A
+   * binding whose query returns its error, rather than throwing it, passes
+   * the error too (`undefined` when there is none).
    */
-  stateFor: (
-    check: CheckPasswordRecoveryQueryResult | undefined,
-  ) => CompletePasswordRecoveryState;
+  stateFor: {
+    (
+      check: CheckPasswordRecoveryQueryResult | undefined,
+    ): CompletePasswordRecoveryState;
+    (
+      check: CheckPasswordRecoveryQueryResult | undefined,
+      checkError: unknown,
+    ): CompletePasswordRecoveryState | PasswordRecoveryCheckFailedState;
+  };
   /**
    * Set the new password and sign the user in. Throws when the secret is not
    * read yet: call it through the `ready` state of
@@ -773,13 +792,22 @@ export function createCompletePasswordRecovery(options: {
         ? { emailCode: options.emailCode, browserSecret }
         : "skip";
     },
-    stateFor: (check) => {
+    stateFor: ((
+      check: CheckPasswordRecoveryQueryResult | undefined,
+      checkError?: unknown,
+    ): CompletePasswordRecoveryState | PasswordRecoveryCheckFailedState => {
       const { browserSecret, outcome, pending } = progress.get();
       if (outcome !== undefined) {
         return outcome;
       }
       if (browserSecret === null) {
         return { status: "error", userError: { error: "MISSING_SECRET" } };
+      }
+      if (checkError !== undefined) {
+        return {
+          status: "error",
+          userError: { error: "OTHER_ERROR", cause: checkError },
+        };
       }
       if (browserSecret === undefined || check === undefined) {
         return { status: "loading" };
@@ -791,7 +819,7 @@ export function createCompletePasswordRecovery(options: {
         return { status: "error", userError: check.userError };
       }
       return { status: "ready", completePasswordRecovery, pending };
-    },
+    }) as CompletePasswordRecoveryClient["stateFor"],
     completePasswordRecovery,
   };
 }
