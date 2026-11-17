@@ -147,6 +147,13 @@ they signed up with. For instance, when your app also sets up
 user who created their account with a password can also sign in with a link
 sent to the same address.
 
+## Limitations
+
+- **Users can't change their email address yet.** The change-email flow of
+  the [email + password](./email-password.mdx) method requires the current
+  password, and an account created with a link has none.
+- **The text of the email can't be customized yet.**
+
 ## Rate limits
 
 This method rate-limits the emails that it sends. When a limit is reached,
