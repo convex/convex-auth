@@ -23,7 +23,8 @@
     "src",
     "!src/**/*.test.ts",
     "!src/**/*.test.tsx",
-    "!src/**/*.fixture.ts"
+    "!src/**/*.fixture.ts",
+    "!src/**/*.test.svelte"
   ],
   "type": "module",
   "sideEffects": false,
@@ -64,6 +65,14 @@
       "types": "./dist/react/index.d.ts",
       "default": "./dist/react/index.js"
     },
+    "./svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/svelte/index.d.ts"
+      },
+      "types": "./dist/svelte/index.d.ts",
+      "svelte": "./dist/svelte/index.js",
+      "default": "./dist/svelte/index.js"
+    },
     "./browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/browser/index.d.ts"
@@ -84,6 +93,21 @@
       },
       "types": "./dist/ssr/nextjs/index.d.ts",
       "default": "./dist/ssr/nextjs/index.js"
+    },
+    "./ssr/sveltekit": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/ssr/sveltekit/index.d.ts"
+      },
+      "types": "./dist/ssr/sveltekit/index.d.ts",
+      "default": "./dist/ssr/sveltekit/index.js"
+    },
+    "./ssr/sveltekit/client": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/ssr/sveltekit/client.d.ts"
+      },
+      "types": "./dist/ssr/sveltekit/client.d.ts",
+      "svelte": "./dist/ssr/sveltekit/client.js",
+      "default": "./dist/ssr/sveltekit/client.js"
     },
     "./convex.config.js": {
       "convex-auth-internal-types": {
@@ -135,6 +159,14 @@
       "types": "./dist/methods/username-password/react.d.ts",
       "default": "./dist/methods/username-password/react.js"
     },
+    "./methods/username-password/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-password/svelte.d.ts"
+      },
+      "types": "./dist/methods/username-password/svelte.d.ts",
+      "svelte": "./dist/methods/username-password/svelte.js",
+      "default": "./dist/methods/username-password/svelte.js"
+    },
     "./methods/username-password/browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-password/browser.d.ts"
@@ -163,6 +195,14 @@
       "types": "./dist/methods/email-password/react.d.ts",
       "default": "./dist/methods/email-password/react.js"
     },
+    "./methods/email-password/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-password/svelte.d.ts"
+      },
+      "types": "./dist/methods/email-password/svelte.d.ts",
+      "svelte": "./dist/methods/email-password/svelte.js",
+      "default": "./dist/methods/email-password/svelte.js"
+    },
     "./methods/email-password/browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/email-password/browser.d.ts"
@@ -183,6 +223,14 @@
       },
       "types": "./dist/methods/username-passkey/react.d.ts",
       "default": "./dist/methods/username-passkey/react.js"
+    },
+    "./methods/username-passkey/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-passkey/svelte.d.ts"
+      },
+      "types": "./dist/methods/username-passkey/svelte.d.ts",
+      "svelte": "./dist/methods/username-passkey/svelte.js",
+      "default": "./dist/methods/username-passkey/svelte.js"
     },
     "./methods/username-passkey/react-custom": {
       "convex-auth-internal-types": {
@@ -205,6 +253,14 @@
       "types": "./dist/methods/oauth/react.d.ts",
       "default": "./dist/methods/oauth/react.js"
     },
+    "./methods/oauth/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/oauth/svelte.d.ts"
+      },
+      "types": "./dist/methods/oauth/svelte.d.ts",
+      "svelte": "./dist/methods/oauth/svelte.js",
+      "default": "./dist/methods/oauth/svelte.js"
+    },
     "./methods/oauth/browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/oauth/browser.d.ts"
@@ -225,6 +281,14 @@
       },
       "types": "./dist/methods/google/react.d.ts",
       "default": "./dist/methods/google/react.js"
+    },
+    "./methods/google/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/google/svelte.d.ts"
+      },
+      "types": "./dist/methods/google/svelte.d.ts",
+      "svelte": "./dist/methods/google/svelte.js",
+      "default": "./dist/methods/google/svelte.js"
     },
     "./methods/google/browser": {
       "convex-auth-internal-types": {
@@ -247,6 +311,14 @@
       "types": "./dist/methods/apple/react.d.ts",
       "default": "./dist/methods/apple/react.js"
     },
+    "./methods/apple/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/apple/svelte.d.ts"
+      },
+      "types": "./dist/methods/apple/svelte.d.ts",
+      "svelte": "./dist/methods/apple/svelte.js",
+      "default": "./dist/methods/apple/svelte.js"
+    },
     "./methods/apple/browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/apple/browser.d.ts"
@@ -268,6 +340,14 @@
       "types": "./dist/methods/github/react.d.ts",
       "default": "./dist/methods/github/react.js"
     },
+    "./methods/github/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/github/svelte.d.ts"
+      },
+      "types": "./dist/methods/github/svelte.d.ts",
+      "svelte": "./dist/methods/github/svelte.js",
+      "default": "./dist/methods/github/svelte.js"
+    },
     "./methods/github/browser": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/github/browser.d.ts"
@@ -288,6 +368,14 @@
       },
       "types": "./dist/methods/discord/react.d.ts",
       "default": "./dist/methods/discord/react.js"
+    },
+    "./methods/discord/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/discord/svelte.d.ts"
+      },
+      "types": "./dist/methods/discord/svelte.d.ts",
+      "svelte": "./dist/methods/discord/svelte.js",
+      "default": "./dist/methods/discord/svelte.js"
     },
     "./methods/discord/browser": {
       "convex-auth-internal-types": {
@@ -534,44 +622,59 @@
     "@convex-dev/rate-limiter": "^0.3.2",
     "@simplewebauthn/browser": "^14.0.0",
     "@simplewebauthn/server": "^14.0.0",
-    "password-hash-wasm": "0.0.0",
     "cookie": "1.1.1",
-    "jose": "^5.2.2"
+    "jose": "^5.2.2",
+    "password-hash-wasm": "0.0.0"
   },
   "devDependencies": {
     "@convex-dev/passkey-test-authenticator": "workspace:*",
     "@convex-dev/resend": "^0.2.8",
     "@edge-runtime/vm": "^5.0.0",
+    "@sveltejs/kit": "^2.70.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/babel__code-frame": "^7.27.0",
     "@types/node": "^24.12.4",
     "@types/react": "^19.2.17",
     "convex": "1.48.0",
+    "convex-svelte": "^0.15.1",
     "convex-test": "^0.0.65",
     "hash-wasm": "^4.12.0",
     "jsdom": "^31.0.0",
     "next": "^16.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "svelte": "^5.57.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
     "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "@convex-dev/resend": "^0.2.8",
+    "@sveltejs/kit": "^2.0.0",
     "convex": "^1.48.0",
+    "convex-svelte": "^0.15.0",
     "next": "^16.0.0",
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "svelte": "^5.0.0"
   },
   "peerDependenciesMeta": {
     "@convex-dev/resend": {
+      "optional": true
+    },
+    "@sveltejs/kit": {
+      "optional": true
+    },
+    "convex-svelte": {
       "optional": true
     },
     "next": {
       "optional": true
     },
     "react": {
+      "optional": true
+    },
+    "svelte": {
       "optional": true
     }
   }

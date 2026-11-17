@@ -22,6 +22,7 @@
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^2.0.0",
     "@eslint/js": "^10.0.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^26.1.0",
     "convex": "1.48.0",
     "eslint": "^10.6.0",

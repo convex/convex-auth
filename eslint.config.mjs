@@ -95,7 +95,15 @@ export default defineConfig([
       "no-restricted-imports": [
         "error",
         {
-          paths: ["react", "react-dom", "convex/react", "next"].map((name) => ({
+          paths: [
+            "react",
+            "react-dom",
+            "convex/react",
+            "next",
+            "svelte",
+            "convex-svelte",
+            "@sveltejs/kit",
+          ].map((name) => ({
             name,
             message: "A component module must not import client code.",
           })),
@@ -105,13 +113,17 @@ export default defineConfig([
                 "react/*",
                 "react-dom/*",
                 "next/*",
+                "svelte/*",
+                "convex-svelte/*",
+                "@sveltejs/*",
+                "$app/*",
                 "@simplewebauthn/browser",
               ],
               message: "A component module must not import client code.",
             },
             {
               regex:
-                "^\\.{1,2}/(?:.*/)?(?:methods|server|ssr|browser|react|nextjs|testing)/",
+                "^\\.{1,2}/(?:.*/)?(?:methods|server|ssr|browser|react|nextjs|svelte|sveltekit|testing)/",
               message:
                 "A component module must not import app-side code or client code. Put the shared code in the component or in src/lib/.",
             },
@@ -122,10 +134,11 @@ export default defineConfig([
   },
   {
     // The framework-agnostic client code: the core client, the shared code,
-    // and the browser clients of the methods, which every binding (React or
-    // another framework) builds on. It must thus not import React, or a
-    // module of a React binding (a `react/` directory, a `react*` module, or
-    // a `.tsx` module).
+    // and the browser clients of the methods, which every binding (React,
+    // Svelte, or another framework) builds on. It must thus not import React
+    // or Svelte, or a module of their bindings: a `react/` or `svelte/`
+    // directory, a `react*` or `svelte*` module, a `.tsx` module, or a
+    // `.svelte.ts` module.
     files: [
       "packages/core/src/browser/**/*.ts",
       "packages/core/src/lib/**/*.ts",
@@ -136,16 +149,25 @@ export default defineConfig([
       "**/*.fixture.ts",
       // The React hooks of the OAuth providers.
       "packages/core/src/methods/*/react.ts",
+      // The Svelte helpers of the methods.
+      "packages/core/src/methods/*/svelte.ts",
     ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          paths: ["react", "react-dom", "convex/react", "next"].map((name) => ({
-            name,
-            message:
-              "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
-          })),
+          paths: [
+            ...["react", "react-dom", "convex/react", "next"].map((name) => ({
+              name,
+              message:
+                "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
+            })),
+            ...["svelte", "convex-svelte", "@sveltejs/kit"].map((name) => ({
+              name,
+              message:
+                "A framework-agnostic client module must not import Svelte. Put the Svelte code in the svelte module of the method.",
+            })),
+          ],
           patterns: [
             {
               group: ["react/*", "react-dom/*", "next/*"],
@@ -153,13 +175,50 @@ export default defineConfig([
                 "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
             },
             {
+              group: ["svelte/*", "convex-svelte/*", "@sveltejs/*", "$app/*"],
+              message:
+                "A framework-agnostic client module must not import Svelte. Put the Svelte code in the svelte module of the method.",
+            },
+            {
               regex:
                 "^\\.{1,2}/(?:.*/)?(?:react/|react(?:[._-][^/]*)?$|[^/]*\\.tsx$)",
               message:
                 "A framework-agnostic client module must not import a module of the React bindings.",
             },
+            {
+              regex:
+                "^\\.{1,2}/(?:.*/)?(?:svelte/|sveltekit/|svelte(?:[._-][^/]*)?$|[^/]*\\.svelte\\.ts$)",
+              message:
+                "A framework-agnostic client module must not import a module of the Svelte bindings.",
+            },
           ],
         },
+      ],
+    },
+  },
+  {
+    // Svelte compiles runes only in `.svelte.ts` modules, so no other module
+    // may use them. Svelte declares them as globals, which `tsc` thus
+    // accepts anywhere.
+    files: ["packages/core/src/**/*.{ts,tsx}"],
+    // `.svelte.test.ts` and `.svelte.fixture.ts` modules compile too.
+    ignores: ["**/*.svelte.ts", "**/*.svelte.*.ts"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        ...[
+          "$state",
+          "$derived",
+          "$effect",
+          "$props",
+          "$bindable",
+          "$inspect",
+          "$host",
+        ].map((name) => ({
+          name,
+          message:
+            "Runes compile only in a .svelte.ts module. Move the code to one.",
+        })),
       ],
     },
   },
