@@ -143,9 +143,8 @@ export type EmailMagicLinkProfile = Record<string, never>;
  * - `sendEmailMagicLink` sends the link. It creates no user, and it gives
  *   the same result whether the address has an account or not.
  * - `signInWithEmailMagicLink` signs in the user that has verified the
- *   address, whichever method they signed up with. When no user has, it
- *   creates one with the app's `createUser`, and records the address as its
- *   primary email address.
+ *   address. When no user has, it creates one with the app's `createUser`,
+ *   and records the address as its primary email address.
  * - A link works once, for 10 minutes, and only in the browser that asked
  *   for it.
  */
