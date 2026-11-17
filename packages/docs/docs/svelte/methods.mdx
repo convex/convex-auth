@@ -34,6 +34,7 @@ The functions resolve to a result and never reject. A thrown error comes back
 as `OTHER_ERROR`, with the original error on `cause`. The `userError` codes are
 the ones of the method guides.
 
+{/* prettier-ignore */}
 ```html title="src/SignIn.svelte"
 <script lang="ts">
   import { useSignInWithUsernamePassword } from "@convex-dev/auth/methods/username-password/svelte";
@@ -57,20 +58,20 @@ the ones of the method guides.
   <input
     id="username"
     autocomplete="username"
-    bind:value="{username}"
-    disabled="{login.pending}"
+    bind:value={username}
+    disabled={login.pending}
   />
   <input
     id="password"
     type="password"
     autocomplete="current-password"
-    bind:value="{password}"
-    disabled="{login.pending}"
+    bind:value={password}
+    disabled={login.pending}
   />
   {#if error}
-  <p role="alert">{error}</p>
+    <p role="alert">{error}</p>
   {/if}
-  <button disabled="{login.pending}">Sign in</button>
+  <button disabled={login.pending}>Sign in</button>
 </form>
 ```
 
@@ -81,11 +82,12 @@ The hooks of the landing pages of the emailed links
 `useCompleteChangeEmail`) return `{ current }` where the React hooks return
 the state itself. They start when the component mounts:
 
+{/* prettier-ignore */}
 ```html title="src/routes/validate-email/+page.svelte"
 <script lang="ts">
   import { page } from "$app/state";
   import { useCompleteSignUpWithEmailPassword } from "@convex-dev/auth/methods/email-password/svelte";
-  import { api } from "../../convex/_generated/api";
+  import { api } from "../../../convex/_generated/api";
 
   const signUp = useCompleteSignUpWithEmailPassword(api.auth, {
     emailCode: page.url.searchParams.get("code") ?? "",
@@ -93,11 +95,11 @@ the state itself. They start when the component mounts:
 </script>
 
 {#if signUp.current.status === "loading"}
-<p>Validating your email…</p>
+  <p>Validating your email…</p>
 {:else if signUp.current.status === "complete"}
-<p>Your email is validated, and you're signed in.</p>
+  <p>Your email is validated, and you're signed in.</p>
 {:else}
-<p role="alert">{signUp.current.userError.error}</p>
+  <p role="alert">{signUp.current.userError.error}</p>
 {/if}
 ```
 
@@ -128,6 +130,7 @@ providers work the same way. The client finishes the sign-in on the page the
 provider redirects back to. A failure after the redirect, like the user
 cancelling at GitHub, shows up in `useOauth().flowError` on that page:
 
+{/* prettier-ignore */}
 ```html title="src/SocialButtons.svelte"
 <script lang="ts">
   import {
@@ -140,9 +143,9 @@ cancelling at GitHub, shows up in `useOauth().flowError` on that page:
   const oauth = useOauth();
 </script>
 
-<button onclick="{()" ="">github.signIn()}>Continue with GitHub</button>
+<button onclick={() => github.signIn()}>Continue with GitHub</button>
 {#if oauth.flowError}
-<p role="alert">Sign-in failed: {oauth.flowError.error}</p>
+  <p role="alert">Sign-in failed: {oauth.flowError.error}</p>
 {/if}
 ```
 

@@ -26,7 +26,9 @@ This is a pnpm monorepo:
   comments of `packages/core/src` compile against it (`pnpm
 check:doc-examples`). It is not an example to copy.
 - `packages/docs` — the documentation site (private). The pages are in
-  `docs/`.
+  `docs/`. Prettier formats an `html` code block as HTML, which breaks the
+  Svelte syntax in it (`onclick={() => …}`, `{#if}`): put
+  `{/* prettier-ignore */}` before each code block of a Svelte component.
 - `packages/passkey-test-authenticator` — a software WebAuthn authenticator
   for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own

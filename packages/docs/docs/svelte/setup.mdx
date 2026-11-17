@@ -27,7 +27,7 @@ bindings of Convex:
 npm i convex-svelte
 ```
 
-The Svelte bindings need `svelte` 5, `convex-svelte` 0.15 or later, and
+The Svelte bindings need `svelte` 5.19, `convex-svelte` 0.15 or later, and
 `convex` 1.48 or later.
 
 </Step>
@@ -51,6 +51,7 @@ export of `isAuthenticated`, `signOut`, and `refreshSession` that the
 Call `setupConvexAuth` in your root component, in place of `setupConvex` from
 `convex-svelte`:
 
+{/* prettier-ignore */}
 ```html title="src/App.svelte"
 <script lang="ts">
   import { setupConvexAuth } from "@convex-dev/auth/svelte";
@@ -105,6 +106,7 @@ React:
 
 Call them during component initialization:
 
+{/* prettier-ignore */}
 ```html title="src/SignOut.svelte"
 <script lang="ts">
   import { useAuth } from "convex-svelte";
@@ -115,9 +117,9 @@ Call them during component initialization:
 </script>
 
 {#if auth.isLoading}
-<p>Loading…</p>
+  <p>Loading…</p>
 {:else if auth.isAuthenticated}
-<button onclick="{()" ="">signOut()}>Sign out</button>
+  <button onclick={() => signOut()}>Sign out</button>
 {/if}
 ```
 

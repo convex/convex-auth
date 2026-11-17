@@ -46,8 +46,13 @@ the Svelte bindings of Convex:
 npm i convex-svelte
 ```
 
-The SvelteKit bindings need `svelte` 5, `@sveltejs/kit` 2, `convex-svelte`
-0.15 or later, and `convex` 1.48 or later.
+The SvelteKit bindings need `svelte` 5.19, `@sveltejs/kit` 2.12,
+`convex-svelte` 0.15 or later, and `convex` 1.48 or later.
+
+The examples of this guide import the generated `api` from the `convex/`
+directory at the root of the project, where the Getting started guide puts
+it. If you moved your functions to `src/convex/` with a `convex.json`, as the
+`convex-svelte` README suggests, drop one `../` from each of these imports.
 
 </Step>
 
@@ -79,7 +84,7 @@ for the functions each method needs.
 import { dev } from "$app/environment";
 import { PUBLIC_CONVEX_URL } from "$env/static/public";
 import { setupConvexAuthServer } from "@convex-dev/auth/ssr";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 
 export const auth = setupConvexAuthServer({
   convexUrl: PUBLIC_CONVEX_URL,
@@ -148,7 +153,7 @@ Create `src/lib/server/convexAuth.ts` and call `setupConvexAuthSvelteKit` from
 ```ts title="src/lib/server/convexAuth.ts"
 import { PUBLIC_CONVEX_URL } from "$env/static/public";
 import { setupConvexAuthSvelteKit } from "@convex-dev/auth/ssr/sveltekit";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 
 export const {
   convexAuthSvelteKitHandle,
@@ -223,11 +228,12 @@ Then call `setupConvexAuthSvelteKit` from
 `@convex-dev/auth/ssr/sveltekit/client` in the root layout, in place of
 `setupConvex`:
 
+{/* prettier-ignore */}
 ```html title="src/routes/+layout.svelte"
 <script lang="ts">
   import { setupConvexAuthSvelteKit } from "@convex-dev/auth/ssr/sveltekit/client";
   import { PUBLIC_CONVEX_URL } from "$env/static/public";
-  import { api } from "../convex/_generated/api";
+  import { api } from "../../convex/_generated/api";
 
   let { children, data } = $props();
 
@@ -258,7 +264,7 @@ The hook resolves each request inside `withServerConvexToken` of
 ```ts title="src/routes/product/+page.server.ts"
 import { createConvexHttpClient } from "convex-svelte/sveltekit";
 import { PUBLIC_CONVEX_URL } from "$env/static/public";
-import { api } from "../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async () => {
