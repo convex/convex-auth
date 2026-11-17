@@ -68,8 +68,7 @@ export type {
  * throwing it.
  */
 export type CompletePasswordRecoveryState =
-  | LinkCheckedState
-  | PasswordRecoveryCheckFailedState;
+  LinkCheckedState | PasswordRecoveryCheckFailedState;
 
 /** The `pending` flag of a helper, read through a getter. */
 function pendingOf(store: ReadableStore<boolean>): {
@@ -181,7 +180,8 @@ export function useSignUpWithEmailPassword(api: {
  * // In the template: {#if signUp.current.status === "complete"}…{/if}
  * ```
  *
- * @param options.emailCode The `code` query parameter of the link.
+ * @param api The functions of the method, usually `api.auth`.
+ * @param emailCode The `code` query parameter of the link.
  */
 export function useCompleteSignUpWithEmailPassword(
   api: { completeSignUpWithEmailPassword: CompleteSignUpMutation },
@@ -258,7 +258,7 @@ export function useStartPasswordRecovery(api: {
  * ```
  *
  * @param recoveryApi The functions of the method, usually `api.auth`.
- * @param options.emailCode The `code` query parameter of the link.
+ * @param emailCode The `code` query parameter of the link.
  */
 export function useCompletePasswordRecovery(
   recoveryApi: PasswordRecoveryApi,
@@ -337,7 +337,8 @@ export function useStartChangeEmail(api: {
  * // In the template: {#if change.current.status === "complete"}…{/if}
  * ```
  *
- * @param options.emailCode The `code` query parameter of the link.
+ * @param api The functions of the method, usually `api.auth`.
+ * @param emailCode The `code` query parameter of the link.
  */
 export function useCompleteChangeEmail(
   api: { completeChangeEmail: CompleteChangeEmailMutation },
