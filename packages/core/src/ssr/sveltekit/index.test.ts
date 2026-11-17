@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { isRedirect, type Cookies, type RequestEvent } from "@sveltejs/kit";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_JWT_COOKIE, AUTH_REFRESH_COOKIE } from "../cookies.ts";
 import { setupConvexAuthSvelteKit } from "./index.ts";
 
@@ -14,19 +14,32 @@ function jwt(inSeconds: number) {
 
 const rotated = { accessToken: jwt(3600), refreshToken: "refresh-2" };
 
-// The refresh mutation rotates the session.
+// The refresh mutation rotates the session, and the `isAuthenticated` query
+// says yes.
+const convex = vi.hoisted(() => ({
+  mutation: vi.fn(),
+  query: vi.fn(async () => true),
+}));
 vi.mock("convex/browser", () => ({
   ConvexHttpClient: class {
-    mutation = async () => ({
-      kind: "rotated",
-      tokens: {
-        ...rotated,
-        refreshTokenExpiresAt: Date.now() + 86_400_000,
-        userId: "user",
-      },
-    });
+    setAuth() {}
+    mutation = convex.mutation;
+    query = convex.query;
   },
 }));
+convex.mutation.mockImplementation(async () => ({
+  kind: "rotated",
+  tokens: {
+    ...rotated,
+    refreshTokenExpiresAt: Date.now() + 86_400_000,
+    userId: "user",
+  },
+}));
+
+beforeEach(() => {
+  convex.mutation.mockClear();
+  convex.query.mockClear();
+});
 
 function fakeCookies(initial: Record<string, string>): Cookies {
   const jar = new Map(Object.entries(initial));
@@ -49,25 +62,71 @@ function rejection(promise: () => unknown): Promise<unknown> {
     );
 }
 
+const config = {
+  convexUrl: "https://example.convex.cloud",
+  refreshSession: "auth:refreshSession" as never,
+  isAuthenticated: "auth:isAuthenticated" as never,
+};
+
+/** A request to `path` with `cookies`. */
+function requestEvent(
+  cookies: Record<string, string>,
+  { isDataRequest = false, path = "/" } = {},
+) {
+  return {
+    isDataRequest,
+    url: new URL(`https://app.example${path}`),
+    request: new Request(`https://app.example${path}`),
+    cookies: fakeCookies(cookies),
+  } as unknown as RequestEvent;
+}
+
 describe("convexAuthSvelteKitHandle", () => {
-  const { convexAuthSvelteKitHandle } = setupConvexAuthSvelteKit({
-    convexUrl: "https://example.convex.cloud",
-    refreshSession: "auth:refreshSession" as never,
-    isAuthenticated: "auth:isAuthenticated" as never,
-  });
+  const { convexAuthSvelteKitHandle } = setupConvexAuthSvelteKit(config);
 
   /** A request whose access token is about to expire, so the hook refreshes it. */
-  function expiringRequest(isDataRequest = false) {
-    return {
-      isDataRequest,
-      url: new URL("https://app.example/api/admin"),
-      request: new Request("https://app.example/api/admin"),
-      cookies: fakeCookies({
+  function expiringRequest(isDataRequest = false, path = "/api/admin") {
+    return requestEvent(
+      {
         [AUTH_JWT_COOKIE]: jwt(5),
         [AUTH_REFRESH_COOKIE]: "refresh-1",
-      }),
-    } as unknown as RequestEvent;
+      },
+      { isDataRequest, path },
+    );
   }
+
+  it("leaves the auth routes alone, which set their own cookies", async () => {
+    const handle = convexAuthSvelteKitHandle();
+    for (const path of ["/auth/signin", "/auth/refresh", "/auth/signout"]) {
+      const event = expiringRequest(false, path);
+      const resolve = vi.fn(() => new Response("route"));
+      const response = await handle({ event, resolve });
+      expect(resolve).toHaveBeenCalledWith(event);
+      expect(response.headers.getSetCookie()).toEqual([]);
+      expect(event.cookies.get(AUTH_REFRESH_COOKIE)).toBe("refresh-1");
+    }
+    expect(convex.mutation).not.toHaveBeenCalled();
+
+    // Any other route refreshes the expiring session.
+    await handle({
+      event: expiringRequest(false, "/auth/other"),
+      resolve: () => new Response("page"),
+    });
+    expect(convex.mutation).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the configured auth routes alone", async () => {
+    const { convexAuthSvelteKitHandle } = setupConvexAuthSvelteKit({
+      ...config,
+      authRoutes: ["/api/auth/refresh"],
+    });
+    const handle = convexAuthSvelteKitHandle();
+    await handle({
+      event: expiringRequest(false, "/api/auth/refresh"),
+      resolve: () => new Response("route"),
+    });
+    expect(convex.mutation).not.toHaveBeenCalled();
+  });
 
   const rotatedCookies = [
     `${AUTH_JWT_COOKIE}=${rotated.accessToken}`,
@@ -152,5 +211,53 @@ describe("convexAuthSvelteKitHandle", () => {
     expect(response.status).toBe(403);
     expect(response.headers.get("x-kept")).toBe("yes");
     expect(response.headers.getSetCookie()).toEqual(rotatedCookies);
+  });
+});
+
+describe("convexAuthSvelteKitAccessToken", () => {
+  const { convexAuthSvelteKitAccessToken } = setupConvexAuthSvelteKit(config);
+
+  it("returns the access token of the request while it is valid", () => {
+    const token = jwt(60);
+    expect(
+      convexAuthSvelteKitAccessToken(
+        requestEvent({ [AUTH_JWT_COOKIE]: token }),
+      ),
+    ).toBe(token);
+  });
+
+  it("returns null for an expired token or none, without refreshing", () => {
+    expect(
+      convexAuthSvelteKitAccessToken(
+        requestEvent({
+          [AUTH_JWT_COOKIE]: jwt(-60),
+          [AUTH_REFRESH_COOKIE]: "refresh-1",
+        }),
+      ),
+    ).toBeNull();
+    expect(convexAuthSvelteKitAccessToken(requestEvent({}))).toBeNull();
+    expect(convex.mutation).not.toHaveBeenCalled();
+  });
+});
+
+describe("isAuthenticatedSvelteKit", () => {
+  const { isAuthenticatedSvelteKit } = setupConvexAuthSvelteKit(config);
+
+  it("asks the backend once per request", async () => {
+    const event = requestEvent({ [AUTH_JWT_COOKIE]: jwt(60) });
+    await expect(isAuthenticatedSvelteKit(event)).resolves.toBe(true);
+    await expect(isAuthenticatedSvelteKit(event)).resolves.toBe(true);
+    expect(convex.query).toHaveBeenCalledTimes(1);
+
+    const next = requestEvent({ [AUTH_JWT_COOKIE]: jwt(60) });
+    await expect(isAuthenticatedSvelteKit(next)).resolves.toBe(true);
+    expect(convex.query).toHaveBeenCalledTimes(2);
+  });
+
+  it("is false without a token, without asking the backend", async () => {
+    await expect(isAuthenticatedSvelteKit(requestEvent({}))).resolves.toBe(
+      false,
+    );
+    expect(convex.query).not.toHaveBeenCalled();
   });
 });
