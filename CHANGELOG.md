@@ -26,8 +26,8 @@
     error rather than throwing it. It then answers with an `OTHER_ERROR`
     state (`PasswordRecoveryCheckFailedState`).
 - Svelte and SvelteKit bindings, on top of the method clients, with the API
-  of `@mmailaender/convex-auth-svelte`. They need `svelte` 5,
-  `convex-svelte` 0.15, and, for SvelteKit, `@sveltejs/kit` 2, which are
+  of `@mmailaender/convex-auth-svelte`. They need `svelte` 5.19,
+  `convex-svelte` 0.15, and, for SvelteKit, `@sveltejs/kit` 2.12, which are
   optional peer dependencies.
   - `@convex-dev/auth/svelte`: `setupConvexAuth`, `useAuthActions`, and
     `useAuthToken`, the counterpart of `@convex-dev/auth/react`.
@@ -37,6 +37,20 @@
     Next.js bindings.
   - `@convex-dev/auth/methods/<method>/svelte` for the same methods as
     `/browser`, with the hooks of the React clients under the same names.
+
+### Changed
+
+- The `pending` flag of the username + password hooks
+  (`useSignInWithUsernamePassword`, `useSignUpWithUsernamePassword`) stays
+  `true` until the last of several concurrent calls ends. It used to turn
+  `false` when the first one ended.
+- The errors of the OAuth hooks (`useOauth`, and the sign-in hooks of the
+  providers): outside of a provider, they throw "Must be used within a
+  <ConvexAuthProvider>.", as the other hooks do, where the message named the
+  internal `useAmbientSignInValue`. When `oauth()` is not
+  registered, the error names `oauth()` from
+  `@convex-dev/auth/methods/oauth/browser`, which `/oauth/react` and
+  `/oauth/svelte` also export.
 
 ## 2.0.0
 

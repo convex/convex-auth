@@ -55,7 +55,8 @@ export type { ReadableStore } from "../../browser/store.ts";
 const NOT_REGISTERED_ERROR =
   "No OAuth setup is registered. Include oauth() from " +
   "@convex-dev/auth/methods/oauth/browser in the `ambientSignIns` of the " +
-  "AuthClient. ConvexAuthProvider and ConvexAuthNextjsProvider register it " +
+  "AuthClient (…/oauth/react and …/oauth/svelte export the same oauth()). " +
+  "ConvexAuthProvider and ConvexAuthNextjsProvider register it " +
   "by default, so include it yourself if you set their `ambientSignIns` prop.";
 
 /** The OAuth state that isn't tied to one provider. */
