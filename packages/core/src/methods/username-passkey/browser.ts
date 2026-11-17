@@ -4,22 +4,17 @@
  * `@convex-dev/auth/methods/username-passkey/react` wrap it, and a binding
  * for another framework can too.
  *
- * It has three layers, from the most to the least batteries-included:
+ * It has two parts:
  *
  * - The clients of a page: {@link createSignInWithUsernamePasskey} (the
  *   login form, with passkey autofill), {@link createAddPasskey} and
  *   {@link createRemovePasskey} (the settings page). Each returns plain
  *   async functions and a {@link ReadableStore} for its state. Make one per
  *   component instance.
- * - The building blocks they are made of: the autofill loop
- *   ({@link createPasskeyAutofill}), the slot that runs one modal ceremony
- *   at a time ({@link createPasskeyCeremonySlot}), and the flows
- *   ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow},
- *   {@link runRemovePasskeyFlow}).
- * - The ceremonies: {@link browserCeremonies} runs them in a browser,
- *   through `@simplewebauthn/browser`. {@link resolveCeremonies} turns the
- *   ceremonies of another platform (for example a React Native passkey
- *   library) into the same shape.
+ * - The ceremonies that the clients run: {@link browserCeremonies} runs them
+ *   in a browser, through `@simplewebauthn/browser`. {@link resolveCeremonies}
+ *   turns the ceremonies of another platform (for example a React Native
+ *   passkey library) into the same shape.
  *
  * The functions never throw: they return discriminated unions, and fold
  * every failure into a `userError`.
@@ -66,61 +61,19 @@
  */
 
 export {
-  authenticate,
-  authenticateWithAutofill,
   browserCeremonies,
-  isConditionalMediationAvailable,
-  register,
-  supportsWebAuthn,
-  type AuthenticationResponseJSON,
-  type PublicKeyCredentialCreationOptionsJSON,
-  type PublicKeyCredentialRequestOptionsJSON,
-  type RegistrationResponseJSON,
-  type WireAuthenticationResponse,
   type WireCreationOptions,
-  type WireRegistrationResponse,
   type WireRequestOptions,
 } from "./client.ts";
 export {
-  foldClientError,
   resolveCeremonies,
   type PasskeyAuthenticationResponse,
-  type PasskeyAuthenticationResult,
   type PasskeyCeremonies,
   type PasskeyClientError,
   type PasskeyClientFailure,
   type PasskeyRegistrationResponse,
-  type PasskeyRegistrationResult,
   type ResolvedPasskeyCeremonies,
 } from "./ceremonies.ts";
-export {
-  runSignInOrSignUpFlow,
-  type SignInFlowContext,
-  type SignInFlowResult,
-  type UsernamePasskeyApi,
-  type UsernamePasskeyAutofillError,
-} from "./flows.ts";
-export {
-  runAddPasskeyFlow,
-  runRemovePasskeyFlow,
-  type AddPasskeyApi,
-  type AddPasskeyFlowResult,
-  type ManagementFlowContext,
-  type RemovePasskeyApi,
-  type RemovePasskeyFlowResult,
-} from "./management/flows.ts";
-export {
-  createPasskeyAutofill,
-  createPasskeyCeremonySlot,
-  type AlreadyPendingError,
-  type AlreadyPendingFailure,
-  type PasskeyAutofill,
-  type PasskeyAutofillGates,
-  type PasskeyAutofillOptions,
-  type PasskeyAutofillState,
-  type PasskeyAutofillStatus,
-  type PasskeyCeremonySlot,
-} from "./autofill.ts";
 export {
   createSignInWithUsernamePasskey,
   type SignInWithUsernamePasskeyClient,
@@ -136,23 +89,19 @@ export {
   type RemovePasskeyClient,
   type RemovePasskeyResult,
 } from "./management/managementClient.ts";
-// The results of the functions of the method, for a binding that calls the
-// ones without a client (`listPasskeys`, `renamePasskey`) itself.
 export type {
-  FinishSignInResult,
-  FinishSignUpResult,
-  StartAutofillSignInResult,
-  StartSignInResult,
-} from "./server.ts";
+  UsernamePasskeyApi,
+  UsernamePasskeyAutofillError,
+} from "./flows.ts";
+export type { AddPasskeyApi, RemovePasskeyApi } from "./management/flows.ts";
+export type {
+  AlreadyPendingError,
+  AlreadyPendingFailure,
+  PasskeyAutofillState,
+  PasskeyAutofillStatus,
+} from "./autofill.ts";
+// The results of the functions without a client, which a binding calls on
+// its own Convex client.
 export type { ListPasskeysResult } from "./management/list.ts";
 export type { RenamePasskeyResult } from "./management/rename.ts";
-export type {
-  FinishAddPasskeyResult,
-  StartAddPasskeyResult,
-  VerifyAddPasskeyResult,
-} from "./management/add.ts";
-export type {
-  FinishRemovePasskeyResult,
-  StartRemovePasskeyResult,
-} from "./management/remove.ts";
 export type { ReadableStore } from "../../browser/store.ts";

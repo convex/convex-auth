@@ -10,21 +10,22 @@
  * @module
  */
 
-import type { ConvexMutationApi } from "../../../browser/ambientSignInClient.ts";
 import type { ReadableStore } from "../../../browser/store.ts";
 import {
   createPasskeyCeremonySlot,
   type AlreadyPendingFailure,
 } from "../autofill.ts";
-import type { ResolvedPasskeyCeremonies } from "../ceremonies.ts";
 import {
   runAddPasskeyFlow,
   runRemovePasskeyFlow,
   type AddPasskeyApi,
   type AddPasskeyFlowResult,
+  type PasskeyManagementOptions,
   type RemovePasskeyApi,
   type RemovePasskeyFlowResult,
 } from "./flows.ts";
+
+export type { PasskeyManagementOptions } from "./flows.ts";
 
 /** The result of `addPasskey` of {@link createAddPasskey}. */
 export type AddPasskeyResult = AddPasskeyFlowResult | AlreadyPendingFailure;
@@ -32,19 +33,6 @@ export type AddPasskeyResult = AddPasskeyFlowResult | AlreadyPendingFailure;
 /** The result of `removePasskey` of {@link createRemovePasskey}. */
 export type RemovePasskeyResult =
   RemovePasskeyFlowResult | AlreadyPendingFailure;
-
-/** What the management clients take. */
-export type PasskeyManagementOptions<Api> = {
-  /** Runs the mutations of the flow on the Convex client of the app. */
-  convex: ConvexMutationApi;
-  /** The passkey-management functions, usually `api.auth`. */
-  api: Api;
-  /**
-   * The passkey ceremonies of the platform: `browserCeremonies` in a
-   * browser, or `resolveCeremonies(…)` of the app's own.
-   */
-  ceremonies: ResolvedPasskeyCeremonies;
-};
 
 /** The client of the "Add a passkey" button. */
 export type AddPasskeyClient = {
@@ -82,14 +70,7 @@ export function createAddPasskey(
   // Not a log in page, so there is no autofill here.
   const slot = createPasskeyCeremonySlot({ autofill: null });
   return {
-    addPasskey: () =>
-      slot.run(() =>
-        runAddPasskeyFlow({
-          convex: options.convex,
-          api: options.api,
-          ceremonies: options.ceremonies,
-        }),
-      ),
+    addPasskey: () => slot.run(() => runAddPasskeyFlow(options)),
     pending: slot.pending,
   };
 }
@@ -104,16 +85,7 @@ export function createRemovePasskey(
   const slot = createPasskeyCeremonySlot({ autofill: null });
   return {
     removePasskey: (passkeyId) =>
-      slot.run(() =>
-        runRemovePasskeyFlow(
-          {
-            convex: options.convex,
-            api: options.api,
-            ceremonies: options.ceremonies,
-          },
-          { passkeyId },
-        ),
-      ),
+      slot.run(() => runRemovePasskeyFlow(options, { passkeyId })),
     pending: slot.pending,
   };
 }

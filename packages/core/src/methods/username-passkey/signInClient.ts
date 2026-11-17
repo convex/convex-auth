@@ -10,12 +10,7 @@
  * @module
  */
 
-import type {
-  AuthSignInApi,
-  ConvexMutationApi,
-} from "../../browser/ambientSignInClient.ts";
-import type { AuthClient } from "../../browser/sessionManager.ts";
-import type { ReadableStore } from "../../browser/store.ts";
+import { createStore, type ReadableStore } from "../../browser/store.ts";
 import type { SignInError } from "../../lib/types.ts";
 import {
   createPasskeyAutofill,
@@ -24,17 +19,15 @@ import {
   type AlreadyPendingFailure,
   type PasskeyAutofillState,
 } from "./autofill.ts";
-import type {
-  PasskeyClientError,
-  PasskeyClientFailure,
-  ResolvedPasskeyCeremonies,
-} from "./ceremonies.ts";
+import type { PasskeyClientError, PasskeyClientFailure } from "./ceremonies.ts";
 import {
   runSignInOrSignUpFlow,
   type SignInFlowResult,
-  type UsernamePasskeyApi,
+  type SignInWithUsernamePasskeyOptions,
   type UsernamePasskeyAutofillError,
 } from "./flows.ts";
+
+export type { SignInWithUsernamePasskeyOptions } from "./flows.ts";
 
 /**
  * The result of `signIn` of the passkey sign-in page.
@@ -46,26 +39,6 @@ import {
  */
 export type SignInWithUsernamePasskeyResult =
   SignInFlowResult | SignInError<PasskeyClientError | AlreadyPendingError>;
-
-/** What {@link createSignInWithUsernamePasskey} takes. */
-export type SignInWithUsernamePasskeyOptions = {
-  /** The client the session goes to. */
-  authClient: Pick<AuthClient, "setSession">;
-  /**
-   * Runs the finish mutations, which mint a session, so under SSR they go
-   * through the auth proxy.
-   */
-  signInApi: AuthSignInApi;
-  /** Runs the start mutations, which mint no session, on the Convex client. */
-  convex: ConvexMutationApi;
-  /** The functions of the method, usually `api.auth`. */
-  api: UsernamePasskeyApi;
-  /**
-   * The passkey ceremonies of the platform: `browserCeremonies` in a
-   * browser, or `resolveCeremonies(…)` of the app's own.
-   */
-  ceremonies: ResolvedPasskeyCeremonies;
-};
 
 /** The client of the passkey sign-in page. */
 export type SignInWithUsernamePasskeyClient = {
@@ -136,16 +109,7 @@ export function createSignInWithUsernamePasskey(
     username: string;
   }): Promise<SignInWithUsernamePasskeyResult> => {
     const signInResult = await slot.run(() =>
-      runSignInOrSignUpFlow(
-        {
-          convex: options.convex,
-          api: options.api,
-          signInApi: options.signInApi,
-          setSession: (session) => options.authClient.setSession(session),
-          ceremonies: options.ceremonies,
-        },
-        { username },
-      ),
+      runSignInOrSignUpFlow(options, { username }),
     );
     if ("status" in signInResult) {
       // This is the result of `runSignInOrSignUpFlow`. It can be directly
@@ -159,31 +123,19 @@ export function createSignInWithUsernamePasskey(
     return { status: "error", userError: signInResult.userError };
   };
 
-  const isPending = () =>
-    slot.pending.get() || autofill.state.get().status === "signingIn";
+  // A sign-in runs: a `signIn` call, or an autofill pick that the server
+  // verifies. The store tells only when the combined value changes.
+  const pending = createStore(false);
+  const updatePending = () =>
+    pending.set(
+      slot.pending.get() || autofill.state.get().status === "signingIn",
+    );
+  slot.pending.subscribe(updatePending);
+  autofill.state.subscribe(updatePending);
 
   return {
     signIn,
-    pending: {
-      get: isPending,
-      subscribe: (listener) => {
-        // Tell only when the combined value changes.
-        let last = isPending();
-        const onChange = () => {
-          const next = isPending();
-          if (next !== last) {
-            last = next;
-            listener();
-          }
-        };
-        const unsubscribeSlot = slot.pending.subscribe(onChange);
-        const unsubscribeAutofill = autofill.state.subscribe(onChange);
-        return () => {
-          unsubscribeSlot();
-          unsubscribeAutofill();
-        };
-      },
-    },
+    pending: { get: pending.get, subscribe: pending.subscribe },
     autofill: autofill.state,
     startAutofill: autofill.start,
   };

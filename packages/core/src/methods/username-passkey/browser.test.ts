@@ -2,19 +2,23 @@ import { getFunctionName, anyApi, type FunctionReference } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
 import type { TokenBundle } from "../../lib/types.ts";
+import type {
+  WireAuthenticationResponse,
+  WireRegistrationResponse,
+} from "../../components/passkey/validation.ts";
 import {
-  createAddPasskey,
   createPasskeyAutofill,
   createPasskeyCeremonySlot,
+} from "./autofill.ts";
+import {
+  createAddPasskey,
   createRemovePasskey,
   createSignInWithUsernamePasskey,
   type AddPasskeyApi,
   type RemovePasskeyApi,
   type ResolvedPasskeyCeremonies,
   type UsernamePasskeyApi,
-  type WireAuthenticationResponse,
   type WireCreationOptions,
-  type WireRegistrationResponse,
   type WireRequestOptions,
 } from "./browser.ts";
 

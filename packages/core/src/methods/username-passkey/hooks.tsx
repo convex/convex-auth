@@ -87,11 +87,7 @@ export function useSignInWithUsernamePasskeyImpl(
        *   {@link PasskeyAutofillStatus}.
        * - `lastError`: the most recent failure, for display or logging.
        */
-      autofill: {
-        available: autofill.available,
-        status: autofill.status,
-        lastError: autofill.lastError,
-      },
+      autofill,
     }),
     [client, pending, autofill],
   );

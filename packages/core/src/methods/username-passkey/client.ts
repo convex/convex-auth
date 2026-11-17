@@ -2,9 +2,9 @@
  * The browser ceremonies of the username-passkey method.
  *
  * The React hooks in `react.tsx` run them, and
- * `@convex-dev/auth/methods/username-passkey/browser` exports them for the
- * bindings of other frameworks. The `exports` field of the package blocks
- * `methods/username-passkey/client` itself.
+ * `@convex-dev/auth/methods/username-passkey/browser` exports them, as
+ * `browserCeremonies`, for the bindings of other frameworks. The `exports`
+ * field of the package blocks `methods/username-passkey/client` itself.
  *
  * These functions wrap the modal WebAuthn ceremonies through
  * `@simplewebauthn/browser`. They do not call any Convex function: a flow

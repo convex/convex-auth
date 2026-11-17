@@ -35,14 +35,11 @@ export function useAddPasskeyImpl(
   managementApi: AddPasskeyApi,
   ceremonies: ResolvedPasskeyCeremonies,
 ) {
-  const convex = useConvex();
   const client = useMethodClient(createAddPasskey, {
-    convex,
+    convex: useConvex(),
     api: managementApi,
     ceremonies,
   });
-  const pending = useReadableStore(client.pending);
-
   return {
     /**
      * Adds a passkey to the account of the signed-in user.
@@ -52,7 +49,7 @@ export function useAddPasskeyImpl(
      */
     addPasskey: client.addPasskey,
     /** `true` while an `addPasskey` call is running. */
-    pending,
+    pending: useReadableStore(client.pending),
   };
 }
 
@@ -67,14 +64,11 @@ export function useRemovePasskeyImpl(
   managementApi: RemovePasskeyApi,
   ceremonies: ResolvedPasskeyCeremonies,
 ) {
-  const convex = useConvex();
   const client = useMethodClient(createRemovePasskey, {
-    convex,
+    convex: useConvex(),
     api: managementApi,
     ceremonies,
   });
-  const pending = useReadableStore(client.pending);
-
   return {
     /**
      * Removes the given passkey from the account of the signed-in user.
@@ -84,6 +78,6 @@ export function useRemovePasskeyImpl(
      */
     removePasskey: client.removePasskey,
     /** `true` while a `removePasskey` call is running. */
-    pending,
+    pending: useReadableStore(client.pending),
   };
 }
