@@ -7,7 +7,8 @@
  * {@link createSignInWithGoogle} starts the sign-in. The `oauth()` ambient
  * sign-in of `@convex-dev/auth/methods/oauth/browser` must be registered on
  * the `AuthClient`: it finishes the flow when Google sends the user back,
- * and its `createOauthState` reads the error of the last flow.
+ * and its `createOauthState` reads the error of the last flow. The types
+ * of the results are exported there too.
  *
  * @module
  */
@@ -17,18 +18,6 @@ import {
   createOauthMethodSignIn,
   type OauthMethodOptions,
   type OauthSignInClient,
-} from "../oauth/browser.ts";
-
-export {
-  createOauthState,
-  type OauthCompleteResult,
-  type OauthFlowError,
-  type OauthMethodOptions,
-  type OauthSignIn,
-  type OauthSignInClient,
-  type OauthStartResult,
-  type OauthState,
-  type SignInOptions,
 } from "../oauth/browser.ts";
 
 /** The functions of the Google method, usually `api.auth`. */
