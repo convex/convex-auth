@@ -1,8 +1,8 @@
 /**
- * Framework-agnostic client for the OAuth methods (Google, Apple, GitHub),
- * exported at `@convex-dev/auth/methods/oauth/browser`. The React hooks of
- * `@convex-dev/auth/methods/oauth/react` read the same state, and a binding
- * for another framework can too.
+ * Framework-agnostic client for the OAuth methods (Google, Apple, GitHub,
+ * Discord), exported at `@convex-dev/auth/methods/oauth/browser`. The React
+ * hooks of `@convex-dev/auth/methods/oauth/react` wrap it, and a binding for
+ * another framework can too.
  *
  * {@link oauth} is the ambient sign-in that finishes a flow when the identity
  * provider sends the user back. A binding registers it in the
@@ -55,7 +55,8 @@ export type { ReadableStore } from "../../browser/store.ts";
 const NOT_REGISTERED_ERROR =
   "No OAuth setup is registered. Include oauth() from " +
   "@convex-dev/auth/methods/oauth/browser in the `ambientSignIns` of the " +
-  "AuthClient. The React providers register it by default.";
+  "AuthClient. ConvexAuthProvider and ConvexAuthNextjsProvider register it " +
+  "by default, so include it yourself if you set their `ambientSignIns` prop.";
 
 /** The OAuth state that isn't tied to one provider. */
 export type OauthState = {
@@ -112,10 +113,18 @@ export function createOauthState(
   };
 }
 
+/** What the `createSignInWith<Provider>` factories take. */
+export type OauthMethodOptions<Api> = {
+  /** The client that `oauth()` is registered on. */
+  authClient: Pick<AuthClient, "ambientSignInValues">;
+  /** The functions of the method, usually `api.auth`. */
+  api: Api;
+};
+
 /**
  * Run one OAuth provider's sign-in flow from its function references. The
- * `createSignInWith<Provider>` factories call this with their own
- * references.
+ * `createSignInWith<Provider>` factories, and the React hooks, call this with
+ * their own references.
  *
  * Throws when {@link oauth} is not registered on `authClient`.
  *
@@ -125,15 +134,37 @@ export function createOauthSignIn(
   authClient: Pick<AuthClient, "ambientSignInValues">,
   refs: OauthProviderRefs,
 ): OauthSignInClient {
-  const actions = authClient
-    .ambientSignInValues(OAUTH_SETUP_ID)
-    .get<OauthActions>(OAUTH_ACTIONS_KEY);
-  if (actions === undefined) {
-    throw new Error(NOT_REGISTERED_ERROR);
-  }
+  return createOauthMethodSignIn({ authClient, api: refs }, (api) => api);
+}
+
+/**
+ * The body of the `createSignInWith<Provider>` factories: map the `api` of
+ * the method to its references when signing in. Like the other method
+ * clients, it reads its options when it uses them, so a binding can pass
+ * getters.
+ *
+ * Throws when {@link oauth} is not registered on `authClient`.
+ *
+ * @internal
+ */
+export function createOauthMethodSignIn<Api>(
+  options: OauthMethodOptions<Api>,
+  refs: (api: Api) => OauthProviderRefs,
+): OauthSignInClient {
+  const actions = () => {
+    const published = options.authClient
+      .ambientSignInValues(OAUTH_SETUP_ID)
+      .get<OauthActions>(OAUTH_ACTIONS_KEY);
+    if (published === undefined) {
+      throw new Error(NOT_REGISTERED_ERROR);
+    }
+    return published;
+  };
+  // Throw now when `oauth()` isn't registered.
+  actions();
   // One function serves both call shapes. The action picks the path from
   // whether `code` is set, and the result matches the shape called.
-  const signIn = ((options?: SignInOptions) =>
-    actions.signIn(refs, options)) as OauthSignIn;
+  const signIn = (async (signInOptions?: SignInOptions) =>
+    actions().signIn(refs(options.api), signInOptions)) as OauthSignIn;
   return { signIn };
 }

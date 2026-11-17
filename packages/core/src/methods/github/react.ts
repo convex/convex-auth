@@ -15,8 +15,8 @@
  */
 "use client";
 
-import type { OauthProviderApi } from "../oauth/client.ts";
 import { useOauthSignIn, type UseOauthSignInReturn } from "../oauth/react.ts";
+import { githubRefs, type SignInWithGithubApi } from "./browser.ts";
 
 export { useOauth, type UseOauthReturn } from "../oauth/react.ts";
 export type {
@@ -37,14 +37,8 @@ export type UseSignInWithGithubReturn = {
  * (usually the generated `api.auth`), or an object mapping the canonical keys
  * to renamed exports.
  */
-export function useSignInWithGithub(api: {
-  startSignInWithGithub: OauthProviderApi["startSignIn"];
-  completeSignInWithGithub: OauthProviderApi["completeSignIn"];
-}): UseSignInWithGithubReturn {
-  const { signIn } = useOauthSignIn({
-    providerName: "github",
-    startSignIn: api.startSignInWithGithub,
-    completeSignIn: api.completeSignInWithGithub,
-  });
-  return { signIn };
+export function useSignInWithGithub(
+  api: SignInWithGithubApi,
+): UseSignInWithGithubReturn {
+  return useOauthSignIn(githubRefs(api));
 }

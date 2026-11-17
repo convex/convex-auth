@@ -1,8 +1,8 @@
 /**
  * Framework-agnostic client for the Discord sign-in method, exported at
  * `@convex-dev/auth/methods/discord/browser`. The React hook of
- * `@convex-dev/auth/methods/discord/react` does the same, and a binding for
- * another framework can wrap this one.
+ * `@convex-dev/auth/methods/discord/react` wraps it, and a binding for another
+ * framework can too.
  *
  * {@link createSignInWithDiscord} starts the sign-in. The `oauth()` ambient
  * sign-in of `@convex-dev/auth/methods/oauth/browser` must be registered on
@@ -12,25 +12,37 @@
  * @module
  */
 
-import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { OauthProviderApi, OauthProviderRefs } from "../oauth/client.ts";
 import {
-  createOauthSignIn,
-  type OauthSignIn,
+  createOauthMethodSignIn,
+  type OauthMethodOptions,
   type OauthSignInClient,
-  type SignInOptions,
 } from "../oauth/browser.ts";
-import type { OauthProviderApi } from "../oauth/client.ts";
 
 export {
   createOauthState,
   type OauthCompleteResult,
   type OauthFlowError,
+  type OauthMethodOptions,
   type OauthSignIn,
   type OauthSignInClient,
   type OauthStartResult,
   type OauthState,
   type SignInOptions,
 } from "../oauth/browser.ts";
+
+/** The functions of the Discord method, usually `api.auth`. */
+export type SignInWithDiscordApi = {
+  startSignInWithDiscord: OauthProviderApi["startSignIn"];
+  completeSignInWithDiscord: OauthProviderApi["completeSignIn"];
+};
+
+/** @internal The references of the Discord method, from its `api`. */
+export const discordRefs = (api: SignInWithDiscordApi): OauthProviderRefs => ({
+  providerName: "discord",
+  startSignIn: api.startSignInWithDiscord,
+  completeSignIn: api.completeSignInWithDiscord,
+});
 
 /**
  * Make the client that signs in with Discord. Pass the module exporting the
@@ -57,26 +69,8 @@ export {
  * }
  * ```
  */
-export function createSignInWithDiscord(options: {
-  /** The client that `oauth()` is registered on. */
-  authClient: Pick<AuthClient, "ambientSignInValues">;
-  /** The functions of the method, usually `api.auth`. */
-  api: {
-    startSignInWithDiscord: OauthProviderApi["startSignIn"];
-    completeSignInWithDiscord: OauthProviderApi["completeSignIn"];
-  };
-}): OauthSignInClient {
-  // Like the other method clients, read the options when signing in, so a
-  // binding can pass getters.
-  const client = () =>
-    createOauthSignIn(options.authClient, {
-      providerName: "discord",
-      startSignIn: options.api.startSignInWithDiscord,
-      completeSignIn: options.api.completeSignInWithDiscord,
-    });
-  // Throw now when `oauth()` isn't registered.
-  client();
-  const signIn = (async (signInOptions?: SignInOptions) =>
-    client().signIn(signInOptions as never)) as OauthSignIn;
-  return { signIn };
+export function createSignInWithDiscord(
+  options: OauthMethodOptions<SignInWithDiscordApi>,
+): OauthSignInClient {
+  return createOauthMethodSignIn(options, discordRefs);
 }

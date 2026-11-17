@@ -15,8 +15,8 @@
  */
 "use client";
 
-import type { OauthProviderApi } from "../oauth/client.ts";
 import { useOauthSignIn, type UseOauthSignInReturn } from "../oauth/react.ts";
+import { appleRefs, type SignInWithAppleApi } from "./browser.ts";
 
 export { useOauth, type UseOauthReturn } from "../oauth/react.ts";
 export type {
@@ -37,14 +37,8 @@ export type UseSignInWithAppleReturn = {
  * (usually the generated `api.auth`), or an object mapping the canonical keys
  * to renamed exports.
  */
-export function useSignInWithApple(api: {
-  startSignInWithApple: OauthProviderApi["startSignIn"];
-  completeSignInWithApple: OauthProviderApi["completeSignIn"];
-}): UseSignInWithAppleReturn {
-  const { signIn } = useOauthSignIn({
-    providerName: "apple",
-    startSignIn: api.startSignInWithApple,
-    completeSignIn: api.completeSignInWithApple,
-  });
-  return { signIn };
+export function useSignInWithApple(
+  api: SignInWithAppleApi,
+): UseSignInWithAppleReturn {
+  return useOauthSignIn(appleRefs(api));
 }

@@ -1,8 +1,8 @@
 /**
  * Framework-agnostic client for the Google sign-in method, exported at
  * `@convex-dev/auth/methods/google/browser`. The React hook of
- * `@convex-dev/auth/methods/google/react` does the same, and a binding for
- * another framework can wrap this one.
+ * `@convex-dev/auth/methods/google/react` wraps it, and a binding for another
+ * framework can too.
  *
  * {@link createSignInWithGoogle} starts the sign-in. The `oauth()` ambient
  * sign-in of `@convex-dev/auth/methods/oauth/browser` must be registered on
@@ -12,25 +12,37 @@
  * @module
  */
 
-import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { OauthProviderApi, OauthProviderRefs } from "../oauth/client.ts";
 import {
-  createOauthSignIn,
-  type OauthSignIn,
+  createOauthMethodSignIn,
+  type OauthMethodOptions,
   type OauthSignInClient,
-  type SignInOptions,
 } from "../oauth/browser.ts";
-import type { OauthProviderApi } from "../oauth/client.ts";
 
 export {
   createOauthState,
   type OauthCompleteResult,
   type OauthFlowError,
+  type OauthMethodOptions,
   type OauthSignIn,
   type OauthSignInClient,
   type OauthStartResult,
   type OauthState,
   type SignInOptions,
 } from "../oauth/browser.ts";
+
+/** The functions of the Google method, usually `api.auth`. */
+export type SignInWithGoogleApi = {
+  startSignInWithGoogle: OauthProviderApi["startSignIn"];
+  completeSignInWithGoogle: OauthProviderApi["completeSignIn"];
+};
+
+/** @internal The references of the Google method, from its `api`. */
+export const googleRefs = (api: SignInWithGoogleApi): OauthProviderRefs => ({
+  providerName: "google",
+  startSignIn: api.startSignInWithGoogle,
+  completeSignIn: api.completeSignInWithGoogle,
+});
 
 /**
  * Make the client that signs in with Google. Pass the module exporting the
@@ -57,26 +69,8 @@ export {
  * }
  * ```
  */
-export function createSignInWithGoogle(options: {
-  /** The client that `oauth()` is registered on. */
-  authClient: Pick<AuthClient, "ambientSignInValues">;
-  /** The functions of the method, usually `api.auth`. */
-  api: {
-    startSignInWithGoogle: OauthProviderApi["startSignIn"];
-    completeSignInWithGoogle: OauthProviderApi["completeSignIn"];
-  };
-}): OauthSignInClient {
-  // Like the other method clients, read the options when signing in, so a
-  // binding can pass getters.
-  const client = () =>
-    createOauthSignIn(options.authClient, {
-      providerName: "google",
-      startSignIn: options.api.startSignInWithGoogle,
-      completeSignIn: options.api.completeSignInWithGoogle,
-    });
-  // Throw now when `oauth()` isn't registered.
-  client();
-  const signIn = (async (signInOptions?: SignInOptions) =>
-    client().signIn(signInOptions as never)) as OauthSignIn;
-  return { signIn };
+export function createSignInWithGoogle(
+  options: OauthMethodOptions<SignInWithGoogleApi>,
+): OauthSignInClient {
+  return createOauthMethodSignIn(options, googleRefs);
 }

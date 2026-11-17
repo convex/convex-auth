@@ -10,12 +10,11 @@
 "use client";
 
 import { useConvex, useQuery } from "convex/react";
-import { useContext, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type { ConvexMutationApi } from "../../browser/ambientSignInClient.ts";
-import type { AuthClient } from "../../browser/sessionManager.ts";
 import {
-  AuthClientContext,
   useAuth,
+  useAuthClient,
   useAuthSignInApi,
 } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
@@ -58,19 +57,6 @@ export type {
 //------------------------------------------------------------------------------
 
 /** The auth client of the surrounding provider. */
-function useAuthClient(): AuthClient {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
-  return authClient;
-}
-
-/**
- * The Convex client of the surrounding `ConvexProvider`, for the mutations
- * that mint no session. Throws outside a `ConvexProvider`, as `useMutation`
- * does.
- */
 function useConvexMutations(): ConvexMutationApi {
   const convex = useConvex();
   if (convex === undefined) {

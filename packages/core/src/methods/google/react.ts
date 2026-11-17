@@ -15,8 +15,8 @@
  */
 "use client";
 
-import type { OauthProviderApi } from "../oauth/client.ts";
 import { useOauthSignIn, type UseOauthSignInReturn } from "../oauth/react.ts";
+import { googleRefs, type SignInWithGoogleApi } from "./browser.ts";
 
 export { useOauth, type UseOauthReturn } from "../oauth/react.ts";
 export type {
@@ -37,14 +37,8 @@ export type UseSignInWithGoogleReturn = {
  * (usually the generated `api.auth`), or an object mapping the canonical keys
  * to renamed exports.
  */
-export function useSignInWithGoogle(api: {
-  startSignInWithGoogle: OauthProviderApi["startSignIn"];
-  completeSignInWithGoogle: OauthProviderApi["completeSignIn"];
-}): UseSignInWithGoogleReturn {
-  const { signIn } = useOauthSignIn({
-    providerName: "google",
-    startSignIn: api.startSignInWithGoogle,
-    completeSignIn: api.completeSignInWithGoogle,
-  });
-  return { signIn };
+export function useSignInWithGoogle(
+  api: SignInWithGoogleApi,
+): UseSignInWithGoogleReturn {
+  return useOauthSignIn(googleRefs(api));
 }

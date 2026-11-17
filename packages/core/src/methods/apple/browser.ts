@@ -1,8 +1,8 @@
 /**
  * Framework-agnostic client for the Apple sign-in method, exported at
  * `@convex-dev/auth/methods/apple/browser`. The React hook of
- * `@convex-dev/auth/methods/apple/react` does the same, and a binding for
- * another framework can wrap this one.
+ * `@convex-dev/auth/methods/apple/react` wraps it, and a binding for another
+ * framework can too.
  *
  * {@link createSignInWithApple} starts the sign-in. The `oauth()` ambient
  * sign-in of `@convex-dev/auth/methods/oauth/browser` must be registered on
@@ -12,25 +12,37 @@
  * @module
  */
 
-import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { OauthProviderApi, OauthProviderRefs } from "../oauth/client.ts";
 import {
-  createOauthSignIn,
-  type OauthSignIn,
+  createOauthMethodSignIn,
+  type OauthMethodOptions,
   type OauthSignInClient,
-  type SignInOptions,
 } from "../oauth/browser.ts";
-import type { OauthProviderApi } from "../oauth/client.ts";
 
 export {
   createOauthState,
   type OauthCompleteResult,
   type OauthFlowError,
+  type OauthMethodOptions,
   type OauthSignIn,
   type OauthSignInClient,
   type OauthStartResult,
   type OauthState,
   type SignInOptions,
 } from "../oauth/browser.ts";
+
+/** The functions of the Apple method, usually `api.auth`. */
+export type SignInWithAppleApi = {
+  startSignInWithApple: OauthProviderApi["startSignIn"];
+  completeSignInWithApple: OauthProviderApi["completeSignIn"];
+};
+
+/** @internal The references of the Apple method, from its `api`. */
+export const appleRefs = (api: SignInWithAppleApi): OauthProviderRefs => ({
+  providerName: "apple",
+  startSignIn: api.startSignInWithApple,
+  completeSignIn: api.completeSignInWithApple,
+});
 
 /**
  * Make the client that signs in with Apple. Pass the module exporting the
@@ -57,26 +69,8 @@ export {
  * }
  * ```
  */
-export function createSignInWithApple(options: {
-  /** The client that `oauth()` is registered on. */
-  authClient: Pick<AuthClient, "ambientSignInValues">;
-  /** The functions of the method, usually `api.auth`. */
-  api: {
-    startSignInWithApple: OauthProviderApi["startSignIn"];
-    completeSignInWithApple: OauthProviderApi["completeSignIn"];
-  };
-}): OauthSignInClient {
-  // Like the other method clients, read the options when signing in, so a
-  // binding can pass getters.
-  const client = () =>
-    createOauthSignIn(options.authClient, {
-      providerName: "apple",
-      startSignIn: options.api.startSignInWithApple,
-      completeSignIn: options.api.completeSignInWithApple,
-    });
-  // Throw now when `oauth()` isn't registered.
-  client();
-  const signIn = (async (signInOptions?: SignInOptions) =>
-    client().signIn(signInOptions as never)) as OauthSignIn;
-  return { signIn };
+export function createSignInWithApple(
+  options: OauthMethodOptions<SignInWithAppleApi>,
+): OauthSignInClient {
+  return createOauthMethodSignIn(options, appleRefs);
 }

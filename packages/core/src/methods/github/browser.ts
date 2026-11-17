@@ -1,8 +1,8 @@
 /**
  * Framework-agnostic client for the GitHub sign-in method, exported at
  * `@convex-dev/auth/methods/github/browser`. The React hook of
- * `@convex-dev/auth/methods/github/react` does the same, and a binding for
- * another framework can wrap this one.
+ * `@convex-dev/auth/methods/github/react` wraps it, and a binding for another
+ * framework can too.
  *
  * {@link createSignInWithGithub} starts the sign-in. The `oauth()` ambient
  * sign-in of `@convex-dev/auth/methods/oauth/browser` must be registered on
@@ -12,25 +12,37 @@
  * @module
  */
 
-import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { OauthProviderApi, OauthProviderRefs } from "../oauth/client.ts";
 import {
-  createOauthSignIn,
-  type OauthSignIn,
+  createOauthMethodSignIn,
+  type OauthMethodOptions,
   type OauthSignInClient,
-  type SignInOptions,
 } from "../oauth/browser.ts";
-import type { OauthProviderApi } from "../oauth/client.ts";
 
 export {
   createOauthState,
   type OauthCompleteResult,
   type OauthFlowError,
+  type OauthMethodOptions,
   type OauthSignIn,
   type OauthSignInClient,
   type OauthStartResult,
   type OauthState,
   type SignInOptions,
 } from "../oauth/browser.ts";
+
+/** The functions of the GitHub method, usually `api.auth`. */
+export type SignInWithGithubApi = {
+  startSignInWithGithub: OauthProviderApi["startSignIn"];
+  completeSignInWithGithub: OauthProviderApi["completeSignIn"];
+};
+
+/** @internal The references of the GitHub method, from its `api`. */
+export const githubRefs = (api: SignInWithGithubApi): OauthProviderRefs => ({
+  providerName: "github",
+  startSignIn: api.startSignInWithGithub,
+  completeSignIn: api.completeSignInWithGithub,
+});
 
 /**
  * Make the client that signs in with GitHub. Pass the module exporting the
@@ -57,26 +69,8 @@ export {
  * }
  * ```
  */
-export function createSignInWithGithub(options: {
-  /** The client that `oauth()` is registered on. */
-  authClient: Pick<AuthClient, "ambientSignInValues">;
-  /** The functions of the method, usually `api.auth`. */
-  api: {
-    startSignInWithGithub: OauthProviderApi["startSignIn"];
-    completeSignInWithGithub: OauthProviderApi["completeSignIn"];
-  };
-}): OauthSignInClient {
-  // Like the other method clients, read the options when signing in, so a
-  // binding can pass getters.
-  const client = () =>
-    createOauthSignIn(options.authClient, {
-      providerName: "github",
-      startSignIn: options.api.startSignInWithGithub,
-      completeSignIn: options.api.completeSignInWithGithub,
-    });
-  // Throw now when `oauth()` isn't registered.
-  client();
-  const signIn = (async (signInOptions?: SignInOptions) =>
-    client().signIn(signInOptions as never)) as OauthSignIn;
-  return { signIn };
+export function createSignInWithGithub(
+  options: OauthMethodOptions<SignInWithGithubApi>,
+): OauthSignInClient {
+  return createOauthMethodSignIn(options, githubRefs);
 }
