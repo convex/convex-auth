@@ -3,6 +3,8 @@ import { makeFunctionReference } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { AuthClient } from "../../browser/sessionManager.ts";
 import { InMemoryStorage } from "../../browser/storage.ts";
+import { createSignInWithApple } from "../apple/browser.ts";
+import { createSignInWithDiscord } from "../discord/browser.ts";
 import { createSignInWithGithub } from "../github/browser.ts";
 import { createSignInWithGoogle } from "../google/browser.ts";
 import { createOauthSignIn, createOauthState } from "./browser.ts";
@@ -86,6 +88,8 @@ describe("createSignInWith<Provider>", () => {
     for (const [create, provider] of [
       [createSignInWithGoogle, "Google"],
       [createSignInWithGithub, "Github"],
+      [createSignInWithApple, "Apple"],
+      [createSignInWithDiscord, "Discord"],
     ] as const) {
       const { client, convexMutation } = setupOAuth();
       convexMutation.mockResolvedValue({

@@ -315,6 +315,11 @@ export function testAuthorizationUrl(
      * callback.
      */
     responseMode?: string;
+    /**
+     * The provider-specific parameters, by name. Leave it out for a provider
+     * that adds none.
+     */
+    extraParams?: Record<string, string>;
   },
 ): void {
   describe("authorization URL", () => {
@@ -342,6 +347,25 @@ export function testAuthorizationUrl(
       expect(params.get("state")).toBe(state);
       expect(params.get("scope")).toBe(expected.scope ?? null);
       expect(params.get("response_mode")).toBe(expected.responseMode ?? null);
+      const extraParams = expected.extraParams ?? {};
+      for (const [key, value] of Object.entries(extraParams)) {
+        expect(params.get(key)).toBe(value);
+      }
+      // No parameter beyond these, so a provider that adds none sends exactly
+      // the flow parameters.
+      expect(new Set(params.keys())).toEqual(
+        new Set([
+          "response_type",
+          "client_id",
+          "redirect_uri",
+          "state",
+          "code_challenge",
+          "code_challenge_method",
+          ...(expected.scope === undefined ? [] : ["scope"]),
+          ...(expected.responseMode === undefined ? [] : ["response_mode"]),
+          ...Object.keys(extraParams),
+        ]),
+      );
 
       // The row is only there if startSignIn reached the component through the
       // mutation reference it was handed.

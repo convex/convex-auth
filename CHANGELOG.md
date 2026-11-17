@@ -8,8 +8,8 @@
   (Svelte, Vue, Solid). The React hooks now wrap them, with no change in
   behaviour.
   - `@convex-dev/auth/methods/<method>/browser` for `username-password`,
-    `email-password`, `username-passkey`, `oauth`, `google`, `apple`, and
-    `github`: one `create…` factory per hook, returning plain async functions
+    `email-password`, `username-passkey`, `oauth`, `google`, `apple`,
+    `github`, and `discord`: one `create…` factory per hook, returning plain async functions
     and its state (like `pending`) as a `ReadableStore`.
   - The passkey entry also exports the ceremonies (`browserCeremonies`,
     `resolveCeremonies`), the flows, the autofill loop
