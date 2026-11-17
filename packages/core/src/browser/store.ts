@@ -63,6 +63,10 @@ export function createStore<T>(initial: T): WritableStore<T> {
  * binding that keys work on one field of a larger state, like the arguments
  * of a query subscription, reads that field through it, so the other fields
  * don't restart the work.
+ *
+ * `select` must return a field of the value, not build a new object: `get`
+ * runs it on every read, and a new object on each read breaks the
+ * {@link ReadableStore} rule that reads without a change are equal.
  */
 export function selectStore<T, U>(
   store: ReadableStore<T>,

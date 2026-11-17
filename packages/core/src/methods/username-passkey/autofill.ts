@@ -33,7 +33,7 @@ import {
 /**
  * The states of the autofill flow:
  *
- * - `"idle"`: the flow has not started yet, autofill is off, or `stop()`
+ * - `"idle"`: the flow has not started yet, or `stop()`
  *   ended it (a microtask after the call, unless the flow started again in
  *   the meantime). A pick that still verified at the stop reports its end
  *   once no loop runs any more: `"idle"` with its `lastError` when it fails,
@@ -53,7 +53,8 @@ export type PasskeyAutofillStatus =
 export type PasskeyAutofillState<E> = {
   /**
    * Whether the platform can offer passkeys in the autocompletion list.
-   * `null` while detection runs; `false` when autofill is off.
+   * `null` while detection runs; `false` when the platform has no autofill.
+   * A stop keeps the last value.
    */
   available: boolean | null;
   /** The state of the request; see {@link PasskeyAutofillStatus}. */

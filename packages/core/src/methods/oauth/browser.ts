@@ -56,8 +56,9 @@ const NOT_REGISTERED_ERROR =
   "No OAuth setup is registered. Include oauth() from " +
   "@convex-dev/auth/methods/oauth/browser in the `ambientSignIns` of the " +
   "AuthClient (…/oauth/react and …/oauth/svelte export the same oauth()). " +
-  "ConvexAuthProvider and ConvexAuthNextjsProvider register it " +
-  "by default, so include it yourself if you set their `ambientSignIns` prop.";
+  "ConvexAuthProvider, ConvexAuthNextjsProvider and the Svelte setup " +
+  "functions register it by default, so include it yourself if you set " +
+  "their `ambientSignIns`.";
 
 /** The OAuth state that isn't tied to one provider. */
 export type OauthState = {
