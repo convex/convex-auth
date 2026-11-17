@@ -494,26 +494,6 @@ describe("createPasskeyAutofill", () => {
     expect(lockedOnStop).toEqual([false]);
   });
 
-  test("disable stops a running loop", async () => {
-    const ceremonies = fakeCeremonies();
-    const autofill = createPasskeyAutofill({
-      ceremonies,
-      start: vi.fn(async () => requestOptions),
-      onAssertion: vi.fn(),
-    });
-    autofill.start();
-    await flush();
-    autofill.disable();
-    const signal = vi.mocked(ceremonies.authenticateWithAutofill).mock
-      .calls[0][1];
-    expect(signal.aborted).toBe(true);
-    await flush();
-    expect(autofill.state.get()).toMatchObject({
-      available: false,
-      status: "idle",
-    });
-  });
-
   test("a stop, a start and a stop in one tick end on idle", async () => {
     const autofill = createPasskeyAutofill({
       ceremonies: fakeCeremonies(),
@@ -580,19 +560,6 @@ describe("createPasskeyAutofill", () => {
         status: "signedIn",
         lastError: null,
       });
-    });
-  });
-
-  test("disable reports the flow as off", () => {
-    const autofill = createPasskeyAutofill({
-      ceremonies: fakeCeremonies(),
-      start: vi.fn(),
-      onAssertion: vi.fn(),
-    });
-    autofill.disable();
-    expect(autofill.state.get()).toMatchObject({
-      available: false,
-      status: "idle",
     });
   });
 });

@@ -964,7 +964,6 @@ describe("createPasskeyAutofill on the browser ceremonies", () => {
     // The pause lives on the flow, so the restarted loop must stay parked
     // instead of starting a request that would displace the ceremony.
     stop();
-    autofill.disable();
     const stopRestarted = autofill.start();
     await flush();
     expect(start).toHaveBeenCalledTimes(1);
@@ -1081,19 +1080,16 @@ describe("createPasskeyAutofill on the browser ceremonies", () => {
     await flush();
   });
 
-  test("disabling the flow stops the pending request for good", async () => {
+  test("stopping the flow stops the pending request for good", async () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { autofill, state, stop } = startAutofill({ start, onAssertion });
+    const { state, stop } = startAutofill({ start, onAssertion });
 
     await waitFor(() => expect(state().status).toBe("waiting"));
-    // What a page that turns autofill off does: stop the running loop, and
-    // report the flow as off.
+    // What a page that turns autofill off does: stop the running loop.
     stop();
-    autofill.disable();
     await waitFor(() => expect(state().status).toBe("idle"));
-    expect(state().available).toBe(false);
     expect(onAssertion).not.toHaveBeenCalled();
     // The loop really exited: no fresh challenge is minted afterwards.
     await flush();

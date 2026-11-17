@@ -121,12 +121,6 @@ export type PasskeyAutofill<E> = PasskeyAutofillGates & {
    * over.
    */
   start: () => () => void;
-  /**
-   * Report the flow as off (`status: "idle"`, `available: false`), so the
-   * state does not stay on the last value of a previous run. Call it instead
-   * of `start` when the page turns autofill off.
-   */
-  disable: () => void;
 };
 
 // A pending autofill request refreshes its challenge before the server's
@@ -500,14 +494,6 @@ export function createPasskeyAutofill<E = never>(
   return {
     state: { get: state.get, subscribe: state.subscribe },
     start,
-    disable: () => {
-      // A running loop would still hand a pick to `onAssertion`.
-      stopRunning?.();
-      // No detection runs and the autocompletion list will not offer
-      // passkeys. Report `false`, so `available` does not stay on `null`
-      // ("detection runs") forever.
-      update({ status: "idle", available: false });
-    },
     pauseAutofillFlow,
     resumeAutofillFlow,
     isAutofillSigningIn,
