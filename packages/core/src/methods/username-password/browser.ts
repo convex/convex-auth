@@ -43,7 +43,14 @@
 import type { FunctionReference } from "convex/server";
 import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
 import type { AuthClient } from "../../browser/sessionManager.ts";
-import { createStore, type ReadableStore } from "../../browser/store.ts";
+import {
+  runSignInMutation,
+  type SignInUnexpectedFailure,
+} from "../../browser/signInMutation.ts";
+import {
+  createPendingTracker,
+  type ReadableStore,
+} from "../../browser/store.ts";
 import type { ClientView } from "../../lib/types.ts";
 import type { SignInResult, SignUpResult } from "./server.ts";
 
@@ -85,10 +92,7 @@ export type SignUpWithUsernamePasswordMutation = FunctionReference<
  * switch and never need their own `try`/`catch`. The thrown value is preserved
  * on `cause` for callers that want to inspect or log it.
  */
-export type UnexpectedFailure = {
-  status: "error";
-  userError: { error: "OTHER_ERROR"; cause: unknown };
-};
+export type UnexpectedFailure = SignInUnexpectedFailure;
 
 /** The result of `signIn` from {@link createSignInWithUsernamePassword}. */
 export type SignInWithUsernamePasswordResult =
@@ -148,11 +152,17 @@ export function createSignInWithUsernamePassword(
     signInWithUsernamePassword: SignInWithUsernamePasswordMutation;
   }>,
 ): SignInWithUsernamePasswordClient {
-  const { run, pending } = createPasswordFlow(
-    options,
-    () => options.api.signInWithUsernamePassword,
-  );
-  return { signIn: run, pending };
+  const { pending, track } = createPendingTracker();
+  // The options are read when used, so a binding can pass getters.
+  const signIn = (credentials: Credentials) =>
+    track(() =>
+      runSignInMutation(
+        options,
+        options.api.signInWithUsernamePassword,
+        credentials,
+      ),
+    );
+  return { signIn, pending };
 }
 
 /**
@@ -164,54 +174,14 @@ export function createSignUpWithUsernamePassword(
     signUpWithUsernamePassword: SignUpWithUsernamePasswordMutation;
   }>,
 ): SignUpWithUsernamePasswordClient {
-  const { run, pending } = createPasswordFlow(
-    options,
-    () => options.api.signUpWithUsernamePassword,
-  );
-  return { signUp: run, pending };
-}
-
-/**
- * Shared internals for sign-in and sign-up: run the mutation, adopt the
- * session on success, and track in-flight state. The two flows are
- * structurally identical and differ only in the mutation they call.
- */
-function createPasswordFlow<
-  Result extends ClientView<SignInResult> | ClientView<SignUpResult>,
->(
-  options: Pick<
-    UsernamePasswordClientOptions<unknown>,
-    "authClient" | "signInApi"
-  >,
-  mutation: () => FunctionReference<"mutation", "public", Credentials, Result>,
-) {
-  const pending = createStore(false);
-
-  const run = async (
-    credentials: Credentials,
-  ): Promise<Result | UnexpectedFailure> => {
-    pending.set(true);
-    try {
-      // The options are read when used, so a binding can pass getters.
-      const result = await options.signInApi.mutation(mutation(), credentials);
-      if (result.status === "complete") {
-        await options.authClient.setSession(result.tokens);
-      }
-      return result;
-    } catch (cause) {
-      // The mutation threw instead of resolving to a `userError`. Fold it into
-      // the same discriminated result as `OTHER_ERROR`, preserving the thrown
-      // value on `cause`, so the caller handles it alongside every other
-      // failure and can still inspect or log the original error if it wants.
-      return { status: "error", userError: { error: "OTHER_ERROR", cause } };
-    } finally {
-      // Reset even when the mutation throws.
-      pending.set(false);
-    }
-  };
-
-  return {
-    run,
-    pending: { get: pending.get, subscribe: pending.subscribe },
-  };
+  const { pending, track } = createPendingTracker();
+  const signUp = (credentials: Credentials) =>
+    track(() =>
+      runSignInMutation(
+        options,
+        options.api.signUpWithUsernamePassword,
+        credentials,
+      ),
+    );
+  return { signUp, pending };
 }

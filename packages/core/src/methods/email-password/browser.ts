@@ -50,6 +50,10 @@ import type {
 } from "../../browser/ambientSignInClient.ts";
 import type { AuthClient } from "../../browser/sessionManager.ts";
 import {
+  runSignInMutation,
+  type SignInUnexpectedFailure,
+} from "../../browser/signInMutation.ts";
+import {
   createPendingTracker,
   createStore,
   type ReadableStore,
@@ -127,8 +131,6 @@ type UnexpectedFailure = { success: false; userError: OtherError };
 type WithoutSecret<Result> = Result extends { success: true }
   ? Omit<Result, "browserSecret">
   : Result;
-
-type SignInUnexpectedFailure = { status: "error"; userError: OtherError };
 
 /** The app's `signUpWithEmailPassword` mutation. */
 export type SignUpMutation = FunctionReference<
@@ -443,32 +445,47 @@ const foldSignInError = (cause: unknown): SignInUnexpectedFailure => ({
 });
 
 /**
- * Run `run` once the `AuthClient` has loaded: right away when it has, or on
- * the first change that ends the loading. Returns the function that cancels
- * a run that still waits.
+ * The `start` of a landing page: run `run` once per client, on the first
+ * start that sees a loaded `AuthClient`. We want this to run on page load.
+ * This is acceptable: since we use browser secrets, we don't need an
+ * additional user confirmation. The cleanup that `start` returns only
+ * cancels a start that still waits for the `AuthClient`.
  */
-function whenLoaded(
-  authClient: Pick<AuthClient, "getSnapshot" | "subscribe">,
-  run: () => void,
-): () => void {
-  if (!authClient.getSnapshot().isLoading) {
-    run();
-    return () => {};
-  }
-  let waiting = true;
-  const unsubscribe = authClient.subscribe(() => {
-    if (!waiting || authClient.getSnapshot().isLoading) {
-      return;
+function startOnceLoaded(
+  options: { authClient: Pick<AuthClient, "getSnapshot" | "subscribe"> },
+  run: () => Promise<void>,
+): () => () => void {
+  let started = false;
+  const runOnce = () => {
+    if (!started) {
+      started = true;
+      void run();
     }
-    waiting = false;
-    unsubscribe();
-    run();
-  });
+  };
   return () => {
-    if (waiting) {
+    const { authClient } = options;
+    if (started) {
+      return () => {};
+    }
+    if (!authClient.getSnapshot().isLoading) {
+      runOnce();
+      return () => {};
+    }
+    let waiting = true;
+    const unsubscribe = authClient.subscribe(() => {
+      if (!waiting || authClient.getSnapshot().isLoading) {
+        return;
+      }
       waiting = false;
       unsubscribe();
-    }
+      runOnce();
+    });
+    return () => {
+      if (waiting) {
+        waiting = false;
+        unsubscribe();
+      }
+    };
   };
 }
 
@@ -485,8 +502,6 @@ function createLinkFlow<UserError>(
   const state = createStore<
     LinkFlowState<UserError | MissingSecretError | OtherError>
   >({ status: "loading" });
-  let started = false;
-
   const run = async () => {
     const storage = options.authClient.methodStorage;
     try {
@@ -512,22 +527,7 @@ function createLinkFlow<UserError>(
 
   return {
     state: { get: state.get, subscribe: state.subscribe },
-    // Runs once per client, on the first start that sees a loaded
-    // `AuthClient`. We want this to run on page load. This is acceptable:
-    // since we use browser secrets, we don’t need an additional user
-    // confirmation.
-    start: () => {
-      if (started) {
-        return () => {};
-      }
-      return whenLoaded(options.authClient, () => {
-        if (started) {
-          return;
-        }
-        started = true;
-        void run();
-      });
-    },
+    start: startOnceLoaded(options, run),
   };
 }
 
@@ -592,20 +592,13 @@ export function createSignInWithEmailPassword(options: {
     email: string;
     password: string;
   }): Promise<SignInResult> =>
-    track(async () => {
-      try {
-        const result = await options.signInApi.mutation(
-          options.api.signInWithEmailPassword,
-          credentials,
-        );
-        if (result.status === "complete") {
-          await options.authClient.setSession(result.tokens);
-        }
-        return result;
-      } catch (cause) {
-        return foldSignInError(cause);
-      }
-    });
+    track(() =>
+      runSignInMutation(
+        options,
+        options.api.signInWithEmailPassword,
+        credentials,
+      ),
+    );
   return { signIn, pending };
 }
 
@@ -738,18 +731,16 @@ export function createCompletePasswordRecovery(options: {
   });
   const update = (patch: Partial<PasswordRecoveryProgress>) =>
     progress.set({ ...progress.get(), ...patch });
-  let read = false;
   // We count the number of pending calls out of safety, as the other flows do.
-  let inFlight = 0;
+  const { pending, track } = createPendingTracker();
+  pending.subscribe(() => update({ pending: pending.get() }));
 
-  const completePasswordRecovery = async ({
+  const completePasswordRecovery = ({
     newPassword,
   }: {
     newPassword: string;
-  }): Promise<CompletePasswordRecoveryResult> => {
-    inFlight++;
-    update({ pending: true });
-    try {
+  }): Promise<CompletePasswordRecoveryResult> =>
+    track(async () => {
       const { browserSecret } = progress.get();
       if (typeof browserSecret !== "string") {
         // Only reachable through the `ready` state, which has the secret.
@@ -777,25 +768,15 @@ export function createCompletePasswordRecovery(options: {
       } catch (cause) {
         return foldSignInError(cause);
       }
-    } finally {
-      if (--inFlight === 0) update({ pending: false });
-    }
-  };
+    });
 
   return {
-    start: () =>
-      whenLoaded(options.authClient, () => {
-        if (read) {
-          return;
-        }
-        read = true;
-        void (async () => {
-          const secret = await options.authClient.methodStorage.get(
-            SECRET_STORAGE_KEYS.passwordRecovery,
-          );
-          update({ browserSecret: secret ?? null });
-        })();
-      }),
+    start: startOnceLoaded(options, async () => {
+      const secret = await options.authClient.methodStorage.get(
+        SECRET_STORAGE_KEYS.passwordRecovery,
+      );
+      update({ browserSecret: secret ?? null });
+    }),
     progress: { get: progress.get, subscribe: progress.subscribe },
     checkArgs: () => {
       const { browserSecret } = progress.get();
