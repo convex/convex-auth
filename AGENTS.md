@@ -18,6 +18,8 @@ This is a pnpm monorepo:
     for now), `username-password`, `email-password`, `username-passkey`, `oauth`
     (only its shared clients are exported for now; the API for custom
     providers is not), `google`, `apple`, `github`, and `discord`.
+  - The client bindings: React (with Next.js for SSR), and Svelte (with
+    SvelteKit for SSR).
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/doc-examples` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
@@ -58,13 +60,18 @@ check:doc-examples`). It is not an example to copy.
 - `methods/<method>/` — the sign-in methods, which use one or more
   components: `server.ts` (Convex functions of the app), `browser.ts` (the
   framework-agnostic clients, one `create…` factory per flow, which return
-  plain async functions and their state as a `ReadableStore`), and
-  `react.tsx` or `react.ts` (the React hooks, built on the same layer). A
-  method is published at `@convex-dev/auth/methods/<method>/server`,
-  `@convex-dev/auth/methods/<method>/browser`, and
-  `@convex-dev/auth/methods/<method>/react`. The `.ts` modules of
-  `methods/` (except the `react.ts` hooks), `browser/`, and `lib/` must not
-  import React; ESLint checks it. `username-passkey` also has a
+  plain async functions and their state as a `ReadableStore`), `react.tsx`
+  or `react.ts` (the React hooks, built on the same layer), and `svelte.ts`
+  (the Svelte helpers, built on the same layer). A method is published at
+  `@convex-dev/auth/methods/<method>/server`,
+  `@convex-dev/auth/methods/<method>/browser`,
+  `@convex-dev/auth/methods/<method>/react`, and
+  `@convex-dev/auth/methods/<method>/svelte`. The `.ts` modules of
+  `methods/` (except the `react.ts` and `svelte.ts` modules), `browser/`,
+  and `lib/` must not import React or Svelte; ESLint checks it. The flow
+  logic lives in `browser.ts`: a hook or a helper only binds a client to
+  its framework. When a binding needs something the clients don't offer,
+  add it to `browser.ts`. `username-passkey` also has a
   `react-custom.tsx`, published at
   `@convex-dev/auth/methods/username-passkey/react-custom`, whose
   `createUsernamePasskeyHooks` makes the same hooks on top of passkey
@@ -75,8 +82,12 @@ check:doc-examples`). It is not an example to copy.
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
   runtime can import.
 - `server/` — the app-side code of the core (`setupConvexAuth`, `getAuthUserId`).
-- `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
-  `ssr/nextjs/` holds the Next.js bindings.
+- `ssr/`, `react/`, `svelte/`, `browser/` — the client and SSR code of the
+  core. `ssr/nextjs/` holds the Next.js bindings, and `ssr/sveltekit/` the
+  SvelteKit bindings: `index.ts` (the server side, published at
+  `@convex-dev/auth/ssr/sveltekit`) and `client.ts` (published at
+  `@convex-dev/auth/ssr/sveltekit/client`). `svelte/` is published at
+  `@convex-dev/auth/svelte`.
 - `lib/` — internal code that several layers share (`lib/oauth/` for the
   OAuth components and methods).
 - `testing/` — the `convex-test` helpers, which ship as source.
@@ -86,7 +97,7 @@ lists each one in `_generated/api.ts`. Thus a component directory holds only
 the code of the component. Put the other code in the directory of its layer,
 as the list above shows: the code of a sign-in method in `methods/<method>/`,
 the app-side code of the core in `server/`, the client and SSR code of the
-core in `ssr/`, `react/`, or `browser/`, and shared code in
+core in `ssr/`, `react/`, `svelte/`, or `browser/`, and shared code in
 `lib/`. ESLint rejects a component module that imports client code or
 app-side code. The CLI skips a file name with two dots (`x.test.ts`,
 `x.fixture.ts`): use the `.fixture.ts` suffix for a test-only module in a
@@ -113,6 +124,15 @@ and `verbatimModuleSyntax` settings. Two rules follow from it:
 - Anything reached from a published entry point must compile. `dist/` is built
   by `tsconfig.build.json`, which excludes tests and other in-repo-only
   modules (see its `exclude` list).
+- Svelte runes compile only in `.svelte.ts` modules (`svelte/client.svelte.ts`
+  is the only one). `tsc` emits such a module as `.svelte.js` with the runes
+  left in place, as `svelte-package` does, and the Svelte compiler of the app
+  compiles it. Svelte declares the runes as globals, so `tsc` accepts them in
+  any module; ESLint rejects them outside of the `.svelte.ts` ones (and the
+  `.svelte.test.ts` and `.svelte.fixture.ts` ones of the tests). The Svelte
+  entries carry a `svelte` export condition, which makes
+  `vite-plugin-svelte` compile the package instead of prebundling it or
+  externalizing it for SSR.
 - Each `exports` entry names one file. Do not use a `*`: a wildcard publishes
   every file of a directory, including the internal modules and the
   `_generated/` files of a component. `pnpm check:declarations` rejects a
@@ -140,7 +160,10 @@ Use `pnpm install` at the root. Common tasks:
 - `pnpm codegen` — regenerate every Convex `_generated` directory.
   Can also generate the codegen for a single demo or component
   (e.g. `pnpm codegen react-passkey`)
-- `pnpm test` — run tests across packages (Vitest).
+- `pnpm test` — run tests across packages (Vitest). The tests of the Svelte
+  bindings (under `svelte/`, `ssr/sveltekit/`, and `methods/*/svelte*`) run
+  in the `core-svelte` project, with `vite-plugin-svelte` and stand-ins for
+  the `$app/*` modules of SvelteKit.
 - `pnpm typecheck` — typecheck across packages.
 - `pnpm check:doc-examples` — typecheck the `ts` and `tsx` code blocks in the
   doc comments of `packages/core/src` as modules of `packages/doc-examples`

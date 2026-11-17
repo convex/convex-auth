@@ -21,6 +21,22 @@
   - `AuthClient.methodStorage`: the storage for the client-side secrets of
     sign-in methods, under the namespace of the session. The keys of the
     session tokens and of the ambient sign-ins are refused.
+  - `stateFor` of `createCompletePasswordRecovery` takes the error of the
+    check query as a second argument, for a binding whose query returns its
+    error rather than throwing it. It then answers with an `OTHER_ERROR`
+    state (`PasswordRecoveryCheckFailedState`).
+- Svelte and SvelteKit bindings, on top of the method clients, with the API
+  of `@mmailaender/convex-auth-svelte`. They need `svelte` 5,
+  `convex-svelte` 0.15, and, for SvelteKit, `@sveltejs/kit` 2, which are
+  optional peer dependencies.
+  - `@convex-dev/auth/svelte`: `setupConvexAuth`, `useAuthActions`, and
+    `useAuthToken`, the counterpart of `@convex-dev/auth/react`.
+  - `@convex-dev/auth/ssr/sveltekit` (`setupConvexAuthSvelteKit` with the
+    `handle` hook) and `@convex-dev/auth/ssr/sveltekit/client`
+    (`setupConvexAuthSvelteKit` of the root layout), the counterparts of the
+    Next.js bindings.
+  - `@convex-dev/auth/methods/<method>/svelte` for the same methods as
+    `/browser`, with the hooks of the React clients under the same names.
 
 ## 2.0.0
 
