@@ -1,7 +1,9 @@
 // The `custom` challenge: prove that the person who started the flow
 // controls an address, for a purpose that the application defines. Examples:
 // account recovery, a magic link, or a new verification before a dangerous
-// action. Completion writes nothing to the component.
+// action. Completion writes nothing to the component, except through
+// `_internal_dangerous_completeForNewUser`, which records the address for a
+// user that the caller has just created.
 //
 // The `purpose` string is opaque to the component. The caller gives the same
 // string at start and at completion; a different string fails. Give each purpose a name that another library or flow does not
@@ -262,9 +264,10 @@ type CompleteForNewUserResult = Infer<typeof completeForNewUserResult>;
  * same mutation has just created.
  *
  * TODO: with attestations, take `newUser` (the new-user attestation of the
- * core) instead of `userId`, like `challenge.signUp.start`, and return a
- * user attestation for that user. The function then verifies itself that
- * the user is new, and loses its `_internal_dangerous_` prefix.
+ * core) instead of `userId`, like
+ * `challenge.signUp._internal_dangerous_start` will, and return a user
+ * attestation for that user. The function then verifies itself that the
+ * user is new, and loses its `_internal_dangerous_` prefix.
  */
 export const _internal_dangerous_completeForNewUser = mutation({
   args: { ...vClaimArgs, purpose: vPurposeName, userId: v.string() },
