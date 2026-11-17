@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { createPendingTracker, createStore } from "./store.ts";
+import { createPendingTracker, createStore, selectStore } from "./store.ts";
 
 describe("createStore", () => {
   test("notifies the subscribers of a change, and only of a change", () => {
@@ -27,6 +27,27 @@ describe("createStore", () => {
     store.subscribe(second);
     store.set("b");
     expect(second).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("selectStore", () => {
+  test("notifies the subscribers only when the selected part changes", () => {
+    const store = createStore({ secret: "a", pending: false });
+    const secret = selectStore(store, (value) => value.secret);
+    const listener = vi.fn();
+    const unsubscribe = secret.subscribe(listener);
+
+    store.set({ secret: "a", pending: true });
+    expect(listener).not.toHaveBeenCalled();
+    expect(secret.get()).toBe("a");
+
+    store.set({ secret: "b", pending: true });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(secret.get()).toBe("b");
+
+    unsubscribe();
+    store.set({ secret: "c", pending: true });
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 

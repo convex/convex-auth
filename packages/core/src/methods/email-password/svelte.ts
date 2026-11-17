@@ -21,6 +21,7 @@
 import { onMount } from "svelte";
 import { useQuery } from "convex-svelte";
 import { getConvexAuthContext } from "../../svelte/client.svelte.ts";
+import { selectStore } from "../../browser/store.ts";
 import { fromReadableStore } from "../../svelte/store.ts";
 import type { LinkFlowClient, ReadableStore } from "./browser.ts";
 import {
@@ -275,10 +276,16 @@ export function useCompletePasswordRecovery(
   });
   onMount(() => client.start());
   const progress = fromReadableStore(client.progress);
+  // The arguments of the check depend on the secret alone. Reading the whole
+  // progress there would subscribe to the check again on each change of
+  // `pending` or of the outcome.
+  const secret = fromReadableStore(
+    selectStore(client.progress, ({ browserSecret }) => browserSecret),
+  );
   // The check is reactive: the state moves to `error` on its own when the
   // link dies while the page is open.
   const check = useQuery(recoveryApi.checkPasswordRecovery, () => {
-    void progress.current;
+    void secret.current;
     return client.checkArgs();
   });
   return {

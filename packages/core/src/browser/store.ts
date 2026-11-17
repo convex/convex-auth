@@ -58,6 +58,31 @@ export function createStore<T>(initial: T): WritableStore<T> {
 }
 
 /**
+ * The part of `store` that `select` picks, as a {@link ReadableStore} that
+ * tells its subscribers only when that part changes (by `Object.is`). A
+ * binding that keys work on one field of a larger state, like the arguments
+ * of a query subscription, reads that field through it, so the other fields
+ * don't restart the work.
+ */
+export function selectStore<T, U>(
+  store: ReadableStore<T>,
+  select: (value: T) => U,
+): ReadableStore<U> {
+  return {
+    get: () => select(store.get()),
+    subscribe: (listener) => {
+      let last = select(store.get());
+      return store.subscribe(() => {
+        const next = select(store.get());
+        if (Object.is(next, last)) return;
+        last = next;
+        listener();
+      });
+    },
+  };
+}
+
+/**
  * A `pending` flag that is `true` while at least one call of `track` runs.
  * The count is a safety net: apps should not start a flow twice at once (they
  * disable the form while it runs), but if they do, `pending` stays `true`
