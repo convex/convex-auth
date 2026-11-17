@@ -456,36 +456,25 @@ function startOnceLoaded(
   run: () => Promise<void>,
 ): () => () => void {
   let started = false;
-  const runOnce = () => {
-    if (!started) {
-      started = true;
-      void run();
+  const runIfLoaded = () => {
+    if (started || options.authClient.getSnapshot().isLoading) {
+      return;
     }
+    started = true;
+    void run();
   };
   return () => {
-    const { authClient } = options;
+    runIfLoaded();
     if (started) {
       return () => {};
     }
-    if (!authClient.getSnapshot().isLoading) {
-      runOnce();
-      return () => {};
-    }
-    let waiting = true;
-    const unsubscribe = authClient.subscribe(() => {
-      if (!waiting || authClient.getSnapshot().isLoading) {
-        return;
-      }
-      waiting = false;
-      unsubscribe();
-      runOnce();
-    });
-    return () => {
-      if (waiting) {
-        waiting = false;
+    const unsubscribe = options.authClient.subscribe(() => {
+      runIfLoaded();
+      if (started) {
         unsubscribe();
       }
-    };
+    });
+    return unsubscribe;
   };
 }
 
