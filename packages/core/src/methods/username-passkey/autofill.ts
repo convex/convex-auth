@@ -2,8 +2,9 @@
  * The framework-agnostic building blocks of the passkey clients: the
  * autofill request loop of a sign-in page ({@link createPasskeyAutofill}),
  * and the slot that runs one modal ceremony at a time
- * ({@link createPasskeyCeremonySlot}). The React hooks of `react_impl.tsx`
- * wrap them, and so can a binding for another framework.
+ * ({@link createPasskeyCeremonySlot}). The page clients of `signInClient.ts`
+ * and `management/managementClient.ts` are made of them. They are internal:
+ * a binding uses the page clients.
  *
  * This module holds no platform code: the ceremonies come in as a
  * {@link ResolvedPasskeyCeremonies}. It thus never imports `client.ts` or
