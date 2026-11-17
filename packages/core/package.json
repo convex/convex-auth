@@ -163,6 +163,13 @@
       "types": "./dist/methods/email-magic-link/server.d.ts",
       "default": "./dist/methods/email-magic-link/server.js"
     },
+    "./methods/email-magic-link/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/react.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/react.d.ts",
+      "default": "./dist/methods/email-magic-link/react.js"
+    },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/server.d.ts"
