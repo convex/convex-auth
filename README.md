@@ -12,6 +12,7 @@ Supported sign-in methods:
 
 - Username + password
 - Email + password, with email verification and password recovery
+- Email magic link
 - Username + passkey
 - OAuth: Google, Apple, GitHub and Discord
 
