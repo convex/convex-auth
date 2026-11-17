@@ -345,6 +345,101 @@ describe("challenge.custom.complete", () => {
   });
 });
 
+describe("challenge.custom._internal_dangerous_completeForNewUser", () => {
+  const args = {
+    emailCode: "code1",
+    browserSecret: "secret1",
+    purpose: PURPOSE,
+    userId: "newUser",
+  };
+  const seed = (
+    t: ReturnType<typeof setup>,
+    purpose: { kind: "custom"; userId?: string; purpose: string } = {
+      kind: "custom",
+      purpose: PURPOSE,
+    },
+  ) =>
+    seedChallenge(t, {
+      email: "Alice@Example.com",
+      purpose,
+      emailCode: "code1",
+      browserSecret: "secret1",
+    });
+  const complete = (t: ReturnType<typeof setup>, overrides = {}) =>
+    t.mutation(api.challenge.custom._internal_dangerous_completeForNewUser, {
+      ...args,
+      ...overrides,
+    });
+
+  test("records the address as the primary address of the user, and deletes the row", async () => {
+    const t = setup();
+    await seed(t);
+    expect(await complete(t)).toEqual({
+      success: true,
+      email: "Alice@Example.com",
+    });
+    expect(
+      await t.run((ctx) => ctx.db.query("verifiedEmails").collect()),
+    ).toMatchObject([
+      {
+        email: "Alice@Example.com",
+        normalizedEmail: "alice@example.com",
+        userId: "newUser",
+        isPrimary: true,
+      },
+    ]);
+    expect(await t.run((ctx) => ctx.db.query("challenges").collect())).toEqual(
+      [],
+    );
+  });
+
+  test("fails with EMAIL_TAKEN when a user has verified the address", async () => {
+    const t = setup();
+    await seedEmail(t, "user2", "alice@example.com", true);
+    await seed(t);
+    expect(await complete(t)).toEqual({
+      success: false,
+      userError: { error: "EMAIL_TAKEN" },
+    });
+    expect(await verifiedEmailRow(t, "alice@example.com")).toMatchObject({
+      userId: "user2",
+    });
+  });
+
+  test("a wrong code fails with INCORRECT_CODE and records nothing", async () => {
+    const t = setup();
+    await seed(t);
+    expect(await complete(t, { emailCode: "other" })).toEqual({
+      success: false,
+      userError: { error: "INCORRECT_CODE" },
+    });
+    expect(await verifiedEmailRow(t, "alice@example.com")).toBeNull();
+  });
+
+  test("throws when the user already has an email address", async () => {
+    const t = setup();
+    await seedEmail(t, "newUser", "other@example.com", true);
+    await seed(t);
+    await expect(complete(t)).rejects.toThrow(/already has an email address/);
+    expect(await verifiedEmailRow(t, "alice@example.com")).toBeNull();
+  });
+
+  test("throws for a challenge that was started for a user", async () => {
+    const t = setup();
+    await seed(t, { kind: "custom", userId: "user1", purpose: PURPOSE });
+    await expect(complete(t)).rejects.toThrow(/started for an existing user/);
+    expect(await verifiedEmailRow(t, "alice@example.com")).toBeNull();
+  });
+
+  test("another purpose string throws", async () => {
+    const t = setup();
+    await seed(t);
+    await expect(complete(t, { purpose: "other" })).rejects.toThrow(
+      /Challenge purpose mismatch/,
+    );
+  });
+});
+
 describe("challenge.custom.start", () => {
   test("sends the caller's subject and intro, and returns the secret and the challengeId", async () => {
     const t = setup();
