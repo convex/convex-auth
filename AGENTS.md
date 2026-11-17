@@ -70,7 +70,9 @@ check:doc-examples`). It is not an example to copy.
   `@convex-dev/auth/methods/<method>/react`, and
   `@convex-dev/auth/methods/<method>/svelte`. The `.ts` modules of
   `methods/` (except the `react.ts` and `svelte.ts` modules), `browser/`,
-  and `lib/` must not import React or Svelte; ESLint checks it. The flow
+  `lib/`, and the SSR modules that both server bindings share (`ssr/*.ts`,
+  not `ssr/nextjs/` or `ssr/sveltekit/`) must not import React, Next.js, or
+  Svelte; ESLint checks it. The flow
   logic lives in `browser.ts`: a hook or a helper only binds a client to
   its framework. When a binding needs something the clients don't offer,
   add it to `browser.ts`. `username-passkey` also has a

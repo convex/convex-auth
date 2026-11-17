@@ -133,16 +133,19 @@ export default defineConfig([
     },
   },
   {
-    // The framework-agnostic client code: the core client, the shared code,
-    // and the browser clients of the methods, which every binding (React,
-    // Svelte, or another framework) builds on. It must thus not import React
-    // or Svelte, or a module of their bindings: a `react/` or `svelte/`
-    // directory, a `react*` or `svelte*` module, a `.tsx` module, or a
-    // `.svelte.ts` module.
+    // The framework-agnostic code: the core client, the shared code, the
+    // browser clients of the methods, which every binding (React, Svelte, or
+    // another framework) builds on, and the SSR modules that the Next.js and
+    // SvelteKit bindings share (`ssr/*.ts`, not `ssr/nextjs/` or
+    // `ssr/sveltekit/`). It must thus not import React, Next.js or Svelte, or
+    // a module of their bindings: a `react/`, `nextjs/`, `svelte/` or
+    // `sveltekit/` directory, a `react*` or `svelte*` module, a `.tsx`
+    // module, or a `.svelte.ts` module.
     files: [
       "packages/core/src/browser/**/*.ts",
       "packages/core/src/lib/**/*.ts",
       "packages/core/src/methods/**/*.ts",
+      "packages/core/src/ssr/*.ts",
     ],
     ignores: [
       "**/*.test.ts",
@@ -160,36 +163,36 @@ export default defineConfig([
             ...["react", "react-dom", "convex/react", "next"].map((name) => ({
               name,
               message:
-                "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
+                "A framework-agnostic module must not import React or Next.js. Put the code in a React binding: the react module of a method, react/, or ssr/nextjs/.",
             })),
             ...["svelte", "convex-svelte", "@sveltejs/kit"].map((name) => ({
               name,
               message:
-                "A framework-agnostic client module must not import Svelte. Put the Svelte code in the svelte module of the method.",
+                "A framework-agnostic module must not import Svelte. Put the code in a Svelte binding: the svelte module of a method, svelte/, or ssr/sveltekit/.",
             })),
           ],
           patterns: [
             {
               group: ["react/*", "react-dom/*", "next/*"],
               message:
-                "A framework-agnostic client module must not import React. Put the React code in the react module of the method.",
+                "A framework-agnostic module must not import React or Next.js. Put the code in a React binding: the react module of a method, react/, or ssr/nextjs/.",
             },
             {
               group: ["svelte/*", "convex-svelte/*", "@sveltejs/*", "$app/*"],
               message:
-                "A framework-agnostic client module must not import Svelte. Put the Svelte code in the svelte module of the method.",
+                "A framework-agnostic module must not import Svelte. Put the code in a Svelte binding: the svelte module of a method, svelte/, or ssr/sveltekit/.",
             },
             {
               regex:
-                "^\\.{1,2}/(?:.*/)?(?:react/|react(?:[._-][^/]*)?$|[^/]*\\.tsx$)",
+                "^\\.{1,2}/(?:.*/)?(?:react/|nextjs/|react(?:[._-][^/]*)?$|[^/]*\\.tsx$)",
               message:
-                "A framework-agnostic client module must not import a module of the React bindings.",
+                "A framework-agnostic module must not import a module of the React or Next.js bindings.",
             },
             {
               regex:
                 "^\\.{1,2}/(?:.*/)?(?:svelte/|sveltekit/|svelte(?:[._-][^/]*)?$|[^/]*\\.svelte\\.ts$)",
               message:
-                "A framework-agnostic client module must not import a module of the Svelte bindings.",
+                "A framework-agnostic module must not import a module of the Svelte or SvelteKit bindings.",
             },
           ],
         },
