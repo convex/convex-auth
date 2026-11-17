@@ -15,7 +15,8 @@ This is a pnpm monorepo:
     does not export `anonymous` and the generic `oauth` component for now
     either.
   - The sign-in methods, which the app wires up: `anonymous` (not exported
-    for now), `username-password`, `email-password`, `username-passkey`, `oauth`
+    for now), `username-password`, `email-password`, `email-magic-link`,
+    `username-passkey`, `oauth`
     (only its shared React client is exported for now; the API for custom
     providers is not), `google`, `apple`, `github`, and `discord`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
