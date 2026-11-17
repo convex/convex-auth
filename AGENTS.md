@@ -35,6 +35,9 @@ check:doc-examples`). It is not an example to copy.
   - `react-email-password` wires up the core, password, and email components
     with the `emailPassword` method (sign-up with email validation, change
     password/email, password recovery; email through `@convex-dev/resend`).
+  - `react-email-magic-link` wires up the core and email components with the
+    `emailMagicLink` method (one form to sign in or sign up with an emailed
+    link; email through `@convex-dev/resend`).
   - `react-passkey` wires up the core, passkey, and username components with
     the `usernamePasskey` method, and adds passkey management.
   - `react-passkey-basic` is `react-passkey` without passkey management. The
