@@ -29,6 +29,7 @@ export {
 } from "./ceremonies.ts";
 export {
   runSignInOrSignUpFlow,
+  type SignInFlowContext,
   type SignInFlowResult,
   type UsernamePasskeyApi,
   type UsernamePasskeyAutofillError,
@@ -38,6 +39,7 @@ export {
   runRemovePasskeyFlow,
   type AddPasskeyApi,
   type AddPasskeyFlowResult,
+  type ManagementFlowContext,
   type RemovePasskeyApi,
   type RemovePasskeyFlowResult,
 } from "./management/flows.ts";
