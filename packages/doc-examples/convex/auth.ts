@@ -68,7 +68,7 @@ export const { sendEmailMagicLink, signInWithEmailMagicLink } =
       apiKey: env.RESEND_API_KEY,
       from: "My App <auth@example.com>",
     },
-    url: "https://example.com/sign-in-with-link",
+    url: `${SITE_URL}/sign-in-with-link`,
   }).attachUserCallbacks({
     createUser: internal.users.createUserEmailMagicLink,
   });
