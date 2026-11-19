@@ -506,11 +506,17 @@ export function useSignUpWithEmailPassword(api: {
       email: string;
       password: string;
     }): Promise<SignUpResult> =>
-      track(async () => {
+      track(async (claimStorage) => {
         try {
           const result = await runSignUp(credentials);
           if (result.success) {
-            await storage.set(SECRET_STORAGE_KEYS.signUp, result.browserSecret);
+            // Do not replace the secret of a newer email.
+            if (claimStorage()) {
+              await storage.set(
+                SECRET_STORAGE_KEYS.signUp,
+                result.browserSecret,
+              );
+            }
             return { success: true };
           }
           return result;
@@ -608,14 +614,17 @@ export function useStartPasswordRecovery(api: {
 
   const startPasswordRecovery = useCallback(
     async (args: { email: string }): Promise<StartPasswordRecoveryResult> =>
-      track(async () => {
+      track(async (claimStorage) => {
         try {
           const result = await runStartPasswordRecovery(args);
           if (result.success) {
-            await storage.set(
-              SECRET_STORAGE_KEYS.passwordRecovery,
-              result.browserSecret,
-            );
+            // Do not replace the secret of a newer email.
+            if (claimStorage()) {
+              await storage.set(
+                SECRET_STORAGE_KEYS.passwordRecovery,
+                result.browserSecret,
+              );
+            }
             return { success: true, sentTo: result.sentTo };
           }
           return result;
@@ -817,14 +826,17 @@ export function useStartChangeEmail(api: {
       newEmail: string;
       currentPassword: string;
     }): Promise<StartChangeEmailResult> =>
-      track(async () => {
+      track(async (claimStorage) => {
         try {
           const result = await runStartChangeEmail(args);
           if (result.success) {
-            await storage.set(
-              SECRET_STORAGE_KEYS.changeEmail,
-              result.browserSecret,
-            );
+            // Do not replace the secret of a newer email.
+            if (claimStorage()) {
+              await storage.set(
+                SECRET_STORAGE_KEYS.changeEmail,
+                result.browserSecret,
+              );
+            }
             return { success: true };
           }
           return result;

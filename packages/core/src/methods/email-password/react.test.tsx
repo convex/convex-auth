@@ -923,3 +923,76 @@ describe("without localStorage (React Native)", () => {
     expect(secrets.get(SIGN_UP_SECRET_KEY)).toBeNull();
   });
 });
+
+// Calls can end out of order. The secret of the newest call must stay, else
+// the link in the newest email fails.
+describe("an older call that ends last keeps the secret of the newer call", () => {
+  async function runOutOfOrder(
+    start: () => Promise<unknown>,
+    extra: Record<string, unknown> = {},
+  ) {
+    const resolvers: ((value: unknown) => void)[] = [];
+    stubConvexMutation().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        }) as never,
+    );
+    let first!: Promise<unknown>;
+    let second!: Promise<unknown>;
+    act(() => {
+      first = start();
+      second = start();
+    });
+    await waitFor(() => expect(resolvers).toHaveLength(2));
+    await act(async () => {
+      resolvers[1]({ success: true, browserSecret: "secret-2", ...extra });
+      await second;
+      resolvers[0]({ success: true, browserSecret: "secret-1", ...extra });
+      await first;
+    });
+  }
+
+  test("useSignUpWithEmailPassword", async () => {
+    const { result } = renderWithProviders(() =>
+      useSignUpWithEmailPassword({ signUpWithEmailPassword: convexMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    await runOutOfOrder(() =>
+      result.current.hook.signUp({
+        email: "alice@example.com",
+        password: "correct horse battery staple",
+      }),
+    );
+    expect(secretStorage.get(SIGN_UP_SECRET_KEY)).toBe("secret-2");
+  });
+
+  test("useStartPasswordRecovery", async () => {
+    const { result } = renderWithProviders(() =>
+      useStartPasswordRecovery({ startPasswordRecovery: convexMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    await runOutOfOrder(
+      () =>
+        result.current.hook.startPasswordRecovery({
+          email: "alice@example.com",
+        }),
+      { sentTo: "alice@example.com" },
+    );
+    expect(secretStorage.get(RECOVERY_SECRET_KEY)).toBe("secret-2");
+  });
+
+  test("useStartChangeEmail", async () => {
+    const { result } = renderWithProviders(() =>
+      useStartChangeEmail({ startChangeEmail: convexMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    await runOutOfOrder(() =>
+      result.current.hook.startChangeEmail({
+        newEmail: "alice@new.example.com",
+        currentPassword: "correct horse battery staple",
+      }),
+    );
+    expect(secretStorage.get(CHANGE_EMAIL_SECRET_KEY)).toBe("secret-2");
+  });
+});

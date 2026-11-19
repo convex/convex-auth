@@ -137,6 +137,75 @@ describe("useSendEmailMagicLink", () => {
     expect(secretStorage.get(SECRET_KEY)).toBe("secret-2");
   });
 
+  test("an older call that ends last keeps the secret of the newer call", async () => {
+    const resolvers: ((value: unknown) => void)[] = [];
+    stubConvexMutation().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        }) as never,
+    );
+    const { result } = renderWithProviders(() =>
+      useSendEmailMagicLink({ sendEmailMagicLink: sendMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let first!: Promise<unknown>;
+    let second!: Promise<unknown>;
+    act(() => {
+      first = result.current.hook.sendMagicLink(args);
+      second = result.current.hook.sendMagicLink(args);
+    });
+    await waitFor(() => expect(resolvers).toHaveLength(2));
+
+    // The second email is the newest: its link must work.
+    let firstResult: unknown;
+    await act(async () => {
+      resolvers[1]({ success: true, browserSecret: "secret-2" });
+      await second;
+      resolvers[0]({ success: true, browserSecret: "secret-1" });
+      firstResult = await first;
+    });
+
+    expect(firstResult).toEqual({ success: true });
+    expect(secretStorage.get(SECRET_KEY)).toBe("secret-2");
+  });
+
+  test("a newer call that fails does not drop the secret of an older call", async () => {
+    const resolvers: ((value: unknown) => void)[] = [];
+    stubConvexMutation().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        }) as never,
+    );
+    const { result } = renderWithProviders(() =>
+      useSendEmailMagicLink({ sendEmailMagicLink: sendMutation }),
+    );
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let first!: Promise<unknown>;
+    let second!: Promise<unknown>;
+    act(() => {
+      first = result.current.hook.sendMagicLink(args);
+      second = result.current.hook.sendMagicLink(args);
+    });
+    await waitFor(() => expect(resolvers).toHaveLength(2));
+
+    // Only the first email went out: its link must work.
+    await act(async () => {
+      resolvers[1]({
+        success: false,
+        userError: { error: "RATE_LIMITED", retryAfterMs: 1000 },
+      });
+      await second;
+      resolvers[0]({ success: true, browserSecret: "secret-1" });
+      await first;
+    });
+
+    expect(secretStorage.get(SECRET_KEY)).toBe("secret-1");
+  });
+
   test("a user error stores nothing", async () => {
     const failure = {
       success: false,
