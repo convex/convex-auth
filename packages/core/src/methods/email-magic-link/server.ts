@@ -5,7 +5,6 @@
  *
  * @module
  */
-import { createFunctionHandle } from "convex/server";
 import { Infer, v } from "convex/values";
 import {
   vSignInComplete,
@@ -18,9 +17,11 @@ import {
   startChallengeUserError,
   completeChallengeUserError,
   landingUrlProblem,
-  type EmailSenderConfig,
 } from "../../components/email/validation.ts";
-import type { SendEmailRef } from "../../components/email/helpers.ts";
+import {
+  emailSenderConfig,
+  type EmailSenderOptions,
+} from "../../lib/emailSender.ts";
 
 /** The name of this sign-in method. The app's user callbacks get it as `method.name`. */
 const METHOD_NAME = "emailMagicLink";
@@ -44,29 +45,7 @@ const SIGN_IN_EMAIL = {
   intro: "Open this link to sign in:",
 };
 
-/**
- * How the method sends the sign-in emails.
- *
- * Only Resend is supported for now, through the `@convex-dev/resend`
- * component. Mount that component in the app and pass its `sendEmail`
- * reference and your Resend API key here.
- */
-export type EmailSenderOptions = {
-  kind: "resend";
-  /** The mounted Resend component's `lib.sendEmail` reference. */
-  sendEmail: SendEmailRef;
-  /**
-   * The Resend API key. Read it from an environment variable of the
-   * deployment (e.g. `env.RESEND_API_KEY`) rather than writing it in the
-   * source.
-   */
-  apiKey: string;
-  /**
-   * The From address, e.g. `"My App <auth@example.com>"`. The address must be
-   * on a domain you verified with Resend.
-   */
-  from: string;
-};
+export type { EmailSenderOptions } from "../../lib/emailSender.ts";
 
 /**
  * Options for {@link setupEmailMagicLink}.
@@ -165,22 +144,8 @@ export function setupEmailMagicLink<UsersTable extends string>(
     );
   }
 
-  /**
-   * The sender config the email component's `start` mutations accept.
-   *
-   * This is a function because `createFunctionHandle` is asynchronous, and
-   * it works only while a Convex function runs, not when `convex/auth.ts`
-   * is imported and this setup runs.
-   */
-  const senderConfig = async (): Promise<EmailSenderConfig> => ({
-    kind: "resend",
-    sendEmailHandle: await createFunctionHandle(emailSender.sendEmail),
-    from: emailSender.from,
-    apiKey: emailSender.apiKey,
-    // TODO: make these values configurable.
-    initialBackoffMs: 30 * 1000,
-    retryAttempts: 5,
-  });
+  /** The sender config the email component's `start` mutations accept. */
+  const senderConfig = () => emailSenderConfig(emailSender);
 
   return {
     /**
