@@ -399,6 +399,24 @@ describe("finishAuthentication", () => {
     );
   });
 
+  test("accepts an expected origin with a trailing slash", async () => {
+    for (const expectedOrigin of [`${ORIGIN}/`, [`${ORIGIN}/`]]) {
+      const t = setup();
+      const { credential, passkeyId } = await register(t, "user1");
+      const { challenge } = await t.mutation(
+        api.authentication.startAuthentication,
+        { purpose: PURPOSE, userId: "user1" },
+      );
+      const assertion = await buildAssertion(credential, challenge);
+      const result = await t.mutation(api.authentication.finishAuthentication, {
+        ...EXPECTED,
+        expectedOrigin,
+        ...assertion,
+      });
+      expect(result).toEqual({ success: true, userId: "user1", passkeyId });
+    }
+  });
+
   test("throws for an empty list of expected origins", async () => {
     const t = setup();
     const { credential } = await register(t, "user1");

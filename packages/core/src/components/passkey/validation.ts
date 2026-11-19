@@ -114,6 +114,27 @@ export function validateExpectedOrigin(expectedOrigin: ExpectedOrigin) {
   }
 }
 
+/**
+ * Checks the expected origins that the app supplies, and removes a trailing
+ * slash from each one. An origin has no trailing slash, but a URL such as
+ * `https://example.com/` often has one.
+ *
+ * @returns the expected origins without a trailing slash.
+ * @throws when the value is an empty list.
+ */
+export function normalizeExpectedOrigin(
+  expectedOrigin: ExpectedOrigin,
+): ExpectedOrigin {
+  validateExpectedOrigin(expectedOrigin);
+  return typeof expectedOrigin === "string"
+    ? removeTrailingSlash(expectedOrigin)
+    : expectedOrigin.map(removeTrailingSlash);
+}
+
+function removeTrailingSlash(origin: string): string {
+  return origin.endsWith("/") ? origin.slice(0, -1) : origin;
+}
+
 /** Whether the origin of a ceremony is one of the expected origins. */
 export function originIsExpected(
   origin: string,
