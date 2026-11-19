@@ -88,6 +88,7 @@ function useAuthClient() {
  *   const { sendMagicLink, pending } = useSendEmailMagicLink(api.auth);
  *   const [email, setEmail] = useState("");
  *   const [sent, setSent] = useState(false);
+ *   const [error, setError] = useState<string | null>(null);
  *   if (sent) {
  *     return <p>We sent a sign-in link to {email}.</p>;
  *   }
@@ -95,8 +96,13 @@ function useAuthClient() {
  *     <form
  *       onSubmit={async (e) => {
  *         e.preventDefault();
+ *         setError(null);
  *         const result = await sendMagicLink({ email });
- *         setSent(result.success);
+ *         if (result.success) {
+ *           setSent(true);
+ *         } else {
+ *           setError(result.userError.error);
+ *         }
  *       }}
  *     >
  *       <input
@@ -107,6 +113,7 @@ function useAuthClient() {
  *       <button type="submit" disabled={pending}>
  *         Continue with email
  *       </button>
+ *       {error !== null && <p>Could not send the link: {error}</p>}
  *     </form>
  *   );
  * }
