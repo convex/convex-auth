@@ -17,6 +17,7 @@ import {
 } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
+import { usePending } from "../../react/pending.ts";
 import type {
   SendResult as SendMutationResult,
   SignInResult as SignInMutationResult,
@@ -128,29 +129,26 @@ export function useSendEmailMagicLink(api: {
   // than going through the `AuthSignInApi`.
   const runSend = useMutation(api.sendEmailMagicLink);
   const { storage } = useAuthClient();
-  const [pending, setPending] = useState(false);
-  // Count the calls in flight, so that `pending` stays true until the last
-  // one ends if the app starts a second call before the first one ends.
-  const inFlight = useRef(0);
+  const { pending, track } = usePending();
 
   const sendMagicLink = useCallback(
-    async (args: { email: string }): Promise<SendResult> => {
-      inFlight.current++;
-      setPending(true);
-      try {
-        const result = await runSend(args);
-        if (result.success) {
-          await storage.set(SECRET_STORAGE_KEY, result.browserSecret);
-          return { success: true };
+    async (args: { email: string }): Promise<SendResult> =>
+      track(async () => {
+        try {
+          const result = await runSend(args);
+          if (result.success) {
+            await storage.set(SECRET_STORAGE_KEY, result.browserSecret);
+            return { success: true };
+          }
+          return result;
+        } catch (cause) {
+          return {
+            success: false,
+            userError: { error: "OTHER_ERROR", cause },
+          };
         }
-        return result;
-      } catch (cause) {
-        return { success: false, userError: { error: "OTHER_ERROR", cause } };
-      } finally {
-        if (--inFlight.current === 0) setPending(false);
-      }
-    },
-    [runSend, storage],
+      }),
+    [runSend, storage, track],
   );
 
   return { sendMagicLink, pending };
