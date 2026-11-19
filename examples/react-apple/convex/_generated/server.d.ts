@@ -34,6 +34,7 @@ type Env = {
   readonly AUTH_APPLE_KEY_ID: string;
   readonly AUTH_APPLE_PRIVATE_KEY: string;
   readonly AUTH_APPLE_TEAM_ID: string;
+  readonly SITE_URL: string | undefined;
 };
 
 /**

@@ -42,7 +42,7 @@ Register the passkey component and the username component alongside the core
 in `convex/convex.config.ts`. The username component stores which user each
 username identifies:
 
-```ts file="examples/react-username-passkey-basic/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authPasskey from" highlight="import authUsername from" highlight="app.use(authPasskey)" highlight="app.use(authUsername)"
+```ts file="examples/react-username-passkey-basic/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authPasskey from" highlight="import authUsername from" highlight="app.use(authPasskey)" highlight="app.use(authUsername)" highlight="SITE_URL:" highlight="RP_ID:"
 
 ```
 
@@ -107,15 +107,25 @@ rows, in `convex/auth.ts`.
   ],
   ```
 
+The example reads `origin` from the `SITE_URL` environment variable and `rpId`
+from the `RP_ID` environment variable. Their defaults are the values for the
+Vite dev server. On your production deployment, set them to the origin and the
+domain of your frontend:
+
+```sh
+npx convex env set SITE_URL https://my-app.example
+npx convex env set RP_ID my-app.example
+```
+
 :::warning
 
 Passkeys are permanently bound to their `rpId`: a passkey created with `rpId:
-"localhost"` can never be used on your production domain. Set both values to
-the production domain before you deploy.
+"localhost"` can never be used on your production domain. Set `RP_ID` on your
+production deployment before your users create passkeys.
 
 :::
 
-```ts file="examples/react-username-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });"
+```ts file="examples/react-username-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });" highlight="const SITE_URL" highlight="const RP_ID"
 
 ```
 
