@@ -179,11 +179,11 @@ export function buildProviderFunctions<
       await dbHelpers.insertAccount<SharedAccountDocument>(ctx, args),
   });
 
-  const deleteUserAccounts = options.mutation({
+  const deleteUser = options.mutation({
     args: { userId: v.string() },
     returns: v.object({ deleted: v.number() }),
     handler: async (ctx, args) =>
-      await dbHelpers.deleteUserAccounts<SharedAccountDocument>(ctx, args),
+      await dbHelpers.deleteUser<SharedAccountDocument>(ctx, args),
   });
 
   return {
@@ -193,6 +193,6 @@ export function buildProviderFunctions<
     claimTicket,
     getUserIdByAccount,
     _internal_dangerous_createAccount,
-    deleteUserAccounts,
+    deleteUser,
   };
 }

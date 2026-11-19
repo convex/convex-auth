@@ -127,11 +127,11 @@ const createAccount = makeFunctionReference<
   null
 >("provider:_internal_dangerous_createAccount");
 
-const deleteUserAccounts = makeFunctionReference<
+const deleteUser = makeFunctionReference<
   "mutation",
   { userId: string },
   { deleted: number }
->("provider:deleteUserAccounts");
+>("provider:deleteUser");
 
 /**
  * Define tests for the functions registered by a component built with
@@ -256,18 +256,18 @@ export function testAccountsContract(
         await t.mutation(createAccount, { providerAccountId, userId });
       }
 
-      expect(
-        await t.mutation(deleteUserAccounts, { userId: "user-1" }),
-      ).toEqual({ deleted: 2 });
+      expect(await t.mutation(deleteUser, { userId: "user-1" })).toEqual({
+        deleted: 2,
+      });
       expect(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
       ).toBeNull();
       expect(
         await t.query(getUserIdByAccount, { providerAccountId: "sub-3" }),
       ).toBe("user-2");
-      expect(
-        await t.mutation(deleteUserAccounts, { userId: "user-1" }),
-      ).toEqual({ deleted: 0 });
+      expect(await t.mutation(deleteUser, { userId: "user-1" })).toEqual({
+        deleted: 0,
+      });
 
       // A deleted account's provider account can connect to a new user.
       await t.mutation(createAccount, {

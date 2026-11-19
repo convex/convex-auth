@@ -248,9 +248,9 @@ export async function insertAccount<Doc extends AccountContract>(
  * return how many there were. A user holds one account for each provider
  * account they connected, so the read is bounded by what one person connected.
  *
- * Call as `deleteUserAccounts<Doc<"accounts">>(ctx, args)`.
+ * Call as `deleteUser<Doc<"accounts">>(ctx, args)`.
  */
-export async function deleteUserAccounts<Doc extends AccountContract>(
+export async function deleteUser<Doc extends AccountContract>(
   ctx: MutationCtx,
   { userId }: { userId: string },
 ): Promise<{ deleted: number }> {

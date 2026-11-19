@@ -45,7 +45,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         null | { encryptedPayload: string },
         Name
       >;
-      deleteUserAccounts: FunctionReference<
+      deleteUser: FunctionReference<
         "mutation",
         "internal",
         { userId: string },
