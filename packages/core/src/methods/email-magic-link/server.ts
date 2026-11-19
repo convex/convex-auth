@@ -146,7 +146,9 @@ export type EmailMagicLinkProfile = Record<string, never>;
  *   address. When no user has, it creates one with the app's `createUser`,
  *   and records the address as its primary email address.
  * - A link works once, for 10 minutes, and only in the browser that asked
- *   for it.
+ *   for it. Opening the link does not use it: the browser must also send
+ *   its secret. Thus a mail scanner that opens the link cannot use it or
+ *   make it fail.
  */
 export function setupEmailMagicLink<UsersTable extends string>(
   core: AuthCore<UsersTable>,
