@@ -1,5 +1,5 @@
 {
-  "name": "example-react-passkey-basic",
+  "name": "example-react-username-password",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -16,10 +16,12 @@
     "typecheck": "tsc --noEmit && tsc -p convex --noEmit"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@types/node": "^24.12.4",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.3",
+    "convex-test": "^0.0.65",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
   }

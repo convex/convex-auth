@@ -30,7 +30,7 @@ check:jsdoc`). It is not an example to copy.
   for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
-  - `react-password` wires up the core, password, and username components
+  - `react-username-password` wires up the core, password, and username components
     with the `usernamePassword` method.
   - `react-email-password` wires up the core, password, and email components
     with the `emailPassword` method (sign-up with email validation, change
@@ -38,9 +38,9 @@ check:jsdoc`). It is not an example to copy.
   - `react-email-magic-link` wires up the core and email components with the
     `emailMagicLink` method (one form to sign in or sign up with an emailed
     link; email through `@convex-dev/resend`).
-  - `react-passkey` wires up the core, passkey, and username components with
+  - `react-username-passkey` wires up the core, passkey, and username components with
     the `usernamePasskey` method, and adds passkey management.
-  - `react-passkey-basic` is `react-passkey` without passkey management. The
+  - `react-username-passkey-basic` is `react-username-passkey` without passkey management. The
     passkey tutorial uses it as its first step.
   - `react-google` wires up the core and the google component with the
     `google` method.
@@ -138,7 +138,7 @@ Use `pnpm install` at the root. Common tasks:
   so it isn't built here — see its `prepack`.)
 - `pnpm codegen` — regenerate every Convex `_generated` directory.
   Can also generate the codegen for a single demo or component
-  (e.g. `pnpm codegen react-passkey`)
+  (e.g. `pnpm codegen react-username-passkey`)
 - `pnpm test` — run tests across packages (Vitest).
 - `pnpm typecheck` — typecheck across packages.
 - `pnpm check:jsdoc` — typecheck the `ts` and `tsx` code blocks in the

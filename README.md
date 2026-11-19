@@ -132,7 +132,7 @@ The `examples/` directory holds in-repo example apps. Each is a self-contained
 Convex backend that mounts the auth components, and is run from its own
 directory (see the example's own README):
 
-- `examples/react-password` — the core, password, and username components
+- `examples/react-username-password` — the core, password, and username components
   with the `usernamePassword` method.
 - `examples/react-email-password` — the core, password, and email components
   with the `emailPassword` method: sign-up with email validation, change
@@ -140,7 +140,7 @@ directory (see the example's own README):
 - `examples/react-email-magic-link` — the core and email components with the
   `emailMagicLink` method: one form to sign in or sign up with an emailed
   link.
-- `examples/react-passkey` and `examples/react-passkey-basic` — the core,
+- `examples/react-username-passkey` and `examples/react-username-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
 - `examples/react-google`, `examples/react-apple`, `examples/react-github`, and
   `examples/react-discord` — the core and OAuth components with the `google`,
