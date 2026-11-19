@@ -102,7 +102,7 @@ async function issueSession(
     sessionId,
     ttl.accessTokenTtlSeconds,
   );
-  // The loop erases the session once it reaches its max lifetime.
+  // The loops erase the session once it expires.
   await scheduleSessionCleanup(ctx);
   return {
     accessToken,
@@ -413,7 +413,7 @@ export const refresh = mutation({
     const ttl = validateTtlConfig(args);
     const now = Date.now();
     // A changed lifetime can expire other sessions right away (or later than
-    // the loop planned), thus the loop runs again with the stored new values.
+    // the loops planned), thus the loops run again with the stored new values.
     if (await recordTtlConfig(ctx, ttl)) {
       await scheduleSessionCleanup(ctx);
     }
@@ -549,7 +549,7 @@ export const signOut = mutation({
  *
  * Sessions are listed newest first.
  *
- * The background cleanup loop deletes a session once it expires, so the list
+ * The background cleanup loops delete a session once it expires, so the list
  * holds the live sessions. A session that expired moments ago can still show
  * up until the loop gets to it. The query does not read the clock, so its
  * result stays cached until a session or token changes.
