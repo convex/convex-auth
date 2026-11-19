@@ -15,6 +15,9 @@
   "repository": "https://github.com/convex/convex-auth",
   "license": "Apache-2.0",
   "author": "xixixao",
+  "publishConfig": {
+    "tag": "v1-latest"
+  },
   "files": [
     "dist",
     "providers",
@@ -38,7 +41,7 @@
     "preversion": "npm ci && cd test && npm ci && cd ../test-nextjs && npm ci && cd ../test-router && npm ci && cd .. && npm run build && run-p test:once lint",
     "version": "(npm whoami || npm login) && vim -c 'normal o' -c 'normal o## '$npm_package_version CHANGELOG.md && prettier -w CHANGELOG.md && git add CHANGELOG.md",
     "alpha": "npm version prerelease --preid alpha && npm publish --tag alpha && git push --follow-tags",
-    "release": "npm version patch && npm publish && git push --follow-tags",
+    "release": "npm version patch && npm publish --tag v1-latest && git push --follow-tags",
     "publish:example": "node publishExample.mjs",
     "test": "cd test && npm run test",
     "test:once": "cd test && npm run test:once"
