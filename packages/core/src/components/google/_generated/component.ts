@@ -23,6 +23,16 @@ import type { FunctionReference } from "convex/server";
  */
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
+    native: {
+      _internal_dangerous_exchangeIdToken: FunctionReference<
+        "action",
+        "internal",
+        { audiences: Array<string>; idToken: string; nonce?: string },
+        | { code: string; state: string; status: "exchanged" }
+        | { status: "error"; userError: { error: "INVALID_ID_TOKEN" } },
+        Name
+      >;
+    };
     provider: {
       _internal_dangerous_createAccount: FunctionReference<
         "mutation",

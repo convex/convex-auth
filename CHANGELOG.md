@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Sign in with Google from a native iOS or Android app: `setupGoogle` takes
+  `nativeAppClientIds` and returns `exchangeGoogleIdToken`, which verifies an
+  id_token from Google's native SDK and returns a `code` and `state` for
+  `completeSignInWithGoogle`. Native and web sign-ins reach the same account.
+
 ## 2.0.0
 
 First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.

@@ -13,6 +13,12 @@ export const AUTHORIZATION_ENDPOINT =
 export const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 
 /**
+ * Google's public signing keys, which verify an id_token that reached the
+ * app from the device instead of from Google's token endpoint.
+ */
+export const JWKS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs";
+
+/**
  * Accepted `iss` claims for Google's id_tokens. Google documents both forms,
  * with and without the https prefix, and both name the same issuer, so a
  * given account has the same `sub` either way.
