@@ -133,11 +133,14 @@ export function useSendEmailMagicLink(api: {
 
   const sendMagicLink = useCallback(
     async (args: { email: string }): Promise<SendResult> =>
-      track(async () => {
+      track(async (claimStorage) => {
         try {
           const result = await runSend(args);
           if (result.success) {
-            await storage.set(SECRET_STORAGE_KEY, result.browserSecret);
+            // Do not replace the secret of a newer email.
+            if (claimStorage()) {
+              await storage.set(SECRET_STORAGE_KEY, result.browserSecret);
+            }
             return { success: true };
           }
           return result;
