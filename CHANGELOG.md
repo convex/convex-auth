@@ -9,8 +9,8 @@
 - The OAuth components now expose a `deleteUser` function, similar to other auth
   components. It erases the data stored in the component for a single user. This
   method is useful when implementing user deletion flow.
-- The password component can now verify scrypt hashes. This is helpful when
-  migrating existing user data from systems that use scrypt.
+- The password component can now verify "scrypt" hashes. This is helpful when
+  migrating from systems that use scrypt, like legacy convex-auth.
 - The Google profile has `hostedDomain`, from the `hd` claim of the ID token, so
   that the user callbacks can restrict sign-in to a Google Workspace domain.
 
