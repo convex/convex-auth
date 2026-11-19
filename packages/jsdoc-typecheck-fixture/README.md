@@ -1,10 +1,10 @@
-# Doc examples
+# JSDoc typecheck fixture
 
 The app that the code examples in the doc comments of `@convex-dev/auth`
 compile against. It is not an example to copy: it installs every component
 and sets up every sign-in method, because the examples use all of them.
 
-`pnpm check:doc-examples` (`scripts/checkDocExamples.ts`) puts each example
+`pnpm check:jsdoc` (`scripts/checkJsdoc.ts`) puts each example
 in this app and typechecks it:
 
 - A `tsx` example goes in `src/`, an example from `packages/core/src/ssr/` in
@@ -16,4 +16,4 @@ in this app and typechecks it:
   The script imports it.
 
 When an example uses a function or a component that this app does not have,
-add it here, then run `pnpm codegen doc-examples`.
+add it here, then run `pnpm codegen jsdoc-typecheck-fixture`.

@@ -1,5 +1,5 @@
 {
-  "name": "doc-examples",
+  "name": "jsdoc-typecheck-fixture",
   "version": "0.0.0",
   "private": true,
   "type": "module",

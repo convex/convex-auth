@@ -10,7 +10,7 @@
 //
 // The script finds each ```ts and ```tsx block in a `/** ... */` comment
 // under `packages/core/src/`, and typechecks it as a module of the app in
-// `packages/doc-examples/` (see its README):
+// `packages/jsdoc-typecheck-fixture/` (see its README):
 //
 //   - A ```tsx example is in `src/` of the app, an example from
 //     `packages/core/src/ssr/` is in `app/`, and any other example is in
@@ -29,7 +29,7 @@
 // (or `tsx skip-check`). Use it only for code that cannot compile, for
 // example the code of a component, which uses names of that component.
 //
-// Usage: pnpm check:doc-examples
+// Usage: pnpm check:jsdoc
 
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -39,7 +39,7 @@ import ts from "typescript";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const coreDir = join(root, "packages", "core");
 const srcDir = join(coreDir, "src");
-const appDir = join(root, "packages", "doc-examples");
+const appDir = join(root, "packages", "jsdoc-typecheck-fixture");
 
 // Global declarations, relative to `appDir`.
 const PRELUDE = `
@@ -330,7 +330,7 @@ for (const [example, diagnostics] of check(imports)) {
 if (errors.length > 0) {
   console.error(errors.join("\n"));
   console.error(
-    `\n${errors.length} error(s) in the doc comment examples. See scripts/checkDocExamples.ts.`,
+    `\n${errors.length} error(s) in the doc comment examples. See scripts/checkJsdoc.ts.`,
   );
   process.exit(1);
 }
