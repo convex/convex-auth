@@ -136,6 +136,25 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         >;
       };
       custom: {
+        _internal_dangerous_completeForNewUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            browserSecret: string;
+            emailCode: string;
+            purpose: string;
+            userId: string;
+          },
+          | { email: string; success: true }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { error: "INCORRECT_CODE" }
+                | { error: "EMAIL_TAKEN" };
+            },
+          Name
+        >;
         check: FunctionReference<
           "mutation",
           "internal",

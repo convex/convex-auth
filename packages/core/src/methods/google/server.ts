@@ -38,6 +38,13 @@ export const vGoogleProfile = v.object({
    * the email for account linking.
    */
   emailVerified: v.boolean(),
+  /**
+   * The Google Workspace domain of the account (the `hd` claim), absent for a
+   * personal Google account. Google says to check this claim, not the domain
+   * of the email, to know that an account belongs to a Workspace domain: a
+   * personal account can be made on an address of any domain.
+   */
+  hostedDomain: v.optional(v.string()),
   name: v.optional(v.string()),
   picture: v.optional(v.string()),
 });
@@ -59,6 +66,7 @@ export function normalizeGoogleProfile(
     id: claims.sub,
     email: claims.email,
     emailVerified: claims.email_verified === true,
+    hostedDomain: typeof claims.hd === "string" ? claims.hd : undefined,
     name: claims.name,
     picture: claims.picture,
   };

@@ -1,7 +1,9 @@
 // The `custom` challenge: prove that the person who started the flow
 // controls an address, for a purpose that the application defines. Examples:
 // account recovery, a magic link, or a new verification before a dangerous
-// action. Completion writes nothing to the component.
+// action. Completion writes nothing to the component, except through
+// `_internal_dangerous_completeForNewUser`, which records the address for a
+// user that the caller has just created.
 //
 // The `purpose` string is opaque to the component. The caller gives the same
 // string at start and at completion; a different string fails. Give each purpose a name that another library or flow does not
@@ -14,6 +16,7 @@ import {
   CUSTOM_TTL_MAX_MS,
   CUSTOM_TTL_MIN_MS,
   emailByNormalizedEmail,
+  userHasEmail,
 } from "../helpers.ts";
 import {
   completeChallengeUserError,
@@ -27,6 +30,8 @@ import {
   startChallengeResult,
   startPreconditions,
   createChallengeAndSendEmail,
+  completeFreeAddressFailure,
+  addressTakenError,
   claimChallenge,
   findClaimableChallenge,
   type ChallengeOfKind,
@@ -54,6 +59,13 @@ export const check = mutation({
 
 /**
  * Start a `custom` challenge.
+ *
+ * When `email` was previously verified, the link goes to the address as
+ * the user verified it. When no user has verified the address, the link
+ * goes to `email` as given. The verified form can differ from `email` in
+ * case: a mail server can treat `Alice@` and `alice@` as two mailboxes.
+ * `complete` finds the owner without regard to case, and returns the form
+ * of the address that the link went to.
  *
  * `subject` and `intro` are the first lines of the email; the component
  * appends the link and the expiry. `ttlMs` bounds how long the link works;
@@ -98,8 +110,9 @@ export const start = mutation({
     if (error !== null) {
       return { success: false, userError: error };
     }
+    const owner = await emailByNormalizedEmail(ctx, normalizeEmail(args.email));
     const created = await createChallengeAndSendEmail(ctx, {
-      email: args.email,
+      email: owner === null ? args.email : owner.email,
       purpose: {
         kind: "custom",
         userId: args.expectedUserId ?? undefined,
@@ -219,5 +232,79 @@ export const complete = mutation({
       return claim.failure;
     }
     return await claimableResult(ctx, claim.row);
+  },
+});
+
+const completeForNewUserResult = v.union(
+  v.object({ success: v.literal(true), email: v.string() }),
+  completeFreeAddressFailure,
+);
+type CompleteForNewUserResult = Infer<typeof completeForNewUserResult>;
+
+/**
+ * Complete a `custom` challenge that `start` got no user for, and record the
+ * address as the primary email address of `userId`, a user that the caller
+ * has just created. A flow that makes the account only after the person
+ * proves control of the address uses it (for example, a magic link that
+ * signs a new person up).
+ *
+ * The caller calls `peek` first, in the same mutation. It creates the user
+ * and calls this function only when `peek` gives `emailOwnerId: null`. Both
+ * calls run in one transaction, so the answer of `peek` still holds here.
+ *
+ * Fails with `EMAIL_TAKEN` when a user has verified the address. The claim
+ * still deletes the row.
+ *
+ * Throws when `start` got a user, or when `userId` already has an email
+ * address: both are application bugs.
+ *
+ * DANGER: this function records the address on `userId` with no further
+ * check, thus a `userId` that is not a new user lets an attacker attach
+ * their mailbox to the account of another user. Give only a user that the
+ * same mutation has just created.
+ *
+ * TODO: with attestations, take `newUser` (the new-user attestation of the
+ * core) instead of `userId`, like
+ * `challenge.signUp._internal_dangerous_start` will, and return a user
+ * attestation for that user. The function then verifies itself that the
+ * user is new, and loses its `_internal_dangerous_` prefix.
+ */
+export const _internal_dangerous_completeForNewUser = mutation({
+  args: { ...vClaimArgs, purpose: vPurposeName, userId: v.string() },
+  returns: completeForNewUserResult,
+  handler: async (ctx, args): Promise<CompleteForNewUserResult> => {
+    const claim = await claimChallenge(ctx, {
+      emailCode: args.emailCode,
+      browserSecret: args.browserSecret,
+      purpose: { kind: "custom", userId: undefined, purpose: args.purpose },
+    });
+    if (!claim.success) {
+      if (claim.failure.userError.error === "WRONG_USER") {
+        throw new Error(
+          "Cannot complete the challenge for a new user: the challenge was " +
+            "started for an existing user.",
+        );
+      }
+      return { success: false, userError: claim.failure.userError };
+    }
+    const { row } = claim;
+    if (await userHasEmail(ctx, args.userId)) {
+      throw new Error(
+        "Cannot complete the challenge for a new user: the user already " +
+          "has an email address.",
+      );
+    }
+    const normalizedEmail = normalizeEmail(row.email);
+    const taken = await addressTakenError(ctx, normalizedEmail);
+    if (taken !== null) {
+      return { success: false, userError: taken };
+    }
+    await ctx.db.insert("verifiedEmails", {
+      email: row.email,
+      normalizedEmail,
+      userId: args.userId,
+      isPrimary: true,
+    });
+    return { success: true, email: row.email };
   },
 });

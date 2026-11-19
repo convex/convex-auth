@@ -1,0 +1,27 @@
+# react-username-passkey example
+
+This demo shows:
+
+- The core component.
+- The passkey and username components, with the identifier-first
+  `usernamePasskey` method: one username field. A free username creates a new account with
+  a passkey; an existing username asks for a passkey of that account. The
+  login field also offers passkey autofill (WebAuthn conditional
+  mediation).
+- Passkey management: list, add, rename, and remove the passkeys of the
+  account.
+
+## Generate code / run
+
+Run the example from its own directory.
+
+```bash
+cd examples/react-username-passkey
+npx convex dev --once    # provisions a deployment, generates convex/_generated
+npm run dev              # start the Vite frontend
+```
+
+## Deploying
+
+Before you deploy, set `rpId` and `origin` in `convex/auth.ts` to the
+production domain. Passkeys are permanently bound to the `rpId`.

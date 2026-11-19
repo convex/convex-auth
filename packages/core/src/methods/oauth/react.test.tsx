@@ -8,6 +8,7 @@ import { InMemoryStorage } from "../../browser/storage.ts";
 import { useAuthToken } from "../../react/index.tsx";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
 import { stubSignInApi } from "../../react/testSignInApi.ts";
+import { useSignInWithDiscord } from "../discord/react.ts";
 import { useSignInWithGithub } from "../github/react.ts";
 import { useSignInWithGoogle } from "../google/react.ts";
 import {
@@ -55,6 +56,16 @@ const githubApi = {
   ) as OauthProviderApi["startSignIn"],
   completeSignInWithGithub: makeFunctionReference<"mutation">(
     "auth:completeSignInWithGithub",
+  ) as OauthProviderApi["completeSignIn"],
+};
+
+/** The part of a generated `api.auth` the Discord hook reads. */
+const discordApi = {
+  startSignInWithDiscord: makeFunctionReference<"mutation">(
+    "auth:startSignInWithDiscord",
+  ) as OauthProviderApi["startSignIn"],
+  completeSignInWithDiscord: makeFunctionReference<"mutation">(
+    "auth:completeSignInWithDiscord",
   ) as OauthProviderApi["completeSignIn"],
 };
 
@@ -241,6 +252,35 @@ describe("OAuth React client", () => {
       providerName: "github",
       state: "state-2",
       completeSignIn: "auth:completeSignInWithGithub",
+    });
+  });
+
+  test("useSignInWithDiscord starts a flow with the Discord references", async () => {
+    stubReactNative();
+    const { result, convexMutation, storage } = renderOAuth(() => ({
+      auth: useAuth(),
+      oauth: useSignInWithDiscord(discordApi),
+    }));
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    convexMutation.mockResolvedValueOnce({
+      redirect: "https://discord.example/auth",
+      state: "state-3",
+    });
+
+    await act(async () => {
+      await result.current.oauth.signIn({
+        redirectTo: "http://localhost/app",
+      });
+    });
+
+    expect(convexMutation).toHaveBeenCalledExactlyOnceWith(
+      discordApi.startSignInWithDiscord,
+      { redirectTo: "http://localhost/app" },
+    );
+    expect(readFlow(storage)).toEqual({
+      providerName: "discord",
+      state: "state-3",
+      completeSignIn: "auth:completeSignInWithDiscord",
     });
   });
 

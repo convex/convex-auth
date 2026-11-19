@@ -31,7 +31,7 @@ of a directory with its `_category_.json`.
   their content; see `src/codeInclude.mjs`:
 
   ````mdx
-  ```ts file="examples/react-password/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePassword }"
+  ```ts file="examples/react-username-password/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePassword }"
 
   ```
   ````

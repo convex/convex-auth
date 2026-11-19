@@ -4,7 +4,7 @@ description: Install just, the pinned Rust toolchain, and cache cargo artifacts
 runs:
   using: composite
   steps:
-    - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+    - uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
 
     # Reads rust-toolchain.toml and installs the pinned toolchain + targets.
     - name: Install pinned Rust toolchain
