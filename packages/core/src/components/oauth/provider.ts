@@ -173,6 +173,5 @@ export const _internal_dangerous_createAccount = mutation({
 export const deleteUser = mutation({
   args: { userId: v.string() },
   returns: v.object({ deleted: v.number() }),
-  handler: async (ctx, args) =>
-    await dbHelpers.deleteUser<Doc<"accounts">>(ctx, args),
+  handler: async (ctx, args) => await dbHelpers.deleteUser(ctx, args),
 });

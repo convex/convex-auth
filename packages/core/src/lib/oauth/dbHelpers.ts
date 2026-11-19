@@ -247,20 +247,19 @@ export async function insertAccount<Doc extends AccountContract>(
  * Delete every account of an app user, for an app that deletes the user, and
  * return how many there were. A user holds one account for each provider
  * account they connected, so the read is bounded by what one person connected.
- *
- * Call as `deleteUser<Doc<"accounts">>(ctx, args)`.
  */
-export async function deleteUser<Doc extends AccountContract>(
+export async function deleteUser(
   ctx: MutationCtx,
   { userId }: { userId: string },
 ): Promise<{ deleted: number }> {
-  // The same assertion as in claimAuthorizationRequest, for the same reason.
-  const accounts = (await ctx.db
+  const accounts = await ctx.db
     .query("accounts")
     .withIndex("userId", (q) => q.eq("userId", userId))
-    .collect()) as (Doc & { _id: GenericId<"accounts"> })[];
+    .collect();
   for (const account of accounts) {
-    await ctx.db.delete("accounts", account._id);
+    // The wide ctx types the row as a bare document. The row came from a
+    // query on the accounts table, so its `_id` has the table brand.
+    await ctx.db.delete("accounts", account._id as GenericId<"accounts">);
   }
   return { deleted: accounts.length };
 }

@@ -182,8 +182,7 @@ export function buildProviderFunctions<
   const deleteUser = options.mutation({
     args: { userId: v.string() },
     returns: v.object({ deleted: v.number() }),
-    handler: async (ctx, args) =>
-      await dbHelpers.deleteUser<SharedAccountDocument>(ctx, args),
+    handler: async (ctx, args) => await dbHelpers.deleteUser(ctx, args),
   });
 
   return {
