@@ -14,7 +14,7 @@ Run the example from its own directory.
 ```bash
 cd examples/react-email-password
 npx convex dev --once    # provisions a deployment, generates convex/_generated
-npx convex env set RESEND_API_KEY re_...   # your Resend API key
+npx convex env set RESEND_API_KEY   # Press Enter then enter your Resend API key
 npx convex env set SENDER_EMAIL auth@example.com
 npm run dev              # start the Vite frontend
 ```
