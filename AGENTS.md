@@ -17,8 +17,9 @@ This is a pnpm monorepo:
   - The sign-in methods, which the app wires up: `anonymous` (not exported
     for now), `username-password`, `email-password`, `email-magic-link`,
     `username-passkey`, `oauth`
-    (only its shared React client is exported for now; the API for custom
-    providers is not), `google`, `apple`, `github`, and `discord`.
+    (only its shared client and that client's React hooks are exported for
+    now; the API for custom providers is not), `google`, `apple`, `github`,
+    and `discord`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/jsdoc-typecheck-fixture` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
@@ -72,7 +73,9 @@ check:jsdoc`). It is not an example to copy.
   `@simplewebauthn/browser`. A method whose backend and
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
-  runtime can import.
+  runtime can import. The `index.ts` of `oauth` and `username-passkey`
+  exports the method's browser client without React, for client libraries
+  of other frameworks.
 - `server/` — the app-side code of the core (`setupConvexAuth`, `getAuthUserId`).
 - `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
   `ssr/nextjs/` holds the Next.js bindings.
