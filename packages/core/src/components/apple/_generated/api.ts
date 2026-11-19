@@ -10,6 +10,7 @@
 
 import type * as constants from "../constants.js";
 import type * as http from "../http.js";
+import type * as native from "../native.js";
 import type * as provider from "../provider.js";
 import type * as secret from "../secret.js";
 import type * as user from "../user.js";
@@ -24,6 +25,7 @@ import { anyApi, componentsGeneric } from "convex/server";
 const fullApi: ApiFromModules<{
   constants: typeof constants;
   http: typeof http;
+  native: typeof native;
   provider: typeof provider;
   secret: typeof secret;
   user: typeof user;

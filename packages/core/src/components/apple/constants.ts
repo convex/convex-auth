@@ -13,6 +13,12 @@ export const AUTHORIZATION_ENDPOINT =
 /** Where the authorization code is exchanged for tokens. */
 export const TOKEN_ENDPOINT = "https://appleid.apple.com/auth/token";
 
+/**
+ * Apple's public signing keys, which verify an identity token that reached
+ * the app from the device instead of from Apple's token endpoint.
+ */
+export const JWKS_ENDPOINT = "https://appleid.apple.com/auth/keys";
+
 /** The `iss` claim Apple's id_tokens carry. */
 export const ISSUER = "https://appleid.apple.com";
 
