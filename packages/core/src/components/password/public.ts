@@ -7,6 +7,7 @@ import {
   hashPassword,
   verifyPassword as verifyPasswordHash,
 } from "password-hash-wasm/argon2id";
+import { verifyPassword as verifyScryptHash } from "password-hash-wasm/scrypt";
 import {
   validatePasswordInputFormat,
   validateNewPassword,
@@ -100,8 +101,9 @@ type VerifyPasswordResult = Infer<typeof verifyPasswordResult>;
  *
  * This enforces a rate limit (see `rateLimiter` above).
  *
- * In the future, this will also automatically update password hashes
- * that do not match the latest security recommendations.
+ * The stored hash is an argon2id hash or a scrypt hash. A scrypt hash comes
+ * from another system that wrote it in the table, for example the migration
+ * from Convex Auth v1, which hashes with lucia `Scrypt`.
  */
 export const verifyPassword = mutation({
   args: { userId: v.string(), password: v.string() },
@@ -142,10 +144,15 @@ export const verifyPassword = mutation({
       // unrecoverable programming error rather than a user-facing condition.
       throw new Error(`No password stored for userId ${userId}.`);
     }
-    const matches = await verifyPasswordHash(
-      normalizePassword(password),
-      row.passwordHashPHC,
-    );
+    const matches = row.passwordHashPHC.startsWith("$scrypt$")
+      ? // lucia `Scrypt` (Convex Auth v1) hashes the NFKC form of the
+        // password. `normalizePassword` gives NFC, which keeps the
+        // compatibility characters, so it does not give the same bytes.
+        await verifyScryptHash(password.normalize("NFKC"), row.passwordHashPHC)
+      : await verifyPasswordHash(
+          normalizePassword(password),
+          row.passwordHashPHC,
+        );
     if (!matches) {
       return { success: false, userError: { error: "INVALID_CREDENTIALS" } };
     }
