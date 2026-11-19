@@ -20,7 +20,7 @@ import {
   finishAuthenticationUserError,
   describeExpectedOrigin,
   originIsExpected,
-  validateExpectedOrigin,
+  normalizeExpectedOrigin,
   validatePurpose,
   vExpectedOrigin,
 } from "./validation.ts";
@@ -133,7 +133,7 @@ export const finishAuthentication = mutation({
   returns: finishAuthenticationResult,
   handler: async (ctx, args): Promise<FinishAuthenticationResult> => {
     validatePurpose(args.purpose);
-    validateExpectedOrigin(args.expectedOrigin);
+    const expectedOrigin = normalizeExpectedOrigin(args.expectedOrigin);
     const credentialId = toArrayBuffer(
       // args.response contains the credential ID twice: in `args.response.id`
       // and `args.response.rawId`. They are identical by definition (and SimpleWebAuthn
@@ -212,13 +212,13 @@ export const finishAuthentication = mutation({
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
     }
-    if (!originIsExpected(clientData.origin, args.expectedOrigin)) {
+    if (!originIsExpected(clientData.origin, expectedOrigin)) {
       // Note: The check is exact. A dev server on any port of localhost, or
       // a pattern of subdomains, would need a more flexible check.
       console.warn(
         `Rejected the passkey ceremony: the ceremony ran at the origin ` +
           `${JSON.stringify(clientData.origin)}, but ` +
-          `${describeExpectedOrigin(args.expectedOrigin)}. Check that the \`origin\` of ` +
+          `${describeExpectedOrigin(expectedOrigin)}. Check that the \`origin\` of ` +
           `the sign-in method matches the page that ran the ceremony.`,
       );
       return { success: false, userError: { error: "PROTOCOL_ERROR" } };
@@ -284,7 +284,7 @@ export const finishAuthentication = mutation({
       verification = await verifyAuthenticationResponse({
         response: args.response,
         expectedChallenge: toBase64URL(challengeRow.challenge),
-        expectedOrigin: args.expectedOrigin,
+        expectedOrigin,
         expectedRPID: args.expectedRpId,
         credential: {
           id: args.response.rawId,

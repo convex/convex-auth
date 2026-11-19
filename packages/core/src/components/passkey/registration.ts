@@ -88,7 +88,7 @@ import {
   vExpectedOrigin,
   describeExpectedOrigin,
   originIsExpected,
-  validateExpectedOrigin,
+  normalizeExpectedOrigin,
 } from "./validation.ts";
 import { SUPPORTED_ALGORITHM_IDS } from "./constants.ts";
 import {
@@ -444,6 +444,11 @@ async function verifyRegistrationAttempt(
   args: RegistrationCheckArgs,
   flow: RegistrationFlow,
 ): Promise<RegistrationCeremony> {
+  // The checks below and SimpleWebAuthn compare the origins exactly.
+  args = {
+    ...args,
+    expectedOrigin: normalizeExpectedOrigin(args.expectedOrigin),
+  };
   const lookup = await lookupRegistrationChallenge(ctx, args);
   if (lookup.userError !== null) {
     return lookup;
@@ -499,7 +504,6 @@ async function lookupRegistrationChallenge(
     challengeRow: null,
   } as const;
 
-  validateExpectedOrigin(args.expectedOrigin);
   const { transports } = args.response.response;
   if (!transportsAreValid(transports)) {
     console.warn(
