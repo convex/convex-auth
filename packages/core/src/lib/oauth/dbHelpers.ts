@@ -247,6 +247,8 @@ export async function insertAccount<Doc extends AccountContract>(
  * Delete every account of an app user, for an app that deletes the user, and
  * return how many there were. A user holds one account for each provider
  * account they connected, so the read is bounded by what one person connected.
+ *
+ * Call this when the app deletes the user. The function is idempotent.
  */
 export async function deleteUser(
   ctx: MutationCtx,
