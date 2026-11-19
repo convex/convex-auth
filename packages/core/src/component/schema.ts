@@ -68,4 +68,14 @@ export default defineSchema({
   })
     .index("by_hash", ["hash"])
     .index("by_session_state", ["sessionId", "state", "retiredAt"]),
+
+  // The session lifetimes the app last passed in, so that background jobs,
+  // which run with no caller to pass them, know when a session expires. At
+  // most one row. The functions that take the lifetimes as args (sign-in and
+  // refresh) write it when the values they get differ from the stored ones,
+  // which is rare, thus reading it on every refresh stays cheap.
+  ttlConfig: defineTable({
+    refreshInactivityTimeoutSeconds: v.number(),
+    sessionMaxLifetimeSeconds: v.number(),
+  }),
 });
