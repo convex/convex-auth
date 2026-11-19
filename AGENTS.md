@@ -20,10 +20,10 @@ This is a pnpm monorepo:
     (only its shared React client is exported for now; the API for custom
     providers is not), `google`, `apple`, `github`, and `discord`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
-- `packages/doc-examples` — a private Convex app that installs every
+- `packages/jsdoc-typecheck-fixture` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
-check:doc-examples`). It is not an example to copy.
+check:jsdoc`). It is not an example to copy.
 - `packages/docs` — the documentation site (private). The pages are in
   `docs/`.
 - `packages/passkey-test-authenticator` — a software WebAuthn authenticator
@@ -141,10 +141,10 @@ Use `pnpm install` at the root. Common tasks:
   (e.g. `pnpm codegen react-passkey`)
 - `pnpm test` — run tests across packages (Vitest).
 - `pnpm typecheck` — typecheck across packages.
-- `pnpm check:doc-examples` — typecheck the `ts` and `tsx` code blocks in the
-  doc comments of `packages/core/src` as modules of `packages/doc-examples`
+- `pnpm check:jsdoc` — typecheck the `ts` and `tsx` code blocks in the
+  doc comments of `packages/core/src` as modules of `packages/jsdoc-typecheck-fixture`
   (run `pnpm build` first). When an example uses a function or a component
   that the app does not have, add it to the app. See
-  `packages/doc-examples/README.md`.
+  `packages/jsdoc-typecheck-fixture/README.md`.
 - `pnpm lint` — ESLint, including the Convex ESLint plugin.
 - `pnpm format` — Prettier.
