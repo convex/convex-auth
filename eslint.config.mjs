@@ -15,6 +15,8 @@ export default defineConfig([
       "**/dist/**",
       ".agents/**",
       ".context/**",
+      // Claude Code worktrees.
+      ".claude/**",
       ".pnpm-store/**",
       // Generated wasm-bindgen output.
       "packages/password-hash-wasm/rust/pkg/**",
