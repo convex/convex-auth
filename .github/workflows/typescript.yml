@@ -45,7 +45,7 @@ jobs:
 
       # `tsc` does not read the code examples in the doc comments.
       - name: Typecheck the doc comment examples
-        run: pnpm check:doc-examples
+        run: pnpm check:jsdoc
 
       - name: Lint
         run: pnpm lint

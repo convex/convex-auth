@@ -7,6 +7,8 @@ const app = defineApp({
   env: {
     AUTH_GITHUB_CLIENT_ID: v.string(),
     AUTH_GITHUB_CLIENT_SECRET: v.string(),
+    // Defaults in auth.ts.
+    SITE_URL: v.optional(v.string()),
   },
 });
 

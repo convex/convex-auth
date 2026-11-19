@@ -12,8 +12,9 @@ Supported sign-in methods:
 
 - Username + password
 - Email + password, with email verification and password recovery
+- Magic link
 - Username + passkey
-- OAuth: Google, Apple and GitHub
+- OAuth: Google, Apple, GitHub and Discord
 
 ## Getting Started
 
@@ -131,16 +132,19 @@ The `examples/` directory holds in-repo example apps. Each is a self-contained
 Convex backend that mounts the auth components, and is run from its own
 directory (see the example's own README):
 
-- `examples/react-password` — the core, password, and username components
+- `examples/react-username-password` — the core, password, and username components
   with the `usernamePassword` method.
 - `examples/react-email-password` — the core, password, and email components
   with the `emailPassword` method: sign-up with email validation, change
   password/email, and password recovery.
-- `examples/react-passkey` and `examples/react-passkey-basic` — the core,
+- `examples/react-email-magic-link` — the core and email components with the
+  `emailMagicLink` method: one form to sign in or sign up with an emailed
+  link.
+- `examples/react-username-passkey` and `examples/react-username-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
-- `examples/react-google`, `examples/react-apple`, and `examples/react-github`
-  — the core and OAuth components with the `google`, `apple`, and `github`
-  methods.
+- `examples/react-google`, `examples/react-apple`, `examples/react-github`, and
+  `examples/react-discord` — the core and OAuth components with the `google`,
+  `apple`, `github`, and `discord` methods.
 - `examples/nextjs` — a Next.js app with SSR sign-in.
 
 The tests of the examples run as part of `pnpm test` at the repo root.

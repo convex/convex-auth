@@ -9,16 +9,17 @@ pnpm install
 Then run one of the example apps from its own directory:
 
 ```sh
-cd examples/react-password
+cd examples/react-username-password
 pnpm dev
 ```
 
 Each example is a self-contained Convex backend that mounts the auth components,
 so the first `pnpm dev` prompts you to pick or create a deployment.
 
-- `examples/react-password` uses the core component with the password provider.
-- `examples/react-passkey-basic` adds the passkey provider.
+- `examples/react-username-password` uses the core component with the password provider.
+- `examples/react-username-passkey-basic` adds the passkey provider.
 - `examples/react-github` adds the GitHub Oauth provider.
+- `examples/react-discord` adds the Discord OAuth provider.
 - `examples/react-google` adds the Google OAuth provider.
 - `examples/nextjs` covers the Next.js integration.
 

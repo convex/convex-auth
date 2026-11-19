@@ -9,6 +9,8 @@ const app = defineApp({
     AUTH_APPLE_TEAM_ID: v.string(),
     AUTH_APPLE_KEY_ID: v.string(),
     AUTH_APPLE_PRIVATE_KEY: v.string(),
+    // Defaults in auth.ts.
+    SITE_URL: v.optional(v.string()),
   },
 });
 

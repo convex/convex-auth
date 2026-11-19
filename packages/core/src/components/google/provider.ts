@@ -9,6 +9,7 @@ export const {
   claimTicket,
   getUserIdByAccount,
   _internal_dangerous_createAccount,
+  deleteUser,
 } = buildProviderFunctions<
   Doc<"authorizationRequests">,
   Doc<"tickets">,

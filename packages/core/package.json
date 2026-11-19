@@ -36,7 +36,7 @@
     "generate:common-passwords": "bun src/components/password/scripts/generateCommonPasswords.script.ts",
     "postversion": "git add package.json ../../CHANGELOG.md && git commit -m \"$npm_new_version\" && git tag -m \"$npm_new_version\" \"v$npm_new_version\"",
     "prepare": "pnpm run build",
-    "preversion": "pnpm run check:clean && pnpm -C ../.. install --frozen-lockfile && pnpm -w build && pnpm -w check:declarations && pnpm -w check:doc-examples && pnpm -w lint && pnpm -r --filter=!password-hash-wasm typecheck && pnpm -w test",
+    "preversion": "pnpm run check:clean && pnpm -C ../.. install --frozen-lockfile && pnpm -w build && pnpm -w check:declarations && pnpm -w check:jsdoc && pnpm -w lint && pnpm -r --filter=!password-hash-wasm typecheck && pnpm -w test",
     "release": "pnpm version patch && pnpm publish && git push --follow-tags",
     "typecheck": "tsc --noEmit",
     "version": "(npm whoami || npm login) && vim -c 'normal o' -c 'normal o## '$npm_package_version ../../CHANGELOG.md && prettier -w ../../CHANGELOG.md && git add ../../CHANGELOG.md"
@@ -156,6 +156,20 @@
       "types": "./dist/methods/email-password/react.d.ts",
       "default": "./dist/methods/email-password/react.js"
     },
+    "./methods/email-magic-link/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/server.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/server.d.ts",
+      "default": "./dist/methods/email-magic-link/server.js"
+    },
+    "./methods/email-magic-link/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/react.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/react.d.ts",
+      "default": "./dist/methods/email-magic-link/react.js"
+    },
     "./methods/username-passkey": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/index.d.ts"
@@ -239,6 +253,20 @@
       },
       "types": "./dist/methods/github/react.d.ts",
       "default": "./dist/methods/github/react.js"
+    },
+    "./methods/discord/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/discord/server.d.ts"
+      },
+      "types": "./dist/methods/discord/server.d.ts",
+      "default": "./dist/methods/discord/server.js"
+    },
+    "./methods/discord/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/discord/react.d.ts"
+      },
+      "types": "./dist/methods/discord/react.d.ts",
+      "default": "./dist/methods/discord/react.js"
     },
     "./components/username/convex.config.js": {
       "convex-auth-internal-types": {
@@ -442,7 +470,36 @@
       "types": "./dist/components/github/_generated/component.d.ts",
       "default": "./dist/components/github/_generated/component.js"
     },
-    "./components/github/test": "./src/testing/github.ts"
+    "./components/github/test": "./src/testing/github.ts",
+    "./components/discord/convex.config.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/convex.config.d.ts"
+      },
+      "types": "./dist/components/discord/convex.config.d.ts",
+      "default": "./dist/components/discord/convex.config.js"
+    },
+    "./components/discord/convex.config": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/convex.config.d.ts"
+      },
+      "types": "./dist/components/discord/convex.config.d.ts",
+      "default": "./dist/components/discord/convex.config.js"
+    },
+    "./components/discord/_generated/component.js": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/_generated/component.d.ts"
+      },
+      "types": "./dist/components/discord/_generated/component.d.ts",
+      "default": "./dist/components/discord/_generated/component.js"
+    },
+    "./components/discord/_generated/component": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/components/discord/_generated/component.d.ts"
+      },
+      "types": "./dist/components/discord/_generated/component.d.ts",
+      "default": "./dist/components/discord/_generated/component.js"
+    },
+    "./components/discord/test": "./src/testing/discord.ts"
   },
   "dependencies": {
     "@convex-dev/batch-worker": "^0.3.2",

@@ -127,6 +127,12 @@ const createAccount = makeFunctionReference<
   null
 >("provider:_internal_dangerous_createAccount");
 
+const deleteUser = makeFunctionReference<
+  "mutation",
+  { userId: string },
+  { deleted: number }
+>("provider:deleteUser");
+
 /**
  * Define tests for the functions registered by a component built with
  * `buildProviderFunctions`. Every argument and every returned field goes
@@ -239,6 +245,39 @@ export function testAccountsContract(
         }),
       ).rejects.toThrow(/already exists/);
     });
+
+    test("deleting a user's accounts frees them and leaves other users' alone", async () => {
+      const t = setup(schema, modules);
+      for (const [providerAccountId, userId] of [
+        ["sub-1", "user-1"],
+        ["sub-2", "user-1"],
+        ["sub-3", "user-2"],
+      ]) {
+        await t.mutation(createAccount, { providerAccountId, userId });
+      }
+
+      expect(await t.mutation(deleteUser, { userId: "user-1" })).toEqual({
+        deleted: 2,
+      });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBeNull();
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-3" }),
+      ).toBe("user-2");
+      expect(await t.mutation(deleteUser, { userId: "user-1" })).toEqual({
+        deleted: 0,
+      });
+
+      // A deleted account's provider account can connect to a new user.
+      await t.mutation(createAccount, {
+        providerAccountId: "sub-1",
+        userId: "user-3",
+      });
+      expect(
+        await t.query(getUserIdByAccount, { providerAccountId: "sub-1" }),
+      ).toBe("user-3");
+    });
   });
 }
 
@@ -315,6 +354,11 @@ export function testAuthorizationUrl(
      * callback.
      */
     responseMode?: string;
+    /**
+     * The provider-specific parameters, by name. Leave it out for a provider
+     * that adds none.
+     */
+    extraParams?: Record<string, string>;
   },
 ): void {
   describe("authorization URL", () => {
@@ -342,6 +386,25 @@ export function testAuthorizationUrl(
       expect(params.get("state")).toBe(state);
       expect(params.get("scope")).toBe(expected.scope ?? null);
       expect(params.get("response_mode")).toBe(expected.responseMode ?? null);
+      const extraParams = expected.extraParams ?? {};
+      for (const [key, value] of Object.entries(extraParams)) {
+        expect(params.get(key)).toBe(value);
+      }
+      // No parameter beyond these, so a provider that adds none sends exactly
+      // the flow parameters.
+      expect(new Set(params.keys())).toEqual(
+        new Set([
+          "response_type",
+          "client_id",
+          "redirect_uri",
+          "state",
+          "code_challenge",
+          "code_challenge_method",
+          ...(expected.scope === undefined ? [] : ["scope"]),
+          ...(expected.responseMode === undefined ? [] : ["response_mode"]),
+          ...Object.keys(extraParams),
+        ]),
+      );
 
       // The row is only there if startSignIn reached the component through the
       // mutation reference it was handed.
