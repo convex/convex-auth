@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.1.0
+
+### New
+
+- Two new sign-in methods: **magic link** (one form to sign in or sign up with a
+  link sent by email), and **Discord**.
+- The OAuth components now expose a `deleteUser` function, similar to other auth
+  components. It erases the data stored in the component for a single user. This
+  method is useful when implementing user deletion flow.
+- The password component can now verify scrypt hashes. This is helpful when
+  migrating existing user data from systems that use scrypt.
+- The Google profile has `hostedDomain`, from the `hd` claim of the ID token, so
+  that the user callbacks can restrict sign-in to a Google Workspace domain.
+
+### Improvements
+
+- The passkey component now tolerates a trailing slash in the `origin`
+  configuration setting.
+- The `challenge.custom.start` function of the email component now sends the
+  email to the address as its owner verified it (the spelling stored in
+  `verifiedEmails`).
+
 ## 2.0.0
 
 First stable release of v2. Breaking changes from 2.0.0-beta.0 — see the upgrade steps.
