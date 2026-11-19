@@ -1,4 +1,4 @@
-# react-passkey example
+# react-username-passkey example
 
 This demo shows:
 
@@ -16,7 +16,7 @@ This demo shows:
 Run the example from its own directory.
 
 ```bash
-cd examples/react-passkey
+cd examples/react-username-passkey
 npx convex dev --once    # provisions a deployment, generates convex/_generated
 npm run dev              # start the Vite frontend
 ```

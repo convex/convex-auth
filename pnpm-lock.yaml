@@ -514,7 +514,7 @@ importers:
         specifier: ^8.0.16
         version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
 
-  examples/react-passkey:
+  examples/react-username-passkey:
     dependencies:
       '@convex-dev/auth':
         specifier: workspace:*
@@ -563,7 +563,7 @@ importers:
         specifier: ^8.0.16
         version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
 
-  examples/react-passkey-basic:
+  examples/react-username-passkey-basic:
     dependencies:
       '@convex-dev/auth':
         specifier: workspace:*
@@ -600,7 +600,7 @@ importers:
         specifier: ^8.0.16
         version: 8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0)
 
-  examples/react-password:
+  examples/react-username-password:
     dependencies:
       '@convex-dev/auth':
         specifier: workspace:*
