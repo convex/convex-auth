@@ -388,6 +388,59 @@ describe("challenge.custom.start", () => {
     });
   });
 
+  test("sends the link to the address as its owner verified it, not as given", async () => {
+    const t = setup();
+    await seedEmail(t, "user1", "Alice@Example.com", true);
+    const result = await t
+      .withRequestMetadata({ ip: IP })
+      .mutation(api.challenge.custom.start, {
+        ...(await startArgs(t)),
+        email: "alice@example.com",
+        expectedUserId: null,
+      });
+    if (!result.success) {
+      throw new Error("unreachable");
+    }
+
+    const sent = await sentEmails(t);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toEqual(["Alice@Example.com"]);
+    // The challenge stores the same form, thus `complete` returns it.
+    expect(
+      await t.mutation(api.challenge.custom.complete, {
+        emailCode: emailCodeInLink(sent[0].text),
+        browserSecret: result.browserSecret,
+        purpose: PURPOSE,
+        currentUserId: null,
+      }),
+    ).toEqual({
+      success: true,
+      email: "Alice@Example.com",
+      emailOwnerId: "user1",
+    });
+  });
+
+  test("sends the link to the address as given when no user has verified it", async () => {
+    const t = setup();
+    const result = await t
+      .withRequestMetadata({ ip: IP })
+      .mutation(api.challenge.custom.start, {
+        ...(await startArgs(t)),
+        email: "Alice@Example.com",
+        expectedUserId: null,
+      });
+    if (!result.success) {
+      throw new Error("unreachable");
+    }
+
+    const sent = await sentEmails(t);
+    expect(sent[0].to).toEqual(["Alice@Example.com"]);
+    const row = await t.run((ctx) =>
+      ctx.db.get("challenges", result.challengeId),
+    );
+    expect(row).toMatchObject({ email: "Alice@Example.com" });
+  });
+
   test("a null expectedUserId stores no user", async () => {
     const t = setup();
     const result = await t
