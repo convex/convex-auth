@@ -78,7 +78,6 @@ export const accountFields = {
   userId: v.string(),
 };
 
-export const accountsTable = defineTable(accountFields).index(
-  "providerAccountId",
-  ["providerAccountId"],
-);
+export const accountsTable = defineTable(accountFields)
+  .index("providerAccountId", ["providerAccountId"])
+  .index("userId", ["userId"]);
