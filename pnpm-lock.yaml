@@ -722,6 +722,25 @@ importers:
         specifier: ^5.0.0
         version: 5.1.0(@edge-runtime/vm@5.0.0)(@types/node@24.13.2)(jsdom@31.0.0(@noble/hashes@1.8.0))(vite@8.1.6(@types/node@24.13.2)(esbuild@0.28.1)(jiti@1.21.7)(terser@5.51.2)(tsx@4.23.12)(yaml@2.9.0))
 
+  packages/demos:
+    dependencies:
+      '@convex-dev/platform':
+        specifier: ^0.1.11
+        version: 0.1.11
+      '@convex-dev/static-hosting':
+        specifier: ^0.2.2
+        version: 0.2.2(convex@1.48.0(react@19.2.7))(react@19.2.7)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.12.4
+        version: 24.13.2
+      tsx:
+        specifier: ^4.23.12
+        version: 4.23.12
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/docs:
     dependencies:
       '@docusaurus/core':
@@ -1560,6 +1579,9 @@ packages:
     peerDependencies:
       convex: ^1.34.1
 
+  '@convex-dev/platform@0.1.11':
+    resolution: {integrity: sha512-qdX+tYjNhNpEeLIiUhKDQQwdvUJDB529TrfJ9dAIclzLOW7DW1ozgIcyB2nl/MhlhBOUlHLY3wZ1xkjafrJO+Q==}
+
   '@convex-dev/rate-limiter@0.3.2':
     resolution: {integrity: sha512-+oBPsBfFbzdxiF/9XaaTQmVnvDlvEfg/c69/v8LxTbw4VLuiflIKlfnPQL8OS0azXQQ11hcPWHmU8ytFmHKDXA==}
     peerDependencies:
@@ -1580,6 +1602,13 @@ packages:
     peerDependencies:
       convex: ^1.43.0
       convex-helpers: ^0.1.106
+
+  '@convex-dev/static-hosting@0.2.2':
+    resolution: {integrity: sha512-lLg3RIlRN3JazGrQPhGUJZm1zD986JKunnM7XFZsGcZfULN8CFByXaHzphPq7WRq3BBo8IbOxum9RhrsVrwpAA==}
+    hasBin: true
+    peerDependencies:
+      convex: ^1.37.0
+      react: ^18.3.1 || ^19.0.0
 
   '@convex-dev/workpool@0.4.11':
     resolution: {integrity: sha512-nGjfjUvEjuTJkJZPdq6ZWeYaX0p2dh/7Pn/DTx7YX9/lbL9TAsWXPxra9M2E2c8v+zBPhbWNmY8yLyxDsoUI0A==}
@@ -6197,6 +6226,12 @@ packages:
     resolution: {integrity: sha512-7x81NCL719oNbsq/3mh+hVrAWmFuEYUqrq/Iw3kUzH8ReypT9QQ0BLoJS7/G9k6N81XjW4qHWtjWwe/9eLy1EQ==}
     engines: {node: '>=12'}
 
+  openapi-fetch@0.17.0:
+    resolution: {integrity: sha512-PsbZR1wAPcG91eEthKhN+Zn92FMHxv+/faECIwjXdxfTODGSGegYv0sc1Olz+HYPvKOuoXfp+0pA2XVt2cI0Ig==}
+
+  openapi-typescript-helpers@0.1.0:
+    resolution: {integrity: sha512-OKTGPthhivLw/fHz6c3OPtg72vi86qaMlqbJuVJ23qOvQ+53uw1n7HdmkJFibloF7QEjDrDkzJiOJuockM/ljw==}
+
   opener@1.5.2:
     resolution: {integrity: sha512-ur5UIdyw5Y7yEj9wLzhqXiy6GZ3Mwx0yGI+5sMn2r0N0v3cKJvUmFH5yPP+WXh9e0xfyzyJX95D8l088DNFj7A==}
     hasBin: true
@@ -8942,6 +8977,10 @@ snapshots:
       - supports-color
       - typescript
 
+  '@convex-dev/platform@0.1.11':
+    dependencies:
+      openapi-fetch: 0.17.0
+
   '@convex-dev/rate-limiter@0.3.2(convex@1.48.0(react@19.2.7))(react@19.2.7)':
     dependencies:
       convex: 1.48.0(react@19.2.7)
@@ -8973,6 +9012,11 @@ snapshots:
     transitivePeerDependencies:
       - '@react-email/render'
       - react
+
+  '@convex-dev/static-hosting@0.2.2(convex@1.48.0(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      convex: 1.48.0(react@19.2.7)
+      react: 19.2.7
 
   '@convex-dev/workpool@0.4.11(convex-helpers@0.1.123(@standard-schema/spec@1.1.0)(convex@1.48.0(react@19.2.7))(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.48.0(react@19.2.7))(react@19.2.7)':
     dependencies:
@@ -14765,6 +14809,12 @@ snapshots:
       define-lazy-prop: 2.0.0
       is-docker: 2.2.1
       is-wsl: 2.2.0
+
+  openapi-fetch@0.17.0:
+    dependencies:
+      openapi-typescript-helpers: 0.1.0
+
+  openapi-typescript-helpers@0.1.0: {}
 
   opener@1.5.2: {}
 
