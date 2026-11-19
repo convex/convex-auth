@@ -29,6 +29,17 @@ export const createUserEmailPassword = internalMutation({
   handler: async (ctx) => await ctx.db.insert("users", {}),
 });
 
+export const createUserEmailMagicLink = internalMutation({
+  args: {
+    method: v.object({
+      name: v.literal("emailMagicLink"),
+      profile: v.object({}),
+    }),
+  },
+  returns: v.id("users"),
+  handler: async (ctx) => await ctx.db.insert("users", {}),
+});
+
 export const createUserPasskey = internalMutation({
   args: {
     method: v.object({
