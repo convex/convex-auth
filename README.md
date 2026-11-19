@@ -136,6 +136,9 @@ directory (see the example's own README):
 - `examples/react-email-password` — the core, password, and email components
   with the `emailPassword` method: sign-up with email validation, change
   password/email, and password recovery.
+- `examples/react-email-magic-link` — the core and email components with the
+  `emailMagicLink` method: one form to sign in or sign up with an emailed
+  link.
 - `examples/react-passkey` and `examples/react-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
 - `examples/react-google`, `examples/react-apple`, `examples/react-github`, and
