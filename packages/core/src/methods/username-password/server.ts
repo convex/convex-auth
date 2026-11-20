@@ -1,5 +1,5 @@
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../server/userId.ts";
+import { getOwnAuthUserId } from "../../server/userId.ts";
 import {
   vSignInComplete,
   vSignInError,
@@ -263,6 +263,9 @@ export function setupUsernamePassword<UsersTable extends string>(
          * Change the password of the signed-in user. The user must re-authenticate
          * by giving their current password. Signs out the user's other sessions
          * if `signOutOtherSessions` is `true`.
+         *
+         * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+         * caller's session is an impersonation.
          */
         changePassword: authMutation({
           args: {
@@ -275,7 +278,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             ctx,
             { currentPassword, newPassword, signOutOtherSessions = false },
           ): Promise<ChangePasswordResult> => {
-            const userId = await getAuthUserId(ctx, core.component);
+            const userId = await getOwnAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }

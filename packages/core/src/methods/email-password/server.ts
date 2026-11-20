@@ -17,7 +17,7 @@ import {
   type UserCallbacks,
 } from "../../lib/types.ts";
 import type { AuthCore } from "../../server/setup.ts";
-import { getAuthUserId } from "../../server/userId.ts";
+import { getOwnAuthUserId } from "../../server/userId.ts";
 import type { ComponentApi } from "../../components/email/_generated/component.js";
 import type { ComponentApi as PasswordComponentApi } from "../../components/password/_generated/component.js";
 import {
@@ -559,6 +559,8 @@ export function setupEmailPassword<UsersTable extends string>(
          * current password (OWASP ASVS v5 6.2.3), and notifies the primary
          * email address (ASVS 6.3.7). Signs out the user's other sessions
          * if `signOutOtherSessions` is `true` (ASVS v5 7.4.3).
+         * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+         * caller's session is an impersonation.
          */
         changePassword: authMutation({
           args: {
@@ -571,7 +573,7 @@ export function setupEmailPassword<UsersTable extends string>(
             ctx,
             { currentPassword, newPassword, signOutOtherSessions = false },
           ): Promise<ChangePasswordResult> => {
-            const userId = await getAuthUserId(ctx, core.component);
+            const userId = await getOwnAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
@@ -652,6 +654,8 @@ export function setupEmailPassword<UsersTable extends string>(
          * longer has the old address. Requires the session *and* the current
          * password (OWASP ASVS v5 6.2.3). Sends a challenge link to the new
          * address; the change happens in `completeChangeEmail`.
+         * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+         * caller's session is an impersonation.
          */
         startChangeEmail: authMutation({
           args: { newEmail: v.string(), currentPassword: v.string() },
@@ -660,7 +664,7 @@ export function setupEmailPassword<UsersTable extends string>(
             ctx,
             { newEmail, currentPassword },
           ): Promise<StartChangeEmailResult> => {
-            const userId = await getAuthUserId(ctx, core.component);
+            const userId = await getOwnAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }
@@ -705,6 +709,8 @@ export function setupEmailPassword<UsersTable extends string>(
          * (OWASP ASVS 6.3.7).
          *
          * No session is minted — the user already has one.
+         * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+         * caller's session is an impersonation.
          */
         completeChangeEmail: authMutation({
           args: { emailCode: v.string(), browserSecret: v.string() },
@@ -716,7 +722,7 @@ export function setupEmailPassword<UsersTable extends string>(
             // The link is bound to the user who started the change, so the
             // same user must be signed in to complete it. Another user gets
             // `WRONG_USER`, and the link still works for the right user.
-            const userId = await getAuthUserId(ctx, core.component);
+            const userId = await getOwnAuthUserId(ctx, core.component);
             if (userId === null) {
               return { success: false, userError: { error: "NOT_LOGGED_IN" } };
             }

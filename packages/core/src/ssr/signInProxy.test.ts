@@ -168,6 +168,66 @@ describe("token interception", () => {
   });
 });
 
+describe("impersonation through the proxy", () => {
+  // The app lists `impersonateUser` and `stopImpersonating` in `signIn`. Both
+  // return the sign-in envelope, and both identify the caller by the access
+  // token, so the proxy must forward it.
+  const stopImpersonating = makeFunctionReference<"mutation">(
+    "auth:stopImpersonating",
+  ) as ExposedSignInFn;
+  const impersonationHandler = convexProxyHandler({
+    convexUrl: CONVEX_URL,
+    signIn: [stopImpersonating],
+    cookieOptions: { secure: true },
+  });
+  const stopCall = () =>
+    call(
+      {
+        path: "auth:stopImpersonating",
+        format: "convex_encoded_json",
+        args: [{}],
+      },
+      { kind: "mutation", headers: { authorization: "Bearer impersonation" } },
+    );
+
+  test("forwards the caller's access token and moves the restored session into the cookies", async () => {
+    const fetchSpy = upstream({
+      status: "success",
+      value: { status: "complete", tokens: bundle() },
+    });
+
+    const response = await impersonationHandler(stopCall());
+
+    const forwarded = fetchSpy.mock.calls[0][1] as RequestInit;
+    expect((forwarded.headers as Record<string, string>).authorization).toBe(
+      "Bearer impersonation",
+    );
+    const body = await response.json();
+    expect(body.value.tokens).toEqual({
+      accessToken: "access-1",
+      userId: "user-1",
+    });
+    expect(setCookies(response)).toContain(`${AUTH_REFRESH_COOKIE}=refresh-1`);
+  });
+
+  test("passes an impersonation error through and leaves the cookies alone", async () => {
+    upstream({
+      status: "success",
+      value: {
+        status: "error",
+        userError: { error: "IMPERSONATOR_SESSION_ENDED" },
+      },
+    });
+
+    const response = await impersonationHandler(stopCall());
+
+    expect((await response.json()).value.userError).toEqual({
+      error: "IMPERSONATOR_SESSION_ENDED",
+    });
+    expect(setCookies(response)).toBe("");
+  });
+});
+
 describe("what the proxy refuses", () => {
   test("a function that is not allowlisted", async () => {
     const fetchSpy = upstream({ status: "success", value: null });

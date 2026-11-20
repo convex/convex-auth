@@ -1,4 +1,4 @@
-import { setupConvexAuth } from "@convex-dev/auth/server";
+import { setupConvexAuth, setupImpersonation } from "@convex-dev/auth/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
 import { setupDiscord } from "@convex-dev/auth/methods/discord/server";
 import { setupEmailMagicLink } from "@convex-dev/auth/methods/email-magic-link/server";
@@ -22,6 +22,11 @@ const SITE_URL = env.SITE_URL ?? "http://localhost:5173";
 
 const auth = setupConvexAuth({ component: components.auth });
 export const { signOut, refreshSession, isAuthenticated } = auth;
+
+export const { impersonateUser, stopImpersonating, impersonation } =
+  setupImpersonation(auth).attachAuthorization({
+    authorize: internal.users.authorizeImpersonation,
+  });
 
 export const {
   signUpWithUsernamePassword,

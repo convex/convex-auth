@@ -29,7 +29,7 @@
  */
 import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
+import { getOwnAuthUserId } from "../../../server/userId.ts";
 import { ADD_PASSKEY_PURPOSE } from "../purposes.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
 import {
@@ -112,12 +112,16 @@ const finishAddPasskeyResult = v.union(
 
 export type FinishAddPasskeyResult = Infer<typeof finishAddPasskeyResult>;
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function startAddPasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {},
     returns: startAddPasskeyResult,
     handler: async (ctx): Promise<StartAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
@@ -152,6 +156,10 @@ export function startAddPasskey(config: UsernamePasskeyConfig) {
   });
 }
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function verifyAddPasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {
@@ -159,7 +167,7 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
     },
     returns: verifyAddPasskeyResult,
     handler: async (ctx, args): Promise<VerifyAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
@@ -228,6 +236,10 @@ export function verifyAddPasskey(config: UsernamePasskeyConfig) {
   });
 }
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function finishAddPasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {
@@ -235,7 +247,7 @@ export function finishAddPasskey(config: UsernamePasskeyConfig) {
     },
     returns: finishAddPasskeyResult,
     handler: async (ctx, args): Promise<FinishAddPasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }

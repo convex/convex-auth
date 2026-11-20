@@ -9,7 +9,7 @@
  */
 import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
+import { getOwnAuthUserId } from "../../../server/userId.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
 import {
   notLoggedInUserError,
@@ -26,6 +26,10 @@ const renamePasskeyResult = v.union(
 
 export type RenamePasskeyResult = Infer<typeof renamePasskeyResult>;
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function renamePasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {
@@ -36,7 +40,7 @@ export function renamePasskey(config: UsernamePasskeyConfig) {
     },
     returns: renamePasskeyResult,
     handler: async (ctx, args): Promise<RenamePasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }

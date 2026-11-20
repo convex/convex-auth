@@ -51,3 +51,36 @@ describe("setupEmailPassword", () => {
     ).toThrow("urls.signUp is not a full URL");
   });
 });
+
+import { makeFunctionReference } from "convex/server";
+import { credentialSessions } from "../credentialSessions.fixture.ts";
+
+for (const [name, args, error] of [
+  [
+    "emailChangePassword",
+    { currentPassword: "password", newPassword: "short" },
+    "PASSWORD_TOO_SHORT",
+  ],
+  [
+    "startChangeEmail",
+    { currentPassword: "password", newEmail: "invalid" },
+    "INVALID_EMAIL",
+  ],
+  [
+    "completeChangeEmail",
+    { emailCode: "missing", browserSecret: "missing" },
+    "INVALID_CHALLENGE",
+  ],
+] as const) {
+  test(`${name} rejects impersonation and preserves normal validation`, async () => {
+    const { normal, impersonating } = await credentialSessions();
+    const fn = makeFunctionReference<"mutation">(`testApp:${name}`);
+    await expect(impersonating.mutation(fn, args)).rejects.toThrow(
+      /IMPERSONATING/,
+    );
+    await expect(normal.mutation(fn, args)).resolves.toMatchObject({
+      success: false,
+      userError: { error },
+    });
+  });
+}

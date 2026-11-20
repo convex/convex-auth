@@ -94,3 +94,17 @@ export const createUserDiscord = internalMutation({
   returns: v.id("users"),
   handler: async (ctx) => await ctx.db.insert("users", {}),
 });
+
+// The `authorize` callback of `setupImpersonation` in `auth.ts`.
+export const authorizeImpersonation = internalMutation({
+  args: { impersonatorUserId: v.id("users"), targetUserId: v.id("users") },
+  returns: v.boolean(),
+  handler: async (ctx, { impersonatorUserId, targetUserId }) => {
+    const impersonator = await ctx.db.get("users", impersonatorUserId);
+    const target = await ctx.db.get("users", targetUserId);
+    if (impersonator === null || target === null) {
+      return false;
+    }
+    return impersonator.role === "admin" && target.role !== "admin";
+  },
+});

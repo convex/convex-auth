@@ -80,6 +80,37 @@ export default defineConfig([
     rules: convexRecommended,
   },
   {
+    // An impersonator must not manage the credentials of the user they act
+    // as. `getOwnAuthUserId` refuses an impersonation session, thus the
+    // functions of the sign-in methods read the caller with it. A function
+    // that only reads may use `getAuthUserId`: list its file in `ignores`.
+    files: ["packages/core/src/methods/**/*.{ts,tsx}"],
+    ignores: [
+      "**/*.test.{ts,tsx}",
+      "**/*.fixture.ts",
+      "packages/core/src/methods/username-passkey/management/list.ts",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/server/userId.ts",
+                "**/server/index.ts",
+                "@convex-dev/auth/server",
+              ],
+              importNames: ["getAuthUserId"],
+              message:
+                "Use getOwnAuthUserId, which refuses an impersonation session. If the function only reads, add its file to the ignores of this rule.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // The Convex CLI deploys every module of a component directory. A
     // component module must thus not import client code or app-side code:
     // the bundle of the component would include it.

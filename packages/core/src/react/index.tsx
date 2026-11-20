@@ -34,6 +34,11 @@ import {
   useAuth,
 } from "./client.tsx";
 
+export {
+  useImpersonation,
+  type UseImpersonateUserResult,
+  type UseStopImpersonatingResult,
+} from "./impersonation.tsx";
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";

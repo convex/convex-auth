@@ -18,7 +18,7 @@ import {
   type UserCallbacks,
 } from "../lib/types.ts";
 import { getAuthUserId } from "./userId.ts";
-import { resolveTtlConfig } from "../lib/ttl.ts";
+import { resolveTtlConfig, type TtlConfig } from "../lib/ttl.ts";
 import { componentPathOf } from "../lib/componentPath.ts";
 
 /**
@@ -84,6 +84,14 @@ export type AuthCore<UsersTable extends string = string> = {
    * @internal
    */
   component: ComponentApi;
+  /**
+   * The token and session lifetimes, as {@link setupConvexAuth} resolved them.
+   *
+   * `setupImpersonation` passes them to the core.
+   *
+   * @internal
+   */
+  ttl: TtlConfig;
   /**
    * Signs out of the current session.
    *
@@ -447,6 +455,7 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
   return {
     usersTable,
     component,
+    ttl,
     signOut,
     refreshSession,
     isAuthenticated,

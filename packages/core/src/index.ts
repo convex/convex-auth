@@ -7,7 +7,11 @@
  */
 
 export type {
+  AuthorizeImpersonationFn,
   ConvexAuthApi,
+  Impersonation,
+  ImpersonateUserFn,
+  ImpersonateUserResult,
   IsAuthenticatedFn,
   RefreshResult,
   RefreshSessionFn,
@@ -15,5 +19,7 @@ export type {
   SignInEnvelope,
   SignInError,
   SignOutFn,
+  StopImpersonatingFn,
+  StopImpersonatingResult,
   TokenBundle,
 } from "./lib/types.ts";

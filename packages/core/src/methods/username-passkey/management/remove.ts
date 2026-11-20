@@ -24,7 +24,7 @@
  */
 import { mutationGeneric } from "convex/server";
 import { Infer, v } from "convex/values";
-import { getAuthUserId } from "../../../server/userId.ts";
+import { getOwnAuthUserId } from "../../../server/userId.ts";
 import { REMOVE_PASSKEY_PURPOSE } from "../purposes.ts";
 import type { UsernamePasskeyConfig } from "../server.ts";
 import { toBase64URL } from "../base64url.ts";
@@ -82,6 +82,10 @@ const finishRemovePasskeyResult = v.union(
 
 export type FinishRemovePasskeyResult = Infer<typeof finishRemovePasskeyResult>;
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function startRemovePasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {
@@ -91,7 +95,7 @@ export function startRemovePasskey(config: UsernamePasskeyConfig) {
     },
     returns: startRemovePasskeyResult,
     handler: async (ctx, { passkeyId }): Promise<StartRemovePasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }
@@ -133,6 +137,10 @@ export function startRemovePasskey(config: UsernamePasskeyConfig) {
   });
 }
 
+/**
+ * Throws a `ConvexError` with `{ code: "IMPERSONATING" }` when the
+ * caller's session is an impersonation.
+ */
 export function finishRemovePasskey(config: UsernamePasskeyConfig) {
   return mutationGeneric({
     args: {
@@ -141,7 +149,7 @@ export function finishRemovePasskey(config: UsernamePasskeyConfig) {
     },
     returns: finishRemovePasskeyResult,
     handler: async (ctx, args): Promise<FinishRemovePasskeyResult> => {
-      const userId = await getAuthUserId(ctx, config.coreComponent);
+      const userId = await getOwnAuthUserId(ctx, config.coreComponent);
       if (userId === null) {
         return { success: false, userError: { error: "NOT_LOGGED_IN" } };
       }

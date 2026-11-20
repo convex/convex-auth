@@ -202,6 +202,110 @@ export type ConvexAuthApi = {
 };
 
 /**
+ * The app's impersonation rule: may `impersonatorUserId` act as
+ * `targetUserId`? `setupImpersonation` takes it as `authorize`, and runs it
+ * in the transaction that starts the impersonation.
+ *
+ * Return `true` to allow the impersonation and `false` to refuse it. Declare
+ * the arguments as `v.id(usersTable)`, check that both users exist, and write
+ * the app's audit record here: it commits only if the impersonation starts.
+ *
+ * It is a mutation, not a query, so that it can write that record.
+ */
+export type AuthorizeImpersonationFn<UsersTable extends string = string> =
+  FunctionReference_future<
+    "mutation",
+    "internal",
+    {
+      impersonatorUserId: GenericId<UsersTable>;
+      targetUserId: GenericId<UsersTable>;
+    },
+    boolean
+  >;
+
+/** Validator for {@link ImpersonateUserResult}. */
+export const vImpersonateUserResult = v.union(
+  vSignInComplete,
+  vSignInError(
+    v.object({
+      error: v.union(
+        v.literal("NOT_LOGGED_IN"),
+        v.literal("ALREADY_IMPERSONATING"),
+        v.literal("CANNOT_IMPERSONATE_SELF"),
+        v.literal("NOT_AUTHORIZED"),
+      ),
+    }),
+  ),
+);
+
+/**
+ * The result of the app's `impersonateUser` mutation. `complete` carries a
+ * session of the impersonated user. The errors:
+ *
+ *  * `NOT_LOGGED_IN`: the caller has no live session.
+ *  * `ALREADY_IMPERSONATING`: the caller's session is an impersonation. Stop
+ *    it first.
+ *  * `CANNOT_IMPERSONATE_SELF`: the target is the caller.
+ *  * `NOT_AUTHORIZED`: the app's `authorize` returned `false`.
+ */
+export type ImpersonateUserResult = Infer<typeof vImpersonateUserResult>;
+
+/** Validator for {@link StopImpersonatingResult}. */
+export const vStopImpersonatingResult = v.union(
+  vSignInComplete,
+  vSignInError(
+    v.object({
+      error: v.union(
+        v.literal("NOT_IMPERSONATING"),
+        v.literal("IMPERSONATOR_SESSION_ENDED"),
+      ),
+    }),
+  ),
+);
+
+/**
+ * The result of the app's `stopImpersonating` mutation. `complete` carries a
+ * session of the impersonator. The errors:
+ *
+ *  * `NOT_IMPERSONATING`: the caller's session is not an impersonation (or
+ *    the caller is not signed in).
+ *  * `IMPERSONATOR_SESSION_ENDED`: the impersonator's own session expired or
+ *    was revoked meanwhile. The caller is signed out.
+ */
+export type StopImpersonatingResult = Infer<typeof vStopImpersonatingResult>;
+
+/**
+ * What the app's `impersonation` query and `getImpersonation` report about
+ * the caller's session when it is an impersonation.
+ */
+export type Impersonation<UsersTable extends string = string> = {
+  /** The user who started the impersonation: the one really acting. */
+  impersonatorUserId: GenericId<UsersTable>;
+  /**
+   * When the impersonation ends, in milliseconds since the epoch. The session
+   * stops working at most one access-token lifetime after it.
+   */
+  expiresAt: number;
+};
+
+/** The app's `impersonateUser` mutation reference, as clients see it. */
+export type ImpersonateUserFn<UsersTable extends string = string> =
+  FunctionReference<
+    "mutation",
+    "public",
+    { userId: GenericId<UsersTable> },
+    ClientView<ImpersonateUserResult>
+  >;
+
+/** The app's `stopImpersonating` mutation reference, as clients see it. */
+export type StopImpersonatingFn = FunctionReference<
+  "mutation",
+  "public",
+  Record<string, never>,
+  ClientView<StopImpersonatingResult>
+>;
+
+/**
  * Shared identity-claims contract between the *sign-in methods* that
  * authenticate users and the *core* component.
  *
