@@ -121,7 +121,9 @@ and `verbatimModuleSyntax` settings. Two rules follow from it:
   `_generated/` files of a component. `pnpm check:declarations` rejects a
   wildcard and an entry whose file does not exist.
 - Only an entry whose key names `react` or `nextjs` may load React.
-  `src/entries.test.ts` loads every other entry with React blocked.
+  `src/entries.test.ts` loads every other entry with React blocked, except
+  the `convex.config` keys (some only load in the Convex runtime) and the
+  `_generated` and `test` keys (types and test helpers).
 
 The one exception is the `./test` and `./components/<name>/test` entries, which ship as TypeScript from
 `src/`. Those helpers call `import.meta.glob`, a Vite macro that has to be
