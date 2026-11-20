@@ -6,7 +6,12 @@ This is a pnpm monorepo:
 
 - `packages/core` — the auth package, published as `@convex-dev/auth`. It
   owns three parts:
-  - The core: sessions and JWTs. It knows no sign-in method.
+  - The core: sessions and JWTs. It knows no sign-in method. It also holds
+    impersonation: a session of one user that another user started.
+    `docs/impersonation.mdx` in `packages/docs` explains what an app gets, and
+    the comments in `component/schema.ts` and on `refresh` in
+    `component/public.ts` explain how the two sessions of an impersonation
+    depend on each other.
   - The optional components, which store the data of the sign-in methods:
     `username`, `password`, `email`, `passkey`, `totp`, `anonymous`,
     `oauth`, `google`, `apple`, `github`, and `discord`. Most of them key
@@ -32,6 +37,8 @@ check:jsdoc`). It is not an example to copy.
   directory:
   - `react-username-password` wires up the core, password, and username components
     with the `usernamePassword` method.
+  - `react-impersonation` is `react-username-password` plus impersonation: an
+    admin acts as another user. The impersonation guide takes its code from it.
   - `react-email-password` wires up the core, password, and email components
     with the `emailPassword` method (sign-up with email validation, change
     password/email, password recovery; email through `@convex-dev/resend`).
@@ -73,7 +80,8 @@ check:jsdoc`). It is not an example to copy.
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
   runtime can import.
-- `server/` — the app-side code of the core (`setupConvexAuth`, `getAuthUserId`).
+- `server/` — the app-side code of the core (`setupConvexAuth`,
+  `getAuthUserId`, `setupImpersonation`, `getImpersonation`).
 - `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
   `ssr/nextjs/` holds the Next.js bindings.
 - `lib/` — internal code that several layers share (`lib/oauth/` for the
@@ -90,6 +98,27 @@ core in `ssr/`, `react/`, or `browser/`, and shared code in
 app-side code. The CLI skips a file name with two dots (`x.test.ts`,
 `x.fixture.ts`): use the `.fixture.ts` suffix for a test-only module in a
 component directory.
+
+## Impersonation rules
+
+An impersonator must never be able to keep the account of the user they act
+as. Three rules follow. Lint enforces the first; nothing enforces the other
+two.
+
+- A function of a sign-in method that changes how the signed-in user signs in
+  (a password, an email address, a passkey) reads the caller with
+  `getOwnAuthUserId` from `server/userId.ts`. It throws for an impersonation
+  session. ESLint rejects `getAuthUserId` in `methods/`. A function that only
+  reads may use it: add its file to the `ignores` of that rule in
+  `eslint.config.mjs`.
+- In the core component, end a session with `deleteSession`. It also ends the
+  other session of an impersonation. Use `deleteSingleSession` only where
+  that other session must stay.
+- On the client, move from one live session to another with
+  `AuthClient.switchSession`. It takes turns across tabs and handles a refresh
+  that crosses the call. `AuthProvider` rebuilds `fetchAccessToken` when
+  `AuthState.sessionId` changes, which is what makes the Convex client
+  authenticate again.
 
 ## Published output
 

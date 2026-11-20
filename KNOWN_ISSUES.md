@@ -73,3 +73,62 @@ to sweep orphans globally and cap the table regardless of any one session's
 behavior. Bound its idle probe's range read above (the passkey version's
 `gte(cursor)` is unbounded, which would put the whole index tail in the loop's
 read set and thrash on OCC at refresh volume).
+
+## Impersonation
+
+### A script in the impersonator's browser can take the impersonator's session
+
+During an impersonation, the impersonator's browser renders content that the
+impersonated user controls. If the app has a stored cross-site scripting hole,
+that user can plant a script that calls `stopImpersonating` and reads back a
+session of the impersonator, usually an admin, valid for up to the session max
+lifetime. In a single-page app the script can read the refresh tokens in
+storage anyway. Under SSR it can call the deployment directly with the access
+token and get the full token bundle, which the `httpOnly` cookie otherwise
+prevents.
+
+No design that restores the impersonator in the same browser avoids this for a
+single-page app. The docs tell apps to escape user content, set a Content
+Security Policy, and keep `maxDurationSeconds` short.
+
+### Starting and stopping trust the access token alone
+
+`impersonateUser` and `stopImpersonating` identify the caller by the access
+token, like every authenticated function of the package. A leaked access token
+of an impersonation session (valid 60 seconds by default) can be exchanged for
+a session of the impersonator.
+
+Fix direction: require proof of the refresh token, with a new `AuthClient`
+operation and a new SSR route next to refresh and sign-out (browser code
+cannot read the refresh token under SSR). That closes the SSR case only.
+Belongs with step-up auth.
+
+### Session switches that end signed out
+
+Each of these ends with the client signed out, or signed in as the user it
+asked for after a moment. None ends in the wrong identity.
+
+- Under SSR, a server-side refresh (a page navigation that the Next.js
+  middleware refreshes) can cross a start or a stop and write its cookies
+  last. The cookies then hold the old session, which the core refuses to
+  refresh (a suspended impersonator session, or a stopped impersonation past
+  its 10 second grace period), so the next refresh signs the client out. Until
+  then, at most one access-token TTL, server-rendered requests still carry the
+  old session's access token.
+- A client that needs longer than `IMPERSONATION_STOP_GRACE_MS` (10 seconds)
+  to receive the response of a stop and authenticate again is signed out.
+- A response to `impersonateUser` that is lost leaves the impersonator session
+  suspended. A retry throws, and the next refresh signs the client out. The
+  impersonation row stays until something deletes it, like any abandoned
+  session.
+- If the old access token expires while a start is under way and a crossing
+  refresh found no session, the Convex client reports unauthenticated until
+  the response of the start arrives.
+- A browser without the Web Locks API has no cross-tab switch mutex, like it
+  has no cross-tab refresh mutex (`packages/core/src/browser/mutex.ts`). Two
+  tabs can then start or stop at the same instant. And a refresh from another
+  tab that reaches the backend more than `REFRESH_GRACE_MS` (5 seconds) after
+  a start commits, while the switching tab still waits for its response,
+  clears the shared storage, which signs every tab out.
+- More than `STANDARD_ISSUED_REFRESH_TOKEN_LIMIT` (3) stops of one
+  impersonation inside its grace period throw.

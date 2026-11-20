@@ -48,6 +48,9 @@ sign-in method:
 | Magic link       | `signInWithEmailMagicLink`                                                               |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
 
+If your app uses [impersonation](../impersonation.mdx), also list
+`impersonateUser` and `stopImpersonating`. Both return a session.
+
 Only list functions that create a session. The other functions a method
 exports, like `changePassword`, passkey `startSignInWithUsernamePasskey`, OAuth
 `startSignInWithGithub`, or `startChangeEmail`,

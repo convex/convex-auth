@@ -1,0 +1,280 @@
+---
+sidebar_position: 4.5
+title: Impersonation
+description: Let support staff or admins act as another user for a limited time.
+---
+
+Impersonation lets a user you trust, such as a support agent or an admin, use
+your app as another user. They see what that user sees, which is often the
+fastest way to understand a bug report. When they are done, they go back to
+their own session without signing in again.
+
+Convex Auth has no roles. Your app decides who may impersonate whom, in a
+function that you write.
+
+To add it to your app, go to
+[Setting up impersonation in your app](#setting-up-impersonation-in-your-app).
+
+## How it works
+
+An impersonation is a session of the impersonated user that remembers who
+started it.
+
+- `getAuthUserId` returns the impersonated user, so your app behaves as it
+  does for them.
+- `getImpersonation` returns who is really acting, so your app can tell the
+  difference where it matters.
+- The impersonation ends after one hour by default, when the impersonator
+  stops it, or when the impersonator's own session ends.
+
+The code on this page comes from the
+[impersonation example](https://github.com/convex/convex-auth/tree/main/examples/react-impersonation).
+It uses username + password sign-in, but impersonation works with every
+sign-in method.
+
+## Setting up impersonation in your app
+
+<StepByStep>
+
+<Step title="Decide who may impersonate whom">
+
+Your app needs a way to tell who is allowed to impersonate. The example gives
+each user a `role`, and keeps a log of the impersonations that started:
+
+```ts file="examples/react-impersonation/convex/schema.ts" title="convex/schema.ts" highlight="role: v.union"
+
+```
+
+</Step>
+
+<Step title="Write the rule">
+
+Write an internal mutation that returns `true` when `impersonatorUserId` may
+act as `targetUserId`. Convex Auth calls it each time somebody tries to start
+an impersonation.
+
+Three things to get right:
+
+- **Check that both users exist.** Convex Auth does not. Declaring the
+  arguments as `v.id("users")` rejects an id from another table, and loading
+  the rows rejects a deleted user.
+- **Refuse admins as targets**, unless you mean to let admins act as each
+  other. An impersonator gets every right of the user they act as.
+- **Write your audit record here,** just before you return `true`. The rule
+  is a mutation for this reason. A record written there commits only if the
+  impersonation starts. A write before you return `false` commits anyway.
+
+```ts file="examples/react-impersonation/convex/users.ts" title="convex/users.ts" highlight="export const authorizeImpersonation = internalMutation({"
+
+```
+
+</Step>
+
+<Step title="Export the impersonation functions">
+
+In `convex/auth.ts`, call `setupImpersonation`, attach the rule, and export
+the three functions you get back:
+
+- `impersonateUser` starts acting as a user.
+- `stopImpersonating` goes back to the impersonator's own session.
+- `impersonation` is a query. It returns who is impersonating and until when,
+  or `null` when the session is not an impersonation.
+
+```ts file="examples/react-impersonation/convex/auth.ts" title="convex/auth.ts" highlight="export const { impersonateUser, stopImpersonating, impersonation } =...});"
+
+```
+
+</Step>
+
+<Step title="Let an admin start an impersonation">
+
+Call `impersonateUser` from the `useImpersonation` hook. On success, the
+Convex client switches to the session of the impersonated user and every query
+runs again as that user.
+
+```tsx file="examples/react-impersonation/src/AdminPanel.tsx" title="src/AdminPanel.tsx" highlight="const { impersonateUser, pending } = useImpersonation(api.auth);" highlight="const result = await impersonateUser(user.id);"
+
+```
+
+</Step>
+
+<Step title="Show a banner while impersonating">
+
+Subscribe to the `impersonation` query and show a banner on every page while
+it returns a value. The person at the keyboard must always be able to see that
+they are acting as somebody else, and stop.
+
+While the client switches between the two sessions, `useConvexAuth` reports
+loading for a moment, so your `AuthLoading` content shows.
+
+```tsx file="examples/react-impersonation/src/ImpersonationBanner.tsx" title="src/ImpersonationBanner.tsx" highlight="const impersonation = useQuery(api.auth.impersonation);" highlight="const result = await stopImpersonating();"
+
+```
+
+</Step>
+
+</StepByStep>
+
+## Using impersonation with Next.js
+
+Add `impersonateUser` and `stopImpersonating` to the `signIn` list of
+`setupConvexAuthServer`, like every function that returns a session (see
+[Sign-in methods with Next.js](./ssr-nextjs/methods.mdx)):
+
+```ts title="src/lib/serverAuth.ts"
+export const auth = setupConvexAuthServer({
+  // ...
+  signIn: [
+    // ...your sign-in functions
+    api.auth.impersonateUser,
+    api.auth.stopImpersonating,
+  ],
+});
+```
+
+The backend and the `useImpersonation` hook are the same as in a single-page
+app.
+
+## Treating impersonated calls differently
+
+Call `getImpersonation` in a function that must know when somebody else is
+acting: to refuse a sensitive action, or to record the real actor.
+
+```ts title="convex/account.ts"
+import { getAuthUserId, getImpersonation } from "@convex-dev/auth/server";
+import { mutation } from "./_generated/server";
+
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not signed in");
+    }
+    if ((await getImpersonation(ctx)) !== null) {
+      throw new Error("Not available while impersonating");
+    }
+    await ctx.db.delete("users", userId);
+  },
+});
+```
+
+`getImpersonation` returns `{ impersonatorUserId, expiresAt }`, or `null` for a
+normal session.
+
+## What Convex Auth guarantees
+
+- **Your rule decides.** No impersonation starts unless `authorize` returns
+  `true`. There is no default rule.
+- **Impersonations end.** An impersonation lasts at most `maxDurationSeconds`
+  (one hour by default), and never longer than the impersonator's own session.
+  An already-issued access token stays valid for up to one access-token
+  lifetime past that.
+- **The two sessions end together.** Signing the impersonator out, or revoking
+  their sessions, ends the impersonation. Signing out during an impersonation
+  signs the impersonator out completely. Only `stopImpersonating` ends the
+  impersonation and keeps the impersonator signed in.
+- **No chains.** An impersonator cannot start a second impersonation from the
+  first.
+- **Credentials are off limits.** The functions of the sign-in methods that
+  change a password, an email address, or a passkey throw a `ConvexError` with
+  `{ code: "IMPERSONATING" }` during an impersonation. An impersonator cannot
+  take over the account. Hide those settings in your UI while the
+  `impersonation` query returns a value, as the example does.
+- **`onSignIn` does not run.** The impersonated user did not sign in.
+
+## Configuring the duration
+
+Pass `maxDurationSeconds` to `setupImpersonation`:
+
+```ts title="convex/auth.ts"
+export const { impersonateUser, stopImpersonating, impersonation } =
+  setupImpersonation(auth, {
+    maxDurationSeconds: 15 * 60,
+  }).attachAuthorization({
+    authorize: internal.users.authorizeImpersonation,
+  });
+```
+
+`maxDurationSeconds` must be at least 60 seconds longer than the access-token
+TTL, and at most `sessionMaxLifetimeSeconds`. Keep it short.
+
+When the time is up, the session stops working within one access-token
+lifetime (one minute by default), and the browser is signed out. The
+impersonator signs in again.
+
+## Handling errors
+
+Both functions of `useImpersonation` resolve to an object with a `status`. When
+it is `"error"`, `userError.error` says why.
+
+### Errors from `impersonateUser`
+
+- `NOT_LOGGED_IN`: the caller's session has ended.
+- `NOT_AUTHORIZED`: your rule returned `false`.
+- `CANNOT_IMPERSONATE_SELF`: the target is the caller.
+- `ALREADY_IMPERSONATING`: the session is already an impersonation. Stop it
+  first.
+
+### Errors from `stopImpersonating`
+
+- `NOT_IMPERSONATING`: the session is not an impersonation, or another tab
+  already stopped it.
+- `IMPERSONATOR_SESSION_ENDED`: the impersonation expired, or the
+  impersonator's own session expired or was revoked. The browser is signed out.
+
+### Errors from both functions
+
+- `SESSION_CHANGED`: the browser moved to another session first, usually from
+  another tab. The browser keeps that session.
+- `OTHER_ERROR`: the call threw. `userError.cause` holds what it threw. Log it
+  and show a generic error message.
+
+## Showing sessions to your users
+
+If your app lists a user's sessions with `listSessions` of the core component,
+an impersonation of that user is in the list. Its entry has an `impersonation`
+field with `impersonatorUserId` and `expiresAt`. Use it to label the entry, or
+to hide the ones whose `expiresAt` has passed.
+
+A user who revokes that entry, or all their other sessions, ends the
+impersonation.
+
+While an admin impersonates somebody, the admin's own session is paused. It
+does not refresh, so its `lastRefreshedAt` stands still until the admin stops
+impersonating.
+
+## Security notes
+
+- **Revoke the sessions of a user who loses the right to impersonate.** Your
+  rule runs when an impersonation starts, not while it lasts. When you demote
+  an admin, revoke their sessions with `listSessions` and `revokeSessions` of
+  the core component. That ends their impersonation too.
+- **Watch for scripts in user content.** During an impersonation, an admin's
+  browser shows content that the impersonated user wrote. If your app has a
+  cross-site scripting hole, that user can plant a script that calls
+  `stopImpersonating` and takes the admin's session. So impersonation turns a
+  hole that exposes one user into one that exposes an admin. Escape user
+  content, set a Content Security Policy, and keep the duration short.
+- **The access token is enough to start and stop.** Like the other functions
+  of Convex Auth, these two trust the caller's access token. Whoever holds the
+  access token of an impersonation can exchange it for a session of the
+  impersonator.
+
+## Limits
+
+In these rare cases, the browser is signed out. None of them signs a browser
+in as a user it did not ask for.
+
+- A response to `impersonateUser` or `stopImpersonating` that never arrives
+  (the connection drops at that moment). A stop can be tried again for 10
+  seconds.
+- Under Next.js, a page navigation that refreshes the session on the server at
+  the same instant as a start or a stop. Sign-ins, switches, and sign-outs
+  started in the browser take turns, but a refresh that the server runs during
+  a page navigation can still write cookies last. Until the browser is signed
+  out (at most one access-token lifetime), server-rendered pages can still show
+  the session from before the start or the stop.
+- A browser without the
+  [Web Locks API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API)
+  where two tabs start or stop at the same instant.
