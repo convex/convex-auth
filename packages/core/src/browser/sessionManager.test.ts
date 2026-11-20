@@ -808,3 +808,101 @@ describe("AuthClient (async storage)", () => {
     expect(storage.entries.size).toBe(0);
   });
 });
+
+describe("AuthClient (a token change while init reads storage)", () => {
+  afterEach(restoreWindow);
+
+  const jwtKey = `${JWT_STORAGE_KEY}_${SUFFIX}`;
+  const refreshKey = `${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`;
+
+  /**
+   * Creates a store that holds each access token read until `release` is
+   * called. The read returns the value stored when it started.
+   */
+  function gatedStorage(entries: Record<string, string> = {}) {
+    const gate = Promise.withResolvers<void>();
+    const storage = new InMemoryStorage();
+    for (const [key, value] of Object.entries(entries)) {
+      storage.setItem(key, value);
+    }
+    const tokenStorage: TokenStorage = {
+      getItem: async (key) => {
+        const value = storage.getItem(key);
+        if (key === jwtKey) await gate.promise;
+        return value;
+      },
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+    };
+    return { tokenStorage, release: () => gate.resolve() };
+  }
+
+  test("keeps a session set during the read", async () => {
+    const { tokenStorage, release } = gatedStorage();
+    const { client } = makeClient({}, tokenStorage);
+
+    const initialized = client.init();
+    await client.setSession(bundle(1));
+    release();
+    await initialized;
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: true,
+      token: "access-1",
+    });
+  });
+
+  test("keeps the user signed out after a sign-out during the read", async () => {
+    const { tokenStorage, release } = gatedStorage({
+      [jwtKey]: "access-1",
+      [refreshKey]: "refresh-1",
+    });
+    const { client } = makeClient({}, tokenStorage);
+
+    const initialized = client.init();
+    await client.signOut();
+    release();
+    await initialized;
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: false,
+      token: null,
+    });
+  });
+
+  test("keeps a sign-out from another tab during the read", async () => {
+    const listeners: Array<(event: StorageEvent) => void> = [];
+    (globalThis as { window?: unknown }).window = {
+      addEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.push(l),
+      removeEventListener: () => {},
+    };
+    const { tokenStorage, release } = gatedStorage({
+      [jwtKey]: "access-1",
+      [refreshKey]: "refresh-1",
+    });
+    const { client } = makeClient({}, tokenStorage);
+
+    const initialized = client.init();
+    // Another tab signed out after the read started.
+    for (const key of [jwtKey, refreshKey]) {
+      listeners.forEach((l) =>
+        l({
+          storageArea: tokenStorage,
+          key,
+          newValue: null,
+        } as unknown as StorageEvent),
+      );
+    }
+    release();
+    await initialized;
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: false,
+      token: null,
+    });
+  });
+});

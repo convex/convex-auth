@@ -195,6 +195,11 @@ export class AuthClient {
   #isLoading = true;
   #pendingSignIns = 0;
   #initialized = false;
+  /**
+   * Counts changes to the tokens in memory, so {@link init} can tell when a
+   * change happened during its storage read.
+   */
+  #tokenVersion = 0;
 
   #snapshot: AuthState = INITIAL_AUTH_STATE;
   readonly #listeners = new Set<Listener>();
@@ -373,12 +378,17 @@ export class AuthClient {
     if (this.#initialAccessToken !== null) {
       await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
     }
+    const versionBeforeRead = this.#tokenVersion;
     const [accessToken, refreshToken] = await Promise.all([
       this.#storage.get(JWT_STORAGE_KEY),
       this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
     ]);
-    this.#accessToken = accessToken ?? null;
-    this.#refreshToken = refreshToken ?? null;
+    // Keep a change made during the read, because it is newer than the stored
+    // tokens.
+    if (this.#tokenVersion === versionBeforeRead) {
+      this.#accessToken = accessToken ?? null;
+      this.#refreshToken = refreshToken ?? null;
+    }
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
@@ -548,6 +558,7 @@ export class AuthClient {
    * tokens.
    */
   async #storeTokens(bundle: TokenBundle | null): Promise<void> {
+    this.#tokenVersion++;
     if (bundle === null) {
       this.#accessToken = null;
       this.#refreshToken = null;
@@ -571,6 +582,7 @@ export class AuthClient {
     // Null out/remove any existing refresh token. It shouldn't be set unless
     // this was somehow a client instance configured for SPA use being
     // "upgraded" to SSR use.
+    this.#tokenVersion++;
     this.#refreshToken = null;
     await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
 
@@ -594,11 +606,13 @@ export class AuthClient {
       // would loop).
       if (event.storageArea !== this.#storage.storage) return;
       if (event.key === jwtKey) {
+        this.#tokenVersion++;
         this.#accessToken = event.newValue;
         this.#log(`synced access token, is null: ${event.newValue === null}`);
         this.#isLoading = false;
         this.#notify();
       } else if (event.key === refreshKey) {
+        this.#tokenVersion++;
         this.#refreshToken = event.newValue;
       }
     };
