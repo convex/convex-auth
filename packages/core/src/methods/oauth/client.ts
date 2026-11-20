@@ -11,6 +11,14 @@
  * the plain Convex client. Only the redemption, which returns the shared
  * sign-in envelope, runs on the sign-in api, which is the auth proxy under SSR.
  *
+ * Exported at `@convex-dev/auth/methods/oauth/client` for client libraries of
+ * other frameworks. Register {@link oauth} with the `AuthClient` of
+ * `@convex-dev/auth/browser`, then read what it publishes under
+ * {@link OAUTH_SETUP_ID}. The React hooks of the OAuth providers are built on
+ * it. `signIn` of {@link OauthActions} takes the references of any provider,
+ * as `useOauthSignIn` does, so it can change until the API for custom OAuth
+ * providers is stable.
+ *
  * @module
  */
 import {
@@ -154,7 +162,11 @@ function callbackFlowError(param: string): OauthFlowError {
 /** Storage key for the saved sign-in flow. */
 const OAUTH_FLOW_STORAGE_KEY = "flow";
 
-/** What `signIn` saves before it navigates to the identity provider. */
+/**
+ * What `signIn` saves before it navigates to the identity provider.
+ *
+ * @internal
+ */
 export type PendingFlow = {
   /** Which provider the flow belongs to. */
   providerName: string;

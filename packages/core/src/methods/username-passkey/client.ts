@@ -2,7 +2,7 @@
  * Framework-agnostic browser client for the username-passkey method.
  *
  * The React hooks in `react.tsx` are built on it. Client libraries for other
- * frameworks import it from `@convex-dev/auth/methods/username-passkey`.
+ * frameworks import it from `@convex-dev/auth/methods/username-passkey/client`.
  *
  * These functions wrap the modal WebAuthn ceremonies through
  * `@simplewebauthn/browser`. They do not call any Convex function: a flow
@@ -16,6 +16,13 @@
  *
  * {@link browserCeremonies} bundles them in the {@link ResolvedPasskeyCeremonies}
  * shape that the flows and hooks take.
+ *
+ * The flows ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow} and
+ * {@link runRemovePasskeyFlow}) run one ceremony against the mutations of
+ * the method. Unlike the ceremonies, a flow rejects when a mutation throws,
+ * and nothing stops two flows from running at once. The React hooks add
+ * both: they fold a throw into `OTHER_ERROR` and answer `ALREADY_PENDING`
+ * while a ceremony is open.
  *
  * @module
  */
@@ -288,3 +295,40 @@ export const browserCeremonies: ResolvedPasskeyCeremonies = {
   authenticateWithAutofill,
   onResume: onPageResume,
 };
+
+// The rest of the client: what an app needs to bring its own ceremonies, and
+// the flows that run a ceremony against the mutations of the method.
+export {
+  resolveCeremonies,
+  type PasskeyAuthenticationResponse,
+  type PasskeyCeremonies,
+  type PasskeyRegistrationResponse,
+} from "./ceremonies.ts";
+export {
+  runSignInOrSignUpFlow,
+  type ProtocolUserError,
+  type SignInFlowContext,
+  type SignInFlowResult,
+  type UsernamePasskeyApi,
+  type UsernamePasskeyAutofillError,
+} from "./flows.ts";
+export {
+  runAddPasskeyFlow,
+  runRemovePasskeyFlow,
+  type AddPasskeyApi,
+  type AddPasskeyFlowResult,
+  type ManagementFlowContext,
+  type RemovePasskeyApi,
+  type RemovePasskeyFlowResult,
+} from "./management/flows.ts";
+export type {
+  FinishAddPasskeyResult,
+  StartAddPasskeyResult,
+  VerifyAddPasskeyResult,
+} from "./management/add.ts";
+export type {
+  FinishRemovePasskeyResult,
+  StartRemovePasskeyResult,
+} from "./management/remove.ts";
+export type { RenamePasskeyResult } from "./management/rename.ts";
+export { CHALLENGE_TTL_MS } from "../../components/passkey/constants.ts";

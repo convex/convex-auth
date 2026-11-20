@@ -64,7 +64,10 @@ check:jsdoc`). It is not an example to copy.
   components: `server.ts` (Convex functions of the app), `react.tsx` or
   `react.ts` (hooks), and the browser code. A method is published at
   `@convex-dev/auth/methods/<method>/server` and
-  `@convex-dev/auth/methods/<method>/react`. `username-passkey` also has a
+  `@convex-dev/auth/methods/<method>/react`. `oauth` and `username-passkey`
+  also publish their `client.ts`, the client without React, at
+  `@convex-dev/auth/methods/<method>/client`, for client libraries of other
+  frameworks. `username-passkey` also has a
   `react-custom.tsx`, published at
   `@convex-dev/auth/methods/username-passkey/react-custom`, whose
   `createUsernamePasskeyHooks` makes the same hooks on top of passkey
@@ -73,9 +76,7 @@ check:jsdoc`). It is not an example to copy.
   `@simplewebauthn/browser`. A method whose backend and
   clients share values (such as `DEFAULT_MIN_PASSWORD_LENGTH`) also has an
   `index.ts`, published at `@convex-dev/auth/methods/<method>`, which any
-  runtime can import. The `index.ts` of `oauth` and `username-passkey`
-  exports the method's browser client without React, for client libraries
-  of other frameworks.
+  runtime can import.
 - `server/` — the app-side code of the core (`setupConvexAuth`, `getAuthUserId`).
 - `ssr/`, `react/`, `browser/` — the client and SSR code of the core.
   `ssr/nextjs/` holds the Next.js bindings.
@@ -119,6 +120,8 @@ and `verbatimModuleSyntax` settings. Two rules follow from it:
   every file of a directory, including the internal modules and the
   `_generated/` files of a component. `pnpm check:declarations` rejects a
   wildcard and an entry whose file does not exist.
+- Only an entry whose key names `react` or `nextjs` may load React.
+  `src/entries.test.ts` loads every other entry with React blocked.
 
 The one exception is the `./test` and `./components/<name>/test` entries, which ship as TypeScript from
 `src/`. Those helpers call `import.meta.glob`, a Vite macro that has to be

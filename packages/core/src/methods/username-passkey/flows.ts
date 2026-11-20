@@ -91,7 +91,7 @@ export type SignInFlowContext = {
  * the shared envelope, so this flow re-wraps their payloads as error arms and
  * callers only ever see the one discriminant.
  */
-type ProtocolUserError =
+export type ProtocolUserError =
   | Extract<StartSignInResult, { success: false }>["userError"]
   | PasskeyClientError;
 
