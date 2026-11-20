@@ -24,6 +24,25 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     public: {
+      _internal_dangerous_impersonate: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessTokenTtlSeconds: number;
+          impersonatorSessionId: string;
+          maxDurationSeconds: number;
+          refreshInactivityTimeoutSeconds: number;
+          sessionMaxLifetimeSeconds: number;
+          targetUserId: string;
+        },
+        {
+          accessToken: string;
+          refreshToken: string;
+          refreshTokenExpiresAt: number;
+          userId: string;
+        },
+        Name
+      >;
       _internal_dangerous_signIn: FunctionReference<
         "mutation",
         "internal",
@@ -71,11 +90,36 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { userId: string },
         Name
       >;
+      _internal_dangerous_stopImpersonation: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          accessTokenTtlSeconds: number;
+          refreshInactivityTimeoutSeconds: number;
+          sessionId: string;
+          sessionMaxLifetimeSeconds: number;
+        },
+        | {
+            kind: "restored";
+            tokens: {
+              accessToken: string;
+              refreshToken: string;
+              refreshTokenExpiresAt: number;
+              userId: string;
+            };
+          }
+        | { kind: "notImpersonating" }
+        | { kind: "impersonatorSessionEnded" },
+        Name
+      >;
       getSession: FunctionReference<
         "query",
         "internal",
         { sessionId: string },
-        { userId: string } | null,
+        {
+          impersonation?: { expiresAt: number; impersonatorUserId: string };
+          userId: string;
+        } | null,
         Name
       >;
       listSessions: FunctionReference<
@@ -84,6 +128,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         { userId: string },
         Array<{
           creationTime: number;
+          impersonation?: { expiresAt: number; impersonatorUserId: string };
           lastRefreshedAt: number;
           sessionId: string;
         }>,

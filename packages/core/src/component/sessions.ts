@@ -33,6 +33,12 @@ export const SPENT_TOKEN_HORIZON_MS = 60 * 60 * 1000; // 1 hour
 // signing in over and over and not refreshing a prior session) could otherwise
 // push past the transaction's limits.
 export const MAX_SESSIONS_PER_USER = 100;
+// How long a stopped impersonation session stays before it is deleted. The
+// clients that were using it are still connected with its access token when the
+// stop commits. Its row stays this long so that they keep resolving to a user
+// until they have adopted the impersonator's tokens, and so that a stop whose
+// response was lost can be retried.
+export const IMPERSONATION_STOP_GRACE_MS = 10 * 1000; // 10 seconds
 
 /** Look up a refresh token, in any state, by its hash. */
 export function lookupRefreshTokenByHash(
@@ -127,8 +133,68 @@ export async function evictLeastRecentlyRefreshedSessions(
 }
 
 /**
- * Erase a session, and schedule the erasure of every refresh token that points
- * at it.
+ * Whether an impersonation session was stopped. A stopped one is only waiting
+ * to be deleted: it is no longer tied to its impersonator session.
+ */
+export function isStoppedImpersonation(
+  session: Pick<Doc<"sessions">, "impersonation">,
+): boolean {
+  return session.impersonation?.stoppedAt !== undefined;
+}
+
+/**
+ * The impersonation session that the given session started and that is not
+ * stopped, or `null`. A session has at most one.
+ */
+export async function liveImpersonation(
+  ctx: QueryCtx,
+  impersonatorSessionId: Id<"sessions">,
+): Promise<Doc<"sessions"> | null> {
+  // A stopped impersonation of the same session can sit beside the live one
+  // until its grace period ends, so read them all and keep the live one.
+  const impersonations = await ctx.db
+    .query("sessions")
+    .withIndex("by_impersonatorSession", (q) =>
+      q.eq("impersonation.impersonatorSessionId", impersonatorSessionId),
+    )
+    .collect();
+  return (
+    impersonations.find((session) => !isStoppedImpersonation(session)) ?? null
+  );
+}
+
+/**
+ * Erase a session, and the session that must end with it.
+ *
+ * An impersonation session and its impersonator session end together, so that
+ * neither is left where no client can reach it: erasing one erases the other.
+ * A stopped impersonation session is the exception. It is erased alone.
+ *
+ * Idempotent, like {@link deleteSingleSession}.
+ */
+export async function deleteSession(
+  ctx: MutationCtx,
+  sessionId: Id<"sessions">,
+): Promise<void> {
+  const session = await ctx.db.get("sessions", sessionId);
+  if (session === null) {
+    return;
+  }
+  await deleteSingleSession(ctx, sessionId);
+  if (session.impersonation === undefined) {
+    const impersonation = await liveImpersonation(ctx, sessionId);
+    if (impersonation !== null) {
+      await deleteSingleSession(ctx, impersonation._id);
+    }
+  } else if (!isStoppedImpersonation(session)) {
+    await deleteSingleSession(ctx, session.impersonation.impersonatorSessionId);
+  }
+}
+
+/**
+ * Erase one session, and schedule the erasure of every refresh token that
+ * points at it. Use {@link deleteSession} unless the other session of an
+ * impersonation must stay.
  *
  * The session ends when its row is gone: `refresh` refuses a token whose
  * session is gone, thus no token can be added to it again. Its token rows only
@@ -140,7 +206,7 @@ export async function evictLeastRecentlyRefreshedSessions(
  * Idempotent, because callers can race: two replays of the same stolen token,
  * or a sign-out arriving alongside one, can both resolve the same session.
  */
-export async function deleteSession(
+export async function deleteSingleSession(
   ctx: MutationCtx,
   sessionId: Id<"sessions">,
 ): Promise<void> {
@@ -180,6 +246,22 @@ export const deleteSessionTokens = internalMutation({
       await ctx.scheduler.runAfter(0, internal.sessions.deleteSessionTokens, {
         sessionId,
       });
+    }
+    return null;
+  },
+});
+
+/**
+ * Erase a stopped impersonation session once its grace period is over. The
+ * impersonator session stays.
+ */
+export const deleteStoppedImpersonation = internalMutation({
+  args: { sessionId: v.id("sessions") },
+  returns: v.null(),
+  handler: async (ctx, { sessionId }) => {
+    const session = await ctx.db.get("sessions", sessionId);
+    if (session !== null && isStoppedImpersonation(session)) {
+      await deleteSingleSession(ctx, sessionId);
     }
     return null;
   },
@@ -226,13 +308,14 @@ export async function pruneRetiredTokens(
  * Returns the raw token, and stores its hash for later lookup. The returned
  * `expiresAt` is the sooner of the token's inactivity expiry and the session's
  * max lifetime, and holds under the current config; a later change to either
- * moves it. The inactivity expiry is computed from `now` rather than the row's
+ * moves it. An impersonation session that is not stopped also ends at its
+ * `expiresAt`. The inactivity expiry is computed from `now` rather than the row's
  * `_creationTime`, so it can differ from what `refresh` enforces by a fraction
  * of a millisecond.
  */
 export async function issueRefreshToken(
   ctx: MutationCtx,
-  session: Pick<Doc<"sessions">, "_id" | "_creationTime">,
+  session: Pick<Doc<"sessions">, "_id" | "_creationTime" | "impersonation">,
   now: number,
   ttl: TtlConfig,
 ): Promise<{ refreshToken: string; expiresAt: number }> {
@@ -247,6 +330,11 @@ export async function issueRefreshToken(
     expiresAt: Math.min(
       now + ttl.refreshInactivityTimeoutSeconds * 1000,
       sessionMaxLifetimeExpiresAt(session, ttl.sessionMaxLifetimeSeconds),
+      session.impersonation === undefined
+        ? Infinity
+        : session.impersonation.stoppedAt !== undefined
+          ? session.impersonation.stoppedAt + IMPERSONATION_STOP_GRACE_MS
+          : session.impersonation.expiresAt,
     ),
   };
 }

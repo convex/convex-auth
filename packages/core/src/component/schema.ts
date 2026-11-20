@@ -14,13 +14,47 @@ export default defineSchema({
   // `_creationTime`, under the values configured when it is checked.
   // The row is only written when the session is created or deleted, so a query
   // reading it (e.g. to check session liveness) is not invalidated by token
-  // refreshes.
+  // refreshes. The one exception is an impersonation session, which is patched
+  // when it is stopped, and once more if its impersonator session then starts
+  // another impersonation.
+  //
+  // An impersonation session is a session of the target user (`userId`) that
+  // an impersonator started from their own session, the impersonator session.
+  // The two end together: deleting either deletes the other, except that
+  // stopping the impersonation ends it and keeps the impersonator session.
+  // While an impersonator session has an impersonation that is not stopped, it
+  // is suspended and cannot be refreshed (see `refresh`).
   sessions: defineTable({
     userId: v.string(),
     // The path of the component that authenticated the user when the session
-    // was created, for example `"authPassword"`.
+    // was created, for example `"authPassword"`. The core's own path for an
+    // impersonation session, which no sign-in component authenticated.
     component: v.string(),
-  }).index("by_user", ["userId"]),
+    // Present only on an impersonation session.
+    impersonation: v.optional(
+      v.object({
+        // The user who started the impersonation.
+        impersonatorUserId: v.string(),
+        // The impersonator's own session, which stopping resumes.
+        impersonatorSessionId: v.id("sessions"),
+        // When the impersonation ends, in ms since the epoch. Fixed at
+        // creation, and never later than the impersonator session's max
+        // lifetime at that time.
+        expiresAt: v.number(),
+        // Set once, when the impersonation is stopped. The row is deleted
+        // `IMPERSONATION_STOP_GRACE_MS` later, and `getSession`, `refresh`,
+        // and `_internal_dangerous_stopImpersonation` refuse it past that
+        // deadline even if deletion is delayed.
+        stoppedAt: v.optional(v.number()),
+        // Set once, on a stopped impersonation, when its impersonator session
+        // starts another one. Only the newest impersonation of a session can
+        // restore it, even after a newer one is deleted.
+        supersededAt: v.optional(v.number()),
+      }),
+    ),
+  })
+    .index("by_user", ["userId"])
+    .index("by_impersonatorSession", ["impersonation.impersonatorSessionId"]),
 
   // Every refresh token a session has handed out and still remembers, by its
   // SHA-256 hash. The raw refresh token is never stored.
