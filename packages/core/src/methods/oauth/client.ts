@@ -15,9 +15,9 @@
  * other frameworks. Register {@link oauth} with the `AuthClient` of
  * `@convex-dev/auth/browser`, then read what it publishes under
  * {@link OAUTH_SETUP_ID}. The React hooks of the OAuth providers are built on
- * it. `signIn` of {@link OauthActions} takes the references of any provider,
- * as `useOauthSignIn` does, so it can change until the API for custom OAuth
- * providers is stable.
+ * it: each one passes the references of its provider to `signIn` of
+ * {@link OauthActions}. `signIn` takes the references of any provider, so it
+ * can change until the API for custom OAuth providers is stable.
  *
  * @module
  */

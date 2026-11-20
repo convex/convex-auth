@@ -71,6 +71,10 @@ export type RemovePasskeyApi = {
 };
 
 export type ManagementFlowContext<Api> = {
+  /**
+   * The authenticated Convex client: adding and removing a passkey need the
+   * signed-in user.
+   */
   convex: ConvexMutationApi;
   api: Api;
   /** The passkey ceremonies of the platform. */

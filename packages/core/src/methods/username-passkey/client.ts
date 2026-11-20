@@ -18,11 +18,22 @@
  * shape that the flows and hooks take.
  *
  * The flows ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow} and
- * {@link runRemovePasskeyFlow}) run one ceremony against the mutations of
- * the method. Unlike the ceremonies, a flow rejects when a mutation throws,
- * and nothing stops two flows from running at once. The React hooks add
- * both: they fold a throw into `OTHER_ERROR` and answer `ALREADY_PENDING`
- * while a ceremony is open.
+ * {@link runRemovePasskeyFlow}) run the ceremonies against the mutations of
+ * the method. They leave three things to the caller, which the React hooks
+ * do:
+ *
+ * - Unlike the ceremonies, a flow rejects when a mutation throws. The hooks
+ *   fold a throw into `OTHER_ERROR`.
+ * - Nothing stops two flows from running at once. The hooks answer
+ *   `ALREADY_PENDING` while a ceremony is open.
+ * - A flow does not end a pending autofill request, and the browser runs one
+ *   ceremony at a time. The hooks abort the autofill request before a modal
+ *   ceremony and start a new one after it.
+ *
+ * The autofill loop itself stays in the React hooks. A client library for
+ * another framework writes its own on {@link authenticateWithAutofill}, and
+ * starts the request again with new options before {@link CHALLENGE_TTL_MS}
+ * passes.
  *
  * @module
  */
