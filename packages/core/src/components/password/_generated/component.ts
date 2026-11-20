@@ -39,7 +39,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           },
         Name
       >;
-      deletePassword: FunctionReference<
+      deleteUser: FunctionReference<
         "mutation",
         "internal",
         { userId: string },

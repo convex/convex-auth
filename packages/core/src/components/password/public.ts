@@ -161,16 +161,17 @@ export const verifyPassword = mutation({
 });
 
 /**
- * Delete the password of a user, for an app that deletes the user.
+ * Delete all data the component holds for a user: their password and the
+ * state of their `verifyPassword` rate limit.
  *
- * The function is idempotent: `deleted` is `false` when the user had no
- * password. A user with no password can no longer sign in with one, and
- * `_internal_dangerous_setPassword` can give them a new one.
+ * Call this when the app deletes the user. The function is idempotent:
+ * `deleted` is `false` when the user had no password.
  */
-export const deletePassword = mutation({
+export const deleteUser = mutation({
   args: { userId: v.string() },
   returns: v.object({ deleted: v.boolean() }),
   handler: async (ctx, { userId }): Promise<{ deleted: boolean }> => {
+    await rateLimiter.reset(ctx, "verifyPassword", { key: userId });
     const row = await passwordByUserId(ctx, userId);
     if (row === null) {
       return { deleted: false };
