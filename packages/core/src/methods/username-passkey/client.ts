@@ -9,18 +9,19 @@
  * gets an `options` object from its start mutation, runs the ceremony here,
  * and sends the response to its finish mutation.
  *
- * The functions never throw. They return discriminated unions, and they
- * fold every failure into the {@link PasskeyClientError} shape, so callers
- * handle every failure through one `userError` switch and never need their
- * own `try`/`catch`.
+ * The ceremony functions never throw. They return discriminated unions, and
+ * they fold every failure into the {@link PasskeyClientError} shape, so
+ * callers handle every failure through one `userError` switch and never need
+ * their own `try`/`catch`.
  *
  * {@link browserCeremonies} bundles them in the {@link ResolvedPasskeyCeremonies}
  * shape that the flows and hooks take.
  *
  * The flows ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow} and
- * {@link runRemovePasskeyFlow}) come from `client-custom.ts`, which says what
- * they leave to the caller. This module exports everything that is there, so
- * a client library on the browser ceremonies imports only this one.
+ * {@link runRemovePasskeyFlow}) come from `client-custom.ts`. Unlike the
+ * ceremonies, a flow rejects when a mutation throws; that file says what
+ * else the flows leave to the caller. This module exports everything that is
+ * there, so a client library on the browser ceremonies imports only this one.
  *
  * @module
  */

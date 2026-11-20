@@ -18,8 +18,9 @@ This is a pnpm monorepo:
     for now), `username-password`, `email-password`, `email-magic-link`,
     `username-passkey`, `oauth`
     (only its shared client and that client's React hooks are exported for
-    now; the API for custom providers is not), `google`, `apple`, `github`,
-    and `discord`.
+    now; the API for custom providers is not, and the client's `signIn`,
+    which takes the references of any provider, can change until that API
+    is stable), `google`, `apple`, `github`, and `discord`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/jsdoc-typecheck-fixture` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
