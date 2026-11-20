@@ -127,7 +127,7 @@ export function ConvexAuthNextjsProvider({
   isAuthenticatedFunctionName: string;
   children: ReactNode;
 }) {
-  const { authClient, convex, signInApi } = useMemo(() => {
+  const { authClient, convex, signInApi, rawSignInApi } = useMemo(() => {
     const convex =
       client ??
       new ConvexReactClient(convexUrl ?? process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -159,9 +159,15 @@ export function ConvexAuthNextjsProvider({
       else proxy.clearAuth();
       return proxy;
     };
-    const signInApi: AuthSignInApi = {
+    const rawSignInApi: AuthSignInApi = {
       mutation: (fn, args) => withAuth().mutation(fn, args),
       action: (fn, args) => withAuth().action(fn, args),
+    };
+    const signInApi: AuthSignInApi = {
+      mutation: (fn, args) =>
+        authClient.runSsrSignIn(() => rawSignInApi.mutation(fn, args)),
+      action: (fn, args) =>
+        authClient.runSsrSignIn(() => rawSignInApi.action(fn, args)),
     };
     authClient = new AuthClient({
       mode: "ssr",
@@ -198,7 +204,7 @@ export function ConvexAuthNextjsProvider({
       },
     });
 
-    return { authClient, convex, signInApi };
+    return { authClient, convex, signInApi, rawSignInApi };
     // `client`/`convexUrl` identity is what matters; other props are read once.
   }, [client, convexUrl]);
 
@@ -209,7 +215,11 @@ export function ConvexAuthNextjsProvider({
   );
 
   return (
-    <AuthProvider authClient={authClient} signInApi={signInApi}>
+    <AuthProvider
+      authClient={authClient}
+      signInApi={signInApi}
+      switchSignInApi={rawSignInApi}
+    >
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
         <SessionWatcher isAuthenticated={isAuthenticated} />
         {children}

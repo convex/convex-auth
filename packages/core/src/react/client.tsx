@@ -8,6 +8,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
   useSyncExternalStore,
 } from "react";
 import type { AuthSignInApi } from "../browser/ambientSignInClient.ts";
@@ -26,6 +27,33 @@ export type { AuthSignInApi };
 const ConvexAuthSignInApiContext = createContext<AuthSignInApi | undefined>(
   undefined,
 );
+
+/**
+ * Unwrapped proxy transport for hooks that execute inside
+ * `AuthClient.switchSession`. Under SSR `switchSession` already holds the
+ * session mutex across its callback, whereas `signInApi` wraps each call in
+ * `AuthClient.runSsrSignIn` (which takes the same non-reentrant mutex).
+ */
+const SwitchSignInApiContext = createContext<AuthSignInApi | undefined>(
+  undefined,
+);
+
+/**
+ * The {@link AuthSignInApi} for hooks that run inside
+ * `AuthClient.switchSession`. Internal to `react/`.
+ *
+ * @internal
+ */
+export function useSwitchSignInApi(): AuthSignInApi {
+  const signInApi = useContext(SwitchSignInApiContext);
+  if (signInApi === undefined) {
+    throw new Error(
+      "useSwitchSignInApi must be used within a <ConvexAuthProvider> (or, under " +
+        "Next.js, a <ConvexAuthNextjsProvider>).",
+    );
+  }
+  return signInApi;
+}
 
 /**
  * The {@link AuthSignInApi} for the surrounding auth provider.
@@ -134,15 +162,63 @@ export function SessionWatcher({
   if (authClient === undefined) {
     throw new Error("SessionWatcher must be rendered under AuthProvider.");
   }
-  const { isAuthenticated: isClientAuthenticated } = useConvexAuth();
-  const hasLiveSession = useQuery(
-    isAuthenticated,
-    isClientAuthenticated ? {} : "skip",
+  const { sessionId } = useSyncExternalStore(
+    authClient.subscribe,
+    authClient.getSnapshot,
+    getServerSnapshot,
   );
-  const revoked = hasLiveSession === false;
+  const { isAuthenticated: isClientAuthenticated } = useConvexAuth();
+  // When the client switches sessions, `sessionId` updates before
+  // `ConvexProviderWithAuth` clears and re-authenticates the websocket. Any
+  // `isAuthenticated` query result observed before `isClientAuthenticated`
+  // drops to `false` still belongs to the previous session and must not
+  // trigger sign-out for the replacement session.
+  const [watcherState, setWatcherState] = useState<{
+    confirmedSessionId: string | null;
+    pendingSessionId: string | null;
+  }>(() => ({
+    confirmedSessionId: isClientAuthenticated ? sessionId : null,
+    pendingSessionId: null,
+  }));
+
+  let { confirmedSessionId, pendingSessionId } = watcherState;
+  if (!isClientAuthenticated) {
+    if (confirmedSessionId !== null || pendingSessionId !== null) {
+      confirmedSessionId = null;
+      pendingSessionId = null;
+      setWatcherState({ confirmedSessionId: null, pendingSessionId: null });
+    }
+  } else if (confirmedSessionId === null) {
+    if (sessionId !== null) {
+      confirmedSessionId = sessionId;
+      pendingSessionId = null;
+      setWatcherState({
+        confirmedSessionId: sessionId,
+        pendingSessionId: null,
+      });
+    }
+  } else if (sessionId !== confirmedSessionId) {
+    if (pendingSessionId !== sessionId) {
+      pendingSessionId = sessionId;
+      setWatcherState({
+        confirmedSessionId,
+        pendingSessionId: sessionId,
+      });
+    }
+  }
+
+  const sessionReady =
+    isClientAuthenticated &&
+    sessionId !== null &&
+    confirmedSessionId === sessionId &&
+    pendingSessionId === null;
+  const hasLiveSession = useQuery(isAuthenticated, sessionReady ? {} : "skip");
+  const revoked = sessionReady && hasLiveSession === false;
   useEffect(() => {
-    if (revoked) void authClient.signOut();
-  }, [revoked, authClient]);
+    if (revoked) {
+      void authClient.signOutIfSession(sessionId);
+    }
+  }, [revoked, sessionId, authClient]);
   return null;
 }
 
@@ -154,11 +230,18 @@ export function SessionWatcher({
 export function AuthProvider({
   authClient,
   signInApi,
+  switchSignInApi = signInApi,
   children,
 }: {
   authClient: AuthClient;
   /** How provider hooks execute their sign-in functions. See {@link AuthSignInApi}. */
   signInApi: AuthSignInApi;
+  /**
+   * Unwrapped sign-in transport for calls made inside
+   * `AuthClient.switchSession`. Defaults to `signInApi` (SPA mode needs no
+   * separate transport).
+   */
+  switchSignInApi?: AuthSignInApi;
   children: ReactNode;
 }) {
   const state = useSyncExternalStore(
@@ -176,9 +259,18 @@ export function AuthProvider({
     return () => authClient.dispose();
   }, [authClient]);
 
+  // A new function for each session. `ConvexProviderWithAuth` authenticates
+  // again when this function changes, and only then (or when the client signs
+  // out or loads). Without `sessionId` here, a client that moves straight
+  // from one session to another would keep sending the old session's token
+  // until its next refresh. A refresh keeps the session id, thus it does not
+  // re-authenticate.
+  const { sessionId } = state;
   const fetchAccessToken = useCallback(
     (args: { forceRefreshToken: boolean }) => authClient.fetchAccessToken(args),
-    [authClient],
+    // `sessionId` is a dependency on purpose, although the function does
+    // not read it.
+    [authClient, sessionId],
   );
 
   const authState = useMemo(
@@ -202,11 +294,13 @@ export function AuthProvider({
     <AuthClientContext.Provider value={authClient}>
       <ConvexAuthInternalContext.Provider value={authState}>
         <ConvexAuthSignInApiContext.Provider value={signInApi}>
-          <ConvexAuthActionsContext.Provider value={actions}>
-            <ConvexAuthTokenContext.Provider value={state.token}>
-              {children}
-            </ConvexAuthTokenContext.Provider>
-          </ConvexAuthActionsContext.Provider>
+          <SwitchSignInApiContext.Provider value={switchSignInApi}>
+            <ConvexAuthActionsContext.Provider value={actions}>
+              <ConvexAuthTokenContext.Provider value={state.token}>
+                {children}
+              </ConvexAuthTokenContext.Provider>
+            </ConvexAuthActionsContext.Provider>
+          </SwitchSignInApiContext.Provider>
         </ConvexAuthSignInApiContext.Provider>
       </ConvexAuthInternalContext.Provider>
     </AuthClientContext.Provider>

@@ -31,6 +31,22 @@ export async function runWithMutex<T>(
     : await manualMutex(key, callback);
 }
 
+/**
+ * Whether some caller holds the lock named `key` right now, in this tab or in
+ * another one.
+ *
+ * Without the Web Locks API this only knows about this JS realm, like
+ * {@link runWithMutex}.
+ */
+export async function isMutexHeld(key: string): Promise<boolean> {
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (locks !== undefined) {
+    const { held = [] } = await locks.query();
+    return held.some((lock) => lock.name === key);
+  }
+  return (mutexes.get(key)?.currentlyRunning ?? null) !== null;
+}
+
 type MutexState = {
   currentlyRunning: Promise<void> | null;
   waiting: Array<() => Promise<void>>;

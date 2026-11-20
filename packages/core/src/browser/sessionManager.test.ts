@@ -9,6 +9,7 @@ import type {
   AmbientSignInClient,
   AuthSignInApi,
 } from "./ambientSignInClient.ts";
+import { UNREADABLE_SESSION_ID } from "./sessionId.ts";
 import {
   AuthClient,
   INITIAL_AUTH_STATE,
@@ -103,6 +104,7 @@ describe("AuthClient", () => {
       isLoading: false,
       isAuthenticated: false,
       token: null,
+      sessionId: null,
     });
   });
 
@@ -115,6 +117,7 @@ describe("AuthClient", () => {
       isLoading: false,
       isAuthenticated: true,
       token: "access-1",
+      sessionId: UNREADABLE_SESSION_ID,
     });
     expect(client.getAccessToken()).toBe("access-1");
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-1");
@@ -566,6 +569,7 @@ describe("AuthClient ambient sign-ins", () => {
       isLoading: false,
       isAuthenticated: true,
       token: "access-1",
+      sessionId: UNREADABLE_SESSION_ID,
     });
   });
 
@@ -625,6 +629,7 @@ describe("AuthClient (SSR)", () => {
       isLoading: false,
       isAuthenticated: true,
       token: "access-1",
+      sessionId: UNREADABLE_SESSION_ID,
     });
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-1");
     // The refresh token lives in a server-only cookie — never in JS storage.
@@ -761,6 +766,7 @@ describe("AuthClient (async storage)", () => {
       isLoading: false,
       isAuthenticated: true,
       token: "access-1",
+      sessionId: UNREADABLE_SESSION_ID,
     });
   });
 
@@ -806,5 +812,1004 @@ describe("AuthClient (async storage)", () => {
 
     await client.signOut();
     expect(storage.entries.size).toBe(0);
+  });
+});
+
+/**
+ * An access token of the given session, readable like a real one: the client
+ * reads the session id from the token's `sub` claim. `serial` tells apart two
+ * tokens of one session.
+ */
+function accessTokenOf(sessionId: string, serial = 0): string {
+  const payload = btoa(JSON.stringify({ sub: sessionId, serial }))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+  return `header.${payload}.signature`;
+}
+
+/** A session bundle of the given session. */
+function bundleOf(sessionId: string, serial = 0): TokenBundle {
+  return {
+    accessToken: accessTokenOf(sessionId, serial),
+    refreshToken: `refresh-${sessionId}-${serial}`,
+    refreshTokenExpiresAt: 0,
+    userId: `user-of-${sessionId}`,
+  };
+}
+
+describe("AuthClient session id", () => {
+  test("follows the stored token", async () => {
+    const { client } = makeClient();
+    await client.init();
+    expect(client.getSnapshot().sessionId).toBeNull();
+
+    await client.setSession(bundleOf("session-a"));
+    expect(client.getSnapshot().sessionId).toBe("session-a");
+
+    await client.setSession(bundleOf("session-b"));
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+
+    await client.signOut();
+    expect(client.getSnapshot().sessionId).toBeNull();
+  });
+
+  test("stays the same across a refresh", async () => {
+    const { client } = makeClient({
+      refreshSession: async () => ({
+        kind: "rotated",
+        tokens: bundleOf("session-a", 1),
+      }),
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const token = await client.fetchAccessToken({ forceRefreshToken: true });
+
+    expect(token).toBe(accessTokenOf("session-a", 1));
+    expect(client.getSnapshot().sessionId).toBe("session-a");
+  });
+
+  test("is one constant for every token that cannot be read", async () => {
+    const { client } = makeClient();
+    await client.init();
+
+    for (const accessToken of ["opaque", "a.b.c", "a.e30.c", ""]) {
+      await client.setSession({ ...bundle(1), accessToken });
+      expect(client.getSnapshot().sessionId).toBe(UNREADABLE_SESSION_ID);
+    }
+  });
+
+  test("follows a session that another tab stored", async () => {
+    const listeners: Array<(event: StorageEvent) => void> = [];
+    const storage = new InMemoryStorage();
+    (globalThis as { window?: unknown }).window = {
+      addEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.push(l),
+      removeEventListener: () => {},
+    };
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    listeners.forEach((l) =>
+      l({
+        storageArea: storage,
+        key: `${JWT_STORAGE_KEY}_${SUFFIX}`,
+        newValue: accessTokenOf("session-b"),
+      } as unknown as StorageEvent),
+    );
+
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+    restoreWindow();
+  });
+});
+
+describe("AuthClient.setSession and a refresh under way", () => {
+  afterEach(restoreWindow);
+
+  for (const refreshResult of ["rotated", "noSession"] as const) {
+    test(`stores the new session after a refresh that resolves to ${refreshResult}`, async () => {
+      const { promise, resolve } = Promise.withResolvers<void>();
+      const { client, storage } = makeClient({
+        refreshSession: async () => {
+          await promise;
+          return refreshResult === "rotated"
+            ? { kind: "rotated", tokens: bundleOf("session-a", 1) }
+            : { kind: "noSession" };
+        },
+      });
+      await client.init();
+      await client.setSession(bundleOf("session-a"));
+
+      // The refresh of the old session holds the mutex when the new session
+      // arrives.
+      const refreshed = client.fetchAccessToken({ forceRefreshToken: true });
+      const adopted = client.setSession(bundleOf("session-b"));
+      resolve();
+      await Promise.all([refreshed, adopted]);
+
+      expect(client.getSnapshot().sessionId).toBe("session-b");
+      expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+        "refresh-session-b-0",
+      );
+    });
+  }
+
+  test("a refresh that waited behind setSession does not rotate the new session", async () => {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const refreshSession = vi.fn(async (): Promise<RefreshResult> => {
+      await promise;
+      return { kind: "rotated", tokens: bundleOf("session-a", 1) };
+    });
+    const { client } = makeClient({ refreshSession });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    // A refresh holds the mutex. The new session and a second refresh queue
+    // behind it, in that order.
+    const first = client.fetchAccessToken({ forceRefreshToken: true });
+    const adopted = client.setSession(bundleOf("session-b"));
+    const second = client.fetchAccessToken({ forceRefreshToken: true });
+    resolve();
+    await Promise.all([first, adopted]);
+
+    expect(await second).toBe(accessTokenOf("session-b"));
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AuthClient.switchSession", () => {
+  afterEach(restoreWindow);
+
+  /** How a sign-in result carries its session. */
+  type SwitchResult =
+    | { status: "complete"; tokens: TokenBundle | SlimTokenBundle }
+    | { status: "error" };
+  const sessionOf = (result: SwitchResult) =>
+    result.status === "complete" ? result.tokens : null;
+
+  test("adopts the session of the result", async () => {
+    const { client, storage } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const outcome = await client.switchSession<SwitchResult>(
+      async () => ({ status: "complete", tokens: bundleOf("session-b") }),
+      sessionOf,
+    );
+
+    expect(outcome).toEqual({
+      kind: "ran",
+      result: { status: "complete", tokens: bundleOf("session-b") },
+    });
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-b-0",
+    );
+  });
+
+  test("adopts nothing from a result without a session", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const outcome = await client.switchSession<SwitchResult>(
+      async () => ({ status: "error" }),
+      sessionOf,
+    );
+
+    expect(outcome).toEqual({ kind: "ran", result: { status: "error" } });
+    expect(client.getSnapshot().sessionId).toBe("session-a");
+  });
+
+  test("keeps the session when the call throws", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    await expect(
+      client.switchSession<SwitchResult>(async () => {
+        throw new Error("offline");
+      }, sessionOf),
+    ).rejects.toThrow("offline");
+
+    expect(client.getSnapshot().sessionId).toBe("session-a");
+  });
+
+  test("of two overlapping switches, the second sends nothing", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const secondRun = vi.fn(async (): Promise<SwitchResult> => ({
+      status: "complete",
+      tokens: bundleOf("session-c"),
+    }));
+
+    // Two tabs (here: two calls) leave the same session at the same time.
+    const first = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    const second = client.switchSession<SwitchResult>(secondRun, sessionOf);
+    resolve();
+
+    expect((await first).kind).toBe("ran");
+    expect(await second).toEqual({ kind: "sessionChanged" });
+    expect(secondRun).not.toHaveBeenCalled();
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+  });
+
+  test("sends nothing when another tab already switched", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    // Another tab stored its new session, and this tab has not heard yet.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, accessTokenOf("session-b"));
+    const run = vi.fn(async (): Promise<SwitchResult> => ({ status: "error" }));
+
+    expect(await client.switchSession(run, sessionOf)).toEqual({
+      kind: "sessionChanged",
+    });
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  test("does not adopt its session over a sign-in that completed meanwhile", async () => {
+    const { client, storage } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // A sign-in does not wait for the switch.
+    await client.setSession(bundleOf("session-c"));
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(client.getSnapshot().sessionId).toBe("session-c");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-c-0",
+    );
+  });
+
+  test("reports sessionChanged for a result that changes nothing once a sign-in completed meanwhile", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "error" };
+    }, sessionOf);
+    await client.setSession(bundleOf("session-c"));
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(client.getSnapshot().sessionId).toBe("session-c");
+  });
+
+  test("does not adopt its session over a session that another tab stored meanwhile", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // Another tab signed in and stored its session. This tab has not received
+    // the storage event yet, so its own state still says session-a.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, accessTokenOf("session-c"));
+    storage.setItem(
+      `${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`,
+      "refresh-session-c-0",
+    );
+    expect(client.getSnapshot().sessionId).toBe("session-a");
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-c-0",
+    );
+  });
+
+  test("a held refresh result does not sign out a sign-in that completed meanwhile", async () => {
+    const { client, storage } = makeClient({
+      refreshSession: async () => ({ kind: "noSession" }),
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // A refresh of session-a finds no session, and its result is held.
+    await client.fetchAccessToken({ forceRefreshToken: true });
+    // Then a sign-in completes.
+    await client.setSession(bundleOf("session-c"));
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(client.getSnapshot().sessionId).toBe("session-c");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-c-0",
+    );
+  });
+
+  test("does not adopt its session if storage was cleared meanwhile", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // Simulates another tab clearing storage without a cross-tab switch lock.
+    storage.removeItem(`${JWT_STORAGE_KEY}_${SUFFIX}`);
+    storage.removeItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`);
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBeNull();
+  });
+
+  test("signOut during an in-flight SPA switch waits and revokes the new session", async () => {
+    const revokedTokens: string[] = [];
+    const { client } = makeClient({
+      signOut: async (refreshToken) => {
+        revokedTokens.push(refreshToken);
+      },
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      started.resolve();
+      await release.promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    await started.promise;
+
+    const signedOut = client.signOut();
+    await Promise.resolve();
+    expect(revokedTokens).toEqual([]);
+
+    release.resolve();
+    expect((await switched).kind).toBe("ran");
+    await signedOut;
+
+    expect(revokedTokens).toEqual(["refresh-session-b-0"]);
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: false,
+      sessionId: null,
+    });
+  });
+
+  test("signOutIfSession skips when another session already replaced the observed one", async () => {
+    const signOut = vi.fn(async () => {});
+    const { client } = makeClient({ signOut });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      started.resolve();
+      await release.promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    await started.promise;
+
+    // A stale revocation signal for session-a queues behind the switch.
+    const staleSignOut = client.signOutIfSession("session-a");
+    release.resolve();
+    await Promise.all([switched, staleSignOut]);
+
+    expect(signOut).not.toHaveBeenCalled();
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+  });
+
+  test("SPA signOutIfSession revokes only the expected session and preserves a sign-in that completes during revocation", async () => {
+    const revokedTokens: string[] = [];
+    const revocationStarted = Promise.withResolvers<void>();
+    const releaseRevocation = Promise.withResolvers<void>();
+    const { client, storage } = makeClient({
+      signOut: async (refreshToken) => {
+        revokedTokens.push(refreshToken);
+        revocationStarted.resolve();
+        await releaseRevocation.promise;
+      },
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const watcherSignOut = client.signOutIfSession("session-a");
+    await revocationStarted.promise;
+
+    // An ordinary sign-in installs session-b while session-a's revocation call
+    // is still in flight.
+    await client.setSession(bundleOf("session-b"));
+    releaseRevocation.resolve();
+    await watcherSignOut;
+
+    expect(revokedTokens).toEqual(["refresh-session-a-0"]);
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-b-0",
+    );
+  });
+
+  test("a switch result returning 'signOut' clears local tokens immediately", async () => {
+    const { client, storage } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const outcome = await client.switchSession<SwitchResult>(
+      async () => ({ status: "error" }),
+      () => "signOut",
+    );
+
+    expect(outcome).toEqual({ kind: "ran", result: { status: "error" } });
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: false,
+      sessionId: null,
+    });
+    expect(
+      storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`),
+    ).toBeNull();
+  });
+
+  test("a switch result returning 'signOut' under SSR clears cookies and tokens", async () => {
+    const signOut = vi.fn(async () => {});
+    const { client, storage } = makeSsrClient({ signOut });
+    await client.init();
+    await client.setSession({
+      accessToken: accessTokenOf("session-a"),
+      userId: "user-of-session-a",
+    });
+
+    const outcome = await client.switchSession<SwitchResult>(
+      async () => ({ status: "error" }),
+      () => "signOut",
+    );
+
+    expect(outcome).toEqual({ kind: "ran", result: { status: "error" } });
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: false,
+      sessionId: null,
+    });
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBeNull();
+  });
+
+  test("a switch result returning 'signOut' does not clear a newer session", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(
+      async () => {
+        await promise;
+        return { status: "error" };
+      },
+      () => "signOut",
+    );
+    await client.setSession(bundleOf("session-c"));
+    resolve();
+
+    expect(await switched).toEqual({ kind: "sessionChanged" });
+    expect(client.getSnapshot().sessionId).toBe("session-c");
+  });
+
+  test("a second switch runs once the first ended without a new session", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+
+    const first = client.switchSession<SwitchResult>(
+      async () => ({ status: "error" }),
+      sessionOf,
+    );
+    const second = client.switchSession<SwitchResult>(
+      async () => ({ status: "complete", tokens: bundleOf("session-b") }),
+      sessionOf,
+    );
+
+    expect((await first).kind).toBe("ran");
+    expect((await second).kind).toBe("ran");
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+  });
+
+  test("in a SPA, a refresh can complete while the call is under way", async () => {
+    const { client } = makeClient({
+      refreshSession: async () => ({
+        kind: "rotated",
+        tokens: bundleOf("session-a", 1),
+      }),
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // The websocket asks for a fresh token while the call is under way. This
+    // must not wait for the switch, or the call it carries would never end.
+    expect(await client.fetchAccessToken({ forceRefreshToken: true })).toBe(
+      accessTokenOf("session-a", 1),
+    );
+    resolve();
+    await switched;
+
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+  });
+
+  test("a refresh that crosses the switch and finds no session does not sign the client out", async () => {
+    const { client } = makeClient({
+      refreshSession: async () => ({ kind: "noSession" }),
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const snapshots: boolean[] = [];
+    client.subscribe(() =>
+      snapshots.push(client.getSnapshot().isAuthenticated),
+    );
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // The refresh reached the backend long after the switch committed there.
+    expect(await client.fetchAccessToken({ forceRefreshToken: true })).toBe(
+      accessTokenOf("session-a"),
+    );
+    resolve();
+    await switched;
+
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+    expect(snapshots).not.toContain(false);
+  });
+
+  test("a refresh in another tab that finds no session does not undo the switch", async () => {
+    // Two tabs of one browser: two clients on the same storage.
+    const storage = new InMemoryStorage();
+    const { client: switchingTab } = makeClient({}, storage);
+    const { client: otherTab } = makeClient(
+      { refreshSession: async () => ({ kind: "noSession" }) },
+      storage,
+    );
+    await switchingTab.init();
+    await switchingTab.setSession(bundleOf("session-a"));
+    await otherTab.init();
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = switchingTab.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "complete", tokens: bundleOf("session-b") };
+    }, sessionOf);
+    // The other tab refreshes session-a long after the switch committed on
+    // the backend, and finds no session.
+    await otherTab.fetchAccessToken({ forceRefreshToken: true });
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-a-0",
+    );
+    resolve();
+
+    expect((await switched).kind).toBe("ran");
+    expect(switchingTab.getSnapshot().sessionId).toBe("session-b");
+    expect(storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      "refresh-session-b-0",
+    );
+  });
+
+  test("a refresh in another tab that finds no session signs out once no switch is under way", async () => {
+    const storage = new InMemoryStorage();
+    const { client: switchingTab } = makeClient({}, storage);
+    const { client: otherTab } = makeClient(
+      { refreshSession: async () => ({ kind: "noSession" }) },
+      storage,
+    );
+    await switchingTab.init();
+    await switchingTab.setSession(bundleOf("session-a"));
+    await otherTab.init();
+    // A switch that is refused, so it adopts nothing.
+    await switchingTab.switchSession<SwitchResult>(
+      async () => ({ status: "error" }),
+      sessionOf,
+    );
+
+    expect(
+      await otherTab.fetchAccessToken({ forceRefreshToken: true }),
+    ).toBeNull();
+    expect(
+      storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`),
+    ).toBeNull();
+  });
+
+  test("a held refresh result signs the client out when the switch adopts nothing", async () => {
+    const { client, storage } = makeClient({
+      refreshSession: async () => ({ kind: "noSession" }),
+    });
+    await client.init();
+    await client.setSession(bundleOf("session-a"));
+    const { promise, resolve } = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      await promise;
+      return { status: "error" };
+    }, sessionOf);
+    await client.fetchAccessToken({ forceRefreshToken: true });
+    expect(client.getSnapshot().isAuthenticated).toBe(true);
+    resolve();
+    await switched;
+
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: false,
+      sessionId: null,
+    });
+    expect(
+      storage.getItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`),
+    ).toBeNull();
+  });
+
+  test("under SSR, holds the refresh mutex across the call and adopts the session", async () => {
+    const refreshSession = vi.fn(async () => ({
+      accessToken: accessTokenOf("session-a", 1),
+      userId: "user-of-session-a",
+    }));
+    const { client } = makeSsrClient({ refreshSession });
+    await client.init();
+    await client.setSession({
+      accessToken: accessTokenOf("session-a"),
+      userId: "user-of-session-a",
+    });
+    const { promise, resolve } = Promise.withResolvers<void>();
+    const started = Promise.withResolvers<void>();
+
+    const switched = client.switchSession<SwitchResult>(async () => {
+      started.resolve();
+      await promise;
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-b"),
+          userId: "user-of-session-b",
+        },
+      };
+    }, sessionOf);
+    await started.promise;
+    // A refresh of this browser waits: the sign-in proxy is about to write
+    // the session cookie, and a refresh under way would write it too.
+    const refreshed = client.fetchAccessToken({ forceRefreshToken: true });
+    await Promise.resolve();
+    expect(refreshSession).not.toHaveBeenCalled();
+    resolve();
+
+    // The call resolves: storing the session does not wait for the mutex
+    // that the call itself holds.
+    expect((await switched).kind).toBe("ran");
+    // The refresh that waited sees the new session, and does not rotate it.
+    expect(await refreshed).toBe(accessTokenOf("session-b"));
+    expect(refreshSession).not.toHaveBeenCalled();
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+  });
+
+  test("under SSR, overlapping two-tab sign-in and switch keep cookie and client tokens on the same session", async () => {
+    // Shared storage and shared browser cookie jar across two tabs.
+    const storage = new InMemoryStorage();
+    let cookieSession: string | null = "session-a";
+    const { client: tab1 } = makeSsrClient({}, storage);
+    const { client: tab2 } = makeSsrClient({}, storage);
+    await tab1.init();
+    await tab1.setSession({
+      accessToken: accessTokenOf("session-a"),
+      userId: "user-of-session-a",
+    });
+    await tab2.init();
+
+    // Case 1: tab1 starts a switch first; tab2 starts an ordinary SSR sign-in
+    // while tab1's request is in flight.
+    const switchStarted = Promise.withResolvers<void>();
+    const releaseSwitch = Promise.withResolvers<void>();
+    const signInStarted = vi.fn();
+
+    const switched = tab1.switchSession<SwitchResult>(async () => {
+      switchStarted.resolve();
+      await releaseSwitch.promise;
+      cookieSession = "session-b";
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-b"),
+          userId: "user-of-session-b",
+        },
+      };
+    }, sessionOf);
+    await switchStarted.promise;
+
+    const signedIn = (async () => {
+      const result = await tab2.runSsrSignIn(async () => {
+        signInStarted();
+        cookieSession = "session-c";
+        return {
+          status: "complete" as const,
+          tokens: {
+            accessToken: accessTokenOf("session-c"),
+            userId: "user-of-session-c",
+          },
+        };
+      });
+      // Mirrors what every sign-in hook does after signInApi returns.
+      await tab2.setSession(result.tokens);
+      return result;
+    })();
+
+    await Promise.resolve();
+    expect(signInStarted).not.toHaveBeenCalled();
+
+    releaseSwitch.resolve();
+    const [switchOutcome] = await Promise.all([switched, signedIn]);
+
+    expect(switchOutcome.kind).toBe("ran");
+    expect(cookieSession).toBe("session-c");
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      accessTokenOf("session-c"),
+    );
+
+    // Case 2: tab2 starts an ordinary SSR sign-in first; tab1 tries to switch
+    // from session-c while tab2's sign-in to session-d is in flight.
+    await tab1.setSession({
+      accessToken: accessTokenOf("session-c"),
+      userId: "user-of-session-c",
+    });
+    const signIn2Started = Promise.withResolvers<void>();
+    const releaseSignIn2 = Promise.withResolvers<void>();
+    const switch2Run = vi.fn(async (): Promise<SwitchResult> => {
+      cookieSession = "session-e";
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-e"),
+          userId: "user-of-session-e",
+        },
+      };
+    });
+
+    const signedIn2 = (async () => {
+      const result = await tab2.runSsrSignIn(async () => {
+        signIn2Started.resolve();
+        await releaseSignIn2.promise;
+        cookieSession = "session-d";
+        return {
+          status: "complete" as const,
+          tokens: {
+            accessToken: accessTokenOf("session-d"),
+            userId: "user-of-session-d",
+          },
+        };
+      });
+      await tab2.setSession(result.tokens);
+      return result;
+    })();
+    await signIn2Started.promise;
+
+    const switched2 = tab1.switchSession(switch2Run, sessionOf);
+    releaseSignIn2.resolve();
+
+    expect(await switched2).toEqual({ kind: "sessionChanged" });
+    await signedIn2;
+    expect(switch2Run).not.toHaveBeenCalled();
+    expect(cookieSession).toBe("session-d");
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      accessTokenOf("session-d"),
+    );
+  });
+
+  test("under SSR, signOut during an in-flight switch waits, revokes the new cookie, and cannot be undone by a late switch", async () => {
+    const storage = new InMemoryStorage();
+    let cookieSession: string | null = "session-a";
+    const revokedCookies: Array<string | null> = [];
+    const { client: tab1 } = makeSsrClient(
+      {
+        signOut: async () => {
+          revokedCookies.push(cookieSession);
+          cookieSession = null;
+        },
+      },
+      storage,
+    );
+    const { client: tab2 } = makeSsrClient(
+      {
+        signOut: async () => {
+          revokedCookies.push(cookieSession);
+          cookieSession = null;
+        },
+      },
+      storage,
+    );
+    await tab1.init();
+    await tab1.setSession({
+      accessToken: accessTokenOf("session-a"),
+      userId: "user-of-session-a",
+    });
+    await tab2.init();
+
+    // Tab 1 starts a switch (e.g. switching accounts); tab 2 calls signOut.
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const switched = tab1.switchSession<SwitchResult>(async () => {
+      started.resolve();
+      await release.promise;
+      cookieSession = "session-b";
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-b"),
+          userId: "user-of-session-b",
+        },
+      };
+    }, sessionOf);
+    await started.promise;
+
+    const signedOut = tab2.signOut();
+    await Promise.resolve();
+    expect(revokedCookies).toEqual([]);
+
+    release.resolve();
+    await Promise.all([switched, signedOut]);
+
+    expect(revokedCookies).toEqual(["session-b"]);
+    expect(cookieSession).toBeNull();
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBeNull();
+
+    // Reverse order: signOut starts first, then switch starts while signOut
+    // is in flight. The switch never runs and never reinstalls cookies.
+    cookieSession = "session-c";
+    await tab1.setSession({
+      accessToken: accessTokenOf("session-c"),
+      userId: "user-of-session-c",
+    });
+    const signOutStarted = Promise.withResolvers<void>();
+    const releaseSignOut = Promise.withResolvers<void>();
+    const { client: tab3 } = makeSsrClient(
+      {
+        signOut: async () => {
+          signOutStarted.resolve();
+          await releaseSignOut.promise;
+          revokedCookies.push(cookieSession);
+          cookieSession = null;
+        },
+      },
+      storage,
+    );
+    await tab3.init();
+
+    const signOut2 = tab3.signOut();
+    await signOutStarted.promise;
+    const lateSwitchRun = vi.fn(async (): Promise<SwitchResult> => {
+      cookieSession = "session-d";
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-d"),
+          userId: "user-of-session-d",
+        },
+      };
+    });
+    const lateSwitch = tab1.switchSession(lateSwitchRun, sessionOf);
+    releaseSignOut.resolve();
+
+    expect(await lateSwitch).toEqual({ kind: "sessionChanged" });
+    await signOut2;
+    expect(lateSwitchRun).not.toHaveBeenCalled();
+    expect(cookieSession).toBeNull();
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBeNull();
+  });
+
+  test("under SSR, a remount between a sign-in's adoption and its trailing setSession keeps that call a no-op", async () => {
+    const { client, storage } = makeSsrClient();
+    await client.init();
+
+    const result = await client.runSsrSignIn(async () => ({
+      status: "complete" as const,
+      tokens: {
+        accessToken: accessTokenOf("session-a"),
+        userId: "user-of-session-a",
+      },
+    }));
+    // A newer session lands, then React remounts the provider.
+    await client.setSession({
+      accessToken: accessTokenOf("session-b"),
+      userId: "user-of-session-b",
+    });
+    client.dispose();
+    await client.init();
+
+    await client.setSession(result.tokens);
+
+    expect(client.getSnapshot().sessionId).toBe("session-b");
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      accessTokenOf("session-b"),
+    );
+  });
+
+  test("under SSR, an overlapping ordinary sign-in on the same client waits for switchSession so cookie and stored session stay aligned", async () => {
+    let cookieSession: string | null = "session-a";
+    const { client, storage } = makeSsrClient();
+    await client.init();
+    await client.setSession({
+      accessToken: accessTokenOf("session-a"),
+      userId: "user-of-session-a",
+    });
+
+    const switchStarted = Promise.withResolvers<void>();
+    const releaseSwitch = Promise.withResolvers<void>();
+    const signInActionStarted = vi.fn();
+
+    // The switch uses an unwrapped proxy call while holding the session mutex.
+    const switched = client.switchSession<SwitchResult>(async () => {
+      switchStarted.resolve();
+      await releaseSwitch.promise;
+      cookieSession = "session-b";
+      return {
+        status: "complete",
+        tokens: {
+          accessToken: accessTokenOf("session-b"),
+          userId: "user-of-session-b",
+        },
+      };
+    }, sessionOf);
+    await switchStarted.promise;
+
+    // An unrelated ordinary sign-in (e.g. an action) on the exact same client
+    // must still wait on `#lockKey` rather than bypassing it.
+    const ordinarySignIn = (async () => {
+      const result = await client.runSsrSignIn(async () => {
+        signInActionStarted();
+        cookieSession = "session-c";
+        return {
+          status: "complete" as const,
+          tokens: {
+            accessToken: accessTokenOf("session-c"),
+            userId: "user-of-session-c",
+          },
+        };
+      });
+      await client.setSession(result.tokens);
+      return result;
+    })();
+
+    await Promise.resolve();
+    expect(signInActionStarted).not.toHaveBeenCalled();
+
+    releaseSwitch.resolve();
+    const [switchOutcome] = await Promise.all([switched, ordinarySignIn]);
+
+    expect(switchOutcome.kind).toBe("ran");
+    expect(signInActionStarted).toHaveBeenCalledTimes(1);
+    expect(cookieSession).toBe("session-c");
+    expect(client.getSnapshot().sessionId).toBe("session-c");
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe(
+      accessTokenOf("session-c"),
+    );
   });
 });

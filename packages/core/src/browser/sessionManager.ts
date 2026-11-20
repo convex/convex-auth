@@ -1,16 +1,19 @@
 import type {
+  ClientView,
   RefreshResult,
+  SignInEnvelope,
   SlimTokenBundle,
   TokenBundle,
 } from "../lib/types.ts";
 import { KeyedStore, type SignInValuesReader } from "./keyedStore.ts";
-import { runWithMutex } from "./mutex.ts";
+import { isMutexHeld, runWithMutex } from "./mutex.ts";
 import type {
   AmbientSignInClient,
   AuthSignInApi,
   ConvexMutationApi,
 } from "./ambientSignInClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
+import { sessionIdOfAccessToken } from "./sessionId.ts";
 import {
   JWT_STORAGE_KEY,
   NamespacedStorage,
@@ -91,6 +94,12 @@ export interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
   token: string | null;
+  /**
+   * The id of the session that `token` belongs to, or `null` when signed out.
+   * A refresh keeps it. It changes when the client moves to another session,
+   * which is when the Convex client must authenticate again.
+   */
+  sessionId: string | null;
 }
 
 type Listener = () => void;
@@ -102,6 +111,7 @@ export const INITIAL_AUTH_STATE: AuthState = Object.freeze({
   isLoading: true,
   isAuthenticated: false,
   token: null,
+  sessionId: null,
 });
 
 /**
@@ -161,6 +171,19 @@ function replaceUrlKeepingState(url: string): void {
 }
 
 /**
+ * What {@link AuthClient.switchSession} should do with the result of its call:
+ *
+ *  - a {@link TokenBundle} or {@link SlimTokenBundle}: adopt the new session
+ *  - `"signOut"`: the backend ended the session; clear local tokens (and under
+ *    SSR, clear cookies)
+ *  - `null`: leave the current session untouched
+ */
+export type SessionSwitchAction =
+  TokenBundle | SlimTokenBundle | "signOut" | null;
+
+const MAX_REMEMBERED_SIGN_IN_TOKENS = 32;
+
+/**
  * Framework-agnostic owner of the auth session on the client.
  *
  * It persists the {@link TokenBundle} from a sign-in, hands out the access
@@ -174,11 +197,15 @@ function replaceUrlKeepingState(url: string): void {
 export class AuthClient {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
-  /** Revoke the session on the server. */
-  readonly #signOutInternal: () => Promise<void>;
+  /** Revoke the session on the server (using `refreshTokenOverride` in SPA mode when provided). */
+  readonly #signOutInternal: (
+    refreshTokenOverride?: string | null,
+  ) => Promise<void>;
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
+  /** The key of the mutex that {@link AuthClient.switchSession} holds. */
+  readonly #switchLockKey: string;
   readonly #initialAccessToken: string | null;
   /**
    * Which side owns the refresh token: this client (SPA) or an httpOnly cookie
@@ -194,6 +221,20 @@ export class AuthClient {
   #refreshToken: string | null = null;
   #isLoading = true;
   #pendingSignIns = 0;
+  /** How many {@link AuthClient.switchSession} calls are under way. */
+  #pendingSwitches = 0;
+  /**
+   * Whether a refresh reported that the session is gone while a session
+   * switch was under way. See {@link AuthClient.switchSession}.
+   */
+  #heldNoSession = false;
+  /**
+   * Access tokens already adopted atomically inside
+   * {@link AuthClient.runSsrSignIn}. The follow-up {@link AuthClient.setSession}
+   * call for the same token becomes a no-op so it cannot overwrite a newer
+   * session that landed in between.
+   */
+  readonly #adoptedBySignIn = new Set<string>();
   #initialized = false;
 
   #snapshot: AuthState = INITIAL_AUTH_STATE;
@@ -207,6 +248,7 @@ export class AuthClient {
     );
     this.#verbose = config.verbose ?? false;
     this.#lockKey = this.#storage.key(REFRESH_TOKEN_STORAGE_KEY);
+    this.#switchLockKey = this.#storage.key("__convexAuthSessionSwitch");
     this.#initialAccessToken = config.initialAccessToken ?? null;
     this.#mode = config.mode;
 
@@ -225,8 +267,11 @@ export class AuthClient {
             return { kind: "noSession" };
         }
       };
-      this.#signOutInternal = async () => {
-        const refreshToken = await this.#currentRefreshToken();
+      this.#signOutInternal = async (refreshTokenOverride) => {
+        const refreshToken =
+          refreshTokenOverride !== undefined
+            ? refreshTokenOverride
+            : await this.#currentRefreshToken();
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
     } else {
@@ -397,6 +442,8 @@ export class AuthClient {
       target.removeEventListener("storage", this.#storageListener);
     }
     this.#storageListener = null;
+    // `#adoptedBySignIn` survives: a dispose()/init() cycle (a React remount)
+    // can fall between a sign-in's adoption and its follow-up setSession call.
   }
 
   // --- Public actions ------------------------------------------------------
@@ -406,11 +453,190 @@ export class AuthClient {
    * their own sign-in flow returns a session: a full {@link TokenBundle} when
    * the client holds the refresh token (SPA), or an access-only {@link
    * SlimTokenBundle} when the refresh token is in a cookie (SSR).
+   *
+   * The session is stored under the refresh mutex. A refresh that is under
+   * way thus stores its result first, and this session last, whichever
+   * response arrived first.
+   *
+   * To replace a live session with the result of a function call (for example
+   * when switching accounts), use {@link switchSession}.
    */
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
-    await this.#storeFullTokenResult(session);
+    if (this.#adoptedBySignIn.delete(session.accessToken)) {
+      return;
+    }
+    await runWithMutex(this.#lockKey, () =>
+      this.#storeFullTokenResult(session),
+    );
+  };
+
+  /**
+   * Run a browser-initiated SSR sign-in call serialized with refreshes,
+   * sign-outs, and session switches so the server's cookies and the client's
+   * stored access token always reflect the same session.
+   *
+   * If the call completes with a session, it is adopted before releasing the
+   * lock, and the subsequent {@link setSession} call for that exact access
+   * token becomes a no-op so it cannot overwrite a newer session later.
+   *
+   * Because `#lockKey` is not reentrant, callers inside {@link switchSession}
+   * must use an unwrapped proxy transport rather than calling `runSsrSignIn`.
+   *
+   * @internal
+   */
+  runSsrSignIn = async <Result extends ClientView<SignInEnvelope>>(
+    call: () => Promise<Result>,
+  ): Promise<Result> => {
+    if (this.#mode !== "ssr") {
+      return await call();
+    }
+    return await runWithMutex(this.#lockKey, async () => {
+      const result = await call();
+      if (result.status === "complete") {
+        const tokens = (result as { tokens?: TokenBundle | SlimTokenBundle })
+          .tokens;
+        if (tokens !== undefined) {
+          await this.#storeFullTokenResult(tokens);
+          this.#rememberAdoptedBySignIn(tokens.accessToken);
+        }
+      }
+      return result;
+    });
+  };
+
+  /**
+   * Move the client from its current session to another one: call `run`, and
+   * apply the {@link SessionSwitchAction} that `sessionOf` reads from its
+   * result (`TokenBundle`/`SlimTokenBundle` to adopt, `"signOut"` to clear the
+   * session when the backend ended it, or `null` to leave the session as is).
+   *
+   * Resolves to `{ kind: "ran", result }`, or to `{ kind: "sessionChanged" }`
+   * when the client moved to another session first (another tab switched, or
+   * a sign-in or sign-out completed). If that happened before this call got
+   * its turn, `run` is not called: it would act on a session that the client
+   * no longer holds. If it happened while `run` was under way, the result's
+   * session change is not applied: the newer session stays. Either way, the
+   * result is not returned, since it describes a session the client left.
+   *
+   * Only one switch (or sign-out) runs at a time, across the tabs that share
+   * the storage. Two tabs thus cannot both leave the same session, and a
+   * result is never stored over a newer session.
+   *
+   * Under SSR the refresh mutex is held across `run` as well, serializing
+   * switches with refreshes, sign-outs, and ordinary sign-ins through
+   * {@link runSsrSignIn} so the cookies and stored access token stay aligned.
+   * In a SPA it is held only to apply the session change: `run` calls over the
+   * websocket, which can pause for a token that only a refresh holding that
+   * mutex can fetch.
+   *
+   * In a SPA a refresh can therefore cross `run`. If the refresh rotates the
+   * old session, the switch adopts the new session after it. If the refresh
+   * reports no session (for example because the backend already ended or
+   * suspended the old session), that result is held while the switch is under
+   * way, and dropped if the switch adopts a new session or clears the session.
+   * If the switch leaves the session alone, the held result is applied and the
+   * client is signed out. A refresh in another tab that reports no session
+   * while this switch is under way leaves the stored tokens alone.
+   */
+  switchSession = async <Result>(
+    run: () => Promise<Result>,
+    sessionOf: (result: Result) => SessionSwitchAction,
+  ): Promise<{ kind: "ran"; result: Result } | { kind: "sessionChanged" }> => {
+    const sessionIdAtCall = this.#snapshot.sessionId;
+    return await runWithMutex(this.#switchLockKey, async () => {
+      // Another tab may have switched or signed out while this call waited.
+      if ((await this.#storedSessionId()) !== sessionIdAtCall) {
+        return { kind: "sessionChanged" };
+      }
+      this.#pendingSwitches++;
+      let applied = false;
+      try {
+        // Apply the switch action, unless a sign-in or external storage change
+        // replaced the client's session while `run` was under way. A refresh
+        // keeps the session id, and a refresh that found no session is held, so
+        // neither counts. Runs under the refresh mutex.
+        const applyUnlessReplaced = async (
+          action: Exclude<SessionSwitchAction, null>,
+        ) => {
+          if ((await this.#storedSessionId()) !== sessionIdAtCall) {
+            return;
+          }
+          if (action === "signOut") {
+            if (this.#mode === "ssr") {
+              try {
+                await this.#signOutInternal();
+              } catch {
+                // Usually means the session is already gone on the server.
+              }
+            }
+            await this.#storeTokens(null);
+          } else {
+            await this.#storeFullTokenResult(action);
+          }
+          applied = true;
+        };
+        let ranResult: { result: Result } | null = null;
+        const runAndApply = async (
+          apply: (action: Exclude<SessionSwitchAction, null>) => Promise<void>,
+        ) => {
+          const result = await run();
+          ranResult = { result };
+          const action = sessionOf(result);
+          if (action !== null) {
+            await apply(action);
+          }
+          return action;
+        };
+        // The mutex is not reentrant, thus under SSR, where this call holds
+        // it across `run`, the session change is applied without taking it
+        // again.
+        let skippedBeforeRun = false;
+        const action =
+          this.#mode === "ssr"
+            ? await runWithMutex(this.#lockKey, async () => {
+                // An ordinary SSR sign-in may have held `#lockKey` and replaced
+                // the session while we waited to acquire it.
+                if ((await this.#storedSessionId()) !== sessionIdAtCall) {
+                  skippedBeforeRun = true;
+                  return null;
+                }
+                return await runAndApply(applyUnlessReplaced);
+              })
+            : await runAndApply((nextAction) =>
+                runWithMutex(this.#lockKey, () =>
+                  applyUnlessReplaced(nextAction),
+                ),
+              );
+        // A result that changes nothing still describes the session this
+        // call started from, so it is stale once another session replaced it.
+        const sessionChanged =
+          skippedBeforeRun ||
+          (action !== null
+            ? !applied
+            : (await this.#storedSessionId()) !== sessionIdAtCall);
+        if (sessionChanged) {
+          return { kind: "sessionChanged" };
+        }
+        return { kind: "ran", result: ranResult!.result };
+      } finally {
+        this.#pendingSwitches--;
+        if (this.#pendingSwitches === 0 && this.#heldNoSession) {
+          this.#heldNoSession = false;
+          if (!applied) {
+            // The held result is about the session this call started from.
+            // If a sign-in replaced that session meanwhile, it says nothing
+            // about the new one.
+            await runWithMutex(this.#lockKey, async () => {
+              if ((await this.#storedSessionId()) === sessionIdAtCall) {
+                await this.#storeTokens(null);
+              }
+            });
+          }
+        }
+      }
+    });
   };
 
   /**
@@ -434,16 +660,102 @@ export class AuthClient {
 
   /**
    * Revoke the current session on the server and clear it locally.
+   *
+   * Takes turns with {@link switchSession} so a sign-out during a switch
+   * revokes the session that is current when sign-out gets its turn, and a
+   * late switch response cannot reinstall cookies after sign-out clears them.
    */
   signOut = async (): Promise<void> => {
-    try {
-      await this.#signOutInternal();
-    } catch {
-      // Usually means we were already signed out, which is fine.
-    }
-    this.#log("signed out, erasing tokens");
-    await this.#storeTokens(null);
+    await this.#signOutLocked();
   };
+
+  /**
+   * Sign out only if the stored session is still `sessionId`. Used by
+   * `SessionWatcher` so a stale revocation notice for an earlier session
+   * cannot sign out a newer session that just replaced it.
+   *
+   * @internal
+   */
+  signOutIfSession = async (sessionId: string): Promise<void> => {
+    await this.#signOutLocked(sessionId);
+  };
+
+  async #signOutLocked(expectedSessionId?: string): Promise<void> {
+    await runWithMutex(this.#switchLockKey, async () => {
+      if (this.#mode === "ssr") {
+        await runWithMutex(this.#lockKey, async () => {
+          if (
+            expectedSessionId !== undefined &&
+            (await this.#storedSessionId()) !== expectedSessionId
+          ) {
+            return;
+          }
+          try {
+            await this.#signOutInternal();
+          } catch {
+            // Usually means we were already signed out, which is fine.
+          }
+          this.#log("signed out, erasing tokens");
+          await this.#storeTokens(null);
+        });
+        return;
+      }
+
+      // An explicit SPA sign-out erases whatever is stored once revocation
+      // returns, as it did before the conditional path existed: the user
+      // asked to be signed out of this client.
+      if (expectedSessionId === undefined) {
+        try {
+          await this.#signOutInternal();
+        } catch {
+          // Usually means we were already signed out, which is fine.
+        }
+        this.#log("signed out, erasing tokens");
+        await runWithMutex(this.#lockKey, () => this.#storeTokens(null));
+        return;
+      }
+
+      // Conditional SPA sign-out (e.g. SessionWatcher): capture the matching
+      // refresh token under `#lockKey`, release `#lockKey` for the network
+      // call so a websocket refresh cannot deadlock, then recheck the stored
+      // session under `#lockKey` before clearing so a sign-in that completed
+      // during the await is preserved.
+      const captured = await runWithMutex(this.#lockKey, async () => {
+        if ((await this.#storedSessionId()) !== expectedSessionId) {
+          return { matched: false as const };
+        }
+        return {
+          matched: true as const,
+          refreshToken: await this.#currentRefreshToken(),
+        };
+      });
+      if (!captured.matched) {
+        return;
+      }
+      try {
+        await this.#signOutInternal(captured.refreshToken);
+      } catch {
+        // Usually means we were already signed out, which is fine.
+      }
+      await runWithMutex(this.#lockKey, async () => {
+        if ((await this.#storedSessionId()) !== expectedSessionId) {
+          return;
+        }
+        this.#log("signed out, erasing tokens");
+        await this.#storeTokens(null);
+      });
+    });
+  }
+
+  #rememberAdoptedBySignIn(accessToken: string): void {
+    this.#adoptedBySignIn.add(accessToken);
+    if (this.#adoptedBySignIn.size > MAX_REMEMBERED_SIGN_IN_TOKENS) {
+      const oldest = this.#adoptedBySignIn.values().next().value;
+      if (oldest !== undefined) {
+        this.#adoptedBySignIn.delete(oldest);
+      }
+    }
+  }
 
   /**
    * The function handed to Convex's `ConvexProviderWithAuth`.
@@ -478,6 +790,16 @@ export class AuthClient {
 
   // --- Internals -----------------------------------------------------------
 
+  /**
+   * The id of the session that the stored access token belongs to, or `null`
+   * when none is stored. The storage is what the tabs share, so it knows about
+   * a session that another tab stored before this tab heard of it.
+   */
+  async #storedSessionId(): Promise<string | null> {
+    const accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+    return accessToken === null ? null : sessionIdOfAccessToken(accessToken);
+  }
+
   /** The authoritative refresh token: storage (shared across tabs) then memory. */
   async #currentRefreshToken(): Promise<string | null> {
     return (
@@ -494,6 +816,26 @@ export class AuthClient {
   async #handleRefresh(result: RefreshOutcome): Promise<void> {
     switch (result.kind) {
       case "noSession":
+        // A session switch that is under way decides what this means: see
+        // `switchSession`.
+        if (this.#pendingSwitches > 0) {
+          this.#heldNoSession = true;
+          return;
+        }
+        // The switch may be under way in another tab. Clearing the storage
+        // that the tabs share would make that tab discard the session it is
+        // about to store, and sign every tab out. So leave the tokens: the
+        // other tab replaces them when its switch succeeds. If it fails, they
+        // belong to a session that is gone, and the next refresh, with no
+        // switch under way, clears them.
+        //
+        // The lock is named after the storage namespace. With a storage that
+        // each tab has to itself (`sessionStorage`), a switch in an unrelated
+        // tab thus delays this tab's sign-out the same way, until its next
+        // refresh.
+        if (await isMutexHeld(this.#switchLockKey)) {
+          return;
+        }
         await this.#storeTokens(null);
         return;
       case "rotated":
@@ -613,6 +955,10 @@ export class AuthClient {
       isLoading: this.#isLoading || this.#pendingSignIns > 0,
       isAuthenticated: this.#accessToken !== null,
       token: this.#accessToken,
+      sessionId:
+        this.#accessToken === null
+          ? null
+          : sessionIdOfAccessToken(this.#accessToken),
     };
     for (const listener of this.#listeners) listener();
   }
