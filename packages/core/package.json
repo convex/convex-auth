@@ -177,6 +177,13 @@
       "types": "./dist/methods/username-passkey/client.d.ts",
       "default": "./dist/methods/username-passkey/client.js"
     },
+    "./methods/username-passkey/client-custom": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/username-passkey/client-custom.d.ts"
+      },
+      "types": "./dist/methods/username-passkey/client-custom.d.ts",
+      "default": "./dist/methods/username-passkey/client-custom.js"
+    },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/server.d.ts"

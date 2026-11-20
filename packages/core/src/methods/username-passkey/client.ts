@@ -18,22 +18,9 @@
  * shape that the flows and hooks take.
  *
  * The flows ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow} and
- * {@link runRemovePasskeyFlow}) run the ceremonies against the mutations of
- * the method. They leave three things to the caller, which the React hooks
- * do:
- *
- * - Unlike the ceremonies, a flow rejects when a mutation throws. The hooks
- *   fold a throw into `OTHER_ERROR`.
- * - Nothing stops two flows from running at once. The hooks answer
- *   `ALREADY_PENDING` while a ceremony is open.
- * - A flow does not end a pending autofill request, and the browser runs one
- *   ceremony at a time. The hooks abort the autofill request before a modal
- *   ceremony and start a new one after it.
- *
- * The autofill loop itself stays in the React hooks. A client library for
- * another framework writes its own on {@link authenticateWithAutofill}, and
- * starts the request again with new options before {@link CHALLENGE_TTL_MS}
- * passes.
+ * {@link runRemovePasskeyFlow}) come from `client-custom.ts`, which says what
+ * they leave to the caller. This module exports everything that is there, so
+ * a client library on the browser ceremonies imports only this one.
  *
  * @module
  */
@@ -64,30 +51,14 @@ import {
   type PasskeyRegistrationResult,
 } from "./ceremonies.ts";
 
-export {
-  foldClientError,
-  type PasskeyAuthenticationResult,
-  type ResolvedPasskeyCeremonies,
-  type PasskeyClientError,
-  type PasskeyClientFailure,
-  type PasskeyRegistrationResult,
-} from "./ceremonies.ts";
-
 // Apps and custom flows read the WebAuthn JSON types from here, so they
-// never depend on `@simplewebauthn/*` directly. The `Wire…` variants are
-// the exact shapes of the mutations of the method.
+// never depend on `@simplewebauthn/*` directly.
 export type {
   AuthenticationResponseJSON,
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 };
-export type {
-  WireAuthenticationResponse,
-  WireCreationOptions,
-  WireRegistrationResponse,
-  WireRequestOptions,
-} from "../../components/passkey/validation.ts";
 
 /**
  * Whether this browser can run WebAuthn ceremonies on this page. The
@@ -308,38 +279,40 @@ export const browserCeremonies: ResolvedPasskeyCeremonies = {
 };
 
 // The rest of the client: what an app needs to bring its own ceremonies, and
-// the flows that run a ceremony against the mutations of the method.
+// the flows that run the ceremonies against the mutations of the method.
 export {
+  CHALLENGE_TTL_MS,
+  foldClientError,
   resolveCeremonies,
-  type PasskeyAuthenticationResponse,
-  type PasskeyCeremonies,
-  type PasskeyRegistrationResponse,
-} from "./ceremonies.ts";
-export {
-  runSignInOrSignUpFlow,
-  type ProtocolUserError,
-  type SignInFlowContext,
-  type SignInFlowResult,
-  type UsernamePasskeyApi,
-  type UsernamePasskeyAutofillError,
-} from "./flows.ts";
-export {
   runAddPasskeyFlow,
   runRemovePasskeyFlow,
+  runSignInOrSignUpFlow,
   type AddPasskeyApi,
   type AddPasskeyFlowResult,
+  type FinishAddPasskeyResult,
+  type FinishRemovePasskeyResult,
   type ManagementFlowContext,
+  type PasskeyAuthenticationResponse,
+  type PasskeyAuthenticationResult,
+  type PasskeyCeremonies,
+  type PasskeyClientError,
+  type PasskeyClientFailure,
+  type PasskeyRegistrationResponse,
+  type PasskeyRegistrationResult,
+  type ProtocolUserError,
   type RemovePasskeyApi,
   type RemovePasskeyFlowResult,
-} from "./management/flows.ts";
-export type {
-  FinishAddPasskeyResult,
-  StartAddPasskeyResult,
-  VerifyAddPasskeyResult,
-} from "./management/add.ts";
-export type {
-  FinishRemovePasskeyResult,
-  StartRemovePasskeyResult,
-} from "./management/remove.ts";
-export type { RenamePasskeyResult } from "./management/rename.ts";
-export { CHALLENGE_TTL_MS } from "../../components/passkey/constants.ts";
+  type RenamePasskeyResult,
+  type ResolvedPasskeyCeremonies,
+  type SignInFlowContext,
+  type SignInFlowResult,
+  type StartAddPasskeyResult,
+  type StartRemovePasskeyResult,
+  type UsernamePasskeyApi,
+  type UsernamePasskeyAutofillError,
+  type VerifyAddPasskeyResult,
+  type WireAuthenticationResponse,
+  type WireCreationOptions,
+  type WireRegistrationResponse,
+  type WireRequestOptions,
+} from "./client-custom.ts";

@@ -67,7 +67,12 @@ check:jsdoc`). It is not an example to copy.
   `@convex-dev/auth/methods/<method>/react`. `oauth` and `username-passkey`
   also publish their `client.ts`, the client without React, at
   `@convex-dev/auth/methods/<method>/client`, for client libraries of other
-  frameworks. `username-passkey` also has a
+  frameworks. `username-passkey` also has a `client-custom.ts`, published at
+  `@convex-dev/auth/methods/username-passkey/client-custom`, with the flows
+  of that client on top of passkey ceremonies that the app provides (for
+  example on a native passkey library); it does not import the browser
+  ceremony client (`client.ts`) or `@simplewebauthn/browser`, and `client.ts`
+  exports all of it too. `username-passkey` also has a
   `react-custom.tsx`, published at
   `@convex-dev/auth/methods/username-passkey/react-custom`, whose
   `createUsernamePasskeyHooks` makes the same hooks on top of passkey

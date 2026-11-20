@@ -75,6 +75,14 @@ const clients = {
     "runSignInOrSignUpFlow",
     "supportsWebAuthn",
   ],
+  "./methods/username-passkey/client-custom": [
+    "CHALLENGE_TTL_MS",
+    "foldClientError",
+    "resolveCeremonies",
+    "runAddPasskeyFlow",
+    "runRemovePasskeyFlow",
+    "runSignInOrSignUpFlow",
+  ],
 };
 
 test.each(Object.entries(clients))(
@@ -92,6 +100,31 @@ test.each(Object.entries(clients))(
     expect(Object.keys(client).sort()).toEqual(names);
   },
 );
+
+// A client library on the browser ceremonies imports only `client`.
+test("./methods/username-passkey/client exports all of client-custom", () => {
+  expect(clients["./methods/username-passkey/client"]).toEqual(
+    expect.arrayContaining(clients["./methods/username-passkey/client-custom"]),
+  );
+});
+
+// The passkey flows also run on ceremonies that the app provides, where the
+// browser ceremonies and their library must not load.
+test("./methods/username-passkey/client-custom loads without @simplewebauthn/browser", async () => {
+  const { default: file } = exports[
+    "./methods/username-passkey/client-custom"
+  ] as { default: string };
+  vi.doMock("@simplewebauthn/browser", () => {
+    throw new Error("the entry imported @simplewebauthn/browser");
+  });
+  vi.resetModules();
+  try {
+    await modules[source(file)]!();
+  } finally {
+    vi.doUnmock("@simplewebauthn/browser");
+    vi.resetModules();
+  }
+});
 
 test("a client library types the passkey flows without React", () => {
   type SignIn = SignInFlowContext;
