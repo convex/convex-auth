@@ -1,5 +1,5 @@
 import { mutation, query, MutationCtx } from "./_generated/server.ts";
-import { Id } from "./_generated/dataModel.ts";
+import { Doc, Id } from "./_generated/dataModel.ts";
 import { GenericId, v } from "convex/values";
 import {
   FunctionArgs,
@@ -17,7 +17,10 @@ import {
   type OnSignInFn,
 } from "../lib/types.ts";
 import { sha256Hex } from "../lib/crypto.ts";
-import { assertMountedAsCore } from "../lib/coreComponent.ts";
+import {
+  assertMountedAsCore,
+  CORE_COMPONENT_PATH,
+} from "../lib/coreComponent.ts";
 import {
   recordTtlConfig,
   refreshTokenInactivityExpiresAt,
@@ -29,15 +32,21 @@ import {
   vTtlConfigFields,
 } from "../lib/ttl.ts";
 import {
+  IMPERSONATION_STOP_GRACE_MS,
   STANDARD_ISSUED_REFRESH_TOKEN_LIMIT,
   REFRESH_GRACE_MS,
   deleteSession,
+  deleteSingleSession,
   evictLeastRecentlyRefreshedSessions,
+  isStoppedImpersonation,
   issueRefreshToken,
+  liveImpersonation,
   lookupRefreshTokenByHash,
   newestIssuedToken,
   redeem,
+  sessionTokensInState,
 } from "./sessions.ts";
+import { internal } from "./_generated/api.ts";
 
 // --- Configuration ---------------------------------------------------------
 
@@ -188,6 +197,44 @@ async function notifySignIn(
   });
 }
 
+/**
+ * What the app may know about an impersonation session: who started it and
+ * when it ends.
+ */
+const vImpersonationDetails = v.object({
+  impersonatorUserId: v.string(),
+  expiresAt: v.number(),
+});
+
+/** The `impersonation` field of a session as the app sees it, if it has one. */
+function impersonationDetails(session: Doc<"sessions">): {
+  impersonation?: { impersonatorUserId: string; expiresAt: number };
+} {
+  if (session.impersonation === undefined) return {};
+  const { impersonatorUserId, expiresAt } = session.impersonation;
+  return { impersonation: { impersonatorUserId, expiresAt } };
+}
+
+/**
+ * Whether a session can no longer be refreshed under the given lifetimes: it
+ * went a whole inactivity timeout without a refresh since `lastRefreshedAt`,
+ * or it is past its max lifetime.
+ */
+function isSessionExpired(
+  session: Doc<"sessions">,
+  lastRefreshedAt: number,
+  ttl: TtlConfig,
+  now: number,
+): boolean {
+  return (
+    refreshTokenInactivityExpiresAt(
+      { _creationTime: lastRefreshedAt },
+      ttl.refreshInactivityTimeoutSeconds,
+    ) <= now ||
+    sessionMaxLifetimeExpiresAt(session, ttl.sessionMaxLifetimeSeconds) <= now
+  );
+}
+
 // --- Component API ------------------------------------------------------------
 
 /**
@@ -322,6 +369,334 @@ export const _internal_dangerous_signUpWithoutSession = mutation({
 });
 
 /**
+ * The outcome of {@link _internal_dangerous_stopImpersonation}:
+ *
+ *  * `restored`: `tokens` is a session bundle of the impersonator.
+ *  * `notImpersonating`: the session is gone or is not an impersonation, or a
+ *    client already received the result of an earlier stop and refreshed with
+ *    it.
+ *  * `impersonatorSessionEnded`: the impersonation reached its `expiresAt`, or
+ *    the session of the impersonator is gone or expired. Both sessions are
+ *    deleted.
+ */
+const vStopImpersonationResult = v.union(
+  v.object({ kind: v.literal("restored"), tokens: vTokenBundle }),
+  v.object({ kind: v.literal("notImpersonating") }),
+  v.object({ kind: v.literal("impersonatorSessionEnded") }),
+);
+
+/**
+ * Start an impersonation: mint a session of `targetUserId` on behalf of the
+ * user of `impersonatorSessionId`.
+ *
+ * Apps don't call this API directly; a trusted server wrapper must verify the
+ * caller's session and check the app's authorization rule before calling it.
+ *
+ * The new session is an impersonation session. It ends at the sooner of
+ * `maxDurationSeconds` from now and the max lifetime of the impersonator
+ * session. The impersonator session is suspended while it lasts (see
+ * {@link refresh}), and the two sessions end together (see `deleteSession`).
+ * `onSignIn` does not run: the target did not sign in.
+ *
+ * Throws when the impersonator session is gone or expired, is itself an
+ * impersonation, already has an impersonation that is not stopped, or belongs
+ * to the target user. The caller turns the cases a client can reach into typed
+ * errors before invoking this mutation.
+ *
+ * The core doesn't check that `targetUserId` exists, like
+ * {@link _internal_dangerous_signIn}.
+ *
+ * DANGER: This mints a session for any `targetUserId`, and trusts that the
+ * caller owns `impersonatorSessionId` and is authorized to impersonate. App
+ * code must never expose it directly.
+ */
+export const _internal_dangerous_impersonate = mutation({
+  args: {
+    impersonatorSessionId: v.string(),
+    targetUserId: v.string(),
+    maxDurationSeconds: v.number(),
+    ...vTtlConfigFields,
+  },
+  returns: vTokenBundle,
+  handler: async (ctx, args): Promise<TokenBundle> => {
+    const ttl = validateTtlConfig(args);
+    const { targetUserId, maxDurationSeconds } = args;
+    if (!Number.isFinite(maxDurationSeconds) || maxDurationSeconds <= 0) {
+      throw new Error("The impersonation duration must be a positive number.");
+    }
+    if (targetUserId === "") {
+      throw new Error("Cannot impersonate: no user id was given.");
+    }
+    const now = Date.now();
+    const impersonatorSessionId = ctx.db.normalizeId(
+      "sessions",
+      args.impersonatorSessionId,
+    );
+    const impersonatorSession =
+      impersonatorSessionId === null
+        ? null
+        : await ctx.db.get("sessions", impersonatorSessionId);
+    if (impersonatorSession === null) {
+      throw new Error("Cannot impersonate: the caller has no session.");
+    }
+    if (impersonatorSession.impersonation !== undefined) {
+      throw new Error(
+        "Cannot impersonate from an impersonation session. Stop the current " +
+          "impersonation first.",
+      );
+    }
+    if (impersonatorSession.userId === targetUserId) {
+      throw new Error("A user cannot impersonate themself.");
+    }
+    // The row of an expired session stays until something deletes it, and its
+    // last access token can still be valid.
+    const newestIssued = await newestIssuedToken(ctx, impersonatorSession._id);
+    if (
+      newestIssued === null ||
+      isSessionExpired(
+        impersonatorSession,
+        newestIssued._creationTime,
+        ttl,
+        now,
+      )
+    ) {
+      throw new Error("Cannot impersonate: the caller's session has expired.");
+    }
+    // The honest client holds the tokens of its impersonation, and its tabs
+    // take turns to switch sessions, so only a replayed access token of the
+    // impersonator session gets here.
+    const earlierImpersonations = await ctx.db
+      .query("sessions")
+      .withIndex("by_impersonatorSession", (q) =>
+        q.eq("impersonation.impersonatorSessionId", impersonatorSession._id),
+      )
+      .collect();
+    if (
+      earlierImpersonations.some((session) => !isStoppedImpersonation(session))
+    ) {
+      throw new Error(
+        "Cannot impersonate: this session already has an impersonation. " +
+          "Stop it first.",
+      );
+    }
+    // The stopped ones, still in their grace period, can no longer restore
+    // the impersonator session (see `_internal_dangerous_stopImpersonation`).
+    for (const { _id, impersonation } of earlierImpersonations) {
+      if (
+        impersonation !== undefined &&
+        impersonation.supersededAt === undefined
+      ) {
+        await ctx.db.patch("sessions", _id, {
+          impersonation: { ...impersonation, supersededAt: now },
+        });
+      }
+    }
+
+    await recordTtlConfig(ctx, ttl);
+    await evictLeastRecentlyRefreshedSessions(ctx, targetUserId);
+    const sessionId = await ctx.db.insert("sessions", {
+      userId: targetUserId,
+      component: CORE_COMPONENT_PATH,
+      impersonation: {
+        impersonatorUserId: impersonatorSession.userId,
+        impersonatorSessionId: impersonatorSession._id,
+        expiresAt: Math.min(
+          now + maxDurationSeconds * 1000,
+          sessionMaxLifetimeExpiresAt(
+            impersonatorSession,
+            ttl.sessionMaxLifetimeSeconds,
+          ),
+        ),
+      },
+    });
+    const session = (await ctx.db.get("sessions", sessionId))!;
+    const { refreshToken, expiresAt } = await issueRefreshToken(
+      ctx,
+      session,
+      now,
+      ttl,
+    );
+    const accessToken = await mintAccessToken(
+      ctx,
+      sessionId,
+      ttl.accessTokenTtlSeconds,
+    );
+    return {
+      accessToken,
+      refreshToken,
+      refreshTokenExpiresAt: expiresAt,
+      userId: targetUserId,
+    };
+  },
+});
+
+/**
+ * Stop an impersonation: end the impersonation session `sessionId` and resume
+ * the session of the impersonator who started it.
+ *
+ * Apps don't call this API directly; a trusted server wrapper must pass the
+ * session id of the caller's verified access token.
+ *
+ * Resolves to one of the arms of {@link vStopImpersonationResult}.
+ *
+ * The impersonator's client dropped the refresh token of its own session when
+ * it adopted the impersonation, and the core stores only hashes. So this
+ * issues a new refresh token in the impersonator session. The first stop of an
+ * impersonation retires every token that session held before (issued tokens
+ * become `dropped`, and any previously redeemed token becomes `spent`): nobody
+ * should present them again, and whoever does forks the session, which revokes
+ * it (see {@link refresh}).
+ *
+ * The impersonation session is not deleted here. It is marked as stopped and
+ * scheduled for deletion `IMPERSONATION_STOP_GRACE_MS` later (and refused past
+ * that deadline even if deletion is delayed). Until then:
+ *
+ *  * the clients still connected with its access token keep resolving to a
+ *    user, so they are not signed out before they adopt the new tokens;
+ *  * a stop whose response was lost can be repeated. The repeat issues one
+ *    more token and retires nothing, so every response holds a valid token,
+ *    and the first refresh with one of them drops the others. Once a
+ *    restoration token has been redeemed, or the impersonator session has
+ *    started another impersonation, a repeat issues nothing.
+ *
+ * The impersonator session's inactivity timeout counts from the last refresh
+ * of either session, because the same client held both.
+ *
+ * DANGER: This mints a session of the impersonator for whoever passes
+ * `sessionId`. App code must never expose it directly: only call it with the
+ * session id of the caller's verified access token.
+ */
+export const _internal_dangerous_stopImpersonation = mutation({
+  args: {
+    sessionId: v.string(),
+    ...vTtlConfigFields,
+  },
+  returns: vStopImpersonationResult,
+  handler: async (ctx, args) => {
+    const ttl = validateTtlConfig(args);
+    const now = Date.now();
+    await recordTtlConfig(ctx, ttl);
+    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
+    const session =
+      sessionId === null ? null : await ctx.db.get("sessions", sessionId);
+    if (session === null || session.impersonation === undefined) {
+      return { kind: "notImpersonating" as const };
+    }
+    if (
+      session.impersonation.stoppedAt !== undefined &&
+      session.impersonation.stoppedAt + IMPERSONATION_STOP_GRACE_MS <= now
+    ) {
+      await deleteSingleSession(ctx, session._id);
+      return { kind: "notImpersonating" as const };
+    }
+    const impersonatorSession = await ctx.db.get(
+      "sessions",
+      session.impersonation.impersonatorSessionId,
+    );
+    // The impersonator session can only be gone when this session is stopped:
+    // otherwise the two are deleted together.
+    if (impersonatorSession === null) {
+      await deleteSingleSession(ctx, session._id);
+      return { kind: "impersonatorSessionEnded" as const };
+    }
+    // Only the newest impersonation of a session can restore it, or judge
+    // whether it expired: the newer one's refreshes count, and only it sees
+    // them.
+    if (session.impersonation.supersededAt !== undefined) {
+      return { kind: "notImpersonating" as const };
+    }
+    if (
+      !isStoppedImpersonation(session) &&
+      session.impersonation.expiresAt <= now
+    ) {
+      await deleteSession(ctx, session._id);
+      return { kind: "impersonatorSessionEnded" as const };
+    }
+    const lastRefreshedAt = Math.max(
+      (await newestIssuedToken(ctx, impersonatorSession._id))?._creationTime ??
+        -Infinity,
+      (await newestIssuedToken(ctx, session._id))?._creationTime ?? -Infinity,
+    );
+    if (isSessionExpired(impersonatorSession, lastRefreshedAt, ttl, now)) {
+      await deleteSingleSession(ctx, session._id);
+      await deleteSession(ctx, impersonatorSession._id);
+      return { kind: "impersonatorSessionEnded" as const };
+    }
+
+    const issued = await sessionTokensInState(
+      ctx,
+      impersonatorSession._id,
+      "issued",
+    );
+    const redeemedTokens = await sessionTokensInState(
+      ctx,
+      impersonatorSession._id,
+      "redeemed",
+    );
+    if (!isStoppedImpersonation(session)) {
+      for (const token of issued) {
+        await ctx.db.patch("refreshTokens", token._id, {
+          state: "dropped",
+          retiredAt: now,
+        });
+      }
+      for (const token of redeemedTokens) {
+        await ctx.db.patch("refreshTokens", token._id, {
+          state: "spent",
+          retiredAt: now,
+        });
+      }
+      await ctx.db.patch("sessions", session._id, {
+        impersonation: {
+          ...session.impersonation,
+          stoppedAt: now,
+        },
+      });
+      await ctx.scheduler.runAfter(
+        IMPERSONATION_STOP_GRACE_MS,
+        internal.sessions.deleteStoppedImpersonation,
+        { sessionId: session._id },
+      );
+    } else {
+      // The first stop retired every pre-stop token of the impersonator
+      // session (issued -> dropped, redeemed -> spent), so a redeemed token
+      // now can only mean a client received an earlier restoration response
+      // and refreshed with it.
+      if (redeemedTokens.length > 0) {
+        return { kind: "notImpersonating" as const };
+      }
+      if (issued.length >= STANDARD_ISSUED_REFRESH_TOKEN_LIMIT) {
+        throw new Error(
+          "This impersonation was stopped already, too many times to issue " +
+            "another session.",
+        );
+      }
+    }
+
+    const { refreshToken, expiresAt } = await issueRefreshToken(
+      ctx,
+      impersonatorSession,
+      now,
+      ttl,
+    );
+    const accessToken = await mintAccessToken(
+      ctx,
+      impersonatorSession._id,
+      ttl.accessTokenTtlSeconds,
+    );
+    return {
+      kind: "restored" as const,
+      tokens: {
+        accessToken,
+        refreshToken,
+        refreshTokenExpiresAt: expiresAt,
+        userId: impersonatorSession.userId,
+      },
+    };
+  },
+});
+
+/**
  * Record that a user exists.
  *
  * The core records the users that it creates and signs in. Call this function
@@ -349,6 +724,9 @@ export const markUserIdCreated = mutation({
  * Returns an object with the session's `userId` when the session row exists.
  * If there is no row for the session id, it returns `null`.
  *
+ * For an impersonation session, `userId` is the impersonated user, and
+ * `impersonation` names the user who started it and when it ends.
+ *
  * A session is live exactly as long as its row exists: sign-out, refresh-token
  * reuse detection, and expired-token cleanup all delete the row.
  *
@@ -357,12 +735,32 @@ export const markUserIdCreated = mutation({
  */
 export const getSession = query({
   args: { sessionId: v.string() },
-  returns: v.union(v.object({ userId: v.string() }), v.null()),
-  handler: async (ctx, { sessionId }): Promise<{ userId: string } | null> => {
+  returns: v.union(
+    v.object({
+      userId: v.string(),
+      impersonation: v.optional(vImpersonationDetails),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, { sessionId }) => {
     const id = ctx.db.normalizeId("sessions", sessionId);
     if (id === null) return null;
     const session = await ctx.db.get("sessions", id);
-    return session === null ? null : { userId: session.userId };
+    if (session === null) return null;
+    // Scheduled deletion (`deleteStoppedImpersonation`) is what reactively
+    // wakes subscribed queries at the end of the grace period; this clock
+    // check covers fresh reads and mutations if that job is delayed.
+    if (
+      session.impersonation?.stoppedAt !== undefined &&
+      session.impersonation.stoppedAt + IMPERSONATION_STOP_GRACE_MS <=
+        Date.now()
+    ) {
+      return null;
+    }
+    return {
+      userId: session.userId,
+      ...impersonationDetails(session),
+    };
   },
 });
 
@@ -383,6 +781,16 @@ export const getSession = query({
  *  * Unknown, or expired (not refreshed within the refresh inactivity timeout,
  *    or past the session's max lifetime):
  *    report no session.
+ *
+ * Impersonation adds three rules, checked after reuse detection:
+ *
+ *  * A session that started an impersonation which is not stopped is
+ *    suspended: report no session, and revoke nothing.
+ *  * An impersonation session past its `expiresAt`, or whose impersonator
+ *    session is past its max lifetime: revoke both sessions.
+ *  * A stopped impersonation session refreshes like any other session during
+ *    its `IMPERSONATION_STOP_GRACE_MS` grace period, and ends once that
+ *    deadline passes even if its scheduled deletion has not run yet.
  *
  * The outcomes are the arms of {@link vRefreshResult}: `rotated` carries the
  * new refresh token to persist, and `noSession` means the client must reflect
@@ -423,6 +831,8 @@ export const refresh = mutation({
     const session = await ctx.db.get("sessions", token.sessionId);
     if (session === null) return { kind: "noSession" };
 
+    // Reuse detection comes before every other check, so that nothing below
+    // hides a replayed token.
     switch (token.state) {
       case "spent":
       case "dropped":
@@ -441,6 +851,23 @@ export const refresh = mutation({
         break;
     }
 
+    // A session that started an impersonation is suspended until the
+    // impersonation stops: the browser holds one identity at a time, and the
+    // honest client replaced this session's tokens when the impersonation
+    // started. A token presented now is a stale copy (for example a cookie
+    // that a crossing server-side refresh wrote back), so it gets no session,
+    // and nothing is revoked. A refresh that was already under way when the
+    // impersonation started still gets `REFRESH_GRACE_MS` to land.
+    if (session.impersonation === undefined) {
+      const impersonation = await liveImpersonation(ctx, session._id);
+      if (
+        impersonation !== null &&
+        now - impersonation._creationTime > REFRESH_GRACE_MS
+      ) {
+        return { kind: "noSession" };
+      }
+    }
+
     // A redeemed token's session last refreshed when it issued its newest
     // token, so date inactivity from that one.
     const lastIssued =
@@ -456,6 +883,38 @@ export const refresh = mutation({
     ) {
       await deleteSession(ctx, session._id);
       return { kind: "noSession" };
+    }
+    // An impersonation ends at its `expiresAt`, and never outlives the max
+    // lifetime of the impersonator session under the current configuration.
+    // A stopped one refreshes during its grace period so a refresh crossing
+    // the stop does not sign the client out, but never past the deadline even
+    // if the scheduled deletion is delayed.
+    if (session.impersonation !== undefined) {
+      if (session.impersonation.stoppedAt !== undefined) {
+        if (
+          session.impersonation.stoppedAt + IMPERSONATION_STOP_GRACE_MS <=
+          now
+        ) {
+          await deleteSingleSession(ctx, session._id);
+          return { kind: "noSession" };
+        }
+      } else {
+        const impersonatorSession = await ctx.db.get(
+          "sessions",
+          session.impersonation.impersonatorSessionId,
+        );
+        if (
+          session.impersonation.expiresAt <= now ||
+          impersonatorSession === null ||
+          sessionMaxLifetimeExpiresAt(
+            impersonatorSession,
+            ttl.sessionMaxLifetimeSeconds,
+          ) <= now
+        ) {
+          await deleteSession(ctx, session._id);
+          return { kind: "noSession" };
+        }
+      }
     }
     if (token.state === "issued") {
       await redeem(ctx, token, now);
@@ -539,6 +998,12 @@ export const signOut = mutation({
  *
  * Sessions are listed newest first.
  *
+ * An impersonation session of the user (one where somebody else acts as the
+ * user) is listed too, with its `impersonation`. Its `expiresAt` tells whether
+ * it is over. A session of the user that is suspended while the user
+ * impersonates somebody does not refresh, so its `lastRefreshedAt` stands
+ * still for as long as the impersonation lasts.
+ *
  * Expired sessions are included, since a session's row outlives its tokens
  * until something deletes it. The query does not read the clock, so its result
  * stays cached until a session or token changes; callers that want only the
@@ -553,6 +1018,7 @@ export const listSessions = query({
       sessionId: v.string(),
       creationTime: v.number(),
       lastRefreshedAt: v.number(),
+      impersonation: v.optional(vImpersonationDetails),
     }),
   ),
   handler: async (ctx, { userId }) => {
@@ -575,6 +1041,7 @@ export const listSessions = query({
         sessionId: session._id,
         creationTime: session._creationTime,
         lastRefreshedAt: newestIssued._creationTime,
+        ...impersonationDetails(session),
       });
     }
     return result;
@@ -588,6 +1055,11 @@ export const listSessions = query({
  * Returns the ids of the sessions that existed and were revoked. An id that is
  * no session (malformed, already revoked, or repeated in `sessionIds`) is
  * skipped.
+ *
+ * An impersonation session and the session of the impersonator who started it
+ * end together, so revoking either one also revokes the other. The other one
+ * is not in the returned ids unless it was given too. A stopped impersonation
+ * is the exception: revoking it leaves the impersonator session.
  *
  * This is a component function callable by the app, not by end-user clients.
  *
@@ -604,17 +1076,22 @@ export const revokeSessions = mutation({
   args: { sessionIds: v.array(v.string()) },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
-    const revoked: string[] = [];
+    // Find every given session before deleting any: deleting one session of
+    // an impersonation also deletes the other, which may be given too.
+    const revoked: Id<"sessions">[] = [];
     for (const rawId of args.sessionIds) {
       const sessionId = ctx.db.normalizeId("sessions", rawId);
       if (
         sessionId === null ||
+        revoked.includes(sessionId) ||
         (await ctx.db.get("sessions", sessionId)) === null
       ) {
         continue;
       }
-      await deleteSession(ctx, sessionId);
       revoked.push(sessionId);
+    }
+    for (const sessionId of revoked) {
+      await deleteSession(ctx, sessionId);
     }
     return revoked;
   },
