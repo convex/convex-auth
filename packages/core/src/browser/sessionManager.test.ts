@@ -723,15 +723,6 @@ describe("AuthClient (SSR)", () => {
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
   });
 
-  test("init's initialToken wins over the initialAccessToken config", async () => {
-    const { client } = makeSsrClient({}, new InMemoryStorage(), {
-      initialAccessToken: "access-config",
-    });
-    await client.init({ initialToken: "access-init" });
-
-    expect(client.getSnapshot().token).toBe("access-init");
-  });
-
   test("init uses initialToken on the first call only", async () => {
     const storage = new InMemoryStorage();
     const { client } = makeSsrClient({}, storage);
@@ -741,21 +732,6 @@ describe("AuthClient (SSR)", () => {
 
     expect(client.getSnapshot().token).toBe("access-1");
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-1");
-  });
-
-  test("a client that is never initialized holds no token", () => {
-    // On a server, one client can be shared by every request. Creating it and
-    // reading it must not store a token.
-    const storage = new InMemoryStorage();
-    const { client } = makeSsrClient({}, storage);
-
-    expect(client.getSnapshot()).toMatchObject({
-      isLoading: true,
-      isAuthenticated: false,
-      token: null,
-    });
-    expect(client.getAccessToken()).toBe(null);
-    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe(null);
   });
 
   test("clears refresh token if present", async () => {

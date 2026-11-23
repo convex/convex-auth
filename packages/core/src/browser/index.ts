@@ -1,9 +1,8 @@
 /**
- * Framework-agnostic browser building blocks for Convex Auth clients: a token
- * storage abstraction, a cross-tab refresh mutex, the session manager that
- * ties them together, and {@link createAuthClient}, which builds a session
- * manager from a Convex client. The React bindings (`@convex-dev/auth/react`) build on
- * these, and other client libraries can too.
+ * Framework-agnostic browser code for Convex Auth clients. Create the auth
+ * client with {@link createAuthClient}. The React bindings
+ * (`@convex-dev/auth/react`) build on this module, and other client libraries
+ * can too.
  *
  * @module
  */

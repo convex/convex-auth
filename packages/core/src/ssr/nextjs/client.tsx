@@ -206,8 +206,8 @@ export function ConvexAuthNextjsProvider({
   );
 
   return (
-    // The SSR host may have refreshed on our behalf, so this is the freshest
-    // access token; the client adopts it on init.
+    // The SSR host may have refreshed the session, so this is the freshest
+    // access token.
     <AuthProvider authClient={authClient} initialToken={initialToken}>
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
         <SessionWatcher isAuthenticated={isAuthenticated} />

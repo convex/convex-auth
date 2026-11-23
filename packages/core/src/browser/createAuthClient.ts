@@ -20,9 +20,8 @@ import { AuthClient } from "./sessionManager.ts";
 import { defaultStorage, type TokenStorage } from "./storage.ts";
 
 /**
- * The `url` option of an auth client factory. It is optional when the Convex
- * client has a `url`, like a `ConvexReactClient`, and required otherwise,
- * like a `ConvexClient`.
+ * The `url` option of an auth client factory. The option is required only
+ * when the Convex client has no `url`, like a `ConvexClient`.
  */
 export type DeploymentUrlOption<C> = C extends { readonly url: string }
   ? {
@@ -41,10 +40,7 @@ export type DeploymentUrlOption<C> = C extends { readonly url: string }
 export type CreateAuthClientOptions<
   C extends ConvexClientApi = ConvexClientApi,
 > = {
-  /**
-   * The app's Convex client, a `ConvexReactClient` or a `ConvexClient`.
-   * Sign-in functions run on it.
-   */
+  /** The app's Convex client. Sign-in functions run on it. */
   convex: C;
   /**
    * The app's `refreshSession` and `signOut` mutations and its
@@ -86,8 +82,8 @@ export type CreateAuthClientOptions<
 } & DeploymentUrlOption<C>;
 
 /**
- * Create the auth client of a single-page app. Create it once, outside React,
- * from the app's Convex client, and pass it to `ConvexAuthProvider`.
+ * Returns the auth client of a single-page app. Create one auth client
+ * outside React and pass it to `ConvexAuthProvider`.
  *
  * ```ts
  * import { createAuthClient } from "@convex-dev/auth/react";
@@ -120,9 +116,9 @@ export function createAuthClient<C extends ConvexClientApi>(
 }
 
 /**
- * Builds the auth client of a single-page app with the given ambient
- * sign-ins. `ConvexAuthProvider` calls it directly for its deprecated
- * `ambientSignIns` prop.
+ * Returns the auth client of a single-page app with the given ambient
+ * sign-ins. `ConvexAuthProvider` uses it for its deprecated `ambientSignIns`
+ * prop.
  *
  * @internal
  */
@@ -144,8 +140,8 @@ export function buildSpaAuthClient<C extends ConvexClientApi>(
   const httpClient = new ConvexHttpClient(url, {
     logger: options.logger ?? loggerOf(convex),
   });
-  // Sign-in functions run on the app's websocket client, which is not paused
-  // before authentication, so the response carries the full token bundle.
+  // Sign-in functions can run on the websocket client, because it is not
+  // paused before the user signs in.
   const signInApi: AuthSignInApi = {
     mutation: (fn, args) => convex.mutation(fn, args),
     action: (fn, args) => convex.action(fn, args),
@@ -167,7 +163,7 @@ export function buildSpaAuthClient<C extends ConvexClientApi>(
     ambientSignIns: {
       signIns: ambientSignIns,
       signInApi,
-      // Mutations that mint no session use the same websocket client.
+      // Mutations that create no session also run on the websocket client.
       convex: { mutation: (fn, args) => convex.mutation(fn, args) },
     },
     verbose: options.verbose,

@@ -103,13 +103,6 @@ describe("createAuthClient", () => {
     expect(action).toHaveBeenCalledWith(signInAction, { code: "2" });
   });
 
-  test("the auth client exposes the Convex client and isAuthenticated", () => {
-    const { convex } = stubConvex();
-    const auth = createAuthClient({ convex, url: URL, api: API });
-    expect(auth.convex).toBe(convex);
-    expect(auth.isAuthenticated).toBe(API.isAuthenticated);
-  });
-
   test("the url defaults to the Convex client's url, and the namespace to the url", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");

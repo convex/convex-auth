@@ -1,12 +1,13 @@
 /**
  * React bindings for Convex Auth.
  *
- * Create the auth client once with {@link createAuthClient}, outside React,
- * from your `ConvexReactClient`. Then wrap your app in
- * {@link ConvexAuthProvider} (in place of `ConvexProvider`) to enable
- * authentication. The auth client owns the token lifecycle — storing the
- * session, refreshing the access token, signing out — and the provider feeds
- * its state to Convex's `ConvexProviderWithAuth`.
+ * 1. Create the auth client outside React with {@link createAuthClient}.
+ * 2. Wrap your app in {@link ConvexAuthProvider} in place of
+ *    `ConvexProvider`.
+ *
+ * The auth client stores the session, refreshes the access token, and signs
+ * out. The provider passes the auth state to Convex's
+ * `ConvexProviderWithAuth`.
  *
  * Sign-in methods are deliberately not part of this core: each sign-in method
  * (password, OAuth, passkey, …) ships its own authentication API that returns a
@@ -52,9 +53,8 @@ type AuthClientProps = {
    */
   auth: AuthClient<ConvexReactClient>;
   /**
-   * An access token rendered into the page by the server, for apps that
-   * render on a server. The auth client stores it when it starts in the
-   * browser.
+   * An access token that the server rendered into the page. The auth client
+   * stores it when it starts in the browser.
    */
   initialToken?: string | null;
   client?: never;
@@ -144,8 +144,8 @@ export type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
  * }
  * ```
  *
- * Passing `client` and `api` instead of `auth` still works, and builds the
- * auth client inside the provider.
+ * The `client` and `api` props still work in place of `auth`, but they are
+ * deprecated.
  */
 export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
   const { auth, client, children } = props;
@@ -172,8 +172,8 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
       },
       props.ambientSignIns ?? [oauth()],
     );
-    // The identity of `auth` or `client` is what matters. The other props are
-    // read once when the client is built and are not expected to change.
+    // The provider builds one auth client per `auth` or `client`, so changes
+    // to the other props are ignored.
   }, [auth, client]);
 
   const convex = authClient.convex;

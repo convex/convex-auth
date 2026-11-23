@@ -54,7 +54,8 @@ export function useSignInWithUsernamePasskeyImpl(
 ) {
   const { setSession } = useAuthActions();
 
-  // Using the auth client's signIn for mutations that return a session to support SSR
+  // Mutations that return a session run on the auth client's signIn, which
+  // supports SSR.
   const signInApi = useAuthClient().signIn;
   const convex = useConvex();
 

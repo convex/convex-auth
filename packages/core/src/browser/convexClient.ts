@@ -1,8 +1,7 @@
 /**
- * The calls the auth client makes on the app's Convex client, and helpers
- * that read a Convex client.
+ * Types and helpers for the app's Convex client.
  *
- * The Convex imports are type-only, so the auth client works with any Convex
+ * Import only Convex types here, so the auth client works with any Convex
  * client class.
  *
  * @module
@@ -14,10 +13,7 @@ import type {
   FunctionReturnType,
 } from "convex/server";
 
-/**
- * The calls the auth client makes on the app's Convex client. A
- * `ConvexReactClient` and a `ConvexClient` both have them.
- */
+/** The calls the auth client makes on the app's Convex client. */
 export interface ConvexClientApi {
   mutation<F extends FunctionReference<"mutation", "public">>(
     fn: F,

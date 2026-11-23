@@ -48,9 +48,8 @@ export interface SsrAuthApi {
 /** Config common to both session models. */
 interface AuthClientConfigBase<C extends ConvexClientApi> {
   /**
-   * The app's Convex client. Framework bindings read it from
-   * {@link AuthClient.convex}, and sign-in functions run on it when there is
-   * no `signInApi`.
+   * The app's Convex client. Sign-in functions run on it when there is no
+   * `signInApi`.
    */
   convex?: C;
   /**
@@ -182,9 +181,14 @@ function replaceUrlKeepingState(url: string): void {
 }
 
 /**
- * The sign-in API of a client: the configured one, then the one given to the
- * ambient sign-ins, then calls on the Convex client. Without any of them, its
- * calls throw.
+ * Returns the sign-in API for a client config. It uses the first of these
+ * that is set:
+ *
+ * 1. `signInApi`
+ * 2. `ambientSignIns.signInApi`
+ * 3. `convex`
+ *
+ * When none is set, every call to the returned API throws.
  */
 function signInApiFor<C extends ConvexClientApi>(
   config: AuthClientConfig<C>,
@@ -430,8 +434,8 @@ export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
    */
   async init(options?: {
     /**
-     * An access token to store before the session loads, typically rendered
-     * into the page by an SSR host. It is used on the first call only.
+     * An access token to store before the session loads. SSR hosts render it
+     * into the page. Only the first call uses it.
      */
     initialToken?: string | null;
   }): Promise<void> {

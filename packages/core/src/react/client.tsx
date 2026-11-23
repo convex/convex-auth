@@ -25,12 +25,8 @@ import type {
 export type { AuthSignInApi };
 
 /**
- * The {@link AuthClient} of the surrounding auth provider. Throws when used
- * outside an auth provider.
- *
- * Sign-in hooks run their sign-in functions with its `signIn` instead of
- * `useMutation` or `useAction`, which keeps them working under either session
- * model.
+ * Returns the {@link AuthClient} of the surrounding auth provider. Throws when
+ * used outside an auth provider.
  */
 export function useAuthClient(): AuthClient {
   const authClient = useContext(AuthClientContext);
@@ -164,8 +160,8 @@ export function AuthProvider({
 }: {
   authClient: AuthClient;
   /**
-   * An access token rendered into the page by an SSR host. It is passed to
-   * the first `init` call.
+   * An access token that an SSR host rendered into the page. The first
+   * `init` call stores it.
    */
   initialToken?: string | null;
   children: ReactNode;
@@ -176,8 +172,8 @@ export function AuthProvider({
     getServerSnapshot,
   );
 
-  // The client uses the token on its first init only, so a later value is
-  // not a reason to init again.
+  // The client uses the token on its first init only, so a new value does not
+  // re-run init.
   const initialTokenRef = useRef(initialToken);
 
   useEffect(() => {

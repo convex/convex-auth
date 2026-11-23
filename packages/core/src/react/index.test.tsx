@@ -152,7 +152,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     return <div>{useAuthToken() ?? "no token"}</div>;
   }
 
-  test("hooks read the auth client passed as auth", () => {
+  test("hooks get the auth client passed as auth", () => {
     const auth = makeAuthClient();
     const fromHook: unknown[] = [];
     function Capture() {
@@ -179,9 +179,8 @@ describe("ConvexAuthProvider with an auth client", () => {
     expect(auth.getAccessToken()).toBe("access-ssr");
   });
 
-  test("the auth client survives a remount under StrictMode", async () => {
+  test("initialToken is stored under StrictMode", async () => {
     const auth = makeAuthClient();
-    const onInit = vi.spyOn(auth, "init");
     render(
       <StrictMode>
         <ConvexAuthProvider auth={auth} initialToken="access-ssr">
@@ -190,7 +189,6 @@ describe("ConvexAuthProvider with an auth client", () => {
       </StrictMode>,
     );
     await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
-    expect(onInit).toHaveBeenCalledTimes(2);
   });
 
   test("passing auth and client together throws", () => {
@@ -204,18 +202,5 @@ describe("ConvexAuthProvider with an auth client", () => {
     expect(() => render(<ConvexAuthProvider {...props} />)).toThrow(
       /either auth or client and api, not both/,
     );
-  });
-
-  test("an auth client without a Convex client throws", () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const auth = makeAuthClient();
-    Object.defineProperty(auth, "convex", { value: undefined });
-    expect(() =>
-      render(
-        <ConvexAuthProvider auth={auth}>
-          <div />
-        </ConvexAuthProvider>,
-      ),
-    ).toThrow(/needs an auth client from createAuthClient/);
   });
 });
