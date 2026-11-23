@@ -21,7 +21,7 @@ import { FunctionReference } from "convex/server";
 import { useCallback, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import type { SignInResult, SignUpResult } from "./server.ts";
 
@@ -228,8 +228,8 @@ function usePasswordFlow<
 >(mutation: FunctionReference<"mutation", "public", Credentials, Result>) {
   const { setSession } = useAuthActions();
   // Running through the signInApi rather than `useAction` is what lets these hooks
-  // serve both session models. See {@link useAuthSignInApi}.
-  const signInApi = useAuthSignInApi();
+  // serve both session models. See {@link useAuthClient}.
+  const signInApi = useAuthClient().signIn;
   const [pending, setPending] = useState(false);
 
   const run = useCallback(

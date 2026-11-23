@@ -19,7 +19,7 @@ import { FunctionReference } from "convex/server";
 import { useCallback } from "react";
 import type { ClientView, SignInComplete } from "../../lib/types.ts";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 
 /**
@@ -68,8 +68,8 @@ export function useSignInAnonymously(api: {
   const signInMutation = useStableFunctionReference(api.signInAnonymously);
   const { setSession } = useAuthActions();
   // Running through the signInApi rather than `useMutation` is what lets this one
-  // hook serve both session models. See {@link useAuthSignInApi}.
-  const signInApi = useAuthSignInApi();
+  // hook serve both session models. See {@link useAuthClient}.
+  const signInApi = useAuthClient().signIn;
   const signIn = useCallback(async () => {
     const result = await signInApi.mutation(signInMutation, {});
     await setSession(result.tokens);

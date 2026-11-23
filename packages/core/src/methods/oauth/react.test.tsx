@@ -7,7 +7,6 @@ import { AuthClient } from "../../browser/sessionManager.ts";
 import { InMemoryStorage } from "../../browser/storage.ts";
 import { useAuthToken } from "../../react/index.tsx";
 import { AuthProvider, useAuth } from "../../react/client.tsx";
-import { stubSignInApi } from "../../react/testSignInApi.ts";
 import { useSignInWithDiscord } from "../discord/react.ts";
 import { useSignInWithGithub } from "../github/react.ts";
 import { useSignInWithGoogle } from "../google/react.ts";
@@ -100,12 +99,10 @@ function renderOAuth<T>(
     onMutation?: (mutation: ReturnType<typeof vi.fn>) => void;
   } = {},
 ) {
-  const { client, signInApi, mutation, convexMutation } = oauthClient(storage);
+  const { client, mutation, convexMutation } = oauthClient(storage);
   onMutation?.(mutation);
   const tree = (children: ReactNode) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   const wrapper = ({ children }: { children: ReactNode }) =>
     strictMode ? <StrictMode>{tree(children)}</StrictMode> : tree(children);
@@ -131,9 +128,7 @@ describe("OAuth React client", () => {
       storageNamespace: NAMESPACE,
     });
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-        {children}
-      </AuthProvider>
+      <AuthProvider authClient={client}>{children}</AuthProvider>
     );
     expect(() =>
       renderHook(() => useSignInWithGoogle(googleApi), { wrapper }),

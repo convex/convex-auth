@@ -16,8 +16,8 @@
  */
 "use client";
 
-import { useCallback, useContext, useSyncExternalStore } from "react";
-import { AuthClientContext } from "./client.tsx";
+import { useCallback, useSyncExternalStore } from "react";
+import { useAuthClient } from "./client.tsx";
 
 export type {
   AmbientSignInClient,
@@ -36,12 +36,7 @@ export function useAmbientSignInValue<T>(
   id: string,
   key: string,
 ): T | undefined {
-  const client = useContext(AuthClientContext);
-  if (client === undefined) {
-    throw new Error(
-      "useAmbientSignInValue must be used within a <ConvexAuthProvider>.",
-    );
-  }
+  const client = useAuthClient();
   const subscribe = useCallback(
     (listener: () => void) =>
       client.ambientSignInValues(id).subscribe(key, listener),

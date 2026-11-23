@@ -1,10 +1,12 @@
 /**
  * React bindings for Convex Auth.
  *
- * Wrap your app in {@link ConvexAuthProvider} (in place of `ConvexProvider`) to
- * enable authentication. The provider owns the token lifecycle — storing the
- * session, refreshing the access token, signing out — and feeds Convex's
- * `ConvexProviderWithAuth` a `useAuth` hook.
+ * Create the auth client once with {@link createAuthClient}, outside React,
+ * from your `ConvexReactClient`. Then wrap your app in
+ * {@link ConvexAuthProvider} (in place of `ConvexProvider`) to enable
+ * authentication. The auth client owns the token lifecycle — storing the
+ * session, refreshing the access token, signing out — and the provider feeds
+ * its state to Convex's `ConvexProviderWithAuth`.
  *
  * Sign-in methods are deliberately not part of this core: each sign-in method
  * (password, OAuth, passkey, …) ships its own authentication API that returns a
@@ -15,15 +17,12 @@
  */
 "use client";
 
-import { ConvexHttpClient } from "convex/browser";
-import { ConvexProviderWithAuth, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithAuth, type ConvexReactClient } from "convex/react";
 import { ReactNode, useContext, useMemo } from "react";
-import type {
-  AmbientSignInClient,
-  AuthSignInApi,
-} from "../browser/ambientSignInClient.ts";
-import { AuthClient } from "../browser/sessionManager.ts";
-import { TokenStorage, defaultStorage } from "../browser/storage.ts";
+import type { AmbientSignInClient } from "../browser/ambientSignInClient.ts";
+import { buildSpaAuthClient } from "../browser/createAuthClient.ts";
+import type { AuthClient } from "../browser/sessionManager.ts";
+import type { TokenStorage } from "../browser/storage.ts";
 import { oauth } from "../methods/oauth/client.ts";
 import type { ConvexAuthApi } from "../lib/types.ts";
 import {
@@ -34,49 +33,59 @@ import {
   useAuth,
 } from "./client.tsx";
 
+export {
+  createAuthClient,
+  type CreateAuthClientOptions,
+} from "../browser/createAuthClient.ts";
+export type { AuthSignInApi } from "../browser/ambientSignInClient.ts";
+export type { AuthClient, AuthState } from "../browser/sessionManager.ts";
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";
+export { useAuthClient } from "./client.tsx";
+
+/** The props of {@link ConvexAuthProvider} with an auth client. */
+type AuthClientProps = {
+  /**
+   * The auth client from {@link createAuthClient}, created with a
+   * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
+   */
+  auth: AuthClient<ConvexReactClient>;
+  /**
+   * An access token rendered into the page by the server, for apps that
+   * render on a server. The auth client stores it when it starts in the
+   * browser.
+   */
+  initialToken?: string | null;
+  client?: never;
+  api?: never;
+  storage?: never;
+  storageNamespace?: never;
+  ambientSignIns?: never;
+};
 
 /**
- * Replace your `ConvexProvider` with this to enable authentication.
- *
- * ```tsx
- * import { ConvexAuthProvider } from "@convex-dev/auth/react";
- * import { ConvexReactClient } from "convex/react";
- * import { api } from "../convex/_generated/api";
- *
- * const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
- *
- * function Root({ children }: { children: React.ReactNode }) {
- *   return (
- *     <ConvexAuthProvider
- *       client={convex}
- *       api={{
- *         refreshSession: api.auth.refreshSession,
- *         signOut: api.auth.signOut,
- *         isAuthenticated: api.auth.isAuthenticated,
- *       }}
- *     >
- *       {children}
- *     </ConvexAuthProvider>
- *   );
- * }
- * ```
+ * The props of {@link ConvexAuthProvider} that build the auth client inside
+ * the provider.
  */
-export function ConvexAuthProvider({
-  client,
-  api,
-  storage,
-  storageNamespace,
-  ambientSignIns,
-  children,
-}: {
-  /** Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient). */
+type ConvexClientProps = {
+  auth?: never;
+  initialToken?: never;
+  /**
+   * Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
+   *
+   * @deprecated Create the auth client with {@link createAuthClient} and pass
+   * it as `auth`.
+   */
   client: ConvexReactClient;
-  /** The app's `refreshSession` and `signOut` mutation references, and its
+  /**
+   * The app's `refreshSession` and `signOut` mutation references, and its
    * `isAuthenticated` query reference. The provider subscribes to
-   * `isAuthenticated`, so a session revoked server-side signs the client out reactively. */
+   * `isAuthenticated`, so a session revoked server-side signs the client out
+   * reactively.
+   *
+   * @deprecated Pass it to {@link createAuthClient}.
+   */
   api: ConvexAuthApi;
   /**
    * A custom {@link TokenStorage} implementation.
@@ -88,23 +97,14 @@ export function ConvexAuthProvider({
    * advised to provide an implementation, because the in-memory default will
    * cause users to get logged out each time the app closes.
    *
-   * Here's an example of an implementation for Expo that could be passed in
-   * here:
-   *
-   * ```ts
-   * import * as SecureStore from "expo-secure-store";
-   *
-   * const secureStorage = {
-   *   getItem: SecureStore.getItemAsync,
-   *   setItem: SecureStore.setItemAsync,
-   *   removeItem: SecureStore.deleteItemAsync,
-   * };
-   * ```
+   * @deprecated Pass it to {@link createAuthClient}.
    */
   storage?: TokenStorage;
   /**
    * Namespace for storage keys, which determines whether tokens are shared.
    * Non-alphanumeric characters are ignored. Defaults to the deployment URL.
+   *
+   * @deprecated Pass it to {@link createAuthClient}.
    */
   storageNamespace?: string;
   /**
@@ -119,52 +119,76 @@ export function ConvexAuthProvider({
    * change.
    */
   ambientSignIns?: AmbientSignInClient[];
+};
+
+/** The props of {@link ConvexAuthProvider}. */
+export type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
   children: ReactNode;
-}) {
-  const { authClient, signInApi } = useMemo(() => {
-    // Refresh and sign-out go over a *separate* HTTP client, not the websocket
-    // `client`. A refresh happens while `client` is paused waiting for a token,
-    // so calling it through `client` would deadlock on the very handshake the
-    // refresh is meant to satisfy.
-    const httpClient = new ConvexHttpClient(client.url, {
-      logger: client.logger,
-    });
-    // Sign-in functions run against the deployment over the same websocket
-    // client as the rest of the app (it isn't paused pre-auth, unlike the
-    // refresh path below), so the response carries the full token bundle for
-    // `setSession` to persist. The same object serves the setups of the
-    // methods here and, via AuthProvider below, the hooks of the methods.
-    const signInApi: AuthSignInApi = {
-      mutation: (fn, args) => client.mutation(fn, args),
-      action: (fn, args) => client.action(fn, args),
-    };
-    const authClient = new AuthClient({
-      mode: "spa",
-      authApi: {
-        refreshSession: (refreshToken) =>
-          httpClient.mutation(api.refreshSession, { refreshToken }),
-        signOut: async (refreshToken) => {
-          await httpClient.mutation(api.signOut, { refreshToken });
-        },
+};
+
+/**
+ * Replace your `ConvexProvider` with this to enable authentication.
+ *
+ * Create the auth client once, outside React, and pass it as `auth`:
+ *
+ * ```tsx
+ * import { ConvexAuthProvider, createAuthClient } from "@convex-dev/auth/react";
+ * import { ConvexReactClient } from "convex/react";
+ * import { api } from "../convex/_generated/api";
+ *
+ * const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+ * const auth = createAuthClient({ convex, api: api.auth });
+ *
+ * function Root({ children }: { children: React.ReactNode }) {
+ *   return <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>;
+ * }
+ * ```
+ *
+ * Passing `client` and `api` instead of `auth` still works, and builds the
+ * auth client inside the provider.
+ */
+export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
+  const { auth, client, children } = props;
+  if (auth !== undefined && client !== undefined) {
+    throw new Error(
+      "[convex-auth] Pass ConvexAuthProvider either auth or client and api, " +
+        "not both.",
+    );
+  }
+  const authClient = useMemo(() => {
+    if (auth !== undefined) return auth;
+    if (client === undefined) {
+      throw new Error(
+        "[convex-auth] ConvexAuthProvider needs an auth client. Create one " +
+          "with createAuthClient and pass it as auth.",
+      );
+    }
+    return buildSpaAuthClient(
+      {
+        convex: client,
+        api: props.api!,
+        storage: props.storage,
+        storageNamespace: props.storageNamespace,
       },
-      storage: storage ?? defaultStorage(),
-      storageNamespace: storageNamespace ?? client.url,
-      ambientSignIns: {
-        signIns: ambientSignIns ?? [oauth()],
-        signInApi,
-        // Mutations that mint no session use the same websocket client.
-        convex: { mutation: (fn, args) => client.mutation(fn, args) },
-      },
-    });
-    return { authClient, signInApi };
-    // `client` identity is what matters. The other props are read once at
-    // construction and are not expected to change.
-  }, [client]);
+      props.ambientSignIns ?? [oauth()],
+    );
+    // The identity of `auth` or `client` is what matters. The other props are
+    // read once when the client is built and are not expected to change.
+  }, [auth, client]);
+
+  const convex = authClient.convex;
+  const isAuthenticated = authClient.isAuthenticated;
+  if (convex === undefined || isAuthenticated === undefined) {
+    throw new Error(
+      "[convex-auth] ConvexAuthProvider needs an auth client from " +
+        "createAuthClient.",
+    );
+  }
 
   return (
-    <AuthProvider authClient={authClient} signInApi={signInApi}>
-      <ConvexProviderWithAuth client={client} useAuth={useAuth}>
-        <SessionWatcher isAuthenticated={api.isAuthenticated} />
+    <AuthProvider authClient={authClient} initialToken={props.initialToken}>
+      <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
+        <SessionWatcher isAuthenticated={isAuthenticated} />
         {children}
       </ConvexProviderWithAuth>
     </AuthProvider>

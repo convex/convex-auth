@@ -8,11 +8,10 @@
 
 import { FunctionReference } from "convex/server";
 import { useMutation, useQuery } from "convex/react";
-import { useCallback, useRef, useContext, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
-import { AuthClientContext, useAuth } from "../../react/client.tsx";
+import { useAuth, useAuthClient } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import type { NamespacedStorage } from "../../browser/storage.ts";
 import type {
@@ -246,10 +245,7 @@ export type CompletePasswordRecoveryState =
 //------------------------------------------------------------------------------
 
 function useSecretStorage(): NamespacedStorage {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
+  const authClient = useAuthClient();
   return authClient.storage;
 }
 
@@ -258,10 +254,7 @@ function useSecretStorage(): NamespacedStorage {
  * reports `isLoading` instead of signed out.
  */
 function useWithSignInPending() {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
+  const authClient = useAuthClient();
   return authClient.withSignInPending;
 }
 
@@ -419,7 +412,7 @@ export function useSignInWithEmailPassword(api: {
     api.signInWithEmailPassword,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const signInApi = useAuthClient().signIn;
   const { pending, track } = usePending();
 
   const signIn = useCallback(
@@ -574,7 +567,7 @@ export function useCompleteSignUpWithEmailPassword(
     api.completeSignUpWithEmailPassword,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const signInApi = useAuthClient().signIn;
   const withSignInPending = useWithSignInPending();
 
   // Keep `isLoading` true while the server validates the link and the client
@@ -728,7 +721,7 @@ export function useCompletePasswordRecovery(
   );
   const { isLoading } = useAuth();
   const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const signInApi = useAuthClient().signIn;
   const storage = useSecretStorage();
   const { pending, track } = usePending();
   // The secret from storage: not read yet, missing, or found.

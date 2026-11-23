@@ -505,6 +505,7 @@
     "@types/babel__code-frame": "^7.27.0",
     "@types/node": "^24.12.4",
     "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "convex": "1.48.0",
     "convex-test": "^0.0.65",
     "hash-wasm": "^4.12.0",

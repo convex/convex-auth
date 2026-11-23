@@ -8,13 +8,9 @@
 
 import { FunctionReference } from "convex/server";
 import { useMutation } from "convex/react";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
-import {
-  AuthClientContext,
-  useAuth,
-  useAuthSignInApi,
-} from "../../react/client.tsx";
+import { useAuth, useAuthClient } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import type {
@@ -69,14 +65,6 @@ export type SignInState =
         | MissingSecretError
         | OtherError;
     };
-
-function useAuthClient() {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
-  return authClient;
-}
 
 /**
  * Client for the one form of the method: send a sign-in link to the address,
@@ -183,7 +171,7 @@ export function useSignInWithEmailMagicLink(
     api.signInWithEmailMagicLink,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthSignInApi();
+  const signInApi = useAuthClient().signIn;
   const { storage, withSignInPending } = useAuthClient();
   const { isLoading } = useAuth();
   const [state, setState] = useState<SignInState>({ status: "loading" });

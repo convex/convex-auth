@@ -36,6 +36,7 @@ function renderAnonymousAuth(
   },
 ) {
   const client = new AuthClient({
+    signInApi,
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
@@ -45,9 +46,7 @@ function renderAnonymousAuth(
     storageNamespace: NAMESPACE,
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({

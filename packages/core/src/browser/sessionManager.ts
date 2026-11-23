@@ -1,4 +1,5 @@
 import type {
+  IsAuthenticatedFn,
   RefreshResult,
   SlimTokenBundle,
   TokenBundle,
@@ -10,6 +11,7 @@ import type {
   AuthSignInApi,
   ConvexMutationApi,
 } from "./ambientSignInClient.ts";
+import type { ConvexClientApi } from "./convexClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
 import {
   JWT_STORAGE_KEY,
@@ -44,7 +46,23 @@ export interface SsrAuthApi {
 }
 
 /** Config common to both session models. */
-interface AuthClientConfigBase {
+interface AuthClientConfigBase<C extends ConvexClientApi> {
+  /**
+   * The app's Convex client. Framework bindings read it from
+   * {@link AuthClient.convex}, and sign-in functions run on it when there is
+   * no `signInApi`.
+   */
+  convex?: C;
+  /**
+   * The app's `isAuthenticated` query. Framework bindings subscribe to it so
+   * a session revoked server-side signs the client out.
+   */
+  isAuthenticated?: IsAuthenticatedFn;
+  /**
+   * Runs the sign-in functions of the methods. Defaults to
+   * `ambientSignIns.signInApi`, then to `convex`.
+   */
+  signInApi?: AuthSignInApi;
   /** Where tokens are persisted. */
   storage: TokenStorage;
   /** Namespace for storage keys; typically the deployment URL. */
@@ -52,6 +70,9 @@ interface AuthClientConfigBase {
   /**
    * An access token to store on {@link AuthClient.init}, typically provided by
    * an SSR host.
+   *
+   * @deprecated Pass `initialToken` to {@link AuthClient.init} instead, so a
+   * client shared on a server never holds a user's token.
    */
   initialAccessToken?: string | null;
   /**
@@ -82,9 +103,9 @@ interface AuthClientConfigBase {
  *  - `"ssr"`: the refresh token is in an httpOnly cookie; a {@link SsrAuthApi}
  *    is called without one and reads the cookie server-side.
  */
-export type AuthClientConfig =
-  | (AuthClientConfigBase & { mode: "spa"; authApi: SpaAuthApi })
-  | (AuthClientConfigBase & { mode: "ssr"; authApi: SsrAuthApi });
+export type AuthClientConfig<C extends ConvexClientApi = ConvexClientApi> =
+  | (AuthClientConfigBase<C> & { mode: "spa"; authApi: SpaAuthApi })
+  | (AuthClientConfigBase<C> & { mode: "ssr"; authApi: SsrAuthApi });
 
 /** Auth state that can be subscribed to via {@link AuthClient.subscribe} */
 export interface AuthState {
@@ -161,6 +182,32 @@ function replaceUrlKeepingState(url: string): void {
 }
 
 /**
+ * The sign-in API of a client: the configured one, then the one given to the
+ * ambient sign-ins, then calls on the Convex client. Without any of them, its
+ * calls throw.
+ */
+function signInApiFor<C extends ConvexClientApi>(
+  config: AuthClientConfig<C>,
+): AuthSignInApi {
+  const configured = config.signInApi ?? config.ambientSignIns?.signInApi;
+  if (configured !== undefined) return configured;
+  const { convex } = config;
+  if (convex !== undefined) {
+    return {
+      mutation: (fn, args) => convex.mutation(fn, args),
+      action: (fn, args) => convex.action(fn, args),
+    };
+  }
+  const missing = (): never => {
+    throw new Error(
+      "[convex-auth] This auth client has no signInApi or convex client to " +
+        "run sign-in functions on.",
+    );
+  };
+  return { mutation: missing, action: missing };
+}
+
+/**
  * Framework-agnostic owner of the auth session on the client.
  *
  * It persists the {@link TokenBundle} from a sign-in, hands out the access
@@ -171,7 +218,7 @@ function replaceUrlKeepingState(url: string): void {
  * Methods authenticate and sign-in users and call {@link AuthClient.setSession} with
  * a token bundle.
  */
-export class AuthClient {
+export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */
@@ -180,6 +227,8 @@ export class AuthClient {
   readonly #verbose: boolean;
   readonly #lockKey: string;
   readonly #initialAccessToken: string | null;
+  readonly #convex: C | undefined;
+  readonly #isAuthenticated: IsAuthenticatedFn | undefined;
   /**
    * Which side owns the refresh token: this client (SPA) or an httpOnly cookie
    * (SSR). Enforced in {@link AuthClient.#storeFullTokenResult}.
@@ -205,7 +254,10 @@ export class AuthClient {
   readonly #listeners = new Set<Listener>();
   #storageListener: ((event: StorageEvent) => void) | null = null;
 
-  constructor(config: AuthClientConfig) {
+  constructor(config: AuthClientConfig<C>) {
+    this.#convex = config.convex;
+    this.#isAuthenticated = config.isAuthenticated;
+    this.signIn = signInApiFor(config);
     this.#storage = new NamespacedStorage(
       config.storage,
       config.storageNamespace,
@@ -275,6 +327,29 @@ export class AuthClient {
   getAccessToken(): string | null {
     return this.#accessToken;
   }
+
+  /**
+   * The app's Convex client from the config, or undefined when none was
+   * given. {@link createAuthClient} always sets it.
+   */
+  get convex(): C | undefined {
+    return this.#convex;
+  }
+
+  /**
+   * The app's `isAuthenticated` query from the config, or undefined when none
+   * was given. {@link createAuthClient} always sets it.
+   */
+  get isAuthenticated(): IsAuthenticatedFn | undefined {
+    return this.#isAuthenticated;
+  }
+
+  /**
+   * Runs the sign-in functions of the methods. Sign-in hooks call it instead
+   * of `useMutation` or `useAction`, so one hook serves both session models.
+   * See {@link AuthSignInApi}.
+   */
+  readonly signIn: AuthSignInApi;
 
   /** @internal */
   get storage(): NamespacedStorage {
@@ -349,8 +424,17 @@ export class AuthClient {
    * Symmetric and repeatable with {@link dispose}. The callbacks and session
    * load happen once, but the cross-tab listener is (re)attached on every
    * call, so an `init` after a `dispose` fully restores the client.
+   *
+   * Call it in the browser only. On a server, one client can be shared by
+   * every request, so it must never hold a user's token.
    */
-  async init(): Promise<void> {
+  async init(options?: {
+    /**
+     * An access token to store before the session loads, typically rendered
+     * into the page by an SSR host. It is used on the first call only.
+     */
+    initialToken?: string | null;
+  }): Promise<void> {
     // Attach before the one-time guard so a dispose()/init() cycle re-attaches
     // the listener rather than skipping it. Idempotent, so repeat calls are
     // harmless.
@@ -375,8 +459,9 @@ export class AuthClient {
     // An initially provided token is considered to be the freshest value, so
     // persist it before the load below reads it back (and so other tabs see
     // it).
-    if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+    const initialToken = options?.initialToken ?? this.#initialAccessToken;
+    if (initialToken !== null) {
+      await this.#storage.set(JWT_STORAGE_KEY, initialToken);
     }
     const versionBeforeRead = this.#tokenVersion;
     const [accessToken, refreshToken] = await Promise.all([

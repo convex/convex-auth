@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { ConvexReactClient } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import { StrictMode } from "react";
@@ -9,8 +9,14 @@ import type {
   AuthSignInApi,
 } from "../browser/ambientSignInClient.ts";
 import { useOauth } from "../methods/oauth/react.ts";
-import { useAuthSignInApi } from "./client.tsx";
-import { ConvexAuthProvider } from "./index.tsx";
+import { InMemoryStorage } from "../browser/storage.ts";
+import { useAuthClient, useAuthSignInApi } from "./client.tsx";
+import {
+  ConvexAuthProvider,
+  type ConvexAuthProviderProps,
+  createAuthClient,
+  useAuthToken,
+} from "./index.tsx";
 import { useAmbientSignInValue } from "./methods.ts";
 
 const API = {
@@ -130,5 +136,86 @@ describe("ConvexAuthProvider ambient sign-ins", () => {
       </ConvexAuthProvider>,
     );
     expect(screen.getByText("null")).toBeDefined();
+  });
+});
+
+describe("ConvexAuthProvider with an auth client", () => {
+  function makeAuthClient() {
+    return createAuthClient({
+      convex: makeConvexClient(),
+      api: API,
+      storage: new InMemoryStorage(),
+    });
+  }
+
+  function Token() {
+    return <div>{useAuthToken() ?? "no token"}</div>;
+  }
+
+  test("hooks read the auth client passed as auth", () => {
+    const auth = makeAuthClient();
+    const fromHook: unknown[] = [];
+    function Capture() {
+      fromHook.push(useAuthClient(), useAuthSignInApi());
+      return null;
+    }
+    render(
+      <ConvexAuthProvider auth={auth}>
+        <Capture />
+      </ConvexAuthProvider>,
+    );
+    expect(fromHook[0]).toBe(auth);
+    expect(fromHook[1]).toBe(auth.signIn);
+  });
+
+  test("initialToken is stored when the auth client starts", async () => {
+    const auth = makeAuthClient();
+    render(
+      <ConvexAuthProvider auth={auth} initialToken="access-ssr">
+        <Token />
+      </ConvexAuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
+    expect(auth.getAccessToken()).toBe("access-ssr");
+  });
+
+  test("the auth client survives a remount under StrictMode", async () => {
+    const auth = makeAuthClient();
+    const onInit = vi.spyOn(auth, "init");
+    render(
+      <StrictMode>
+        <ConvexAuthProvider auth={auth} initialToken="access-ssr">
+          <Token />
+        </ConvexAuthProvider>
+      </StrictMode>,
+    );
+    await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
+    expect(onInit).toHaveBeenCalledTimes(2);
+  });
+
+  test("passing auth and client together throws", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const props = {
+      auth: makeAuthClient(),
+      client: makeConvexClient(),
+      api: API,
+      children: <div />,
+    } as unknown as ConvexAuthProviderProps;
+    expect(() => render(<ConvexAuthProvider {...props} />)).toThrow(
+      /either auth or client and api, not both/,
+    );
+  });
+
+  test("an auth client without a Convex client throws", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const auth = makeAuthClient();
+    Object.defineProperty(auth, "convex", { value: undefined });
+    expect(() =>
+      render(
+        <ConvexAuthProvider auth={auth}>
+          <div />
+        </ConvexAuthProvider>,
+      ),
+    ).toThrow(/needs an auth client from createAuthClient/);
   });
 });
