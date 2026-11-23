@@ -48,17 +48,18 @@ export interface SsrAuthApi {
 /** Config common to both session models. */
 interface AuthClientConfigBase<C extends ConvexClientApi> {
   /**
-   * The app's Convex client. Sign-in functions run on it when there is no
-   * `signInApi`.
+   * The app's Convex client. Sign-in functions are called through it when
+   * there is no `signInApi`.
    */
   convex?: C;
   /**
-   * The app's `isAuthenticated` query. Framework bindings subscribe to it so
-   * a session revoked server-side signs the client out.
+   * A reference to the app's `isAuthenticated` query. Framework bindings
+   * subscribe to the query so a session revoked server-side signs the client
+   * out.
    */
   isAuthenticated?: IsAuthenticatedFn;
   /**
-   * Runs the sign-in functions of the methods. Defaults to
+   * Calls the sign-in functions of the methods. Defaults to
    * `ambientSignIns.signInApi`, then to `convex`.
    */
   signInApi?: AuthSignInApi;
@@ -341,15 +342,15 @@ export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
   }
 
   /**
-   * The app's `isAuthenticated` query from the config, or undefined when none
-   * was given. {@link createAuthClient} always sets it.
+   * The reference to the app's `isAuthenticated` query from the config, or
+   * undefined when none was given. {@link createAuthClient} always sets it.
    */
   get isAuthenticated(): IsAuthenticatedFn | undefined {
     return this.#isAuthenticated;
   }
 
   /**
-   * Runs the sign-in functions of the methods. Sign-in hooks call it instead
+   * Calls the sign-in functions of the methods. Sign-in hooks use it instead
    * of `useMutation` or `useAction`, so one hook serves both session models.
    * See {@link AuthSignInApi}.
    */

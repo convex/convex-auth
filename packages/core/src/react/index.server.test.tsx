@@ -25,7 +25,7 @@ function Token() {
 }
 
 describe("ConvexAuthProvider on a server", () => {
-  test("a shared auth client never holds a request's token", () => {
+  test("a shared auth client never holds a user's token", () => {
     // Apps can create the auth client once at module scope, so on a server
     // one client serves every request. Rendering with a user's token must
     // leave nothing in the client for the next request to see.

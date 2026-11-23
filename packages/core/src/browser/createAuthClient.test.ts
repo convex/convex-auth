@@ -86,7 +86,7 @@ describe("createAuthClient", () => {
     expect(auth.getSnapshot().isAuthenticated).toBe(false);
   });
 
-  test("sign-in functions run on the Convex client", async () => {
+  test("sign-in functions are called through the Convex client", async () => {
     const { convex, mutation, action } = stubConvex();
     const auth = createAuthClient({ convex, url: URL, api: API });
     const signInMutation = makeFunctionReference<"mutation">("auth:signIn");

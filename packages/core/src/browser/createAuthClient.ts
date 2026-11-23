@@ -40,10 +40,10 @@ export type DeploymentUrlOption<C> = C extends { readonly url: string }
 export type CreateAuthClientOptions<
   C extends ConvexClientApi = ConvexClientApi,
 > = {
-  /** The app's Convex client. Sign-in functions run on it. */
+  /** The app's Convex client. Sign-in functions are called through it. */
   convex: C;
   /**
-   * The app's `refreshSession` and `signOut` mutations and its
+   * References to the app's `refreshSession` and `signOut` mutations and its
    * `isAuthenticated` query, usually `api.auth`.
    */
   api: ConvexAuthApi;
@@ -140,8 +140,8 @@ export function buildSpaAuthClient<C extends ConvexClientApi>(
   const httpClient = new ConvexHttpClient(url, {
     logger: options.logger ?? loggerOf(convex),
   });
-  // Sign-in functions can run on the websocket client, because it is not
-  // paused before the user signs in.
+  // Sign-in functions can be called through the websocket client, because it
+  // is not paused before the user signs in.
   const signInApi: AuthSignInApi = {
     mutation: (fn, args) => convex.mutation(fn, args),
     action: (fn, args) => convex.action(fn, args),
@@ -163,7 +163,8 @@ export function buildSpaAuthClient<C extends ConvexClientApi>(
     ambientSignIns: {
       signIns: ambientSignIns,
       signInApi,
-      // Mutations that create no session also run on the websocket client.
+      // Mutations that create no session are also called through the websocket
+      // client.
       convex: { mutation: (fn, args) => convex.mutation(fn, args) },
     },
     verbose: options.verbose,

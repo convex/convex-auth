@@ -172,8 +172,8 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
       },
       props.ambientSignIns ?? [oauth()],
     );
-    // The provider builds one auth client per `auth` or `client`, so changes
-    // to the other props are ignored.
+    // The provider builds the auth client once per `client`, so changes to the
+    // other props are ignored.
   }, [auth, client]);
 
   const convex = authClient.convex;

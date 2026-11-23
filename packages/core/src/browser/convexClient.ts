@@ -13,7 +13,7 @@ import type {
   FunctionReturnType,
 } from "convex/server";
 
-/** The calls the auth client makes on the app's Convex client. */
+/** The methods the auth client calls on the app's Convex client. */
 export interface ConvexClientApi {
   mutation<F extends FunctionReference<"mutation", "public">>(
     fn: F,
