@@ -172,10 +172,12 @@ export type AuthCore<UsersTable extends string = string> = {
  * each method.* A method:
  * 1. verifies the user its own way (checking a password, say),
  * 2. looks the identity's app user up in its own component,
- * 3. calls `completeSignUp` for a new identity, or `completeSignIn` for a
- *    known one, to get a session.
+ * 3. for a new identity, calls `ctx.convexAuth.createUser` (which runs the
+ *    app's `createUser`) and records the new user in its own component,
+ * 4. calls `completeSignIn` to get a session. The app's `onSignIn` runs here,
+ *    so it can read what the method recorded, on a first sign-in too.
  *
- * The core injects both helpers on `ctx.convexAuth`.
+ * The core injects these helpers on `ctx.convexAuth`.
  *
  * Token and session lifetimes are configurable here. The access-token TTL
  * defaults to 1m, and `sessionMaxLifetimeSeconds` to 30d.
@@ -350,24 +352,6 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
 
     // The helpers close over the live ctx.
     const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
-      completeSignUp: async (args: {
-        profile: Profile;
-        authenticatedBy: object;
-      }): Promise<TokenBundle> => {
-        return await ctx.runMutation(
-          component.public._internal_dangerous_signUp,
-          {
-            claims: {
-              method: name,
-              profile: args.profile,
-            },
-            componentPath: componentPathOf(args.authenticatedBy),
-            createUserHandle: await createFunctionHandle(createUser),
-            onSignInHandle: await onSignInHandle(),
-            ...ttl,
-          },
-        );
-      },
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
@@ -387,11 +371,11 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
           },
         );
       },
-      signUpWithoutSession: async (args: {
+      createUser: async (args: {
         profile: Profile;
       }): Promise<{ userId: string }> => {
         return await ctx.runMutation(
-          component.public._internal_dangerous_signUpWithoutSession,
+          component.public._internal_dangerous_createUser,
           {
             claims: {
               method: name,

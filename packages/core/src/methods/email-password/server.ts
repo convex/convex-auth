@@ -433,7 +433,7 @@ export function setupEmailPassword<UsersTable extends string>(
               return { success: false, userError: passwordError };
             }
 
-            const { userId } = await ctx.convexAuth.signUpWithoutSession({
+            const { userId } = await ctx.convexAuth.createUser({
               profile: {},
             });
 

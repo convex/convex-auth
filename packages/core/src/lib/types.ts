@@ -206,7 +206,8 @@ export type ConvexAuthApi = {
  * authenticate users and the *core* component.
  *
  * After a sign-in method authenticates a user it produces this plain payload;
- * the app forwards it to the core's `_internal_dangerous_signUp` or `_internal_dangerous_signIn`.
+ * the app forwards it to the core's `_internal_dangerous_createUser`
+ * or `_internal_dangerous_signIn`.
  * Sign-in methods never call the core directly, they only know how to produce
  * these claims.
  */
@@ -308,34 +309,13 @@ export type UserCallbacks<
  */
 export type BoundAuthHelpers<Profile> = {
   /**
-   * Create the app user for a *new* identity and exchange it for a session.
+   * Exchange a verified identity for a session.
    *
-   * Call this when the sign-in method has verified a new identity. The core:
-   * 1. calls the app's `createUser` to create the app user,
-   * 2. calls the app's `onSignIn`, like any other sign-in,
-   * 3. returns the tokens a client needs to make authenticated calls.
-   *
-   * The core doesn't track identities, so the sign-in method must look the
-   * identity up in its own component first, and call
-   * {@link BoundAuthHelpers.completeSignIn} for a known one. After a sign-up,
-   * the sign-in method must record the returned `userId` in its component in
-   * the same mutation.
-   */
-  completeSignUp(args: {
-    profile: Profile;
-    /**
-     * The component that authenticated the user, for example
-     * `components.authPassword`. The session records its path.
-     */
-    authenticatedBy: object;
-  }): Promise<TokenBundle>;
-  /**
-   * Exchange a verified *existing* identity for a session.
-   *
-   * Call this once the sign-in method has authenticated a known identity its
-   * own way (checking a password, say) and looked up its user id. The core
-   * runs the app's `onSignIn` callback if one is attached, and returns the
-   * tokens a client needs to make authenticated calls.
+   * Call this once the sign-in method has authenticated an identity its own
+   * way (checking a password, say) and looked up its user id, or created the
+   * user with {@link BoundAuthHelpers.createUser}. The core runs the
+   * app's `onSignIn` callback if one is attached, and returns the tokens a
+   * client needs to make authenticated calls.
    *
    * The core doesn't check `userId`, so a wrong one signs the caller in as
    * that user.
@@ -350,15 +330,20 @@ export type BoundAuthHelpers<Profile> = {
     authenticatedBy: object;
   }): Promise<TokenBundle>;
   /**
-   * Create the app user for a verified identity without a session.
+   * Create the app user for a verified *new* identity, without a session.
    *
-   * Call this when the user must complete a step (for example, an email
-   * validation) before the first sign-in. The app's `createUser` creates the
-   * user, as for `completeSignUp`, and `onSignIn` doesn't run. The sign-in
-   * method records the returned `userId` in its own component and signs the
-   * user in later with `completeSignIn`.
+   * This calls the app's `createUser` callback, and `onSignIn` doesn't run. The
+   * sign-in method records the returned `userId` in its own component in the
+   * same mutation, then calls {@link BoundAuthHelpers.completeSignIn}: in that
+   * mutation too, or later when the user must complete a step first (for
+   * example, an email validation). The app's `onSignIn` thus sees what the
+   * method recorded, on the first sign-in too.
+   *
+   * The core doesn't track identities, so a repeated call creates another
+   * user. The sign-in method must look the identity up in its own component
+   * first, and call `completeSignIn` directly for a known one.
    */
-  signUpWithoutSession(args: { profile: Profile }): Promise<{ userId: string }>;
+  createUser(args: { profile: Profile }): Promise<{ userId: string }>;
   /**
    * Revokes every session of the signed-in user other than the current one
    * (the JWT's subject). Returns the number of active (non-expired)

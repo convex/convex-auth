@@ -211,13 +211,20 @@ export function buildCompleteSignIn<
         });
         return { status: "complete", tokens };
       }
-      const tokens = await ctx.convexAuth.completeSignUp({
+      // Create the user without a session, record its account, and only
+      // then sign in, so that the app's `onSignIn` sees the account on the
+      // first sign-in too.
+      const { userId } = await ctx.convexAuth.createUser({
         profile,
-        authenticatedBy: options.component,
       });
       await options.createAccount(ctx, {
         providerAccountId: profile.id,
-        userId: tokens.userId,
+        userId,
+      });
+      const tokens = await ctx.convexAuth.completeSignIn({
+        userId,
+        profile,
+        authenticatedBy: options.component,
       });
       return { status: "complete", tokens };
     },

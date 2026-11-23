@@ -272,7 +272,7 @@ export function setupEmailMagicLink<UsersTable extends string>(
               // A new address: create the user with no session, let the
               // email component record the address for it, then create the
               // session.
-              const { userId } = await ctx.convexAuth.signUpWithoutSession({
+              const { userId } = await ctx.convexAuth.createUser({
                 profile: {},
               });
               const recorded = await ctx.runMutation(

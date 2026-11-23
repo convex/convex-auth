@@ -1,9 +1,15 @@
 import { convexTest } from "convex-test";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { makeFunctionReference, mutationGeneric } from "convex/server";
+import {
+  makeFunctionReference,
+  mutationGeneric,
+  type GenericDataModel,
+  type GenericMutationCtx,
+} from "convex/server";
 import type { PropertyValidators } from "convex/values";
 import { api, internal } from "./_generated/api.ts";
 import type { ComponentApi } from "./_generated/component.ts";
+import type { DataModel } from "./_generated/dataModel.ts";
 import schema from "./schema.ts";
 import { setupOauth, type OauthProfile } from "../../methods/oauth/server.ts";
 import {
@@ -33,13 +39,17 @@ import type {
  */
 
 /**
- * Calls to the fake `ctx.convexAuth.completeSignUp` / `completeSignIn`. The
- * suite runs in one process, so tests read and reset this directly.
+ * Calls to the fake `ctx.convexAuth.createUser` / `completeSignIn`.
+ * The suite runs in one process, so tests read and reset this directly. A
+ * `signIn` call also records the accounts that existed when it ran, so tests
+ * can check that a new user's account is written before the app's `onSignIn`
+ * would run.
  */
 type HelperCall = {
-  kind: "signUp" | "signIn";
+  kind: "createUser" | "signIn";
   claims: AuthClaims;
   userId?: string;
+  accountsAtSignIn?: { providerAccountId: string; userId: string }[];
 };
 const helperCalls: HelperCall[] = [];
 
@@ -66,34 +76,42 @@ const completed = { status: "complete", tokens: bundle };
  */
 const invalidCode = { status: "error", userError: { error: "INVALID_CODE" } };
 
-/**
- * A fake core whose builders inject fake {@link BoundAuthHelpers}.
- * `signUpWithoutSession` is never reached by redemption.
- */
+/** A fake core whose builders inject fake {@link BoundAuthHelpers}. */
 const fakeCore = {
   bindMethod: <MethodName extends string, Profile>({
     name,
   }: {
     name: MethodName;
   }): MethodBuilders<Profile> => {
-    const record =
-      (kind: HelperCall["kind"]) =>
-      async ({ userId, profile }: { userId?: string; profile: Profile }) => {
+    const makeConvexAuth = (
+      ctx: GenericMutationCtx<GenericDataModel>,
+    ): BoundAuthHelpers<Profile> => ({
+      createUser: async ({ profile }) => {
         helperCalls.push({
-          kind,
+          kind: "createUser",
           claims: { method: name, profile },
-          ...(userId === undefined ? {} : { userId }),
+        });
+        if (helperFailure.error !== undefined) {
+          throw helperFailure.error;
+        }
+        return { userId: bundle.userId };
+      },
+      completeSignIn: async ({ userId, profile }) => {
+        // The fake core runs against the component's own schema.
+        const db = (ctx as unknown as GenericMutationCtx<DataModel>).db;
+        const accountsAtSignIn = (await db.query("accounts").collect()).map(
+          ({ providerAccountId, userId }) => ({ providerAccountId, userId }),
+        );
+        helperCalls.push({
+          kind: "signIn",
+          claims: { method: name, profile },
+          userId,
+          accountsAtSignIn,
         });
         if (helperFailure.error !== undefined) {
           throw helperFailure.error;
         }
         return bundle;
-      };
-    const convexAuth: BoundAuthHelpers<Profile> = {
-      completeSignUp: record("signUp"),
-      completeSignIn: record("signIn"),
-      signUpWithoutSession: async () => {
-        throw new Error("signUpWithoutSession is not used by redemption");
       },
       revokeOtherSessions: async () => {
         throw new Error("revokeOtherSessions is not used by redemption");
@@ -101,14 +119,14 @@ const fakeCore = {
       revokeAllSessions: async () => {
         throw new Error("revokeAllSessions is not used by redemption");
       },
-    };
+    });
     const authMutation: AuthMutationBuilder<Profile> = (fn) =>
       mutationGeneric({
         args: fn.args as PropertyValidators,
         returns: fn.returns,
         handler: (ctx, args) =>
           fn.handler(
-            { ...ctx, convexAuth },
+            { ...ctx, convexAuth: makeConvexAuth(ctx) },
             args as Parameters<typeof fn.handler>[1],
           ),
       });
@@ -290,14 +308,21 @@ describe("completeSignIn", () => {
     expect(result).toEqual(completed);
     // The decrypted payload flowed through the catalog's profile mapping
     // into the fake helpers. The identity is unknown to the component, so
-    // redemption took the sign-up path...
+    // redemption created a user, recorded its account, and only then signed
+    // it in...
+    const claims = {
+      method: "acme",
+      profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
+    };
     expect(helperCalls).toEqual([
+      { kind: "createUser", claims },
       {
-        kind: "signUp",
-        claims: {
-          method: "acme",
-          profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
-        },
+        kind: "signIn",
+        claims,
+        userId: bundle.userId,
+        accountsAtSignIn: [
+          { providerAccountId: "acme-sub-1", userId: bundle.userId },
+        ],
       },
     ]);
     // ...and recorded an account for the new user.
@@ -329,6 +354,9 @@ describe("completeSignIn", () => {
           method: "acme",
           profile: { id: "acme-sub-1", email: "ada@example.com", name: "Ada" },
         },
+        accountsAtSignIn: [
+          { providerAccountId: "acme-sub-1", userId: "user-7" },
+        ],
       },
     ]);
     expect(await accounts(t)).toHaveLength(1);
@@ -347,13 +375,17 @@ describe("completeSignIn", () => {
     });
 
     expect(result).toEqual(completed);
+    const claims = {
+      method: "acmeInfo",
+      profile: { id: "42", login: "octocat" },
+    };
     expect(helperCalls).toEqual([
+      { kind: "createUser", claims },
       {
-        kind: "signUp",
-        claims: {
-          method: "acmeInfo",
-          profile: { id: "42", login: "octocat" },
-        },
+        kind: "signIn",
+        claims,
+        userId: bundle.userId,
+        accountsAtSignIn: [{ providerAccountId: "42", userId: bundle.userId }],
       },
     ]);
   });
@@ -402,7 +434,9 @@ describe("completeSignIn", () => {
       state: "state-1",
     });
     expect(second).toEqual(invalidCode);
-    expect(helperCalls).toHaveLength(1);
+    // Only the first redemption reached the helpers: one sign-up and its
+    // sign-in.
+    expect(helperCalls).toHaveLength(2);
   });
 
   test("an expired ticket reports INVALID_CODE", async () => {
