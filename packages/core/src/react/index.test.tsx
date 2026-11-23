@@ -2,7 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { ConvexReactClient } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import { StrictMode } from "react";
+import { type ComponentProps, StrictMode } from "react";
 import { describe, expect, test, vi } from "vitest";
 import type {
   AmbientSignInClient,
@@ -13,7 +13,6 @@ import { InMemoryStorage } from "../browser/storage.ts";
 import { useAuthClient, useAuthSignInApi } from "./client.tsx";
 import {
   ConvexAuthProvider,
-  type ConvexAuthProviderProps,
   createAuthClient,
   useAuthToken,
 } from "./index.tsx";
@@ -198,7 +197,7 @@ describe("ConvexAuthProvider with an auth client", () => {
       client: makeConvexClient(),
       api: API,
       children: <div />,
-    } as unknown as ConvexAuthProviderProps;
+    } as unknown as ComponentProps<typeof ConvexAuthProvider>;
     expect(() => render(<ConvexAuthProvider {...props} />)).toThrow(
       /either auth or client and api, not both/,
     );

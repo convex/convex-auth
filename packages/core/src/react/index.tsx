@@ -34,12 +34,8 @@ import {
   useAuth,
 } from "./client.tsx";
 
-export {
-  createAuthClient,
-  type CreateAuthClientOptions,
-} from "../browser/createAuthClient.ts";
-export type { AuthSignInApi } from "../browser/ambientSignInClient.ts";
-export type { AuthClient, AuthState } from "../browser/sessionManager.ts";
+export { createAuthClient } from "../browser/createAuthClient.ts";
+export type { AuthClient } from "../browser/sessionManager.ts";
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";
@@ -122,7 +118,7 @@ type ConvexClientProps = {
 };
 
 /** The props of {@link ConvexAuthProvider}. */
-export type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
+type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
   children: ReactNode;
 };
 
