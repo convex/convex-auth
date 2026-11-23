@@ -1,3 +1,5 @@
+import type { ConvexClient } from "convex/browser";
+import type { ConvexReactClient } from "convex/react";
 import type {
   IsAuthenticatedFn,
   RefreshResult,
@@ -11,7 +13,6 @@ import type {
   AuthSignInApi,
   ConvexMutationApi,
 } from "./ambientSignInClient.ts";
-import type { ConvexClientApi } from "./convexClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
 import {
   JWT_STORAGE_KEY,
@@ -45,12 +46,12 @@ export interface SsrAuthApi {
   signOut: () => Promise<void>;
 }
 
+/** A Convex client that an auth client accepts. */
+export type SupportedConvexClient = ConvexReactClient | ConvexClient;
+
 /** Config common to both session models. */
-interface AuthClientConfigBase<C extends ConvexClientApi> {
-  /**
-   * The app's Convex client. Sign-in functions are called through it when
-   * there is no `signInApi`.
-   */
+interface AuthClientConfigBase<C extends SupportedConvexClient> {
+  /** The app's Convex client. */
   convex?: C;
   /**
    * A reference to the app's `isAuthenticated` query. Framework bindings
@@ -60,7 +61,7 @@ interface AuthClientConfigBase<C extends ConvexClientApi> {
   isAuthenticated?: IsAuthenticatedFn;
   /**
    * Calls the sign-in functions of the methods. Defaults to
-   * `ambientSignIns.signInApi`, then to `convex`.
+   * `ambientSignIns.signInApi`.
    */
   signInApi?: AuthSignInApi;
   /** Where tokens are persisted. */
@@ -103,7 +104,9 @@ interface AuthClientConfigBase<C extends ConvexClientApi> {
  *  - `"ssr"`: the refresh token is in an httpOnly cookie; a {@link SsrAuthApi}
  *    is called without one and reads the cookie server-side.
  */
-export type AuthClientConfig<C extends ConvexClientApi = ConvexClientApi> =
+export type AuthClientConfig<
+  C extends SupportedConvexClient = SupportedConvexClient,
+> =
   | (AuthClientConfigBase<C> & { mode: "spa"; authApi: SpaAuthApi })
   | (AuthClientConfigBase<C> & { mode: "ssr"; authApi: SsrAuthApi });
 
@@ -182,31 +185,16 @@ function replaceUrlKeepingState(url: string): void {
 }
 
 /**
- * Returns the sign-in API for a client config. It uses the first of these
- * that is set:
- *
- * 1. `signInApi`
- * 2. `ambientSignIns.signInApi`
- * 3. `convex`
- *
- * When none is set, every call to the returned API throws.
+ * Returns the configured sign-in API, or `ambientSignIns.signInApi` when there
+ * is none. Without either, every call to the returned API throws.
  */
-function signInApiFor<C extends ConvexClientApi>(
-  config: AuthClientConfig<C>,
-): AuthSignInApi {
+function signInApiFor(config: AuthClientConfig): AuthSignInApi {
   const configured = config.signInApi ?? config.ambientSignIns?.signInApi;
   if (configured !== undefined) return configured;
-  const { convex } = config;
-  if (convex !== undefined) {
-    return {
-      mutation: (fn, args) => convex.mutation(fn, args),
-      action: (fn, args) => convex.action(fn, args),
-    };
-  }
   const missing = (): never => {
     throw new Error(
-      "[convex-auth] This auth client has no signInApi or convex client to " +
-        "run sign-in functions on.",
+      "[convex-auth] This auth client has no signInApi to call sign-in " +
+        "functions with.",
     );
   };
   return { mutation: missing, action: missing };
@@ -223,7 +211,9 @@ function signInApiFor<C extends ConvexClientApi>(
  * Methods authenticate and sign-in users and call {@link AuthClient.setSession} with
  * a token bundle.
  */
-export class AuthClient<C extends ConvexClientApi = ConvexClientApi> {
+export class AuthClient<
+  C extends SupportedConvexClient = SupportedConvexClient,
+> {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */

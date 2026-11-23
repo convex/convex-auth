@@ -21,11 +21,11 @@ export {
   type SsrAuthApi,
   type AuthClientConfig,
   type AuthState,
+  type SupportedConvexClient,
 } from "./sessionManager.ts";
 export {
   createAuthClient,
   type CreateAuthClientOptions,
   type DeploymentUrlOption,
 } from "./createAuthClient.ts";
-export type { ConvexClientApi } from "./convexClient.ts";
 export type { AuthSignInApi } from "./ambientSignInClient.ts";

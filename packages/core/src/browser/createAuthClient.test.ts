@@ -1,7 +1,8 @@
+import { ConvexClient } from "convex/browser";
+import { ConvexReactClient } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { OAUTH_ACTIONS_KEY } from "../methods/oauth/client.ts";
-import type { ConvexClientApi } from "./convexClient.ts";
 import { createAuthClient } from "./createAuthClient.ts";
 import {
   InMemoryStorage,
@@ -19,11 +20,18 @@ const API = {
   isAuthenticated: makeFunctionReference<"query">("auth:isAuthenticated"),
 };
 
-/** A Convex client with no `url`, like a `ConvexClient`. */
+/**
+ * A disabled `ConvexClient`, as on a server, whose `mutation` and `action`
+ * resolve without a deployment.
+ */
 function stubConvex() {
-  const mutation = vi.fn(async () => "mutation-result");
-  const action = vi.fn(async () => "action-result");
-  const convex = { mutation, action } as unknown as ConvexClientApi;
+  const convex = new ConvexClient(URL, { disabled: true });
+  const mutation = vi
+    .spyOn(convex, "mutation")
+    .mockResolvedValue("mutation-result" as never);
+  const action = vi
+    .spyOn(convex, "action")
+    .mockResolvedValue("action-result" as never);
   return { convex, mutation, action };
 }
 
@@ -106,13 +114,13 @@ describe("createAuthClient", () => {
   test("the url defaults to the Convex client's url, and the namespace to the url", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
-    const convex = { ...stubConvex().convex, url: URL };
+    const convex = new ConvexReactClient(URL);
     const auth = createAuthClient({ convex, api: API, storage });
     await auth.init();
     expect(auth.getAccessToken()).toBe("access-1");
   });
 
-  test("a Convex client with no url needs the url option", () => {
+  test("a ConvexClient needs the url option", () => {
     expect(() =>
       createAuthClient({ convex: stubConvex().convex, api: API } as never),
     ).toThrow(/needs a url option/);

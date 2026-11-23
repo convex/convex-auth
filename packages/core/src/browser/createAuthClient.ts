@@ -4,43 +4,39 @@
  * @module
  */
 import { ConvexHttpClient } from "convex/browser";
+import type { ConvexReactClient } from "convex/react";
 import type { ConvexAuthApi } from "../lib/types.ts";
 import { oauth } from "../methods/oauth/client.ts";
 import type {
   AmbientSignInClient,
   AuthSignInApi,
 } from "./ambientSignInClient.ts";
-import {
-  type ConvexClientApi,
-  type HttpClientLogger,
-  deploymentUrlOf,
-  loggerOf,
-} from "./convexClient.ts";
-import { AuthClient } from "./sessionManager.ts";
+import { AuthClient, type SupportedConvexClient } from "./sessionManager.ts";
 import { defaultStorage, type TokenStorage } from "./storage.ts";
 
 /**
- * The `url` option of an auth client factory. The option is required only
- * when the Convex client has no `url`, like a `ConvexClient`.
+ * The `url` option of an auth client factory. The option is required with a
+ * `ConvexClient`, because a disabled `ConvexClient` has no readable URL.
  */
-export type DeploymentUrlOption<C> = C extends { readonly url: string }
-  ? {
-      /** The Convex deployment URL. Defaults to the Convex client's URL. */
-      url?: string;
-    }
-  : {
-      /**
-       * The Convex deployment URL. It is required because this Convex client
-       * has no `url`.
-       */
-      url: string;
-    };
+export type DeploymentUrlOption<C extends SupportedConvexClient> =
+  C extends ConvexReactClient
+    ? {
+        /** The Convex deployment URL. Defaults to the Convex client's URL. */
+        url?: string;
+      }
+    : {
+        /** The Convex deployment URL. */
+        url: string;
+      };
 
 /** Options for {@link createAuthClient}. */
 export type CreateAuthClientOptions<
-  C extends ConvexClientApi = ConvexClientApi,
+  C extends SupportedConvexClient = SupportedConvexClient,
 > = {
-  /** The app's Convex client. Sign-in functions are called through it. */
+  /**
+   * The app's `ConvexReactClient` or `ConvexClient`. Sign-in functions are
+   * called through it.
+   */
   convex: C;
   /**
    * References to the app's `refreshSession` and `signOut` mutations and its
@@ -72,11 +68,6 @@ export type CreateAuthClientOptions<
    * the deployment URL.
    */
   storageNamespace?: string;
-  /**
-   * The logger for the HTTP client that refreshes and signs out. Defaults
-   * to the Convex client's logger when it has one.
-   */
-  logger?: HttpClientLogger;
   /** Log refresh and lifecycle steps to the console. */
   verbose?: boolean;
 } & DeploymentUrlOption<C>;
@@ -109,7 +100,7 @@ export type CreateAuthClientOptions<
  * await auth.init();
  * ```
  */
-export function createAuthClient<C extends ConvexClientApi>(
+export function createAuthClient<C extends SupportedConvexClient>(
   options: CreateAuthClientOptions<C>,
 ): AuthClient<C> {
   return buildSpaAuthClient(options, [oauth()]);
@@ -122,23 +113,24 @@ export function createAuthClient<C extends ConvexClientApi>(
  *
  * @internal
  */
-export function buildSpaAuthClient<C extends ConvexClientApi>(
+export function buildSpaAuthClient<C extends SupportedConvexClient>(
   options: CreateAuthClientOptions<C>,
   ambientSignIns: ReadonlyArray<AmbientSignInClient>,
 ): AuthClient<C> {
-  const { convex, api } = options;
-  const url = options.url ?? deploymentUrlOf(convex);
+  const { api } = options;
+  const convex: SupportedConvexClient = options.convex;
+  const isReactClient = "url" in convex;
+  const url = options.url ?? (isReactClient ? convex.url : undefined);
   if (url === undefined) {
     throw new Error(
-      "[convex-auth] createAuthClient needs a url option, because this " +
-        "Convex client has no url.",
+      "[convex-auth] createAuthClient needs a url option with a ConvexClient.",
     );
   }
   // Refresh and sign-out use their own HTTP client. The app's websocket client
   // is paused while it waits for a token, so a refresh sent over it would
   // deadlock.
   const httpClient = new ConvexHttpClient(url, {
-    logger: options.logger ?? loggerOf(convex),
+    logger: isReactClient ? convex.logger : undefined,
   });
   // Sign-in functions can be called through the websocket client, because it
   // is not paused before the user signs in.
@@ -148,7 +140,7 @@ export function buildSpaAuthClient<C extends ConvexClientApi>(
   };
   return new AuthClient<C>({
     mode: "spa",
-    convex,
+    convex: options.convex,
     isAuthenticated: api.isAuthenticated,
     signInApi,
     authApi: {
