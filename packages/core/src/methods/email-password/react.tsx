@@ -9,13 +9,13 @@
  */
 "use client";
 
-import { useConvex, useQuery } from "convex/react";
-import { useEffect, useMemo } from "react";
-import type { ConvexMutationApi } from "../../browser/ambientSignInClient.ts";
+import { useQuery } from "convex/react";
+import { useEffect } from "react";
 import {
   useAuth,
   useAuthClient,
   useAuthSignInApi,
+  useConvexMutations,
 } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useMethodClient, useReadableStore } from "../../react/store.ts";
@@ -51,26 +51,6 @@ export type {
   StartChangeEmailResult,
   StartPasswordRecoveryResult,
 } from "./browser.ts";
-
-//------------------------------------------------------------------------------
-// Shared helpers
-//------------------------------------------------------------------------------
-
-/** The auth client of the surrounding provider. */
-function useConvexMutations(): ConvexMutationApi {
-  const convex = useConvex();
-  if (convex === undefined) {
-    throw new Error(
-      "Could not find Convex client! `useMutation` must be used in the React " +
-        "component tree under `ConvexProvider`. Did you forget it? See " +
-        "https://docs.convex.dev/quick-start#set-up-convex-in-your-react-app",
-    );
-  }
-  return useMemo(
-    () => ({ mutation: (fn, args) => convex.mutation(fn, args) }),
-    [convex],
-  );
-}
 
 //------------------------------------------------------------------------------
 // Sign-in

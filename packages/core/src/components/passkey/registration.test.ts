@@ -767,6 +767,14 @@ describe("finishRegistration verification", () => {
     );
   });
 
+  test("accepts an expected origin with a trailing slash", async () => {
+    for (const expectedOrigin of [`${ORIGIN}/`, [`${ORIGIN}/`]]) {
+      const t = setup();
+      const { finish } = await registrationArgs(t, "user1", { expectedOrigin });
+      expect(await finish()).toMatchObject({ success: true });
+    }
+  });
+
   test("throws for an empty list of expected origins", async () => {
     const t = setup();
     const { finish } = await registrationArgs(t, "user1", {

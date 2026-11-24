@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 title: OAuth (Apple, Google, GitHub, and Discord)
 description: Allow users to sign-in with an account on a supported provider.
 ---
@@ -132,6 +132,7 @@ npx convex env set AUTH_APPLE_CLIENT_ID YOUR_SERVICES_ID
 npx convex env set AUTH_APPLE_TEAM_ID YOUR_TEAM_ID
 npx convex env set AUTH_APPLE_KEY_ID YOUR_KEY_ID
 npx convex env set AUTH_APPLE_PRIVATE_KEY < AuthKey_XXXXXXXXXX.p8
+npx convex env set SITE_URL https://my-app.example # Replace this with the origin of your frontend, which the sign-in flow returns to. Without it, only http://localhost:5173 is allowed
 ```
 
 </Step>
@@ -143,7 +144,7 @@ Register the Apple OAuth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-apple/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authApple from" highlight="app.use(authApple, {...});" highlight="AUTH_APPLE_CLIENT_ID:...AUTH_APPLE_PRIVATE_KEY: v.string(),"
+```ts file="examples/react-apple/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authApple from" highlight="app.use(authApple, {...});" highlight="AUTH_APPLE_CLIENT_ID:...AUTH_APPLE_PRIVATE_KEY: v.string()," highlight="SITE_URL:"
 ```
 
 </Step>
@@ -171,7 +172,7 @@ Set up the `apple` method with `setupApple` and export the mutations for
 starting and completing OAuth login that it hands back once you attach the
 callbacks, in `convex/auth.ts`:
 
-```ts file="examples/react-apple/convex/auth.ts" title="convex/auth.ts" highlight="import { setupApple }" highlight="export const { startSignInWithApple...});"
+```ts file="examples/react-apple/convex/auth.ts" title="convex/auth.ts" highlight="import { setupApple }" highlight="export const { startSignInWithApple...});" highlight="const SITE_URL"
 ```
 
 </Step>
@@ -233,6 +234,7 @@ actual client ID and client secret values):
 ```sh
 npx convex env set AUTH_GOOGLE_CLIENT_ID YOUR_GOOGLE_OAUTH_CLIENT_ID
 npx convex env set AUTH_GOOGLE_CLIENT_SECRET YOUR_GOOGLE_OAUTH_CLIENT_SECRET
+npx convex env set SITE_URL https://my-app.example # Replace this with the origin of your frontend, which the sign-in flow returns to. Without it, only http://localhost:5173 is allowed
 ```
 
 </Step>
@@ -244,7 +246,7 @@ Register the Google oauth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-google/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGoogle from" highlight="app.use(authGoogle, {...});" highlight="AUTH_GOOGLE_CLIENT_ID:" highlight="AUTH_GOOGLE_CLIENT_SECRET:"
+```ts file="examples/react-google/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGoogle from" highlight="app.use(authGoogle, {...});" highlight="AUTH_GOOGLE_CLIENT_ID:" highlight="AUTH_GOOGLE_CLIENT_SECRET:" highlight="SITE_URL:"
 ```
 
 </Step>
@@ -271,7 +273,7 @@ first one included. Anything you want to happen each time someone signs in
 belongs there, so `createUser` only has to handle what is true at creation
 time. This example doesn't use it, but it's available if you need it.
 
-```ts file="examples/react-google/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGoogle }" highlight="export const { startSignInWithGoogle...).attachUserCallbacks({ createUser: internal.users.createUser });"
+```ts file="examples/react-google/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGoogle }" highlight="export const { startSignInWithGoogle...).attachUserCallbacks({ createUser: internal.users.createUser });" highlight="const SITE_URL"
 ```
 
 </Step>
@@ -333,6 +335,7 @@ actual client ID and client secret values):
 ```sh
 npx convex env set AUTH_GITHUB_CLIENT_ID YOUR_GITHUB_OAUTH_CLIENT_ID
 npx convex env set AUTH_GITHUB_CLIENT_SECRET YOUR_GITHUB_OAUTH_CLIENT_SECRET
+npx convex env set SITE_URL https://my-app.example # Replace this with the origin of your frontend, which the sign-in flow returns to. Without it, only http://localhost:5173 is allowed
 ```
 
 </Step>
@@ -344,7 +347,7 @@ Register the GitHub oauth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-github/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGithub from" highlight="app.use(authGithub, {...});" highlight="AUTH_GITHUB_CLIENT_ID:" highlight="AUTH_GITHUB_CLIENT_SECRET:"
+```ts file="examples/react-github/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authGithub from" highlight="app.use(authGithub, {...});" highlight="AUTH_GITHUB_CLIENT_ID:" highlight="AUTH_GITHUB_CLIENT_SECRET:" highlight="SITE_URL:"
 ```
 
 </Step>
@@ -371,7 +374,7 @@ first one included. Anything you want to happen each time someone signs in
 belongs there, so `createUser` only has to handle what is true at creation
 time. This example doesn't use it, but it's available if you need it.
 
-```ts file="examples/react-github/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGithub }" highlight="export const { startSignInWithGithub...).attachUserCallbacks({ createUser: internal.users.createUser });"
+```ts file="examples/react-github/convex/auth.ts" title="convex/auth.ts" highlight="import { setupGithub }" highlight="export const { startSignInWithGithub...).attachUserCallbacks({ createUser: internal.users.createUser });" highlight="const SITE_URL"
 ```
 
 </Step>
@@ -433,6 +436,7 @@ actual client ID and client secret values):
 ```sh
 npx convex env set AUTH_DISCORD_CLIENT_ID YOUR_DISCORD_OAUTH_CLIENT_ID
 npx convex env set AUTH_DISCORD_CLIENT_SECRET YOUR_DISCORD_OAUTH_CLIENT_SECRET
+npx convex env set SITE_URL https://my-app.example # Replace this with the origin of your frontend, which the sign-in flow returns to. Without it, only http://localhost:5173 is allowed
 ```
 
 </Step>
@@ -444,7 +448,7 @@ Register the Discord oauth component alongside the core in
 created above as part of your application's `env` and then pass those values to
 the component.
 
-```ts file="examples/react-discord/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authDiscord from" highlight="app.use(authDiscord, {...});" highlight="AUTH_DISCORD_CLIENT_ID:" highlight="AUTH_DISCORD_CLIENT_SECRET:"
+```ts file="examples/react-discord/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authDiscord from" highlight="app.use(authDiscord, {...});" highlight="AUTH_DISCORD_CLIENT_ID:" highlight="AUTH_DISCORD_CLIENT_SECRET:" highlight="SITE_URL:"
 ```
 
 </Step>
@@ -475,7 +479,7 @@ first one included. Anything you want to happen each time someone signs in
 belongs there, so `createUser` only has to handle what is true at creation
 time. This example doesn't use it, but it's available if you need it.
 
-```ts file="examples/react-discord/convex/auth.ts" title="convex/auth.ts" highlight="import { setupDiscord }" highlight="export const { startSignInWithDiscord...}).attachUserCallbacks({ createUser: internal.users.createUser });"
+```ts file="examples/react-discord/convex/auth.ts" title="convex/auth.ts" highlight="import { setupDiscord }" highlight="export const { startSignInWithDiscord...}).attachUserCallbacks({ createUser: internal.users.createUser });" highlight="const SITE_URL"
 ```
 
 </Step>

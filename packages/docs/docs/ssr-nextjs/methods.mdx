@@ -45,6 +45,7 @@ sign-in method:
 | Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`                               |
 | Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`                     |
 | Email + password | `signInWithEmailPassword`, `completeSignUpWithEmailPassword`, `completePasswordRecovery` |
+| Magic link       | `signInWithEmailMagicLink`                                                               |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
 
 Only list functions that create a session. The other functions a method
@@ -77,7 +78,8 @@ GitHub hooks unchanged:
 Your proxy decides which pages need a signed-in user. Make sure it lets
 signed-out users reach every page they need to sign in. That includes the sign-in
 and sign-up pages, and also the pages that emailed links open, like
-`/validate-email` and `/reset-password` in the email + password guide. For
+`/validate-email` and `/reset-password` in the email + password guide, or
+`/sign-in-with-link` in the magic link guide. For
 OAuth, that includes the page the provider redirects back to: the hook redeems
 the callback code there, and a redirect away from it drops the code.
 
@@ -89,7 +91,7 @@ dev server (`http://localhost:5173`). `next dev` serves on
 
 - **Passkey:** set `origin` in `setupUsernamePasskey` to your Next.js origin
   (`http://localhost:3000` in development). `rpId` stays `localhost`.
-- **Email + password:** set the `SITE_URL` environment variable on your
+- **Email + password and magic link:** set the `SITE_URL` environment variable on your
   deployment to your Next.js origin, so the emailed links open your Next.js
   app:
 

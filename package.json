@@ -5,7 +5,7 @@
   "scripts": {
     "build": "pnpm --filter @convex-dev/auth --filter vite-plugin-wasm-module build",
     "check:declarations": "tsx scripts/checkDeclarations.ts",
-    "check:doc-examples": "tsx scripts/checkDocExamples.ts",
+    "check:jsdoc": "tsx scripts/checkJsdoc.ts",
     "codegen": "tsx scripts/codegen.ts",
     "clean": "pnpm --filter @convex-dev/auth clean",
     "lint": "eslint .",

@@ -8,12 +8,12 @@
   (Svelte, Vue, Solid). The React hooks now wrap them, with no change in
   behaviour.
   - `@convex-dev/auth/methods/<method>/browser` for `username-password`,
-    `email-password`, `username-passkey`, `oauth`, `google`, `apple`,
-    `github`, and `discord`: one `create…` factory per hook, returning plain async functions
-    and its state (like `pending`) as a `ReadableStore`.
+    `email-password`, `email-magic-link`, `username-passkey`, `oauth`,
+    `google`, `apple`, `github`, and `discord`: one `create…` factory per
+    hook, returning plain async functions and its state (like `pending`) as
+    a `ReadableStore`.
   - The passkey entry also exports the ceremonies (`browserCeremonies`,
-    `resolveCeremonies`), the flows, the autofill loop
-    (`createPasskeyAutofill`), and the wire and result types.
+    `resolveCeremonies`) and the wire and result types.
   - `@convex-dev/auth/browser` exports `AmbientSignInClient`,
     `AmbientSignInContext`, `AuthSignInApi`, `ConvexMutationApi`,
     `SignInFunction`, `SignInStorage`, `SignInValues`, `SignInValuesReader`,
@@ -51,6 +51,28 @@
   registered, the error names `oauth()` from
   `@convex-dev/auth/methods/oauth/browser`, which `/oauth/react` and
   `/oauth/svelte` also export.
+
+## 2.1.0
+
+### New
+
+- Two new sign-in methods: **magic link** (one form to sign in or sign up with a
+  link sent by email), and **Discord**.
+- The OAuth components now expose a `deleteUser` function, similar to other auth
+  components. It erases the data stored in the component for a single user. This
+  method is useful when implementing user deletion flow.
+- The password component can now verify "scrypt" hashes. This is helpful when
+  migrating from systems that use scrypt, like legacy convex-auth.
+- The Google profile has `hostedDomain`, from the `hd` claim of the ID token, so
+  that the user callbacks can restrict sign-in to a Google Workspace domain.
+
+### Improvements
+
+- The passkey component now tolerates a trailing slash in the `origin`
+  configuration setting.
+- The `challenge.custom.start` function of the email component now sends the
+  email to the address as its owner verified it (the spelling stored in
+  `verifiedEmails`).
 
 ## 2.0.0
 

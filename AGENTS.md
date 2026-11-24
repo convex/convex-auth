@@ -15,16 +15,17 @@ This is a pnpm monorepo:
     does not export `anonymous` and the generic `oauth` component for now
     either.
   - The sign-in methods, which the app wires up: `anonymous` (not exported
-    for now), `username-password`, `email-password`, `username-passkey`, `oauth`
+    for now), `username-password`, `email-password`, `email-magic-link`,
+    `username-passkey`, `oauth`
     (only its shared clients are exported for now; the API for custom
     providers is not), `google`, `apple`, `github`, and `discord`.
   - The client bindings: React (with Next.js for SSR), and Svelte (with
     SvelteKit for SSR).
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
-- `packages/doc-examples` — a private Convex app that installs every
+- `packages/jsdoc-typecheck-fixture` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
   comments of `packages/core/src` compile against it (`pnpm
-check:doc-examples`). It is not an example to copy.
+check:jsdoc`). It is not an example to copy.
 - `packages/docs` — the documentation site (private). The pages are in
   `docs/`. Prettier formats an `html` code block as HTML, which breaks the
   Svelte syntax in it (`onclick={() => …}`, `{#if}`): put
@@ -33,14 +34,17 @@ check:doc-examples`). It is not an example to copy.
   for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
-  - `react-password` wires up the core, password, and username components
+  - `react-username-password` wires up the core, password, and username components
     with the `usernamePassword` method.
   - `react-email-password` wires up the core, password, and email components
     with the `emailPassword` method (sign-up with email validation, change
     password/email, password recovery; email through `@convex-dev/resend`).
-  - `react-passkey` wires up the core, passkey, and username components with
+  - `react-email-magic-link` wires up the core and email components with the
+    `emailMagicLink` method (one form to sign in or sign up with an emailed
+    link; email through `@convex-dev/resend`).
+  - `react-username-passkey` wires up the core, passkey, and username components with
     the `usernamePasskey` method, and adds passkey management.
-  - `react-passkey-basic` is `react-passkey` without passkey management. The
+  - `react-username-passkey-basic` is `react-username-passkey` without passkey management. The
     passkey tutorial uses it as its first step.
   - `react-google` wires up the core and the google component with the
     `google` method.
@@ -163,16 +167,16 @@ Use `pnpm install` at the root. Common tasks:
   so it isn't built here — see its `prepack`.)
 - `pnpm codegen` — regenerate every Convex `_generated` directory.
   Can also generate the codegen for a single demo or component
-  (e.g. `pnpm codegen react-passkey`)
+  (e.g. `pnpm codegen react-username-passkey`)
 - `pnpm test` — run tests across packages (Vitest). The tests of the Svelte
   bindings (under `svelte/`, `ssr/sveltekit/`, and `methods/*/svelte*`) run
   in the `core-svelte` project, with `vite-plugin-svelte` and stand-ins for
   the `$app/*` modules of SvelteKit.
 - `pnpm typecheck` — typecheck across packages.
-- `pnpm check:doc-examples` — typecheck the `ts` and `tsx` code blocks in the
-  doc comments of `packages/core/src` as modules of `packages/doc-examples`
+- `pnpm check:jsdoc` — typecheck the `ts` and `tsx` code blocks in the
+  doc comments of `packages/core/src` as modules of `packages/jsdoc-typecheck-fixture`
   (run `pnpm build` first). When an example uses a function or a component
   that the app does not have, add it to the app. See
-  `packages/doc-examples/README.md`.
+  `packages/jsdoc-typecheck-fixture/README.md`.
 - `pnpm lint` — ESLint, including the Convex ESLint plugin.
 - `pnpm format` — Prettier.

@@ -179,6 +179,12 @@ export function buildProviderFunctions<
       await dbHelpers.insertAccount<SharedAccountDocument>(ctx, args),
   });
 
+  const deleteUser = options.mutation({
+    args: { userId: v.string() },
+    returns: v.object({ deleted: v.number() }),
+    handler: async (ctx, args) => await dbHelpers.deleteUser(ctx, args),
+  });
+
   return {
     _internal_dangerous_createAuthorizationRequest,
     claimAuthorizationRequest,
@@ -186,5 +192,6 @@ export function buildProviderFunctions<
     claimTicket,
     getUserIdByAccount,
     _internal_dangerous_createAccount,
+    deleteUser,
   };
 }

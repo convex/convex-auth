@@ -19,6 +19,7 @@ and they take the same arguments:
 | `methods/username-password/react` | `methods/username-password/svelte` |
 | `methods/username-passkey/react`  | `methods/username-passkey/svelte`  |
 | `methods/email-password/react`    | `methods/email-password/svelte`    |
+| `methods/email-magic-link/react`  | `methods/email-magic-link/svelte`  |
 | `methods/<provider>/react`        | `methods/<provider>/svelte`        |
 | `methods/oauth/react`             | `methods/oauth/svelte`             |
 
@@ -75,11 +76,11 @@ the ones of the method guides.
 </form>
 ```
 
-### Email + password
+### Email + password and magic link
 
 The hooks of the landing pages of the emailed links
-(`useCompleteSignUpWithEmailPassword`, `useCompletePasswordRecovery`, and
-`useCompleteChangeEmail`) return `{ current }` where the React hooks return
+(`useCompleteSignUpWithEmailPassword`, `useCompletePasswordRecovery`,
+`useCompleteChangeEmail`, and `useSignInWithEmailMagicLink`) return `{ current }` where the React hooks return
 the state itself. They start when the component mounts:
 
 {/* prettier-ignore */}

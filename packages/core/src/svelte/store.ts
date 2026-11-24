@@ -6,7 +6,9 @@
  * @module
  */
 
+import { onMount } from "svelte";
 import { createSubscriber } from "svelte/reactivity";
+import type { LinkFlowClient } from "../browser/linkFlow.ts";
 import type { ReadableStore } from "../browser/store.ts";
 
 /**
@@ -25,4 +27,24 @@ export function fromReadableStore<T>(store: ReadableStore<T>): {
       return store.get();
     },
   };
+}
+
+/** The `pending` flag of a helper, read through a getter. */
+export function pendingOf(store: ReadableStore<boolean>): {
+  readonly pending: boolean;
+} {
+  const pending = fromReadableStore(store);
+  return {
+    get pending() {
+      return pending.current;
+    },
+  };
+}
+
+/** Start a landing page on mount, and return its state as `{ current }`. */
+export function landingPage<State>(client: LinkFlowClient<State>): {
+  readonly current: State;
+} {
+  onMount(() => client.start());
+  return fromReadableStore(client.state);
 }

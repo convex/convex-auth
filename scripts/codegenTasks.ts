@@ -70,11 +70,35 @@ class CommandFailed extends Error {
   }
 }
 
+// Even with one push at a time, a push can fail with a 503
+// OptimisticConcurrencyControlFailure: the backend may still be finishing the
+// previous push (which swapped in another app and its components) in the
+// background. The error is transient, thus such a push is retried.
+const MAX_ATTEMPTS = 4;
+const isTransient = (output: string) =>
+  output.includes("OptimisticConcurrencyControlFailure");
+
+async function codegen(task: CodegenTask, report: Report): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    const { code, output } = await runCodegen(task, report);
+    if (code === 0) return;
+    if (attempt < MAX_ATTEMPTS && isTransient(output)) {
+      report(`Concurrent write on the deployment; retry ${attempt}…`);
+      await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
+      continue;
+    }
+    throw new CommandFailed(`${task.title}: convex codegen`, output);
+  }
+}
+
 // Runs `convex codegen` against the deployment of the host. With `--url` and
 // `--admin-key`, the CLI reads no environment variable and no `.env.local`.
 // The whole output is kept, because a failure has to show it: only the last
 // line is visible while the command runs.
-async function codegen(task: CodegenTask, report: Report): Promise<void> {
+async function runCodegen(
+  task: CodegenTask,
+  report: Report,
+): Promise<{ code: number | null; output: string }> {
   const args = ["codegen", "--typecheck", "disable"];
   if (task.componentDir !== undefined)
     args.push("--component-dir", task.componentDir);
@@ -103,8 +127,7 @@ async function codegen(task: CodegenTask, report: Report): Promise<void> {
   const code = await new Promise<number | null>((resolve) =>
     child.on("close", resolve),
   );
-  if (code !== 0)
-    throw new CommandFailed(`${task.title}: convex codegen`, output);
+  return { code, output };
 }
 
 const listr = new Listr(

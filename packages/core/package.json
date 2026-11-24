@@ -1,6 +1,6 @@
 {
   "name": "@convex-dev/auth",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Authentication for Convex",
   "keywords": [
     "auth",
@@ -37,7 +37,7 @@
     "generate:common-passwords": "bun src/components/password/scripts/generateCommonPasswords.script.ts",
     "postversion": "git add package.json ../../CHANGELOG.md && git commit -m \"$npm_new_version\" && git tag -m \"$npm_new_version\" \"v$npm_new_version\"",
     "prepare": "pnpm run build",
-    "preversion": "pnpm run check:clean && pnpm -C ../.. install --frozen-lockfile && pnpm -w build && pnpm -w check:declarations && pnpm -w check:doc-examples && pnpm -w lint && pnpm -r --filter=!password-hash-wasm typecheck && pnpm -w test",
+    "preversion": "pnpm run check:clean && pnpm -C ../.. install --frozen-lockfile && pnpm -w build && pnpm -w check:declarations && pnpm -w check:jsdoc && pnpm -w lint && pnpm -r --filter=!password-hash-wasm typecheck && pnpm -w test",
     "release": "pnpm version patch && pnpm publish && git push --follow-tags",
     "typecheck": "tsc --noEmit",
     "version": "(npm whoami || npm login) && vim -c 'normal o' -c 'normal o## '$npm_package_version ../../CHANGELOG.md && prettier -w ../../CHANGELOG.md && git add ../../CHANGELOG.md"
@@ -209,6 +209,35 @@
       },
       "types": "./dist/methods/email-password/browser.d.ts",
       "default": "./dist/methods/email-password/browser.js"
+    },
+    "./methods/email-magic-link/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/server.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/server.d.ts",
+      "default": "./dist/methods/email-magic-link/server.js"
+    },
+    "./methods/email-magic-link/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/react.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/react.d.ts",
+      "default": "./dist/methods/email-magic-link/react.js"
+    },
+    "./methods/email-magic-link/svelte": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/svelte.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/svelte.d.ts",
+      "svelte": "./dist/methods/email-magic-link/svelte.js",
+      "default": "./dist/methods/email-magic-link/svelte.js"
+    },
+    "./methods/email-magic-link/browser": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-magic-link/browser.d.ts"
+      },
+      "types": "./dist/methods/email-magic-link/browser.d.ts",
+      "default": "./dist/methods/email-magic-link/browser.js"
     },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {

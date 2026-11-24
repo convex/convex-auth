@@ -42,7 +42,7 @@ Register the passkey component and the username component alongside the core
 in `convex/convex.config.ts`. The username component stores which user each
 username identifies:
 
-```ts file="examples/react-passkey-basic/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authPasskey from" highlight="import authUsername from" highlight="app.use(authPasskey)" highlight="app.use(authUsername)"
+```ts file="examples/react-username-passkey-basic/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authPasskey from" highlight="import authUsername from" highlight="app.use(authPasskey)" highlight="app.use(authUsername)" highlight="SITE_URL:" highlight="RP_ID:"
 
 ```
 
@@ -55,7 +55,7 @@ component keeps the username, so the table does not need a field for it.
 
 Convex Auth will create a row for each account. You can also add application-specific fields to this table if necessary.
 
-```ts file="examples/react-passkey-basic/convex/schema.ts" title="convex/schema.ts" highlight="users: defineTable({}),"
+```ts file="examples/react-username-passkey-basic/convex/schema.ts" title="convex/schema.ts" highlight="users: defineTable({}),"
 
 ```
 
@@ -71,7 +71,7 @@ You can also attach an optional `onSignIn` mutation, called with the resolved
 each time someone signs in belongs there, so `createUser` only has to handle
 what is true at creation time. Leave it out if there is nothing to do.
 
-```ts file="examples/react-passkey-basic/convex/users.ts" title="convex/users.ts"
+```ts file="examples/react-username-passkey-basic/convex/users.ts" title="convex/users.ts"
 
 ```
 
@@ -107,15 +107,25 @@ rows, in `convex/auth.ts`.
   ],
   ```
 
+The example reads `origin` from the `SITE_URL` environment variable and `rpId`
+from the `RP_ID` environment variable. Their defaults are the values for the
+Vite dev server. On your production deployment, set them to the origin and the
+domain of your frontend:
+
+```sh
+npx convex env set SITE_URL https://my-app.example
+npx convex env set RP_ID my-app.example
+```
+
 :::warning
 
 Passkeys are permanently bound to their `rpId`: a passkey created with `rpId:
-"localhost"` can never be used on your production domain. Set both values to
-the production domain before you deploy.
+"localhost"` can never be used on your production domain. Set `RP_ID` on your
+production deployment before your users create passkeys.
 
 :::
 
-```ts file="examples/react-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });"
+```ts file="examples/react-username-passkey-basic/convex/auth.ts" title="convex/auth.ts" highlight="import { setupUsernamePasskey }" highlight="  startSignInWithUsernamePasskey,...}).attachUserCallbacks({ createUser: internal.users.createUser });" highlight="const SITE_URL" highlight="const RP_ID"
 
 ```
 
@@ -126,7 +136,7 @@ the production domain before you deploy.
 Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
 `signOut` mutations and the `isAuthenticated` query in `src/main.tsx`:
 
-```tsx file="examples/react-passkey-basic/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
+```tsx file="examples/react-username-passkey-basic/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
 
 ```
 
@@ -152,7 +162,7 @@ simultaneously.
 
 Copy the following code block inside of your app:
 
-```tsx file="examples/react-passkey-basic/src/routes/logIn.tsx" title="src/routes/logIn.tsx"
+```tsx file="examples/react-username-passkey-basic/src/routes/logIn.tsx" title="src/routes/logIn.tsx"
 
 ```
 
@@ -174,7 +184,7 @@ In `convex/auth.ts`, make sure the following functions are exported:
 `listPasskeys`, `renamePasskey`, `startAddPasskey`, `verifyAddPasskey`,
 `finishAddPasskey`, `startRemovePasskey`, and `finishRemovePasskey`.
 
-```ts file="examples/react-passkey/convex/auth.ts" title="convex/auth.ts" highlight="  listPasskeys,...  finishRemovePasskey,"
+```ts file="examples/react-username-passkey/convex/auth.ts" title="convex/auth.ts" highlight="  listPasskeys,...  finishRemovePasskey,"
 
 ```
 
@@ -186,7 +196,7 @@ In your app’s settings page, add the UI code for adding, renaming, and removin
 
 We recommend copying the following component into your app, adapting it to your app’s design system, and rendering it on your settings page:
 
-```tsx file="examples/react-passkey/src/PasskeySettings.tsx" title="src/PasskeySettings.tsx"
+```tsx file="examples/react-username-passkey/src/PasskeySettings.tsx" title="src/PasskeySettings.tsx"
 
 ```
 
