@@ -171,7 +171,7 @@ export function useSignInWithEmailMagicLink(
     api.signInWithEmailMagicLink,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signIn;
+  const signInApi = useAuthClient().signInApi;
   const { storage, withSignInPending } = useAuthClient();
   const { isLoading } = useAuth();
   const [state, setState] = useState<SignInState>({ status: "loading" });

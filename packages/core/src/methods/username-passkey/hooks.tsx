@@ -54,9 +54,9 @@ export function useSignInWithUsernamePasskeyImpl(
 ) {
   const { setSession } = useAuthActions();
 
-  // Mutations that return a session go through the auth client's `signIn` API
+  // Mutations that return a session go through the auth client's `signInApi`
   // because it serves both session models.
-  const signInApi = useAuthClient().signIn;
+  const signInApi = useAuthClient().signInApi;
   const convex = useConvex();
 
   const startSignIn = useStableFunctionReference(

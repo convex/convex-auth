@@ -104,10 +104,10 @@ describe("createAuthClient", () => {
     const signInAction = makeFunctionReference<"action">("auth:signInAction");
 
     await expect(
-      auth.signIn.mutation(signInMutation as never, { code: "1" } as never),
+      auth.signInApi.mutation(signInMutation as never, { code: "1" } as never),
     ).resolves.toBe("mutation-result");
     await expect(
-      auth.signIn.action(signInAction as never, { code: "2" } as never),
+      auth.signInApi.action(signInAction as never, { code: "2" } as never),
     ).resolves.toBe("action-result");
 
     expect(mutation).toHaveBeenCalledWith(signInMutation, { code: "1" });

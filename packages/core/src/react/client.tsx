@@ -42,10 +42,10 @@ export function useAuthClient(): AuthClient {
 /**
  * Returns the {@link AuthSignInApi} of the surrounding auth provider.
  *
- * @deprecated Use `useAuthClient().signIn`.
+ * @deprecated Use `useAuthClient().signInApi`.
  */
 export function useAuthSignInApi(): AuthSignInApi {
-  return useAuthClient().signIn;
+  return useAuthClient().signInApi;
 }
 
 // React calls this during SSR and initial hydration — before `init()` has read

@@ -251,7 +251,7 @@ export class AuthClient<
   constructor(config: AuthClientConfig<C>) {
     this.#convex = config.convex;
     this.#isAuthenticated = config.isAuthenticated;
-    this.signIn = signInApiFor(config);
+    this.signInApi = signInApiFor(config);
     this.#storage = new NamespacedStorage(
       config.storage,
       config.storageNamespace,
@@ -342,7 +342,7 @@ export class AuthClient<
    * The {@link AuthSignInApi} for calling the sign-in functions of the
    * sign-in methods under both session models.
    */
-  readonly signIn: AuthSignInApi;
+  readonly signInApi: AuthSignInApi;
 
   /** @internal */
   get storage(): NamespacedStorage {

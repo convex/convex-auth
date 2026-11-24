@@ -164,7 +164,7 @@ describe("ConvexAuthProvider with an auth client", () => {
       </ConvexAuthProvider>,
     );
     expect(fromHook[0]).toBe(auth);
-    expect(fromHook[1]).toBe(auth.signIn);
+    expect(fromHook[1]).toBe(auth.signInApi);
   });
 
   test("the initialToken prop is stored when the auth client starts", async () => {

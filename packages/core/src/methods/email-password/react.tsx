@@ -412,7 +412,7 @@ export function useSignInWithEmailPassword(api: {
     api.signInWithEmailPassword,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signIn;
+  const signInApi = useAuthClient().signInApi;
   const { pending, track } = usePending();
 
   const signIn = useCallback(
@@ -567,7 +567,7 @@ export function useCompleteSignUpWithEmailPassword(
     api.completeSignUpWithEmailPassword,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signIn;
+  const signInApi = useAuthClient().signInApi;
   const withSignInPending = useWithSignInPending();
 
   // Keep `isLoading` true while the server validates the link and the client
@@ -721,7 +721,7 @@ export function useCompletePasswordRecovery(
   );
   const { isLoading } = useAuth();
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signIn;
+  const signInApi = useAuthClient().signInApi;
   const storage = useSecretStorage();
   const { pending, track } = usePending();
   // The secret from storage: not read yet, missing, or found.
