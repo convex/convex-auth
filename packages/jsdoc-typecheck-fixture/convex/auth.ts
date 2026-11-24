@@ -2,6 +2,7 @@ import { setupConvexAuth } from "@convex-dev/auth/server";
 import { setupApple } from "@convex-dev/auth/methods/apple/server";
 import { setupDiscord } from "@convex-dev/auth/methods/discord/server";
 import { setupEmailMagicLink } from "@convex-dev/auth/methods/email-magic-link/server";
+import { setupEmailShortCode } from "@convex-dev/auth/methods/email-short-code/server";
 import { setupEmailPassword } from "@convex-dev/auth/methods/email-password/server";
 import { setupGithub } from "@convex-dev/auth/methods/github/server";
 import { setupGoogle } from "@convex-dev/auth/methods/google/server";
@@ -71,6 +72,20 @@ export const { sendEmailMagicLink, signInWithEmailMagicLink } =
     url: `${SITE_URL}/sign-in-with-link`,
   }).attachUserCallbacks({
     createUser: internal.users.createUserEmailMagicLink,
+  });
+
+export const { sendEmailShortCode, signInWithEmailShortCode } =
+  setupEmailShortCode(auth, {
+    component: components.authEmail,
+    emailSender: {
+      kind: "resend",
+      sendEmail: components.resend.lib.sendEmail,
+      apiKey: env.RESEND_API_KEY,
+      from: "My App <auth@example.com>",
+    },
+    origin: SITE_URL,
+  }).attachUserCallbacks({
+    createUser: internal.users.createUserEmailShortCode,
   });
 
 export const {

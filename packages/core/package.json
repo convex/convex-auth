@@ -170,6 +170,20 @@
       "types": "./dist/methods/email-magic-link/react.d.ts",
       "default": "./dist/methods/email-magic-link/react.js"
     },
+    "./methods/email-short-code/server": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-short-code/server.d.ts"
+      },
+      "types": "./dist/methods/email-short-code/server.d.ts",
+      "default": "./dist/methods/email-short-code/server.js"
+    },
+    "./methods/email-short-code/react": {
+      "convex-auth-internal-types": {
+        "types": "./dist/internal-types/methods/email-short-code/react.d.ts"
+      },
+      "types": "./dist/methods/email-short-code/react.d.ts",
+      "default": "./dist/methods/email-short-code/react.js"
+    },
     "./methods/username-passkey/server": {
       "convex-auth-internal-types": {
         "types": "./dist/internal-types/methods/username-passkey/server.d.ts"
