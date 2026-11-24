@@ -38,6 +38,9 @@ check:jsdoc`). It is not an example to copy.
   - `react-email-magic-link` wires up the core and email components with the
     `emailMagicLink` method (one form to sign in or sign up with an emailed
     link; email through `@convex-dev/resend`).
+  - `react-email-short-code` wires up the core and email components with
+    the `emailShortCode` method (one form to sign in or sign up with an
+    emailed 8-digit code; email through `@convex-dev/resend`).
   - `react-username-passkey` wires up the core, passkey, and username components with
     the `usernamePasskey` method, and adds passkey management.
   - `react-username-passkey-basic` is `react-username-passkey` without passkey management. The

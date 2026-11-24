@@ -46,6 +46,7 @@ sign-in method:
 | Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`                     |
 | Email + password | `signInWithEmailPassword`, `completeSignUpWithEmailPassword`, `completePasswordRecovery` |
 | Magic link       | `signInWithEmailMagicLink`                                                               |
+| Email short code | `signInWithEmailShortCode`                                                               |
 | OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
 
 Only list functions that create a session. The other functions a method
@@ -91,9 +92,10 @@ dev server (`http://localhost:5173`). `next dev` serves on
 
 - **Passkey:** set `origin` in `setupUsernamePasskey` to your Next.js origin
   (`http://localhost:3000` in development). `rpId` stays `localhost`.
-- **Email + password and magic link:** set the `SITE_URL` environment variable on your
-  deployment to your Next.js origin, so the emailed links open your Next.js
-  app:
+- **Email + password, magic link, and email short code:** set the `SITE_URL`
+  environment variable on your deployment to your Next.js origin, so the
+  emailed links open your Next.js app, and the emailed codes name it as their
+  origin:
 
   ```sh
   npx convex env set SITE_URL http://localhost:3000

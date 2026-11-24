@@ -1,0 +1,184 @@
+---
+sidebar_position: 4.5
+title: Email short code
+description: Sign users in with an 8-digit code sent to their email address.
+---
+
+The email short code sign-in method lets users sign in with an 8-digit code
+that they receive by email and type in your app. There is no password, and
+one form serves both sign-in and sign-up:
+
+- A user who has an account enters the code and is signed in.
+- A user who has no account enters the code, and the account is created at
+  that moment. No account exists for an address until its owner enters a
+  code.
+
+The form gives the same result whether or not the address has an account.
+
+A code works once, for 10 minutes, and only in the browser (or app) that
+asked for it: the client keeps a secret in its storage, and the sign-in
+requires both that secret and the code. Thus a code that another person
+reads, for example in a notification on a lock screen, is not sufficient to
+sign in.
+
+Compared to a [magic link](./magic-link.mdx), the user stays on the page of
+your app: they read the code on any device, and type it where they started.
+An 8-digit code is easier to guess than a link, thus the method limits the
+incorrect codes (see [Rate limits](#rate-limits)).
+
+Emails are sent through the
+[`@convex-dev/resend`](https://www.convex.dev/components/resend) component.
+
+## Setting up email short code login in your app
+
+<StepByStep>
+
+<Step title="Follow the “Getting started” guide">
+
+First, install Convex Auth and set up the core as described in the
+[Getting started](../getting-started.mdx) guide.
+
+</Step>
+
+<Step title="Set up Resend">
+
+This method uses [Resend](https://resend.com) to send the sign-in emails.
+
+You will need a domain to send these emails from.
+
+Before going further:
+
+1. [Create a Resend account](https://resend.com/signup)
+2. [Set up your domain in Resend](https://resend.com/docs/add-a-domain)
+3. [Create a Resend API key](https://resend.com/docs/create-an-api-key)
+
+Then connect Resend to your Convex deployment:
+
+```bash
+npm install @convex-dev/resend
+npx convex env set RESEND_API_KEY # Press Enter then enter your Resend API key
+npx convex env set SENDER_EMAIL no-reply@my-domain.example # Replace this with an email address in your verified domain
+npx convex env set SENDER_NAME "My App" # Optional: replace this with the sender name of your emails
+npx convex env set SITE_URL https://my-app.example # Replace this with the origin of your frontend, where users type the code. Without it, the origin is http://localhost:5173
+```
+
+</Step>
+
+<Step title="Register the components">
+
+Register the email component and the Resend component alongside the core in
+`convex/convex.config.ts`.
+
+```ts file="examples/react-email-short-code/convex/convex.config.ts" title="convex/convex.config.ts" highlight="import authEmail from" highlight="import resend from" highlight="app.use(authEmail)" highlight="app.use(resend)"
+
+```
+
+</Step>
+
+<Step title={<>Add a <code>users</code> table to the schema</>}>
+
+Add a `users` table to your schema in `convex/schema.ts`. You don’t need to add any fields to it.
+
+```ts file="examples/react-email-short-code/convex/schema.ts" title="convex/schema.ts" highlight="users: defineTable({}),"
+
+```
+
+</Step>
+
+<Step title="Set up user creation">
+
+Write a `createUser` mutation that creates a row in your `users` table and
+returns its id. This function will be used the first time someone enters a
+code for an address that has no account.
+
+```ts file="examples/react-email-short-code/convex/users.ts" title="convex/users.ts"
+
+```
+
+</Step>
+
+<Step title="Set up the public backend functions">
+
+Set up the `emailShortCode` method with `setupEmailShortCode` and export the
+mutations it hands back once you attach the callback that creates your user
+rows, in `convex/auth.ts`.
+
+The `origin` option is the origin of the page where users type the code, for
+example `https://my-app.example`, with no path and no trailing slash. The
+emails give it in their `OTP-Token` header, so that a mail client that
+supports this header offers the code only on your site.
+
+```ts file="examples/react-email-short-code/convex/auth.ts" title="convex/auth.ts" highlight="import { setupEmailShortCode }" highlight="}).attachUserCallbacks({"
+
+```
+
+</Step>
+
+<Step title="Set up the provider on the client">
+
+Wrap your app in `ConvexAuthProvider`, passing it the `refreshSession` and
+`signOut` mutations and the `isAuthenticated` query in `src/main.tsx`:
+
+```tsx file="examples/react-email-short-code/src/main.tsx" title="src/main.tsx" highlight="import { ConvexAuthProvider }" highlight="<ConvexAuthProvider...>" highlight="</ConvexAuthProvider>"
+
+```
+
+</Step>
+
+<Step title="Set up the sign-in page">
+
+In your front-end, set up a route with the two steps of the method: the form
+that asks for the email address, then the form that asks for the code. The
+same flow signs in a user who has an account and creates an account for a
+user who has none. Copy the following component into your app. Feel free to
+customize it, for instance to use your app’s design system.
+
+```tsx file="examples/react-email-short-code/src/routes/signIn.tsx" title="src/routes/signIn.tsx"
+
+```
+
+Give the code input `autoComplete="one-time-code"`: browsers that can read
+the code from an email or a message offer it there.
+
+</Step>
+
+</StepByStep>
+
+## Limitations
+
+- **Users can't change their email address yet.** The change-email flow of
+  the [email + password](./email-password.mdx) method requires the current
+  password, and an account created with a code has none.
+- **The text of the email can't be customized yet.**
+- **The code length is fixed** at 8 digits.
+
+## Rate limits
+
+This method rate-limits the emails that it sends and the incorrect codes
+that it accepts. When a limit is reached, the call returns a `RATE_LIMITED`
+error with `retryAfterMs`, the number of milliseconds until the next attempt
+can succeed. Show it to the user, as `signIn.tsx` does above.
+
+Each limit is a token bucket: the user can make as many attempts as the
+capacity at once, then the bucket refills at a steady rate.
+
+| Limit                                   | Applies to                                                       | Capacity | Refill         |
+| --------------------------------------- | ---------------------------------------------------------------- | -------- | -------------- |
+| Emails per destination address          | Sign-in codes sent to one address                                | 5        | 1 every 12 min |
+| Emails per client IP                    | The same emails, sent from one client IP to any address          | 20       | 1 every 3 min  |
+| Incorrect codes per destination address | Incorrect codes entered for one address, for all of its sign-ins | 10       | 1 every 6 min  |
+
+In addition, each sign-in accepts 5 incorrect codes. The fifth incorrect code
+returns `INCORRECT_CODE` with `attemptsLeft: 0` and ends the sign-in: the
+user must ask for a new code. A correct code never uses a token.
+
+Anyone can ask for codes for an address and enter incorrect ones, so a person
+who knows the address of a user can use up the limits of that address and
+keep the user from signing in for a while. If this is a concern for your app,
+offer a second sign-in method, such as [passkeys](./username-passkey.mdx).
+
+The limit of emails per destination address is shared with the other emails
+of the email component, such as the password reset links of the email +
+password method.
+
+These values aren't configurable yet.
