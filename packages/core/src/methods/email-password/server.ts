@@ -29,8 +29,9 @@ import { DEFAULT_MIN_PASSWORD_LENGTH } from "../../lib/password.ts";
 import {
   startChallengeUserError,
   startFreeAddressUserError,
-  completeChallengeUserError,
-  completeFreeAddressUserError,
+  completeLinkUserError,
+  completeFreeAddressLinkUserError,
+  toLinkUserError,
   wrongUserUserError,
   emailNotFoundUserError,
   validateEmailFormat,
@@ -143,7 +144,7 @@ export type SignUpResult = Infer<typeof signUpResult>;
 
 const completeSignUpResult = v.union(
   vSignInComplete,
-  vSignInError(completeFreeAddressUserError),
+  vSignInError(completeFreeAddressLinkUserError),
 );
 
 /** The result of `completeSignUpWithEmailPassword`: the minted session tokens, or an error. */
@@ -204,7 +205,7 @@ const completeChangeEmailResult = v.union(
     success: v.literal(false),
     userError: v.union(
       vNotLoggedIn,
-      completeFreeAddressUserError,
+      completeFreeAddressLinkUserError,
       wrongUserUserError,
     ),
   }),
@@ -236,7 +237,7 @@ const checkPasswordRecoveryResult = v.union(
   v.object({ success: v.literal(true) }),
   v.object({
     success: v.literal(false),
-    userError: completeChallengeUserError,
+    userError: completeLinkUserError,
   }),
 );
 
@@ -247,7 +248,7 @@ export type CheckPasswordRecoveryResult = Infer<
 
 const completePasswordRecoveryResult = v.union(
   vSignInComplete,
-  vSignInError(v.union(completeChallengeUserError, setPasswordUserError)),
+  vSignInError(v.union(completeLinkUserError, setPasswordUserError)),
 );
 
 /** The result of `completePasswordRecovery`: the minted session tokens, or an error. */
@@ -497,7 +498,10 @@ export function setupEmailPassword<UsersTable extends string>(
               { emailCode, browserSecret },
             );
             if (!complete.success) {
-              return { status: "error", userError: complete.userError };
+              return {
+                status: "error",
+                userError: toLinkUserError(complete.userError),
+              };
             }
             const tokens = await ctx.convexAuth.completeSignIn({
               userId: complete.userId,
@@ -725,7 +729,10 @@ export function setupEmailPassword<UsersTable extends string>(
               { emailCode, browserSecret, userId },
             );
             if (!complete.success) {
-              return { success: false, userError: complete.userError };
+              return {
+                success: false,
+                userError: toLinkUserError(complete.userError),
+              };
             }
             if (complete.previousEmail !== null) {
               await notify(
@@ -825,7 +832,10 @@ export function setupEmailPassword<UsersTable extends string>(
                 // Unexpected: the `expectedUserId` of the flow is `null`.
                 throw new Error("Unexpected WRONG_USER in a recovery");
               }
-              return { success: false, userError: peek.userError };
+              return {
+                success: false,
+                userError: toLinkUserError(peek.userError),
+              };
             }
 
             // The same account check as `completePasswordRecovery`.
@@ -880,7 +890,10 @@ export function setupEmailPassword<UsersTable extends string>(
                 // Unexpected: the `expectedUserId` of the flow is `null`.
                 throw new Error("Unexpected WRONG_USER in a recovery");
               }
-              return { status: "error", userError: complete.userError };
+              return {
+                status: "error",
+                userError: toLinkUserError(complete.userError),
+              };
             }
 
             // The link proves control of the address, not of an account. The

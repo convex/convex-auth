@@ -33,3 +33,26 @@ function base64UrlEncode(bytes: Uint8Array): string {
 export function generateRandomToken(): string {
   return base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)));
 }
+
+/** The number of digits in a short code. */
+export const SHORT_CODE_DIGITS = 8;
+
+/**
+ * Cryptographically random short code of `SHORT_CODE_DIGITS` decimal digits,
+ * for example `"04718295"`. It has about 26.6 bits of entropy, thus the code
+ * that verifies it must limit the attempts.
+ *
+ * The function takes 27 random bits and rejects the values at or above
+ * 10^8. Thus each code has the same probability (no modulo bias).
+ */
+export function generateShortCode(): string {
+  const limit = 10 ** SHORT_CODE_DIGITS;
+  const buffer = new Uint32Array(1);
+  for (;;) {
+    crypto.getRandomValues(buffer);
+    const value = buffer[0]! & 0x07ff_ffff; // 27 bits: 0 to 134,217,727
+    if (value < limit) {
+      return value.toString().padStart(SHORT_CODE_DIGITS, "0");
+    }
+  }
+}

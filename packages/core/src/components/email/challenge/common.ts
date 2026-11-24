@@ -75,7 +75,11 @@
 import { Infer, v } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server.ts";
 import type { Doc, Id } from "../_generated/dataModel.ts";
-import { generateRandomToken, sha256Hex } from "../../../lib/crypto.ts";
+import {
+  generateRandomToken,
+  generateShortCode,
+  sha256Hex,
+} from "../../../lib/crypto.ts";
 import { scheduleChallengeCleanup } from "../cleanup.ts";
 import {
   rateLimiter,
@@ -83,6 +87,7 @@ import {
   emailByNormalizedEmail,
   buildLink,
   sendChallengeEmail,
+  SHORT_CODE_MAX_ATTEMPTS,
   type ChallengeEmailCopy,
 } from "../helpers.ts";
 import {
@@ -90,6 +95,7 @@ import {
   startFreeAddressUserError,
   completeFreeAddressUserError,
   normalizeEmail,
+  originProblem,
   validateEmailFormat,
   vEmailSenderConfig,
   type EmailSenderConfig,
@@ -107,13 +113,32 @@ export type ChallengePurpose = Doc<"challenges">["purpose"];
 // Shared validators
 //------------------------------------------------------------------------------
 
+/** How the code of a challenge travels: in a link, or as a short code. */
+export const vCodeFormat = v.union(v.literal("link"), v.literal("shortCode"));
+export type CodeFormat = Infer<typeof vCodeFormat>;
+
 /** The arguments that every `start` mutation accepts. */
 export const vStartArgs = {
   email: v.string(),
-  // The base URL for the link. This should be a constant set by the app
-  // (e.g. "https://example.com/verify"). The code is appended as the `code`
-  // query parameter.
-  url: v.string(),
+  // Give exactly one of `url` and `shortCode`.
+  //
+  // `url`: send a link with a 256-bit code. The base URL for the link. This
+  // should be a constant set by the app (e.g. "https://example.com/verify").
+  // The code is appended as the `code` query parameter.
+  url: v.optional(v.string()),
+  // `shortCode`: send an 8-digit code that the user types. It is easier to
+  // use, but it is easier to guess, and a person can trick the user into
+  // reading it out. `complete` limits the incorrect attempts for a short
+  // code (see `shortCodeAttempts`).
+  shortCode: v.optional(
+    v.object({
+      // The origin of the page where the user types the code, for example
+      // "https://app.example.com". The email gives it in the `OTP-Token`
+      // header (draft-goto-otp-token), thus a mail client that supports
+      // the header offers the code for autofill only on this origin.
+      origin: v.string(),
+    }),
+  ),
   emailSender: vEmailSenderConfig,
 };
 
@@ -387,28 +412,78 @@ export async function createChallengeAndSendEmail(
     email: string;
     purpose: ChallengePurpose;
     ttlMs: number;
-    url: string;
+    url: string | undefined;
+    shortCode: { origin: string } | undefined;
     emailSender: EmailSenderConfig;
     copy: ChallengeEmailCopy;
   },
 ): Promise<{ browserSecret: string; challengeId: Id<"challenges"> }> {
-  const emailCode = generateRandomToken();
+  if ((args.url === undefined) === (args.shortCode === undefined)) {
+    throw new Error(
+      "Give exactly one of `url` (to send a link) and `shortCode` (to " +
+        "send a short code).",
+    );
+  }
+  if (args.shortCode !== undefined) {
+    const problem = originProblem(args.shortCode.origin);
+    if (problem !== null) {
+      throw new Error(
+        `The short code origin ${problem}: ${args.shortCode.origin}. Give ` +
+          'the origin of the page, for example "https://app.example.com".',
+      );
+    }
+  }
+  const codeFormat: CodeFormat =
+    args.shortCode === undefined ? "link" : "shortCode";
+  const emailCode =
+    codeFormat === "shortCode" ? generateShortCode() : generateRandomToken();
   const browserSecret = generateRandomToken();
   const challengeId = await ctx.db.insert("challenges", {
     email: args.email,
     purpose: args.purpose,
-    emailCodeHash: await sha256Hex(emailCode),
+    emailCodeHash: await emailCodeHashFor(codeFormat, emailCode, browserSecret),
     browserSecretHash: await sha256Hex(browserSecret),
+    codeFormat,
     expiresAt: Date.now() + args.ttlMs,
   });
   await scheduleChallengeCleanup(ctx, args.ttlMs);
   await sendChallengeEmail(ctx, args.emailSender, {
     to: args.email,
     copy: args.copy,
-    link: buildLink(args.url, emailCode),
     ttlMs: args.ttlMs,
+    ...(args.shortCode !== undefined
+      ? { shortCode: emailCode, origin: args.shortCode.origin }
+      : { link: buildLink(args.url!, emailCode) }),
   });
   return { browserSecret, challengeId };
+}
+
+/**
+ * The value of `emailCodeHash` for a code.
+ *
+ * A link code has 256 bits, thus its SHA-256 alone cannot be reversed. A
+ * short code has 8 digits: a person who reads the rows can try all of the
+ * 10^8 codes against a SHA-256 in seconds. Thus the hash of a short code
+ * also takes the browser secret, which has 256 bits and is not stored (only
+ * its hash is). `complete` always gets the browser secret, thus it can
+ * compute the same hash.
+ */
+async function emailCodeHashFor(
+  codeFormat: CodeFormat,
+  emailCode: string,
+  browserSecret: string,
+): Promise<string> {
+  return codeFormat === "shortCode"
+    ? await sha256Hex(`shortCode:${browserSecret}:${emailCode}`)
+    : await sha256Hex(emailCode);
+}
+
+/**
+ * Remove the spaces and dashes that a user can type or paste in a short
+ * code (for example "0471 8295").
+ */
+function normalizeShortCode(code: string): string {
+  return code.replace(/[\s-]/g, "");
 }
 
 //------------------------------------------------------------------------------
@@ -482,6 +557,34 @@ export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
   ctx: QueryCtx,
   args: { emailCode: string; browserSecret: string; purpose: Expected },
 ): Promise<ClaimChallengeResult<Expected["kind"]>> {
+  return await findChallenge(ctx, args, null);
+}
+
+/**
+ * The hooks that let a mutation limit the attempts of a short code. A query
+ * cannot write, thus it cannot count the attempts. A query that compares a
+ * short code would let a client try all of the codes, thus
+ * `findClaimableChallenge` (which a query can call) throws for a short code.
+ */
+type ShortCodeAttempts = {
+  // Called before the code is compared. Returns a failure to stop the
+  // attempt, or `null` to compare the code. It must run before the
+  // comparison: otherwise a client that is over the limit can still learn
+  // whether its guess is correct.
+  beforeCompare: (
+    row: Doc<"challenges">,
+  ) => Promise<{ error: "RATE_LIMITED"; retryAfterMs: number } | null>;
+  // Called when the code is incorrect. Returns the error to give.
+  onIncorrect: (
+    row: Doc<"challenges">,
+  ) => Promise<{ error: "INCORRECT_CODE"; attemptsLeft: number }>;
+};
+
+async function findChallenge<Expected extends ExpectedPurpose>(
+  ctx: QueryCtx,
+  args: { emailCode: string; browserSecret: string; purpose: Expected },
+  shortCodeAttempts: ShortCodeAttempts | null,
+): Promise<ClaimChallengeResult<Expected["kind"]>> {
   const browserSecretHash = await sha256Hex(args.browserSecret);
   const row = await ctx.db
     .query("challenges")
@@ -505,12 +608,47 @@ export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
     );
     return claimFailure("INVALID_CHALLENGE");
   }
-  if (row.emailCodeHash !== (await sha256Hex(args.emailCode))) {
+  const codeFormat = row.codeFormat ?? "link";
+  if (codeFormat === "shortCode") {
+    if (shortCodeAttempts === null) {
+      throw new Error(
+        `The email challenge ${row._id} has a short code, which only a ` +
+          `mutation can verify, because a mutation counts the attempts. ` +
+          `Call \`complete\` or \`verify\`, not \`peek\`.`,
+      );
+    }
+    const limited = await shortCodeAttempts.beforeCompare(row);
+    if (limited !== null) {
+      return {
+        success: false,
+        failure: { success: false, userError: limited },
+      };
+    }
+  }
+  const emailCode =
+    codeFormat === "shortCode"
+      ? normalizeShortCode(args.emailCode)
+      : args.emailCode;
+  const expectedHash = await emailCodeHashFor(
+    codeFormat,
+    emailCode,
+    args.browserSecret,
+  );
+  if (row.emailCodeHash !== expectedHash) {
     console.warn(
       `Rejected the email challenge ${row._id} for the purpose ` +
         `"${row.purpose.kind}": the code is not the code that this ` +
         `challenge sent.`,
     );
+    if (codeFormat === "shortCode") {
+      return {
+        success: false,
+        failure: {
+          success: false,
+          userError: await shortCodeAttempts!.onIncorrect(row),
+        },
+      };
+    }
     return claimFailure("INCORRECT_CODE");
   }
   if (!sameKind(row, args.purpose)) {
@@ -530,7 +668,72 @@ export async function findClaimableChallenge<Expected extends ExpectedPurpose>(
 }
 
 /**
- * Claim a challenge: run the checks of {@link findClaimableChallenge}, then
+ * The attempt limits of a short code, for a mutation:
+ *
+ * - Each challenge accepts `SHORT_CODE_MAX_ATTEMPTS` incorrect codes. Each
+ *   one gives `INCORRECT_CODE` with the number of attempts left. The last
+ *   one (`attemptsLeft: 0`) deletes the row: the user must start again.
+ * - The address accepts a number of incorrect codes per hour for all of its
+ *   challenges together (`shortCodeFailurePerEmail`). Over the limit, the
+ *   attempt gives `RATE_LIMITED` before the code is compared, and the
+ *   challenge stays.
+ *
+ * Only an incorrect code takes a token, thus a user who types the correct
+ * code is never limited by their own attempts. To take the tokens of an
+ * address, a person must start a challenge for it, which the start limits
+ * already throttle; that person could already use the start limit to lock
+ * the address out.
+ *
+ * The caller must not throw after an incorrect code: a throw rolls back the
+ * counter and the token.
+ */
+function shortCodeAttempts(ctx: MutationCtx): ShortCodeAttempts {
+  return {
+    beforeCompare: async (row) => {
+      const status = await rateLimiter.check(ctx, "shortCodeFailurePerEmail", {
+        key: normalizeEmail(row.email),
+      });
+      return status.ok
+        ? null
+        : { error: "RATE_LIMITED", retryAfterMs: status.retryAfter };
+    },
+    onIncorrect: async (row) => {
+      await rateLimiter.limit(ctx, "shortCodeFailurePerEmail", {
+        key: normalizeEmail(row.email),
+      });
+      const failedAttempts = (row.failedAttempts ?? 0) + 1;
+      const attemptsLeft = Math.max(
+        0,
+        SHORT_CODE_MAX_ATTEMPTS - failedAttempts,
+      );
+      if (attemptsLeft === 0) {
+        console.warn(
+          `Deleted the email challenge ${row._id}: it got ` +
+            `${failedAttempts} incorrect short codes.`,
+        );
+        await ctx.db.delete("challenges", row._id);
+      } else {
+        await ctx.db.patch("challenges", row._id, { failedAttempts });
+      }
+      return { error: "INCORRECT_CODE", attemptsLeft };
+    },
+  };
+}
+
+/**
+ * Like {@link findClaimableChallenge}, but for a mutation: it also accepts a
+ * short code, and counts the incorrect attempts (see `shortCodeAttempts`).
+ * It does not claim the challenge.
+ */
+export async function verifyChallenge<Expected extends ExpectedPurpose>(
+  ctx: MutationCtx,
+  args: { emailCode: string; browserSecret: string; purpose: Expected },
+): Promise<ClaimChallengeResult<Expected["kind"]>> {
+  return await findChallenge(ctx, args, shortCodeAttempts(ctx));
+}
+
+/**
+ * Claim a challenge: run the checks of {@link verifyChallenge}, then
  * delete the row. The row is deleted only when the claim succeeds, so a
  * claimed link can never be replayed.
  */
@@ -538,7 +741,7 @@ export async function claimChallenge<Expected extends ExpectedPurpose>(
   ctx: MutationCtx,
   args: { emailCode: string; browserSecret: string; purpose: Expected },
 ): Promise<ClaimChallengeResult<Expected["kind"]>> {
-  const claim = await findClaimableChallenge(ctx, args);
+  const claim = await verifyChallenge(ctx, args);
   if (claim.success) {
     await ctx.db.delete("challenges", claim.row._id);
   }

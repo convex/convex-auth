@@ -54,9 +54,19 @@ export default defineSchema({
         purpose: v.string(),
       }),
     ),
-    // SHA-256 of the code that travels in the emailed link.
+    // SHA-256 of the code that travels in the email.
     // Storing the hash, so that even if database rows leak they can’t be used to complete the challenge.
+    // For a short code, the hash input also has the browser secret (see
+    // `emailCodeHashFor`): a hash of 8 digits alone is easy to reverse.
     emailCodeHash: v.string(),
+    // How the code travels. Absent means "link" (the rows from before this
+    // field existed). A link code has 256 bits and has no attempt limit. A
+    // short code has 8 digits that the user types, thus `complete` counts
+    // the incorrect attempts.
+    codeFormat: v.optional(v.union(v.literal("link"), v.literal("shortCode"))),
+    // The number of incorrect codes given for this challenge. Only short
+    // codes count them. At `SHORT_CODE_MAX_ATTEMPTS` the row is deleted.
+    failedAttempts: v.optional(v.number()),
     // SHA-256 of the secret that stays in the starting browser’s storage.
     // Completion finds the row by this hash, then requires the code too.
     // Storing the hash, so that even if database rows leak they can’t be used to complete the challenge.

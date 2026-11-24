@@ -34,6 +34,7 @@ import {
   addressTakenError,
   claimChallenge,
   findClaimableChallenge,
+  verifyChallenge,
   type ChallengeOfKind,
   type StartChallengeResult,
 } from "./common.ts";
@@ -120,6 +121,7 @@ export const start = mutation({
       },
       ttlMs,
       url: args.url,
+      shortCode: args.shortCode,
       emailSender: args.emailSender,
       copy: { subject: args.subject, intro: args.intro },
     });
@@ -186,12 +188,41 @@ async function claimableResult(
  *
  * A `peek` that passes does not guarantee that a later `complete` passes:
  * the link can expire or be claimed between the two calls.
+ *
+ * Throws for a challenge with a short code: a query cannot count the
+ * attempts. Use `verify` instead.
  */
 export const peek = query({
   args: vCompleteArgs,
   returns: completeResult,
   handler: async (ctx, args): Promise<CompleteResult> => {
     const claim = await findClaimableChallenge(ctx, {
+      emailCode: args.emailCode,
+      browserSecret: args.browserSecret,
+      purpose: expectedPurpose(args),
+    });
+    if (!claim.success) {
+      return claim.failure;
+    }
+    return await claimableResult(ctx, claim.row);
+  },
+});
+
+/**
+ * Like `peek`, but a mutation: it accepts a short code too, and counts an
+ * incorrect short code as an attempt (see `verifyChallenge`). It does not
+ * claim the challenge. A caller that must know the result before it claims
+ * (for example, to create the user) calls `verify`, and then `complete` in
+ * the same mutation.
+ *
+ * The caller must return the failure, not throw: a throw rolls back the
+ * attempt count.
+ */
+export const verify = mutation({
+  args: vCompleteArgs,
+  returns: completeResult,
+  handler: async (ctx, args): Promise<CompleteResult> => {
+    const claim = await verifyChallenge(ctx, {
       emailCode: args.emailCode,
       browserSecret: args.browserSecret,
       purpose: expectedPurpose(args),
