@@ -153,18 +153,48 @@ async function createAppUser(
   });
 }
 
+/** Tell if `createdUserIds` has the user. */
+async function isCreatedUserId(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<boolean> {
+  const existing = await ctx.db
+    .query("createdUserIds")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  return existing !== null;
+}
+
 /** Add the user to `createdUserIds`, if it is not there yet. */
 async function recordCreatedUserId(
   ctx: MutationCtx,
   userId: string,
 ): Promise<void> {
-  const existing = await ctx.db
-    .query("createdUserIds")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-  if (existing === null) {
+  if (!(await isCreatedUserId(ctx, userId))) {
     await ctx.db.insert("createdUserIds", { userId });
   }
+}
+
+/**
+ * Add a user that the app's `createUser` callback just returned to
+ * `createdUserIds`.
+ *
+ * Throws if the user is already there: the core created or signed in this
+ * user before, or the app marked it as created. Thus `createUser` did not
+ * create a new user. The error rolls back the transaction, which includes the
+ * writes of the callback.
+ */
+async function recordNewUserId(
+  ctx: MutationCtx,
+  userId: string,
+): Promise<void> {
+  if (await isCreatedUserId(ctx, userId)) {
+    throw new Error(
+      `The app's createUser callback returned the ID of a user that already ` +
+        `exists (${JSON.stringify(userId)}). createUser must create a new user.`,
+    );
+  }
+  await ctx.db.insert("createdUserIds", { userId });
 }
 
 /**
@@ -207,6 +237,10 @@ async function notifySignIn(
  * user. The sign-in method must check its own component for the identity
  * first, and record the returned `userId` there in the same mutation.
  *
+ * `createUser` must create a new user. If it returns the ID of a user that the
+ * core created or signed in before, or that the app marked with
+ * {@link markUserIdCreated}, this function throws and rolls back the sign-up.
+ *
  * The JWT accessToken in the return value is signed by the deployment, with
  * `iss = ${CONVEX_CLOUD_URL}/components/auth`. The token and session lifetimes
  * are the app's configuration, which `setupConvexAuth` resolves and passes in.
@@ -236,7 +270,7 @@ export const _internal_dangerous_signUp = mutation({
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
-    await recordCreatedUserId(ctx, userId);
+    await recordNewUserId(ctx, userId);
     await notifySignIn(ctx, args.claims, userId, args.onSignInHandle);
     return await issueSession(ctx, userId, args.componentPath, ttl);
   },
@@ -299,6 +333,9 @@ export const _internal_dangerous_signIn = mutation({
  * `_internal_dangerous_signIn` succeeds. The caller must record the returned `userId` in
  * its own component.
  *
+ * As for `_internal_dangerous_signUp`, this function throws if `createUser`
+ * returns the ID of a user that already exists.
+ *
  * DANGER: This trusts `claims`, which reach the app's `createUser`. The name
  * says so because app code must not call it: only the sign-in methods of this
  * package do, right after they verify the user.
@@ -316,20 +353,21 @@ export const _internal_dangerous_signUpWithoutSession = mutation({
       args.claims,
       args.createUserHandle as CreateUserFunctionHandle,
     );
-    await recordCreatedUserId(ctx, userId);
+    await recordNewUserId(ctx, userId);
     return { userId };
   },
 });
 
 /**
- * Record that a user exists.
+ * Record that a user exists, thus a sign-up throws if the app's `createUser`
+ * callback returns its ID.
  *
  * The core records the users that it creates and signs in. Call this function
  * for the other users: the users that the app imports or creates without the
  * core, and the users that existed before the app upgraded to this version.
  *
- * Any code of the app can call this function. That is safe: it only records
- * that an ID is in use.
+ * Any code of the app can call this function. That is safe: it can only make
+ * a sign-up refuse an ID.
  */
 export const markUserIdCreated = mutation({
   args: { userId: v.string() },

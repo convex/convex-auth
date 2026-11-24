@@ -459,8 +459,9 @@ Write a `createUser` mutation that creates a row in your `users` table and
 returns its id. The method calls it the first time it sees an account.
 
 Discord lets an account keep an email address it has not verified. In that
-case `profile.emailVerified` is `false`, and you should not use that email to
-link the Discord account to an existing user.
+case `profile.emailVerified` is `false`, and the email address does not prove
+that the user controls it. Do not trust it, for example to give the user
+access to data that belongs to that address.
 
 ```ts file="examples/react-discord/convex/users.ts" title="convex/users.ts"
 ```

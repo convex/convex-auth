@@ -201,6 +201,43 @@ describe("sessions and created user IDs", () => {
     );
   });
 
+  test("signUp and signUpWithoutSession refuse a user ID that the core knows", async () => {
+    const t = setup();
+    const signUpWithoutSession = () =>
+      t.mutation(api.public._internal_dangerous_signUpWithoutSession, {
+        claims: claims(),
+        createUserHandle: CREATE_USER_HANDLE,
+      });
+    const refused = "createUser must create a new user";
+
+    // After a reset, the createUser of the test app returns "user1" again.
+    // A user that the core created:
+    testApp.resetUserCallbackCalls();
+    expect(await signUpWithoutSession()).toEqual({ userId: "user1" });
+    testApp.resetUserCallbackCalls();
+    await expect(signUp(t, claims())).rejects.toThrow(refused);
+    testApp.resetUserCallbackCalls();
+    await expect(signUpWithoutSession()).rejects.toThrow(refused);
+
+    // A user that the core signed in, and one that the app marked as created:
+    const t2 = setup();
+    await signIn(t2, claims(), "user1");
+    await t2.mutation(api.public.markUserIdCreated, { userId: "user2" });
+    testApp.resetUserCallbackCalls();
+    await expect(signUp(t2, claims())).rejects.toThrow(refused);
+    await expect(signUp(t2, claims())).rejects.toThrow(refused);
+    expect((await signUp(t2, claims())).userId).toBe("user3");
+
+    // The refused sign-ups created no session.
+    const sessionUsers = await t2.run(async (ctx) =>
+      (await ctx.db.query("sessions").collect()).map((s) => s.userId),
+    );
+    expect(sessionUsers.sort()).toEqual(["user1", "user3"]);
+    expect(
+      await t.run(async (ctx) => ctx.db.query("sessions").collect()),
+    ).toEqual([]);
+  });
+
   test("markUserIdCreated records a user ID once, and refuses an empty one", async () => {
     const t = setup();
     await t.mutation(api.public.markUserIdCreated, { userId: "imported" });

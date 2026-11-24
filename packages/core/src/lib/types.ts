@@ -228,6 +228,10 @@ export type AuthClaims = Infer<typeof vAuthClaims>;
  * {@link OnSignInFn} runs right after it, so this one is only responsible for
  * what is true at creation time.
  *
+ * It must create a new user. It must not return the ID of a user that
+ * exists, for example to link the new account to a user with the same email
+ * address: the core then throws and rolls back the sign-up.
+ *
  * This is the core entrypoint for an application to integrate its user model
  * with Convex Auth. Apps install one per sign-in method, although the function that
  * is passed in may be shared across multiple methods if it is typed to
