@@ -15,6 +15,7 @@ minimumReleaseAgeExclude:
   - password-hash-wasm
   - convex
   - convex-test
+  - "@convex-dev/eslint-plugin"
   # Renovate security update: vitest@4.1.11
   - vitest@4.1.11
   # Renovate security update: next@16.4.1 || 16.4.5
