@@ -9,6 +9,7 @@ import {
   queryGeneric,
   type GenericMutationCtx,
   type GenericDataModel,
+  type RegisteredMutation,
 } from "convex/server";
 import { Infer, v } from "convex/values";
 import {
@@ -31,11 +32,15 @@ import {
   startFreeAddressUserError,
   completeLinkUserError,
   completeFreeAddressLinkUserError,
+  completeShortCodeUserError,
+  emailTakenUserError,
   toLinkUserError,
+  toShortCodeUserError,
   wrongUserUserError,
   emailNotFoundUserError,
   validateEmailFormat,
   landingUrlProblem,
+  originProblem,
   type EmailSenderConfig,
 } from "../../components/email/validation.ts";
 import type { SendEmailRef } from "../../components/email/helpers.ts";
@@ -91,6 +96,19 @@ export type EmailSenderOptions = {
 };
 
 /**
+ * How the user proves that they own an address at sign-up and at email
+ * change:
+ *
+ * - `"link"` (the default): the email has a link that the user opens.
+ * - `"shortCode"`: the email has an 8-digit code that the user types in the
+ *   page where they started. A sign-up or an email change accepts 5
+ *   incorrect codes, and an address accepts 10 incorrect codes per hour.
+ *
+ * Password recovery always uses a link.
+ */
+export type EmailVerification = "link" | "shortCode";
+
+/**
  * The landing pages the emailed links point at. The link's `code` query
  * parameter will be appended to these URLs.
  */
@@ -105,8 +123,13 @@ export type EmailPasswordUrls = {
 
 /**
  * Options for {@link setupEmailPassword}.
+ *
+ * With `verification: "shortCode"`, give `origin`, and give only the
+ * `recovery` URL: sign-up and email change send codes, not links.
  */
-export type EmailPasswordOptions = {
+export type EmailPasswordOptions<
+  Verification extends EmailVerification = "link",
+> = {
   /**
    * The mounted email component (`components.authEmail`). The method uses it
    * to track verified emails and to run the challenges.
@@ -119,9 +142,33 @@ export type EmailPasswordOptions = {
   passwordComponent: PasswordComponentApi;
   /** How the method sends emails. */
   emailSender: EmailSenderOptions;
-  /** The landing pages the emailed links point at. */
-  urls: EmailPasswordUrls;
-};
+  /**
+   * How the user proves that they own an address at sign-up and at email
+   * change (see {@link EmailVerification}). Defaults to `"link"`.
+   */
+  verification?: Verification;
+} & (Verification extends "shortCode"
+  ? {
+      /**
+       * The origin of the page where the user types the code, for example
+       * `"https://app.example.com"`: `https` (or `http` on localhost), with
+       * no path and no trailing slash. The emails give it in the
+       * `OTP-Token` header (draft-goto-otp-token), thus a mail client that
+       * supports the header offers the code for autofill only on this
+       * origin.
+       */
+      origin: string;
+      /** The landing page of the password-recovery link. */
+      urls: Pick<EmailPasswordUrls, "recovery"> & {
+        signUp?: undefined;
+        changeEmail?: undefined;
+      };
+    }
+  : {
+      origin?: undefined;
+      /** The landing pages the emailed links point at. */
+      urls: EmailPasswordUrls;
+    });
 
 const vNotLoggedIn = v.object({ error: v.literal("NOT_LOGGED_IN") });
 
@@ -142,13 +189,26 @@ const signUpResult = v.union(
  */
 export type SignUpResult = Infer<typeof signUpResult>;
 
-const completeSignUpResult = v.union(
+const completeSignUpLinkResult = v.union(
   vSignInComplete,
   vSignInError(completeFreeAddressLinkUserError),
 );
 
-/** The result of `completeSignUpWithEmailPassword`: the minted session tokens, or an error. */
-export type CompleteSignUpResult = Infer<typeof completeSignUpResult>;
+const completeSignUpShortCodeResult = v.union(
+  vSignInComplete,
+  vSignInError(v.union(completeShortCodeUserError, emailTakenUserError)),
+);
+
+/**
+ * The result of `completeSignUpWithEmailPassword`: the minted session tokens,
+ * or an error. With `verification: "shortCode"`, `INCORRECT_CODE` has
+ * `attemptsLeft`, and the errors include `RATE_LIMITED`.
+ */
+export type CompleteSignUpResult<
+  Verification extends EmailVerification = "link",
+> = Verification extends "shortCode"
+  ? Infer<typeof completeSignUpShortCodeResult>
+  : Infer<typeof completeSignUpLinkResult>;
 
 const signInResult = v.union(
   vSignInComplete,
@@ -199,7 +259,7 @@ const startChangeEmailResult = v.union(
 /** The result of `startChangeEmail`. */
 export type StartChangeEmailResult = Infer<typeof startChangeEmailResult>;
 
-const completeChangeEmailResult = v.union(
+const completeChangeEmailLinkResult = v.union(
   v.object({ success: v.literal(true) }),
   v.object({
     success: v.literal(false),
@@ -211,8 +271,32 @@ const completeChangeEmailResult = v.union(
   }),
 );
 
-/** The result of `completeChangeEmail`. */
-export type CompleteChangeEmailResult = Infer<typeof completeChangeEmailResult>;
+const completeChangeEmailShortCodeResult = v.union(
+  v.object({ success: v.literal(true) }),
+  v.object({
+    success: v.literal(false),
+    userError: v.union(
+      vNotLoggedIn,
+      completeShortCodeUserError,
+      emailTakenUserError,
+      wrongUserUserError,
+    ),
+  }),
+);
+
+/**
+ * The result of `completeChangeEmail`. With `verification: "shortCode"`,
+ * `INCORRECT_CODE` has `attemptsLeft`, and the errors include
+ * `RATE_LIMITED`.
+ */
+export type CompleteChangeEmailResult<
+  Verification extends EmailVerification = "link",
+> = Verification extends "shortCode"
+  ? Infer<typeof completeChangeEmailShortCodeResult>
+  : Infer<typeof completeChangeEmailLinkResult>;
+
+/** The arguments of the `complete` mutations of the challenges. */
+type CompleteArgs = { emailCode: string; browserSecret: string };
 
 const startPasswordRecoveryResult = v.union(
   v.object({
@@ -314,18 +398,74 @@ export type EmailPasswordProfile = Record<string, never>;
  *   affected address (ASVS 6.3.7).
  * - Recovery proves ownership of a verified email through a 10-minute link,
  *   then sets the new password and signs the user in.
+ * - With `verification: "shortCode"`, sign-up and change-email send an
+ *   8-digit code that the user types, instead of a link. Give `origin`
+ *   (the origin of the page where the user types the code) and only
+ *   `urls.recovery`.
  *
  * Account resolution (email → app user id) is owned by the email component;
  * the password component stores only `{ userId, passwordHash }`.
  */
-export function setupEmailPassword<UsersTable extends string>(
-  core: AuthCore<UsersTable>,
-  options: EmailPasswordOptions,
-) {
-  const { component, passwordComponent, emailSender, urls } = options;
+export function setupEmailPassword<
+  UsersTable extends string,
+  Verification extends EmailVerification = "link",
+>(core: AuthCore<UsersTable>, options: EmailPasswordOptions<Verification>) {
+  // Read the options through the wide type: the conditional type of
+  // `EmailPasswordOptions` only narrows what the app can give.
+  const {
+    component,
+    passwordComponent,
+    emailSender,
+    verification = "link",
+    origin,
+    urls,
+  } = options as EmailPasswordOptions<EmailVerification> & {
+    origin?: string;
+    urls: Partial<EmailPasswordUrls> & Pick<EmailPasswordUrls, "recovery">;
+  };
+  const isShortCode = verification === "shortCode";
+  if (isShortCode) {
+    if (origin === undefined) {
+      throw new Error(
+        'setupEmailPassword: verification "shortCode" requires `origin`.',
+      );
+    }
+    const problem = originProblem(origin);
+    if (problem !== null) {
+      throw new Error(
+        `setupEmailPassword: origin ${problem}: ${origin}. Give the ` +
+          `origin of the page where the user types the code, for example ` +
+          `"https://app.example.com".`,
+      );
+    }
+    if (urls.signUp !== undefined || urls.changeEmail !== undefined) {
+      throw new Error(
+        'setupEmailPassword: with verification "shortCode", sign-up and ' +
+          "email change send codes, not links. Remove `urls.signUp` and " +
+          "`urls.changeEmail`.",
+      );
+    }
+  } else if (urls.signUp === undefined || urls.changeEmail === undefined) {
+    throw new Error(
+      "setupEmailPassword: give `urls.signUp` and `urls.changeEmail`, or " +
+        'use verification "shortCode".',
+    );
+  }
+  /**
+   * How the `start` mutations of sign-up and email change send the code:
+   * a link to `url`, or a short code for `origin`.
+   */
+  const verificationArgs = (url: string | undefined) =>
+    isShortCode ? { shortCode: { origin: origin! } } : { url: url! };
+  /** Narrow the error of a `complete` mutation to the verification type. */
+  const toUserError = <E extends { error: string }>(userError: E) =>
+    isShortCode ? toShortCodeUserError(userError) : toLinkUserError(userError);
   // Validate the URLs now, so a mistake fails at deploy time rather than in
   // the first email.
   for (const [name, url] of Object.entries(urls)) {
+    if (url === undefined) {
+      continue;
+    }
     const problem = landingUrlProblem(url);
     if (problem !== null) {
       throw new Error(
@@ -462,7 +602,7 @@ export function setupEmailPassword<UsersTable extends string>(
                 email,
                 // The user is new, so this first address becomes primary.
                 userId,
-                url: urls.signUp,
+                ...verificationArgs(urls.signUp),
                 emailSender: await senderConfig(),
               },
             );
@@ -488,11 +628,16 @@ export function setupEmailPassword<UsersTable extends string>(
          */
         completeSignUpWithEmailPassword: authMutation({
           args: { emailCode: v.string(), browserSecret: v.string() },
-          returns: completeSignUpResult,
+          returns: isShortCode
+            ? completeSignUpShortCodeResult
+            : completeSignUpLinkResult,
           handler: async (
             ctx,
             { emailCode, browserSecret },
-          ): Promise<CompleteSignUpResult> => {
+          ): Promise<CompleteSignUpResult<EmailVerification>> => {
+            // An incorrect short code is an attempt that the email component
+            // counts in this transaction: return the failure, never throw
+            // after it, because a throw rolls back the count.
             const complete = await ctx.runMutation(
               component.challenge.signUp.complete,
               { emailCode, browserSecret },
@@ -500,8 +645,8 @@ export function setupEmailPassword<UsersTable extends string>(
             if (!complete.success) {
               return {
                 status: "error",
-                userError: toLinkUserError(complete.userError),
-              };
+                userError: toUserError(complete.userError),
+              } as CompleteSignUpResult<EmailVerification>;
             }
             const tokens = await ctx.convexAuth.completeSignIn({
               userId: complete.userId,
@@ -510,7 +655,11 @@ export function setupEmailPassword<UsersTable extends string>(
             });
             return { status: "complete", tokens };
           },
-        }),
+        }) as RegisteredMutation<
+          "public",
+          CompleteArgs,
+          Promise<CompleteSignUpResult<Verification>>
+        >,
 
         /**
          * Verify an existing account's password and, on success, mint a
@@ -692,7 +841,7 @@ export function setupEmailPassword<UsersTable extends string>(
               {
                 email: newEmail,
                 userId,
-                url: urls.changeEmail,
+                ...verificationArgs(urls.changeEmail),
                 emailSender: await senderConfig(),
               },
             );
@@ -712,11 +861,13 @@ export function setupEmailPassword<UsersTable extends string>(
          */
         completeChangeEmail: authMutation({
           args: { emailCode: v.string(), browserSecret: v.string() },
-          returns: completeChangeEmailResult,
+          returns: isShortCode
+            ? completeChangeEmailShortCodeResult
+            : completeChangeEmailLinkResult,
           handler: async (
             ctx,
             { emailCode, browserSecret },
-          ): Promise<CompleteChangeEmailResult> => {
+          ): Promise<CompleteChangeEmailResult<EmailVerification>> => {
             // The link is bound to the user who started the change, so the
             // same user must be signed in to complete it. Another user gets
             // `WRONG_USER`, and the link still works for the right user.
@@ -729,10 +880,11 @@ export function setupEmailPassword<UsersTable extends string>(
               { emailCode, browserSecret, userId },
             );
             if (!complete.success) {
+              // Return, never throw: see `completeSignUpWithEmailPassword`.
               return {
                 success: false,
-                userError: toLinkUserError(complete.userError),
-              };
+                userError: toUserError(complete.userError),
+              } as CompleteChangeEmailResult<EmailVerification>;
             }
             if (complete.previousEmail !== null) {
               await notify(
@@ -748,7 +900,11 @@ export function setupEmailPassword<UsersTable extends string>(
             }
             return { success: true };
           },
-        }),
+        }) as RegisteredMutation<
+          "public",
+          CompleteArgs,
+          Promise<CompleteChangeEmailResult<Verification>>
+        >,
 
         /**
          * Start a password recovery: send a reset link (valid 10 minutes) to a

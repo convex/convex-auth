@@ -15,8 +15,10 @@ import { AuthProvider, useAuth } from "../../react/client.tsx";
 import { stubSignInApi } from "../../react/testSignInApi.ts";
 import {
   useCompleteChangeEmail,
+  useCompleteChangeEmailWithShortCode,
   useCompletePasswordRecovery,
   useCompleteSignUpWithEmailPassword,
+  useCompleteSignUpWithShortCode,
   useSignInWithEmailPassword,
   useSignUpWithEmailPassword,
   useStartChangeEmail,
@@ -921,5 +923,148 @@ describe("without localStorage (React Native)", () => {
       browserSecret: "secret-1",
     });
     expect(secrets.get(SIGN_UP_SECRET_KEY)).toBeNull();
+  });
+});
+
+describe("useCompleteSignUpWithShortCode", () => {
+  const render = () =>
+    renderWithProviders(() =>
+      useCompleteSignUpWithShortCode({
+        completeSignUpWithEmailPassword: signInMutation,
+      }),
+    );
+
+  test("presents the typed code with the secret, adopts the session, clears the secret", async () => {
+    secretStorage.set(SIGN_UP_SECRET_KEY, "secret-1");
+    runSignInMutation.mockResolvedValue({ status: "complete", tokens: bundle });
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeSignUp>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeSignUp({ code: "04718295" });
+    });
+
+    expect(returned).toEqual({ status: "complete" });
+    expect(runSignInMutation).toHaveBeenCalledWith({
+      emailCode: "04718295",
+      browserSecret: "secret-1",
+    });
+    expect(result.current.auth.isAuthenticated).toBe(true);
+    expect(secretStorage.get(SIGN_UP_SECRET_KEY)).toBeNull();
+  });
+
+  test("keeps the secret after an incorrect code", async () => {
+    secretStorage.set(SIGN_UP_SECRET_KEY, "secret-1");
+    const failure = {
+      status: "error",
+      userError: { error: "INCORRECT_CODE", attemptsLeft: 4 },
+    };
+    runSignInMutation.mockResolvedValue(failure);
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeSignUp>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeSignUp({ code: "00000000" });
+    });
+
+    expect(returned).toEqual(failure);
+    expect(secretStorage.get(SIGN_UP_SECRET_KEY)).toBe("secret-1");
+    expect(result.current.auth.isAuthenticated).toBe(false);
+  });
+
+  test("is MISSING_SECRET when this browser did not sign up", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeSignUp>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeSignUp({ code: "04718295" });
+    });
+    expect(returned).toEqual({
+      status: "error",
+      userError: { error: "MISSING_SECRET" },
+    });
+    expect(runSignInMutation).not.toHaveBeenCalled();
+  });
+});
+
+describe("useCompleteChangeEmailWithShortCode", () => {
+  const render = () =>
+    renderWithProviders(() =>
+      useCompleteChangeEmailWithShortCode({
+        completeChangeEmail: convexMutation,
+      }),
+    );
+
+  test("presents the typed code with the secret, and clears the secret", async () => {
+    secretStorage.set(CHANGE_EMAIL_SECRET_KEY, "secret-5");
+    const mutation = stubConvexMutation().mockResolvedValue({ success: true });
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeChangeEmail>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeChangeEmail({
+        code: "04718295",
+      });
+    });
+
+    expect(returned).toEqual({ success: true });
+    expect(mutation.mock.calls[0]?.[1]).toEqual({
+      emailCode: "04718295",
+      browserSecret: "secret-5",
+    });
+    expect(secretStorage.get(CHANGE_EMAIL_SECRET_KEY)).toBeNull();
+  });
+
+  test("keeps the secret after an incorrect code", async () => {
+    secretStorage.set(CHANGE_EMAIL_SECRET_KEY, "secret-5");
+    const failure = {
+      success: false,
+      userError: { error: "INCORRECT_CODE", attemptsLeft: 2 },
+    };
+    stubConvexMutation().mockResolvedValue(failure);
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeChangeEmail>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeChangeEmail({
+        code: "00000000",
+      });
+    });
+
+    expect(returned).toEqual(failure);
+    expect(secretStorage.get(CHANGE_EMAIL_SECRET_KEY)).toBe("secret-5");
+  });
+
+  test("is MISSING_SECRET when this browser did not start the change", async () => {
+    const mutation = stubConvexMutation();
+    const { result } = render();
+    await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
+    let returned!: Awaited<
+      ReturnType<typeof result.current.hook.completeChangeEmail>
+    >;
+    await act(async () => {
+      returned = await result.current.hook.completeChangeEmail({
+        code: "04718295",
+      });
+    });
+    expect(returned).toEqual({
+      success: false,
+      userError: { error: "MISSING_SECRET" },
+    });
+    expect(mutation).not.toHaveBeenCalled();
   });
 });
