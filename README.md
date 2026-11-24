@@ -141,6 +141,9 @@ directory (see the example's own README):
 - `examples/react-email-magic-link` — the core and email components with the
   `emailMagicLink` method: one form to sign in or sign up with an emailed
   link.
+- `examples/react-email-short-code` — the core and email components with the
+  `emailShortCode` method: one form to sign in or sign up with an emailed
+  8-digit code.
 - `examples/react-username-passkey` and `examples/react-username-passkey-basic` — the core,
   passkey, and username components with the `usernamePasskey` method.
 - `examples/react-google`, `examples/react-apple`, `examples/react-github`, and
