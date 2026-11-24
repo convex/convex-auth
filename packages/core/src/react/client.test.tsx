@@ -107,6 +107,23 @@ describe("React bindings", () => {
     expect(dispose).toHaveBeenCalledTimes(1);
   });
 
+  test("a new auth client starts with the current initialToken", async () => {
+    const first = makeClient().client;
+    const second = makeClient().client;
+    const { rerender } = render(
+      <AuthProvider authClient={first} initialToken="access-1">
+        hi
+      </AuthProvider>,
+    );
+    rerender(
+      <AuthProvider authClient={second} initialToken="access-2">
+        hi
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(second.getAccessToken()).toBe("access-2"));
+  });
+
   test("reports loading then unauthenticated for an empty store", async () => {
     const { client } = makeClient();
     const { result } = renderAuth(client);

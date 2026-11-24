@@ -164,9 +164,12 @@ export function AuthProvider({
     getServerSnapshot,
   );
 
-  // The client uses the token on its first init only, so a new value does not
-  // re-run init.
+  // Init reads the latest token, but a new token alone doesn't re-run init,
+  // because the client uses the token on its first init only.
   const initialTokenRef = useRef(initialToken);
+  useEffect(() => {
+    initialTokenRef.current = initialToken;
+  });
 
   useEffect(() => {
     // In StrictMode (dev) React runs this mount → cleanup → mount on the same

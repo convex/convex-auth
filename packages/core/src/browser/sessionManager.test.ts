@@ -378,6 +378,53 @@ describe("AuthClient", () => {
       token: null,
     });
   });
+
+  test("init after dispose loads a session changed while disposed", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeClient({}, storage);
+    await client.init();
+    client.dispose();
+
+    // Another tab signed in while no listener was attached.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    await client.init();
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: true,
+      token: "access-1",
+    });
+  });
+
+  test("keeps cross-tab sync until every init is disposed", async () => {
+    const listeners = new Set<(event: StorageEvent) => void>();
+    const storage = new InMemoryStorage();
+    (globalThis as { window?: unknown }).window = {
+      addEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.add(l),
+      removeEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.delete(l),
+    };
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.init();
+    await client.setSession(bundle(1));
+
+    client.dispose();
+    // Another tab cleared the JWT key.
+    listeners.forEach((l) =>
+      l({
+        storageArea: storage,
+        key: `${JWT_STORAGE_KEY}_${SUFFIX}`,
+        newValue: null,
+      } as unknown as StorageEvent),
+    );
+    expect(client.getSnapshot().isAuthenticated).toBe(false);
+
+    client.dispose();
+    expect(listeners.size).toBe(0);
+  });
 });
 
 /** The mutation stub behind {@link SIGN_IN_API}. */

@@ -238,6 +238,8 @@ export class AuthClient<
   #isLoading = true;
   #pendingSignIns = 0;
   #initialized = false;
+  /** Counts the {@link init} calls that no {@link dispose} call has ended. */
+  #activeInits = 0;
   /**
    * Counts changes to the tokens in memory, so {@link init} can tell when a
    * change happened during its storage read.
@@ -414,9 +416,10 @@ export class AuthClient<
    * storage, and start listening for cross-tab changes (if applicable).
    * Until this resolves, the client reports `isLoading`.
    *
-   * Symmetric and repeatable with {@link dispose}. The callbacks and session
-   * load happen once, but the cross-tab listener is (re)attached on every
-   * call, so an `init` after a `dispose` fully restores the client.
+   * Each call needs a matching {@link dispose}. The callbacks run once. The
+   * cross-tab listener stays attached while any call is active. An `init`
+   * after every call was disposed loads the session from storage again,
+   * because another tab may have changed it in the meantime.
    *
    * Call it in the browser only. A server can share one client across all
    * requests, so the client must never hold a user's token.
@@ -428,10 +431,15 @@ export class AuthClient<
      */
     initialToken?: string | null;
   }): Promise<void> {
-    // Attach before the one-time guard so a dispose()/init() cycle re-attaches
-    // the listener rather than skipping it. Idempotent, so repeat calls are
-    // harmless.
-    this.#attachStorageListener();
+    this.#activeInits++;
+    if (this.#activeInits === 1) {
+      this.#attachStorageListener();
+      if (this.#initialized) {
+        await this.#loadTokens();
+        this.#notify();
+        return;
+      }
+    }
     if (this.#initialized) return;
     this.#initialized = true;
     // Run ambient sign-in onInit callbacks before anything observable
@@ -456,6 +464,13 @@ export class AuthClient<
     if (initialToken !== null) {
       await this.#storage.set(JWT_STORAGE_KEY, initialToken);
     }
+    await this.#loadTokens();
+    this.#isLoading = false;
+    this.#notify();
+  }
+
+  /** Read the tokens from storage into memory. */
+  async #loadTokens(): Promise<void> {
     const versionBeforeRead = this.#tokenVersion;
     const [accessToken, refreshToken] = await Promise.all([
       this.#storage.get(JWT_STORAGE_KEY),
@@ -467,19 +482,18 @@ export class AuthClient<
       this.#accessToken = accessToken ?? null;
       this.#refreshToken = refreshToken ?? null;
     }
-    this.#log(`init: token is null: ${this.#accessToken === null}`);
-    this.#isLoading = false;
-    this.#notify();
+    this.#log(`load: token is null: ${this.#accessToken === null}`);
   }
 
   /**
-   * Detach a registered cross-tab storage listener, if applicable.
-   *
-   * Call on teardown. Store subscribers are intentionally left in place — each
-   * is removed via the unsubscribe returned by {@link subscribe} — so a later
-   * {@link init} restores the client without losing its subscribers.
+   * End one {@link init} call. The last active call detaches the cross-tab
+   * listener. Store subscribers stay, so a later `init` restores the client
+   * with them.
    */
   dispose(): void {
+    if (this.#activeInits === 0) return;
+    this.#activeInits--;
+    if (this.#activeInits > 0) return;
     const target = domEventTarget();
     if (this.#storageListener !== null && target !== null) {
       target.removeEventListener("storage", this.#storageListener);
