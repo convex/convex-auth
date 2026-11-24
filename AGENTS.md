@@ -15,7 +15,7 @@ This is a pnpm monorepo:
     does not export `anonymous` and the generic `oauth` component for now
     either.
   - The sign-in methods, which the app wires up: `anonymous` (not exported
-    for now), `username-password`, `email-password`, `email-magic-link`,
+    for now), `username-password`, `email-password`, `email-magic-link`, `email-short-code`,
     `username-passkey`, `oauth`
     (only its shared React client is exported for now; the API for custom
     providers is not), `google`, `apple`, `github`, and `discord`.
