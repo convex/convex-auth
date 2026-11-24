@@ -21,7 +21,6 @@ export default defineSchema({
     isPrimary: v.boolean(),
   })
     .index("by_normalizedEmail", ["normalizedEmail"])
-    .index("by_userId", ["userId"])
     .index("by_userId_isPrimary", ["userId", "isPrimary"]),
 
   // One row for each challenge that has started and is not complete.
