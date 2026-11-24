@@ -22,6 +22,9 @@ export const sendEmail = mutation({
     subject: v.optional(v.string()),
     html: v.optional(v.string()),
     text: v.optional(v.string()),
+    headers: v.optional(
+      v.array(v.object({ name: v.string(), value: v.string() })),
+    ),
   },
   returns: v.string(),
   handler: async (ctx, args: FunctionArgs<SendEmailRef>): Promise<string> => {
@@ -31,6 +34,7 @@ export const sendEmail = mutation({
       subject: args.subject,
       html: args.html,
       text: args.text,
+      headers: args.headers,
     });
     return id;
   },

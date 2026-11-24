@@ -16,8 +16,9 @@ import type { AuthCore } from "../../server/setup.ts";
 import type { ComponentApi } from "../../components/email/_generated/component.js";
 import {
   startChallengeUserError,
-  completeChallengeUserError,
+  completeLinkUserError,
   landingUrlProblem,
+  toLinkUserError,
   type EmailSenderConfig,
 } from "../../components/email/validation.ts";
 import type { SendEmailRef } from "../../components/email/helpers.ts";
@@ -100,7 +101,7 @@ export type SendResult = Infer<typeof sendResult>;
 
 const signInResult = v.union(
   vSignInComplete,
-  vSignInError(completeChallengeUserError),
+  vSignInError(completeLinkUserError),
 );
 
 /** The result of `signInWithEmailMagicLink`: the minted session tokens, or an error. */
@@ -265,7 +266,10 @@ export function setupEmailMagicLink<UsersTable extends string>(
                 // Unexpected: the `expectedUserId` of the flow is `null`.
                 throw new Error("Unexpected WRONG_USER in a magic link");
               }
-              return { status: "error", userError: peek.userError };
+              return {
+                status: "error",
+                userError: toLinkUserError(peek.userError),
+              };
             }
 
             if (peek.emailOwnerId === null) {

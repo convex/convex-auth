@@ -64,6 +64,7 @@ export const _internal_dangerous_start = mutation({
       purpose: { kind: "changeEmail", userId: args.userId },
       ttlMs: ADD_EMAIL_TTL_MS,
       url: args.url,
+      shortCode: args.shortCode,
       emailSender: args.emailSender,
       copy: VALIDATE_EMAIL_COPY,
     });

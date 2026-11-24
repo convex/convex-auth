@@ -52,7 +52,22 @@ export const rateLimiter = new RateLimiter(components.rateLimiter, {
   startChallengePerEmail: { kind: "token bucket", rate: 5, period: HOUR },
   startChallengePerIp: { kind: "token bucket", rate: 20, period: HOUR },
   lookupEmailPerIp: { kind: "token bucket", rate: 60, period: HOUR },
+  // Incorrect short codes, per destination address, for all of the
+  // challenges of the address together. Each challenge also has its own
+  // limit (`SHORT_CODE_MAX_ATTEMPTS`). This limit stays in effect if a
+  // change makes the start limits higher: the number of guesses for an
+  // address does not depend on the number of challenges.
+  //
+  // With 8 digits, 10 guesses per hour give a probability of about 0.09 %
+  // per year to guess one code for one address.
+  shortCodeFailurePerEmail: { kind: "token bucket", rate: 10, period: HOUR },
 });
+
+/**
+ * The number of incorrect codes after which a short-code challenge is
+ * deleted. The user must then start again (and get a new email).
+ */
+export const SHORT_CODE_MAX_ATTEMPTS = 5;
 
 //------------------------------------------------------------------------------
 // Shared helpers
@@ -113,12 +128,17 @@ export type ChallengeEmailCopy = {
   // The sentence before the link, for example "Open this link to validate
   // your email address:".
   intro: string;
+  // The sentence before a short code, for example "Enter this code to
+  // validate your email address:". When absent, a short-code email uses
+  // `intro`.
+  codeIntro?: string;
 };
 
 /** The copy of the emails that record an address. */
 export const VALIDATE_EMAIL_COPY: ChallengeEmailCopy = {
   subject: "Validate your email address",
   intro: "Open this link to validate your email address:",
+  codeIntro: "Enter this code to validate your email address:",
 };
 
 /** "10 minutes", "1 hour", "2 hours". */
@@ -146,6 +166,30 @@ export function challengeEmailText(
     `${link}\n\n` +
     `The link stops working after ${formatDuration(ttlMs)}, and works only ` +
     "in the browser you started from.\n\n" +
+    "If you did not request this email, you can safely ignore it."
+  );
+}
+
+/**
+ * The plain-text body of a short-code email.
+ *
+ * The code stands alone on its line, with no spaces or dashes in it, and
+ * the sentence before it has the word "code". Mail clients that offer the
+ * code for autofill (for example Apple Mail with Safari) find codes with
+ * heuristics like these. The `OTP-Token` header, which
+ * `sendChallengeEmail` adds, gives the code in a form that software can read.
+ */
+export function shortCodeEmailText(
+  intro: string,
+  code: string,
+  ttlMs: number,
+): string {
+  return (
+    `${intro}\n\n` +
+    `${code}\n\n` +
+    `The code stops working after ${formatDuration(ttlMs)}, and works only ` +
+    "on the device you started from. Never give this code to another " +
+    "person.\n\n" +
     "If you did not request this email, you can safely ignore it."
   );
 }
@@ -186,10 +230,10 @@ export async function sendChallengeEmail(
   message: {
     to: string;
     copy: ChallengeEmailCopy;
-    link: string;
     ttlMs: number;
-  },
+  } & ({ link: string } | { shortCode: string; origin: string }),
 ): Promise<void> {
+  const isShortCode = "shortCode" in message;
   await ctx.runMutation(sender.sendEmailHandle as SendEmailHandle, {
     options: {
       apiKey: sender.apiKey,
@@ -201,7 +245,30 @@ export async function sendChallengeEmail(
     },
     from: sender.from,
     to: [message.to],
-    subject: message.copy.subject,
-    text: challengeEmailText(message.copy.intro, message.link, message.ttlMs),
+    // The code goes in the subject too, thus the user can read it in the
+    // notification without opening the email.
+    // The `OTP-Token` header (draft-goto-otp-token) gives the code and the
+    // origin where it can be used, in a form that software can read. A
+    // mail client that supports it offers the code for autofill only on
+    // this origin. The origin is canonical (see `originProblem`), thus it
+    // has no character that must be escaped in the quoted string.
+    headers: isShortCode
+      ? [
+          {
+            name: "OTP-Token",
+            value: `"${message.shortCode}"; origin="${message.origin}"`,
+          },
+        ]
+      : undefined,
+    subject: isShortCode
+      ? `${message.shortCode} is your code: ${message.copy.subject}`
+      : message.copy.subject,
+    text: isShortCode
+      ? shortCodeEmailText(
+          message.copy.codeIntro ?? message.copy.intro,
+          message.shortCode,
+          message.ttlMs,
+        )
+      : challengeEmailText(message.copy.intro, message.link, message.ttlMs),
   });
 }

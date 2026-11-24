@@ -65,6 +65,7 @@ export type SentEmail = {
   subject?: string;
   html?: string;
   text?: string;
+  headers?: { name: string; value: string }[];
 };
 
 /**
@@ -91,6 +92,7 @@ export function sentEmails(
       subject: row.subject as string | undefined,
       html: row.html as string | undefined,
       text: row.text as string | undefined,
+      headers: row.headers as { name: string; value: string }[] | undefined,
     }));
   });
 }

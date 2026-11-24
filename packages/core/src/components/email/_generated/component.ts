@@ -38,7 +38,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               retryAttempts: number;
               sendEmailHandle: string;
             };
-            url: string;
+            shortCode?: { origin: string };
+            url?: string;
             userId: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
@@ -70,7 +71,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "EMAIL_TAKEN" }
                 | { error: "WRONG_USER" };
             },
@@ -91,7 +93,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               retryAttempts: number;
               sendEmailHandle: string;
             };
-            url: string;
+            shortCode?: { origin: string };
+            url?: string;
             userId: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
@@ -128,7 +131,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "EMAIL_TAKEN" }
                 | { error: "WRONG_USER" };
             },
@@ -150,7 +154,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "EMAIL_TAKEN" };
             },
           Name
@@ -178,7 +183,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "WRONG_USER" };
             },
           Name
@@ -197,7 +203,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "WRONG_USER" };
             },
           Name
@@ -218,9 +225,10 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
             expectedUserId: string | null;
             intro: string;
             purpose: string;
+            shortCode?: { origin: string };
             subject: string;
             ttlMs?: number;
-            url: string;
+            url?: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
           | {
@@ -228,6 +236,26 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               userError:
                 | { error: "INVALID_EMAIL" }
                 | { error: "RATE_LIMITED"; retryAfterMs: number };
+            },
+          Name
+        >;
+        verify: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            browserSecret: string;
+            currentUserId: string | null;
+            emailCode: string;
+            purpose: string;
+          },
+          | { email: string; emailOwnerId: string | null; success: true }
+          | {
+              success: false;
+              userError:
+                | { error: "INVALID_CHALLENGE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
+                | { error: "WRONG_USER" };
             },
           Name
         >;
@@ -246,7 +274,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               retryAttempts: number;
               sendEmailHandle: string;
             };
-            url: string;
+            shortCode?: { origin: string };
+            url?: string;
             userId: string;
           },
           | { browserSecret: string; challengeId: string; success: true }
@@ -278,7 +307,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
               success: false;
               userError:
                 | { error: "INVALID_CHALLENGE" }
-                | { error: "INCORRECT_CODE" }
+                | { attemptsLeft?: number; error: "INCORRECT_CODE" }
+                | { error: "RATE_LIMITED"; retryAfterMs: number }
                 | { error: "EMAIL_TAKEN" };
             },
           Name
