@@ -122,6 +122,48 @@ type CompleteChangeEmailMutation = FunctionReference<
   CompleteChangeEmailResult
 >;
 
+type CompleteSignUpShortCodeMutation = FunctionReference<
+  "mutation",
+  "public",
+  { emailCode: string; browserSecret: string },
+  ClientView<CompleteSignUpResult<"shortCode">>
+>;
+
+type CompleteChangeEmailShortCodeMutation = FunctionReference<
+  "mutation",
+  "public",
+  { emailCode: string; browserSecret: string },
+  CompleteChangeEmailResult<"shortCode">
+>;
+
+/**
+ * The result of the `completeSignUp` callback from
+ * {@link useCompleteSignUpWithShortCode}.
+ */
+export type CompleteSignUpWithShortCodeResult =
+  | { status: "complete" }
+  | {
+      status: "error";
+      userError:
+        | SignInError<ClientView<CompleteSignUpResult<"shortCode">>>
+        | MissingSecretError
+        | OtherError;
+    };
+
+/**
+ * The result of the `completeChangeEmail` callback from
+ * {@link useCompleteChangeEmailWithShortCode}.
+ */
+export type CompleteChangeEmailWithShortCodeResult =
+  | { success: true }
+  | {
+      success: false;
+      userError:
+        | ExtractError<CompleteChangeEmailResult<"shortCode">>
+        | MissingSecretError
+        | OtherError;
+    };
+
 type StartPasswordRecoveryMutation = FunctionReference<
   "mutation",
   "public",
@@ -608,6 +650,92 @@ export function useCompleteSignUpWithEmailPassword(
   );
 }
 
+/**
+ * Client for the code step of a sign-up with `verification: "shortCode"`:
+ * present the code that the user typed with the secret stored by
+ * {@link useSignUpWithEmailPassword}, and adopt the minted session.
+ *
+ * Use it on the page where the user signed up: the user types the code from
+ * the email there. A failed attempt keeps the secret, thus the user can
+ * correct a typo. The code can contain spaces and dashes.
+ *
+ * ```tsx skip-check
+ * // `api.auth` of an app that sets `verification: "shortCode"`. (The app
+ * // that typechecks the doc examples uses links.)
+ * function ValidateEmailCode({ email }: { email: string }) {
+ *   const { completeSignUp, pending } = useCompleteSignUpWithShortCode(api.auth);
+ *   const [code, setCode] = useState("");
+ *   const [error, setError] = useState<string | null>(null);
+ *   return (
+ *     <form
+ *       onSubmit={async (e) => {
+ *         e.preventDefault();
+ *         const result = await completeSignUp({ code });
+ *         if (result.status === "error") {
+ *           setError(result.userError.error);
+ *         }
+ *       }}
+ *     >
+ *       <p>We sent a code to {email}.</p>
+ *       <input
+ *         autoComplete="one-time-code"
+ *         inputMode="numeric"
+ *         value={code}
+ *         onChange={(e) => setCode(e.target.value)}
+ *       />
+ *       <button type="submit" disabled={pending}>
+ *         Validate
+ *       </button>
+ *       {error !== null && <p>{error}</p>}
+ *     </form>
+ *   );
+ * }
+ * ```
+ *
+ * @param api The functions of the method, usually `api.auth`.
+ */
+export function useCompleteSignUpWithShortCode(api: {
+  completeSignUpWithEmailPassword: CompleteSignUpShortCodeMutation;
+}) {
+  const completeSignUpMutation = useStableFunctionReference(
+    api.completeSignUpWithEmailPassword,
+  );
+  const { setSession } = useAuthActions();
+  const signInApi = useAuthSignInApi();
+  const storage = useSecretStorage();
+  const { pending, track } = usePending();
+
+  const completeSignUp = useCallback(
+    ({ code }: { code: string }): Promise<CompleteSignUpWithShortCodeResult> =>
+      track(async () => {
+        try {
+          const browserSecret = await storage.get(SECRET_STORAGE_KEYS.signUp);
+          if (browserSecret === null || browserSecret === undefined) {
+            return {
+              status: "error",
+              userError: { error: "MISSING_SECRET" },
+            };
+          }
+          const result = await signInApi.mutation(completeSignUpMutation, {
+            emailCode: code,
+            browserSecret,
+          });
+          if (result.status !== "complete") {
+            return { status: "error", userError: result.userError };
+          }
+          await setSession(result.tokens);
+          await storage.remove(SECRET_STORAGE_KEYS.signUp);
+          return { status: "complete" };
+        } catch (cause) {
+          return foldSignInError(cause);
+        }
+      }),
+    [signInApi, completeSignUpMutation, setSession, storage, track],
+  );
+
+  return { completeSignUp, pending };
+}
+
 //------------------------------------------------------------------------------
 // Password recovery
 //------------------------------------------------------------------------------
@@ -892,4 +1020,58 @@ export function useCompleteChangeEmail(
     "changeEmail",
     complete,
   );
+}
+
+/**
+ * Client for the code step of an email change with
+ * `verification: "shortCode"`: present the code that the user typed with
+ * the secret stored by {@link useStartChangeEmail}. No session is adopted:
+ * the user already has one, and the backend requires it.
+ *
+ * A failed attempt keeps the secret, thus the user can correct a typo. The
+ * code can contain spaces and dashes.
+ *
+ * @param api The functions of the method, usually `api.auth`.
+ */
+export function useCompleteChangeEmailWithShortCode(api: {
+  completeChangeEmail: CompleteChangeEmailShortCodeMutation;
+}) {
+  const runCompleteChangeEmail = useMutation(api.completeChangeEmail);
+  const storage = useSecretStorage();
+  const { pending, track } = usePending();
+
+  const completeChangeEmail = useCallback(
+    ({
+      code,
+    }: {
+      code: string;
+    }): Promise<CompleteChangeEmailWithShortCodeResult> =>
+      track(async () => {
+        try {
+          const browserSecret = await storage.get(
+            SECRET_STORAGE_KEYS.changeEmail,
+          );
+          if (browserSecret === null || browserSecret === undefined) {
+            return {
+              success: false,
+              userError: { error: "MISSING_SECRET" },
+            };
+          }
+          const result = await runCompleteChangeEmail({
+            emailCode: code,
+            browserSecret,
+          });
+          if (!result.success) {
+            return result;
+          }
+          await storage.remove(SECRET_STORAGE_KEYS.changeEmail);
+          return { success: true };
+        } catch (cause) {
+          return foldError(cause);
+        }
+      }),
+    [runCompleteChangeEmail, storage, track],
+  );
+
+  return { completeChangeEmail, pending };
 }
