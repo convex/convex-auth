@@ -64,11 +64,16 @@ const { authMutation } = core.bindMethod({
 const signUp = authMutation({
   args: { accountId: v.string() },
   returns: v.any(),
-  handler: async (ctx, { accountId }) =>
-    await ctx.convexAuth.completeSignUp({
+  handler: async (ctx, { accountId }) => {
+    const { userId } = await ctx.convexAuth.createUser({
+      profile: { id: accountId },
+    });
+    return await ctx.convexAuth.completeSignIn({
+      userId,
       profile: { id: accountId },
       authenticatedBy,
-    }),
+    });
+  },
 });
 
 // The fixture's createUser returns the `id` of the profile as the user id.

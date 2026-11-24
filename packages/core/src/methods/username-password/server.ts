@@ -136,8 +136,8 @@ export function setupUsernamePassword<UsersTable extends string>(
       return {
         /**
          * Create a new account: reject a taken username or an invalid password,
-         * otherwise create the user + session and store the username and the
-         * password.
+         * otherwise create the user, store the username and the password, and
+         * then mint the session. The app's `onSignIn` thus sees the username.
          */
         signUpWithUsernamePassword: authMutation({
           args: { username: v.string(), password: v.string() },
@@ -174,14 +174,16 @@ export function setupUsernamePassword<UsersTable extends string>(
               };
             }
 
-            const tokens = await ctx.convexAuth.completeSignUp({
+            // Create the user without a session, store the username and the
+            // password, and only then sign in, so that the app's `onSignIn`
+            // can read them on the first sign-in too.
+            const { userId } = await ctx.convexAuth.createUser({
               profile: {},
-              authenticatedBy: component,
             });
 
             const setUsernameResult = await ctx.runMutation(
               usernameComponent.public.setUsername,
-              { userId: tokens.userId, username },
+              { userId, username },
             );
             if (!setUsernameResult.success) {
               // Unexpected: we validated the username above, and this handler
@@ -198,7 +200,7 @@ export function setupUsernamePassword<UsersTable extends string>(
             const setResult = await ctx.runMutation(
               component.public._internal_dangerous_setPassword,
               {
-                userId: tokens.userId,
+                userId,
                 password,
                 minimumLength: DEFAULT_MIN_PASSWORD_LENGTH,
               },
@@ -213,6 +215,11 @@ export function setupUsernamePassword<UsersTable extends string>(
               );
             }
 
+            const tokens = await ctx.convexAuth.completeSignIn({
+              userId,
+              profile: {},
+              authenticatedBy: component,
+            });
             return { status: "complete", tokens };
           },
         }),

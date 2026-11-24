@@ -70,6 +70,8 @@ You can also attach an optional `onSignIn` mutation, called with the resolved
 `userId` on every sign-in, the first one included. Anything you want to happen
 each time someone signs in belongs there, so `createUser` only has to handle
 what is true at creation time. Leave it out if there is nothing to do.
+On a sign-up, the method stores the username before it calls `onSignIn`, so
+`onSignIn` can read it with the username component's `getUsername`.
 
 ```ts file="examples/react-username-passkey-basic/convex/users.ts" title="convex/users.ts"
 
