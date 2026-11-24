@@ -340,9 +340,8 @@ export class AuthClient<
   }
 
   /**
-   * Calls the sign-in functions of the methods. Sign-in hooks use it instead
-   * of `useMutation` or `useAction`, so one hook serves both session models.
-   * See {@link AuthSignInApi}.
+   * Calls the sign-in functions of the methods. It works under both session
+   * models. See {@link AuthSignInApi}.
    */
   readonly signIn: AuthSignInApi;
 

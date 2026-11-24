@@ -139,9 +139,6 @@ type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
  *   return <ConvexAuthProvider auth={auth}>{children}</ConvexAuthProvider>;
  * }
  * ```
- *
- * The `client` and `api` props still work in place of `auth`, but they are
- * deprecated.
  */
 export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
   const { auth, client, children } = props;

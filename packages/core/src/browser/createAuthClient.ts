@@ -73,8 +73,7 @@ export type CreateAuthClientOptions<
 } & DeploymentUrlOption<C>;
 
 /**
- * Returns the auth client of a single-page app. Create one auth client
- * outside React and pass it to `ConvexAuthProvider`.
+ * Returns the auth client of a single-page app.
  *
  * ```ts
  * import { createAuthClient } from "@convex-dev/auth/react";
@@ -85,8 +84,8 @@ export type CreateAuthClientOptions<
  * const auth = createAuthClient({ convex, api: api.auth });
  * ```
  *
- * With a plain `ConvexClient`, pass `url`, because a `ConvexClient` has no
- * `url`. Then connect the two clients yourself.
+ * With a plain `ConvexClient`, pass `url`. Then connect the two clients
+ * yourself.
  *
  * ```ts
  * import { createAuthClient } from "@convex-dev/auth/browser";
@@ -108,8 +107,8 @@ export function createAuthClient<C extends SupportedConvexClient>(
 
 /**
  * Returns the auth client of a single-page app with the given ambient
- * sign-ins. `ConvexAuthProvider` uses it for its deprecated `ambientSignIns`
- * prop.
+ * sign-ins. `ConvexAuthProvider` uses it to create the auth client from its
+ * `client` and `api` props.
  *
  * @internal
  */
