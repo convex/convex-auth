@@ -56,6 +56,11 @@ check:jsdoc`). It is not an example to copy.
     `discord` method.
   - `nextjs` is a Next.js (App Router) app with SSR sign-in. It wires up the
     `usernamePassword` and `github` methods.
+  - `sveltekit` is the `nextjs` app in SvelteKit, on the Svelte bindings,
+    with the same backend. Its Playwright e2e tests (`e2e/`) start
+    `npx convex dev` and a production build. CI runs them against a local
+    deployment without a Convex account (`CONVEX_AGENT_MODE=anonymous`, see
+    `.github/workflows/e2e.yml`).
 
 ## Source layout of `packages/core/src`
 

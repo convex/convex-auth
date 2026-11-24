@@ -27,6 +27,9 @@ export default defineConfig([
       "packages/core/.api-entrypoints/**",
       // Generated Next.js output in the examples.
       "examples/**/.next/**",
+      // Generated SvelteKit output in the examples.
+      "examples/**/.svelte-kit/**",
+      "examples/sveltekit/build/**",
     ],
   },
   js.configs.recommended,

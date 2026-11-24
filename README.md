@@ -146,6 +146,8 @@ directory (see the example's own README):
   `examples/react-discord` — the core and OAuth components with the `google`,
   `apple`, `github`, and `discord` methods.
 - `examples/nextjs` — a Next.js app with SSR sign-in.
+- `examples/sveltekit` — the same app in SvelteKit, with Playwright e2e tests
+  that CI runs against a local Convex backend (`.github/workflows/e2e.yml`).
 
 The tests of the examples run as part of `pnpm test` at the repo root.
 

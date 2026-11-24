@@ -14,6 +14,10 @@ packages/password-hash-wasm/rust/target/
 **/.next/
 next-env.d.ts
 
+# SvelteKit output (examples)
+**/.svelte-kit/
+examples/sveltekit/build/
+
 # Docusaurus generated files and build output (packages/docs)
 packages/docs/.docusaurus
 packages/docs/build
