@@ -10,7 +10,7 @@ import type {
 } from "../browser/ambientSignInClient.ts";
 import { useOauth } from "../methods/oauth/react.ts";
 import { InMemoryStorage } from "../browser/storage.ts";
-import { useAuthClient, useAuthSignInApi } from "./client.tsx";
+import { useAuthClient } from "./client.tsx";
 import {
   ConvexAuthProvider,
   createAuthClient,
@@ -85,7 +85,7 @@ describe("ConvexAuthProvider ambient sign-ins", () => {
     const fromSetup: AuthSignInApi[] = [];
     const fromHook: AuthSignInApi[] = [];
     function Capture() {
-      fromHook.push(useAuthSignInApi());
+      fromHook.push(useAuthClient().signInApi);
       return null;
     }
     render(
@@ -115,7 +115,7 @@ describe("ConvexAuthProvider ambient sign-ins", () => {
     const signIn = makeFunctionReference<"mutation">("auth:signInProbe");
     const captured: AuthSignInApi[] = [];
     function Capture() {
-      captured.push(useAuthSignInApi());
+      captured.push(useAuthClient().signInApi);
       return null;
     }
     render(
@@ -151,11 +151,11 @@ describe("ConvexAuthProvider with an auth client", () => {
     return <div>{useAuthToken() ?? "no token"}</div>;
   }
 
-  test("hooks return the auth client from the auth prop", () => {
+  test("useAuthClient returns the auth client from the auth prop", () => {
     const auth = makeAuthClient();
     const fromHook: unknown[] = [];
     function Capture() {
-      fromHook.push(useAuthClient(), useAuthSignInApi());
+      fromHook.push(useAuthClient());
       return null;
     }
     render(
@@ -164,7 +164,6 @@ describe("ConvexAuthProvider with an auth client", () => {
       </ConvexAuthProvider>,
     );
     expect(fromHook[0]).toBe(auth);
-    expect(fromHook[1]).toBe(auth.signInApi);
   });
 
   test("the initialToken prop is stored when the auth client starts", async () => {

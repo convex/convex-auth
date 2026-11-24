@@ -339,8 +339,8 @@ export class AuthClient<
   }
 
   /**
-   * The {@link AuthSignInApi} for calling the sign-in functions of the
-   * sign-in methods under both session models.
+   * Runs the sign-in functions of the sign-in methods for both SPA and SSR.
+   * See {@link AuthSignInApi}.
    */
   readonly signInApi: AuthSignInApi;
 

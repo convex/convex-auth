@@ -54,8 +54,9 @@ export function useSignInWithUsernamePasskeyImpl(
 ) {
   const { setSession } = useAuthActions();
 
-  // Mutations that return a session go through the auth client's `signInApi`
-  // because it serves both session models.
+  // Run the mutations that return a session through `signInApi`, not
+  // `useMutation`, so these hooks work for both SPA and SSR. See
+  // {@link AuthSignInApi}.
   const signInApi = useAuthClient().signInApi;
   const convex = useConvex();
 

@@ -39,15 +39,6 @@ export function useAuthClient(): AuthClient {
   return authClient;
 }
 
-/**
- * Returns the {@link AuthSignInApi} of the surrounding auth provider.
- *
- * @deprecated Use `useAuthClient().signInApi`.
- */
-export function useAuthSignInApi(): AuthSignInApi {
-  return useAuthClient().signInApi;
-}
-
 // React calls this during SSR and initial hydration — before `init()` has read
 // storage — so it always reports the loading state. It lives here rather than
 // on the core client because server rendering is a React-specific concern.
