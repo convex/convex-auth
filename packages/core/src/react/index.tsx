@@ -6,8 +6,7 @@
  *    `ConvexProvider`.
  *
  * The auth client stores the session, refreshes the access token, and signs
- * out. The provider passes the auth state to Convex's
- * `ConvexProviderWithAuth`.
+ * out.
  *
  * Sign-in methods are deliberately not part of this core: each sign-in method
  * (password, OAuth, passkey, …) ships its own authentication API that returns a
@@ -44,13 +43,13 @@ export { useAuthClient } from "./client.tsx";
 /** The props of {@link ConvexAuthProvider} with an auth client. */
 type AuthClientProps = {
   /**
-   * The auth client from {@link createAuthClient}, created with a
+   * An auth client that {@link createAuthClient} returns for a
    * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    */
   auth: AuthClient<ConvexReactClient>;
   /**
    * An access token that the server rendered into the page. The auth client
-   * stores it when it starts in the browser.
+   * stores the token on its first start in the browser.
    */
   initialToken?: string | null;
   client?: never;
@@ -61,8 +60,8 @@ type AuthClientProps = {
 };
 
 /**
- * The props of {@link ConvexAuthProvider} that build the auth client inside
- * the provider.
+ * The props of {@link ConvexAuthProvider} when the provider creates the auth
+ * client.
  */
 type ConvexClientProps = {
   auth?: never;
@@ -71,16 +70,15 @@ type ConvexClientProps = {
    * Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    *
    * @deprecated Create the auth client with {@link createAuthClient} and pass
-   * it as `auth`.
+   * it as the `auth` prop.
    */
   client: ConvexReactClient;
   /**
-   * The app's `refreshSession` and `signOut` mutation references, and its
-   * `isAuthenticated` query reference. The provider subscribes to
-   * `isAuthenticated`, so a session revoked server-side signs the client out
-   * reactively.
+   * References to the app's `refreshSession` and `signOut` mutations and its
+   * `isAuthenticated` query. The provider subscribes to the `isAuthenticated`
+   * query, so revoking the session on the server signs the client out.
    *
-   * @deprecated Pass it to {@link createAuthClient}.
+   * @deprecated Pass it as the `api` option of {@link createAuthClient}.
    */
   api: ConvexAuthApi;
   /**
@@ -93,14 +91,15 @@ type ConvexClientProps = {
    * advised to provide an implementation, because the in-memory default will
    * cause users to get logged out each time the app closes.
    *
-   * @deprecated Pass it to {@link createAuthClient}.
+   * @deprecated Pass it as the `storage` option of {@link createAuthClient}.
    */
   storage?: TokenStorage;
   /**
    * Namespace for storage keys, which determines whether tokens are shared.
    * Non-alphanumeric characters are ignored. Defaults to the deployment URL.
    *
-   * @deprecated Pass it to {@link createAuthClient}.
+   * @deprecated Pass it as the `storageNamespace` option of
+   * {@link createAuthClient}.
    */
   storageNamespace?: string;
   /**
@@ -117,7 +116,6 @@ type ConvexClientProps = {
   ambientSignIns?: AmbientSignInClient[];
 };
 
-/** The props of {@link ConvexAuthProvider}. */
 type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
   children: ReactNode;
 };
@@ -125,7 +123,8 @@ type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
 /**
  * Replace your `ConvexProvider` with this to enable authentication.
  *
- * Create the auth client once, outside React, and pass it as `auth`:
+ * Create the auth client once, outside React, and pass it as the `auth`
+ * prop:
  *
  * ```tsx
  * import { ConvexAuthProvider, createAuthClient } from "@convex-dev/auth/react";
@@ -144,8 +143,8 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
   const { auth, client, children } = props;
   if (auth !== undefined && client !== undefined) {
     throw new Error(
-      "[convex-auth] Pass ConvexAuthProvider either auth or client and api, " +
-        "not both.",
+      "[convex-auth] Pass ConvexAuthProvider either the auth prop or the " +
+        "client and api props, not both.",
     );
   }
   const authClient = useMemo(() => {
@@ -153,7 +152,7 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
     if (client === undefined) {
       throw new Error(
         "[convex-auth] ConvexAuthProvider needs an auth client. Create one " +
-          "with createAuthClient and pass it as auth.",
+          "with createAuthClient and pass it as the auth prop.",
       );
     }
     return buildSpaAuthClient(

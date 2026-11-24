@@ -67,7 +67,8 @@ export function useSignInAnonymously(api: {
 }) {
   const signInMutation = useStableFunctionReference(api.signInAnonymously);
   const { setSession } = useAuthActions();
-  // The auth client's signIn, unlike `useMutation`, serves both session models.
+  // Unlike `useMutation`, the auth client's `signIn` API serves both session
+  // models.
   const signInApi = useAuthClient().signIn;
   const signIn = useCallback(async () => {
     const result = await signInApi.mutation(signInMutation, {});

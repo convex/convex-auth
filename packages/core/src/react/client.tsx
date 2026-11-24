@@ -40,7 +40,7 @@ export function useAuthClient(): AuthClient {
 }
 
 /**
- * The {@link AuthSignInApi} of the surrounding auth provider.
+ * Returns the {@link AuthSignInApi} of the surrounding auth provider.
  *
  * @deprecated Use `useAuthClient().signIn`.
  */
@@ -73,7 +73,8 @@ export const ConvexAuthActionsContext = createContext<
 >(undefined);
 
 /**
- * The bound {@link AuthClient}. Read it with {@link useAuthClient}.
+ * The {@link AuthClient} of the auth provider. Read it with
+ * {@link useAuthClient}.
  */
 export const AuthClientContext = createContext<AuthClient | undefined>(
   undefined,

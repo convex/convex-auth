@@ -21,8 +21,8 @@ const API = {
 };
 
 /**
- * A disabled `ConvexClient`, as on a server, whose `mutation` and `action`
- * resolve without a deployment.
+ * Returns a disabled `ConvexClient` with stubs for its `mutation` and `action`
+ * methods.
  */
 function stubConvex() {
   const convex = new ConvexClient(URL, { disabled: true });
@@ -35,7 +35,10 @@ function stubConvex() {
   return { convex, mutation, action };
 }
 
-/** Stub `fetch` so the deployment answers in the Convex HTTP format. */
+/**
+ * Stubs the global `fetch` with a mock that returns a given value as a Convex
+ * HTTP response.
+ */
 function stubDeployment(value: unknown) {
   const fetchMock = vi.fn(
     async (_url: string, _init: RequestInit) =>
@@ -54,7 +57,7 @@ describe("createAuthClient", () => {
     vi.restoreAllMocks();
   });
 
-  test("refresh calls refreshSession over HTTP with the stored refresh token", async () => {
+  test("a refresh calls the refreshSession mutation over HTTP with the stored refresh token", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
     const fetchMock = stubDeployment({ kind: "noSession" });
@@ -74,7 +77,7 @@ describe("createAuthClient", () => {
     expect(mutation).not.toHaveBeenCalled();
   });
 
-  test("sign-out calls signOut over HTTP and clears the session", async () => {
+  test("sign-out calls the signOut mutation over HTTP and clears the session", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
     storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
@@ -94,7 +97,7 @@ describe("createAuthClient", () => {
     expect(auth.getSnapshot().isAuthenticated).toBe(false);
   });
 
-  test("sign-in functions are called through the Convex client", async () => {
+  test("the signIn property calls sign-in functions through the Convex client", async () => {
     const { convex, mutation, action } = stubConvex();
     const auth = createAuthClient({ convex, url: URL, api: API });
     const signInMutation = makeFunctionReference<"mutation">("auth:signIn");
@@ -111,7 +114,7 @@ describe("createAuthClient", () => {
     expect(action).toHaveBeenCalledWith(signInAction, { code: "2" });
   });
 
-  test("the url defaults to the Convex client's url, and the namespace to the url", async () => {
+  test("the url and storageNamespace options default to the ConvexReactClient's URL", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
     const convex = new ConvexReactClient(URL);
@@ -120,13 +123,13 @@ describe("createAuthClient", () => {
     expect(auth.getAccessToken()).toBe("access-1");
   });
 
-  test("a ConvexClient needs the url option", () => {
+  test("throws for a ConvexClient without the url option", () => {
     expect(() =>
       createAuthClient({ convex: stubConvex().convex, api: API } as never),
     ).toThrow(/needs a url option/);
   });
 
-  test("oauth() is registered", () => {
+  test("registers the oauth ambient sign-in", () => {
     const auth = createAuthClient({
       convex: stubConvex().convex,
       url: URL,

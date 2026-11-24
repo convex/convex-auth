@@ -151,7 +151,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     return <div>{useAuthToken() ?? "no token"}</div>;
   }
 
-  test("hooks get the auth client passed as auth", () => {
+  test("hooks return the auth client from the auth prop", () => {
     const auth = makeAuthClient();
     const fromHook: unknown[] = [];
     function Capture() {
@@ -167,7 +167,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     expect(fromHook[1]).toBe(auth.signIn);
   });
 
-  test("initialToken is stored when the auth client starts", async () => {
+  test("the initialToken prop is stored when the auth client starts", async () => {
     const auth = makeAuthClient();
     render(
       <ConvexAuthProvider auth={auth} initialToken="access-ssr">
@@ -178,7 +178,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     expect(auth.getAccessToken()).toBe("access-ssr");
   });
 
-  test("initialToken is stored under StrictMode", async () => {
+  test("the initialToken prop is stored under StrictMode", async () => {
     const auth = makeAuthClient();
     render(
       <StrictMode>
@@ -190,7 +190,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
   });
 
-  test("passing auth and client together throws", () => {
+  test("passing the auth and client props together throws", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const props = {
       auth: makeAuthClient(),
@@ -199,7 +199,7 @@ describe("ConvexAuthProvider with an auth client", () => {
       children: <div />,
     } as unknown as ComponentProps<typeof ConvexAuthProvider>;
     expect(() => render(<ConvexAuthProvider {...props} />)).toThrow(
-      /either auth or client and api, not both/,
+      /either the auth prop or the client and api props, not both/,
     );
   });
 });

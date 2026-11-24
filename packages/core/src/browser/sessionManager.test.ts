@@ -710,7 +710,7 @@ describe("AuthClient (SSR)", () => {
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
   });
 
-  test("init's initialToken wins over a persisted token and is stored", async () => {
+  test("the initialToken option of init replaces a persisted token", async () => {
     const storage = new InMemoryStorage();
     storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "stale-access");
     const { client } = makeSsrClient({}, storage);
@@ -723,7 +723,7 @@ describe("AuthClient (SSR)", () => {
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
   });
 
-  test("init uses initialToken on the first call only", async () => {
+  test("init uses the initialToken option on the first call only", async () => {
     const storage = new InMemoryStorage();
     const { client } = makeSsrClient({}, storage);
     await client.init({ initialToken: "access-1" });

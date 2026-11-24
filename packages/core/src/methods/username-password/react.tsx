@@ -227,7 +227,8 @@ function usePasswordFlow<
   Result extends ClientView<SignInResult> | ClientView<SignUpResult>,
 >(mutation: FunctionReference<"mutation", "public", Credentials, Result>) {
   const { setSession } = useAuthActions();
-  // The auth client's signIn, unlike `useMutation`, serves both session models.
+  // Unlike `useMutation`, the auth client's `signIn` API serves both session
+  // models.
   const signInApi = useAuthClient().signIn;
   const [pending, setPending] = useState(false);
 

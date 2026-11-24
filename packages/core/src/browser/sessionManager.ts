@@ -54,14 +54,13 @@ interface AuthClientConfigBase<C extends SupportedConvexClient> {
   /** The app's Convex client. */
   convex?: C;
   /**
-   * A reference to the app's `isAuthenticated` query. Framework bindings
-   * subscribe to the query so a session revoked server-side signs the client
-   * out.
+   * A reference to the app's `isAuthenticated` query. Subscribing to the
+   * query signs the client out when the server revokes the session.
    */
   isAuthenticated?: IsAuthenticatedFn;
   /**
-   * Calls the sign-in functions of the methods. Defaults to
-   * `ambientSignIns.signInApi`.
+   * The API for calling the sign-in functions of the sign-in methods.
+   * Defaults to `ambientSignIns.signInApi`.
    */
   signInApi?: AuthSignInApi;
   /** Where tokens are persisted. */
@@ -72,8 +71,8 @@ interface AuthClientConfigBase<C extends SupportedConvexClient> {
    * An access token to store on {@link AuthClient.init}, typically provided by
    * an SSR host.
    *
-   * @deprecated Pass `initialToken` to {@link AuthClient.init} instead, so a
-   * client shared on a server never holds a user's token.
+   * @deprecated Pass the `initialToken` option to {@link AuthClient.init}
+   * instead, so a client shared on a server never holds a user's token.
    */
   initialAccessToken?: string | null;
   /**
@@ -193,8 +192,8 @@ function signInApiFor(config: AuthClientConfig): AuthSignInApi {
   if (configured !== undefined) return configured;
   const missing = (): never => {
     throw new Error(
-      "[convex-auth] This auth client has no signInApi to call sign-in " +
-        "functions with.",
+      "[convex-auth] This auth client can't call sign-in functions because " +
+        "its config has no signInApi option.",
     );
   };
   return { mutation: missing, action: missing };
@@ -324,24 +323,24 @@ export class AuthClient<
   }
 
   /**
-   * The app's Convex client from the config, or undefined when none was
-   * given. {@link createAuthClient} always sets it.
+   * The `convex` option of the config, or undefined when the config has
+   * none. An auth client from {@link createAuthClient} always has it.
    */
   get convex(): C | undefined {
     return this.#convex;
   }
 
   /**
-   * The reference to the app's `isAuthenticated` query from the config, or
-   * undefined when none was given. {@link createAuthClient} always sets it.
+   * The `isAuthenticated` option of the config, or undefined when the config
+   * has none. An auth client from {@link createAuthClient} always has it.
    */
   get isAuthenticated(): IsAuthenticatedFn | undefined {
     return this.#isAuthenticated;
   }
 
   /**
-   * Calls the sign-in functions of the methods. It works under both session
-   * models. See {@link AuthSignInApi}.
+   * The {@link AuthSignInApi} for calling the sign-in functions of the
+   * sign-in methods under both session models.
    */
   readonly signIn: AuthSignInApi;
 
@@ -419,8 +418,8 @@ export class AuthClient<
    * load happen once, but the cross-tab listener is (re)attached on every
    * call, so an `init` after a `dispose` fully restores the client.
    *
-   * Call it in the browser only. On a server, one client can be shared by
-   * every request, so it must never hold a user's token.
+   * Call it in the browser only. A server can share one client across all
+   * requests, so the client must never hold a user's token.
    */
   async init(options?: {
     /**

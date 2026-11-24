@@ -15,8 +15,8 @@ import { AuthClient, type SupportedConvexClient } from "./sessionManager.ts";
 import { defaultStorage, type TokenStorage } from "./storage.ts";
 
 /**
- * The `url` option of an auth client factory. The option is required with a
- * `ConvexClient`, because a disabled `ConvexClient` has no readable URL.
+ * The `url` option of {@link createAuthClient}. The option is required with a
+ * `ConvexClient` because a disabled `ConvexClient` has no readable URL.
  */
 export type DeploymentUrlOption<C extends SupportedConvexClient> =
   C extends ConvexReactClient
@@ -34,21 +34,21 @@ export type CreateAuthClientOptions<
   C extends SupportedConvexClient = SupportedConvexClient,
 > = {
   /**
-   * The app's `ConvexReactClient` or `ConvexClient`. Sign-in functions are
-   * called through it.
+   * The app's `ConvexReactClient` or `ConvexClient`. The auth client uses this
+   * to call sign-in functions.
    */
   convex: C;
   /**
    * References to the app's `refreshSession` and `signOut` mutations and its
-   * `isAuthenticated` query, usually `api.auth`.
+   * `isAuthenticated` query. Most apps pass `api.auth`.
    */
   api: ConvexAuthApi;
   /**
-   * Where the session is stored. Defaults to `localStorage` in the browser,
-   * and to memory where there is no `localStorage`.
+   * The storage for the session. Defaults to `localStorage`, or to memory
+   * where there is no `localStorage`.
    *
-   * React Native apps should pass an implementation, because the memory
-   * default signs the user out each time the app closes. An example for
+   * The memory default signs the user out each time the app closes, so pass
+   * a persistent storage where there is no `localStorage`. For example, with
    * Expo:
    *
    * ```ts
@@ -84,8 +84,8 @@ export type CreateAuthClientOptions<
  * const auth = createAuthClient({ convex, api: api.auth });
  * ```
  *
- * With a plain `ConvexClient`, pass `url`. Then connect the two clients
- * yourself.
+ * With a `ConvexClient`, pass the `url` option. Then call `setAuth` and
+ * `init` yourself.
  *
  * ```ts
  * import { createAuthClient } from "@convex-dev/auth/browser";
@@ -107,8 +107,7 @@ export function createAuthClient<C extends SupportedConvexClient>(
 
 /**
  * Returns the auth client of a single-page app with the given ambient
- * sign-ins. `ConvexAuthProvider` uses it to create the auth client from its
- * `client` and `api` props.
+ * sign-ins.
  *
  * @internal
  */
@@ -131,8 +130,8 @@ export function buildSpaAuthClient<C extends SupportedConvexClient>(
   const httpClient = new ConvexHttpClient(url, {
     logger: isReactClient ? convex.logger : undefined,
   });
-  // Sign-in functions can be called through the websocket client, because it
-  // is not paused before the user signs in.
+  // Sign-in functions can go through the websocket client because it is not
+  // paused before the user signs in.
   const signInApi: AuthSignInApi = {
     mutation: (fn, args) => convex.mutation(fn, args),
     action: (fn, args) => convex.action(fn, args),
@@ -154,8 +153,6 @@ export function buildSpaAuthClient<C extends SupportedConvexClient>(
     ambientSignIns: {
       signIns: ambientSignIns,
       signInApi,
-      // Mutations that create no session are also called through the websocket
-      // client.
       convex: { mutation: (fn, args) => convex.mutation(fn, args) },
     },
     verbose: options.verbose,
