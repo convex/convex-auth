@@ -76,7 +76,7 @@ export function emailsByUserId(
 ): Promise<Doc<"verifiedEmails">[]> {
   return ctx.db
     .query("verifiedEmails")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .withIndex("by_userId_isPrimary", (q) => q.eq("userId", userId))
     .collect();
 }
 
@@ -90,7 +90,7 @@ export async function userHasEmail(
 ): Promise<boolean> {
   const first = await ctx.db
     .query("verifiedEmails")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .withIndex("by_userId_isPrimary", (q) => q.eq("userId", userId))
     .first();
   return first !== null;
 }
