@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { ConvexReactClient } from "convex/react";
 import { makeFunctionReference } from "convex/server";
 import { type ComponentProps, StrictMode } from "react";
@@ -11,11 +11,7 @@ import type {
 import { useOauth } from "../methods/oauth/react.ts";
 import { InMemoryStorage } from "../browser/storage.ts";
 import { useAuthClient } from "./client.tsx";
-import {
-  ConvexAuthProvider,
-  createAuthClient,
-  useAuthToken,
-} from "./index.tsx";
+import { ConvexAuthProvider, createAuthClient } from "./index.tsx";
 import { useAmbientSignInValue } from "./methods.ts";
 
 const API = {
@@ -147,10 +143,6 @@ describe("ConvexAuthProvider with an auth client", () => {
     });
   }
 
-  function Token() {
-    return <div>{useAuthToken() ?? "no token"}</div>;
-  }
-
   test("useAuthClient returns the auth client from the auth prop", () => {
     const auth = makeAuthClient();
     const fromHook: unknown[] = [];
@@ -164,29 +156,6 @@ describe("ConvexAuthProvider with an auth client", () => {
       </ConvexAuthProvider>,
     );
     expect(fromHook[0]).toBe(auth);
-  });
-
-  test("the initialToken prop is stored when the auth client starts", async () => {
-    const auth = makeAuthClient();
-    render(
-      <ConvexAuthProvider auth={auth} initialToken="access-ssr">
-        <Token />
-      </ConvexAuthProvider>,
-    );
-    await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
-    expect(auth.getAccessToken()).toBe("access-ssr");
-  });
-
-  test("the initialToken prop is stored under StrictMode", async () => {
-    const auth = makeAuthClient();
-    render(
-      <StrictMode>
-        <ConvexAuthProvider auth={auth} initialToken="access-ssr">
-          <Token />
-        </ConvexAuthProvider>
-      </StrictMode>,
-    );
-    await waitFor(() => expect(screen.getByText("access-ssr")).toBeDefined());
   });
 
   test("passing the auth and client props together throws", () => {

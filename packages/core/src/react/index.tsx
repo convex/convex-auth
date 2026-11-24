@@ -47,11 +47,6 @@ type AuthClientProps = {
    * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    */
   auth: AuthClient<ConvexReactClient>;
-  /**
-   * An access token that the server rendered into the page. The auth client
-   * stores the token on its first start in the browser.
-   */
-  initialToken?: string | null;
   client?: never;
   api?: never;
   storage?: never;
@@ -65,7 +60,6 @@ type AuthClientProps = {
  */
 type ConvexClientProps = {
   auth?: never;
-  initialToken?: never;
   /**
    * Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    *
@@ -178,7 +172,7 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
   }
 
   return (
-    <AuthProvider authClient={authClient} initialToken={props.initialToken}>
+    <AuthProvider authClient={authClient}>
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
         <SessionWatcher isAuthenticated={isAuthenticated} />
         {children}

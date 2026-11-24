@@ -83,21 +83,6 @@ export type CreateAuthClientOptions<
  * const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL!);
  * const auth = createAuthClient({ convex, api: api.auth });
  * ```
- *
- * With a `ConvexClient`, pass the `url` option. Then call `setAuth` and
- * `init` yourself.
- *
- * ```ts
- * import { createAuthClient } from "@convex-dev/auth/browser";
- * import { ConvexClient } from "convex/browser";
- * import { api } from "../convex/_generated/api";
- *
- * const url = import.meta.env.VITE_CONVEX_URL!;
- * const convex = new ConvexClient(url);
- * const auth = createAuthClient({ convex, url, api: api.auth });
- * convex.setAuth((args) => auth.fetchAccessToken(args));
- * await auth.init();
- * ```
  */
 export function createAuthClient<C extends SupportedConvexClient>(
   options: CreateAuthClientOptions<C>,
