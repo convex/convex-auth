@@ -130,16 +130,15 @@ type ConvexAuthProviderProps = (AuthClientProps | ConvexClientProps) & {
  * ```
  */
 export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
-  const { auth, client, children } = props;
-  if (auth !== undefined && client !== undefined) {
+  if (props.auth !== undefined && props.client !== undefined) {
     throw new Error(
       "[convex-auth] Pass ConvexAuthProvider either the auth prop or the " +
         "client and api props, not both.",
     );
   }
   const authClient = useMemo(() => {
-    if (auth !== undefined) return auth;
-    if (client === undefined) {
+    if (props.auth !== undefined) return props.auth;
+    if (props.client === undefined) {
       throw new Error(
         "[convex-auth] ConvexAuthProvider needs an auth client. Create one " +
           "with createAuthClient and pass it as the auth prop.",
@@ -147,8 +146,8 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
     }
     return buildSpaAuthClient(
       {
-        convex: client,
-        api: props.api!,
+        convex: props.client,
+        api: props.api,
         storage: props.storage,
         storageNamespace: props.storageNamespace,
       },
@@ -156,13 +155,13 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
     );
     // The provider builds the auth client once per `client`, so changes to the
     // other props are ignored.
-  }, [auth, client]);
+  }, [props.auth, props.client]);
 
   return (
     <AuthProvider authClient={authClient}>
       <ConvexProviderWithAuth client={authClient.convex} useAuth={useAuth}>
         <SessionWatcher isAuthenticated={authClient.isAuthenticatedQuery} />
-        {children}
+        {props.children}
       </ConvexProviderWithAuth>
     </AuthProvider>
   );
