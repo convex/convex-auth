@@ -17,7 +17,7 @@
  * than talking to Convex directly.
  *
  * Sign-in likewise runs on the server, but methods need no SSR-specific hook
- * for it. {@link ConvexAuthNextjsProvider} supplies an {@link AuthSignInApi} backed
+ * for it. {@link ConvexAuthNextjsProvider} supplies an `AuthSignInApi` backed
  * by a `ConvexHttpClient` aimed at the SSR host's auth proxy, so the
  * normal client hook of a method works unchanged: the proxy mints the session, stashes the
  * refresh token in the cookie, and returns an access-only
@@ -33,18 +33,14 @@ import { makeFunctionReference } from "convex/server";
 import { ReactNode, useMemo } from "react";
 import type { AmbientSignInClient } from "../../browser/ambientSignInClient.ts";
 import { AuthClient } from "../../browser/sessionManager.ts";
+import { proxySignInApi } from "./proxySignInApi.ts";
 import { TokenStorage, defaultStorage } from "../../browser/storage.ts";
 import type {
   AuthSessionResponse,
   IsAuthenticatedFn,
 } from "../../lib/types.ts";
 import { oauth } from "../../methods/oauth/client.ts";
-import {
-  AuthProvider,
-  SessionWatcher,
-  useAuth,
-  type AuthSignInApi,
-} from "../../react/client.tsx";
+import { AuthProvider, SessionWatcher, useAuth } from "../../react/client.tsx";
 
 /**
  * POST to the refresh or sign-out route and read back the access-only bundle.
@@ -143,26 +139,14 @@ export function ConvexAuthNextjsProvider({
       skipConvexDeploymentUrlCheck: true,
       logger: convex.logger,
     });
-    // Attach the current access token per call: a sign-in typically runs
-    // unauthenticated, but a function may want the existing identity (e.g. to
-    // link an account to the signed-in user). `authClient` is assigned below,
-    // after `signInApi`, because the two reference each other: the api reads
-    // the client's token, and the client hands the api to its ambient setups.
-    // Those setups run inside the constructor, so the read must stay lazy.
+    // `authClient` is assigned below, after `signInApi`, because the two
+    // reference each other: the api reads the client's token, and the client
+    // hands the api to its ambient setups.
     // TODO(erquhart) Untangle `authClient` and `signInApi` with OAuth
     // simplification.
-    // eslint-disable-next-line prefer-const -- read by `withAuth` before it is assigned
+    // eslint-disable-next-line prefer-const -- read by `signInApi` before it is assigned
     let authClient: AuthClient;
-    const withAuth = () => {
-      const token = authClient.getAccessToken();
-      if (token !== null) proxy.setAuth(token);
-      else proxy.clearAuth();
-      return proxy;
-    };
-    const signInApi: AuthSignInApi = {
-      mutation: (fn, args) => withAuth().mutation(fn, args),
-      action: (fn, args) => withAuth().action(fn, args),
-    };
+    const signInApi = proxySignInApi(proxy, () => authClient);
     authClient = new AuthClient({
       mode: "ssr",
       authApi: {

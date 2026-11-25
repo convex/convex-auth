@@ -8,8 +8,14 @@
  * Browser runs have two tabs sharing one `localStorage` and one lock, as tabs
  * of one origin share `localStorage` and Web Locks. React Native runs have one
  * app whose storage, like `expo-secure-store`, answers each call later, in
- * order, and fires no `storage` events.
+ * order, and fires no `storage` events. SSR runs have two tabs that also share
+ * a cookie jar: sign-ins go through the auth proxy, refreshes and sign-outs
+ * through the host's handlers, and a reload asks the host to render the page,
+ * which refreshes an expiring access token with `ServerAuthSession.getToken`.
+ * Each request carries the cookies the jar held when it was sent, and its
+ * `Set-Cookie` applies when its response arrives.
  */
+import { makeFunctionReference } from "convex/server";
 import { convexTest } from "convex-test";
 import fc from "fast-check";
 import { decodeJwt } from "jose";
@@ -19,9 +25,29 @@ import schema from "../component/schema.ts";
 import { STANDARD_ISSUED_REFRESH_TOKEN_LIMIT } from "../component/sessions.ts";
 import * as testApp from "../component/testApp.fixture.ts";
 import { sha256Hex } from "../lib/crypto.ts";
-import type { RefreshResult } from "../lib/types.ts";
+import {
+  makeSlimBundle,
+  type SignInEnvelope,
+  type SlimTokenBundle,
+} from "../lib/types.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
-import { AuthClient, type SpaAuthApi } from "./sessionManager.ts";
+import {
+  AUTH_JWT_COOKIE,
+  AUTH_REFRESH_COOKIE,
+  clearAuthCookies,
+  writeAuthCookies,
+  type CookieStore,
+} from "../ssr/cookies.ts";
+import {
+  proxySignInApi,
+  type ProxyClient,
+} from "../ssr/nextjs/proxySignInApi.ts";
+import { ServerAuthSession } from "../ssr/session.ts";
+import {
+  AuthClient,
+  type SpaAuthApi,
+  type SsrAuthApi,
+} from "./sessionManager.ts";
 import {
   InMemoryStorage,
   JWT_STORAGE_KEY,
@@ -42,6 +68,12 @@ const modules = {
 const TTL = resolveTtlConfig({});
 const NAMESPACE = "https://happy-animal-123.convex.cloud";
 const MAX_TABS = 2;
+/** A sign-in function; the fake auth proxy ignores which one it is. */
+const SIGN_IN = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  SignInEnvelope
+>("signIn:signIn");
 const KEYS = new NamespacedStorage(new InMemoryStorage(), NAMESPACE);
 const JWT_KEY = KEYS.key(JWT_STORAGE_KEY);
 const REFRESH_KEY = KEYS.key(REFRESH_TOKEN_STORAGE_KEY);
@@ -111,57 +143,250 @@ class Locks {
 
 type Holder = { run: () => Promise<void>; page: (() => boolean) | null };
 
+type RequestKind = "refresh" | "signIn" | "signOut" | "page";
+
+/** What a request did on the server, once it is served. */
+type Served = {
+  /** What the page receives if the response arrives. */
+  value: unknown;
+  /** The session a refresh rotated, if it did. */
+  rotated?: string;
+  /** The response's `Set-Cookie`, applied when it arrives. */
+  setCookies?: Map<string, string | null>;
+};
+
 /**
  * Requests from the pages to the app's `refreshSession` and `signOut`
- * mutations, which wait until the test serves them.
+ * mutations, or under SSR to the host's refresh and sign-out handlers and its
+ * pages, which wait until the test serves them.
  */
 class Network {
   pending: {
-    kind: "refresh" | "signOut";
-    refreshToken: string;
+    kind: RequestKind;
+    /** The refresh token the request presents, if any. */
+    presents: string | undefined;
     /** Whether the page that sent the request is still loaded. */
     live: () => boolean;
-    resolve: (result: never) => void;
+    execute: () => Promise<Served>;
+    resolve: (value: never) => void;
     reject: (error: Error) => void;
   }[] = [];
   /**
-   * Refreshes in a row whose rotated token never reached the client. Each one
-   * leaves an issued token nobody presents, and the server revokes the session
-   * once there are `STANDARD_ISSUED_REFRESH_TOKEN_LIMIT` of them.
+   * Refreshes in a row whose rotated token never reached the client, or that
+   * raced another request presenting the same token. Each one leaves an issued
+   * token nobody presents, and the server revokes the session once there are
+   * `STANDARD_ISSUED_REFRESH_TOKEN_LIMIT` of them.
    */
   lostRotations = new Map<string, number>();
 
-  /** Whether lost responses alone could have revoked `session`. */
+  /**
+   * Sessions an SSR request presented an old refresh token for, because the
+   * cookie rotated while it was in flight. Page loads refresh on the host
+   * without the refresh lock, so one that takes longer than
+   * `REFRESH_GRACE_MS` can present a spent token and revoke the session.
+   */
+  staleInFlight = new Set<string>();
+
+  /** Whether lost or slow requests alone could have revoked `session`. */
   excused(session: string | null): boolean {
     return (
       session !== null &&
-      (this.lostRotations.get(session) ?? 0) >=
-        STANDARD_ISSUED_REFRESH_TOKEN_LIMIT
+      ((this.lostRotations.get(session) ?? 0) >=
+        STANDARD_ISSUED_REFRESH_TOKEN_LIMIT ||
+        this.staleInFlight.has(session))
     );
   }
 
   constructor(
+    private app: App,
     private t: ConvexTestApi,
     private locks: Locks,
   ) {}
 
-  api(live: () => boolean): SpaAuthApi {
-    const send =
-      (kind: "refresh" | "signOut") =>
-      (refreshToken: string): Promise<never> => {
-        // Only a refresh holds the lock.
-        if (kind === "refresh") this.locks.claim(live);
-        // A lock request queued before a reload runs its callback after it,
-        // but the unloaded page sends nothing.
-        if (!live()) {
-          this.locks.releaseUnloaded();
-          return new Promise(() => {});
-        }
-        return new Promise((resolve, reject) =>
-          this.pending.push({ kind, refreshToken, live, resolve, reject }),
+  /**
+   * Sends a request from the page `live`. A refresh holds the refresh lock, and
+   * a sign-in may, so a lock holder making one is on that page.
+   */
+  send<T>(
+    live: () => boolean,
+    execute: () => Promise<Served>,
+    kind: RequestKind,
+    presents?: string,
+  ): Promise<T> {
+    if (kind === "refresh" || kind === "signIn") this.locks.claim(live);
+    // A lock request queued before a reload runs its callback after it, but
+    // the unloaded page sends nothing.
+    if (!live()) {
+      this.locks.releaseUnloaded();
+      return new Promise(() => {});
+    }
+    return new Promise((resolve, reject) =>
+      this.pending.push({
+        kind,
+        presents,
+        live,
+        execute,
+        resolve: resolve as never,
+        reject,
+      }),
+    );
+  }
+
+  private refresh(refreshToken: string) {
+    return this.t.mutation(api.public.refresh, { refreshToken, ...TTL });
+  }
+
+  private signOut(refreshToken: string) {
+    return this.t.mutation(api.public.signOut, { refreshToken });
+  }
+
+  /** The API of an SPA page, which calls the mutations itself. */
+  spaApi(live: () => boolean): SpaAuthApi {
+    return {
+      refreshSession: (refreshToken) =>
+        this.send(
+          live,
+          async () => {
+            const result = await this.refresh(refreshToken);
+            return {
+              value: result,
+              rotated:
+                result.kind === "rotated"
+                  ? sessionOf(result.tokens.accessToken)!
+                  : undefined,
+            };
+          },
+          "refresh",
+          refreshToken,
+        ),
+      signOut: (refreshToken) =>
+        this.send(
+          live,
+          async () => ({ value: await this.signOut(refreshToken) }),
+          "signOut",
+        ),
+    };
+  }
+
+  /**
+   * The cookies a request carries, as the jar held them when it was sent, and
+   * the changes the handler makes to them.
+   */
+  private requestCookies() {
+    const sent = new Map(this.app.cookies);
+    const setCookies = new Map<string, string | null>();
+    const cookies: CookieStore = {
+      get: (name) =>
+        (setCookies.has(name) ? setCookies.get(name) : sent.get(name)) ??
+        undefined,
+      set: (name, value) => void setCookies.set(name, value),
+      delete: (name) => void setCookies.set(name, null),
+    };
+    return { cookies, setCookies };
+  }
+
+  /** The host's session for one request, as `refreshHandler` builds it. */
+  private hostSession(cookies: CookieStore) {
+    return new ServerAuthSession({
+      refreshSession: (refreshToken) => this.refresh(refreshToken),
+      cookies,
+      cookieOptions: { secure: true },
+    });
+  }
+
+  /** The API of an SSR page, which calls the host's handlers. */
+  ssrApi(live: () => boolean): SsrAuthApi {
+    return {
+      // As `refreshHandler` does.
+      refreshSession: () => {
+        const { cookies, setCookies } = this.requestCookies();
+        return this.send(
+          live,
+          async () => {
+            const result = await this.hostSession(cookies).refresh();
+            return result.kind === "rotated"
+              ? {
+                  value: makeSlimBundle(result.tokens),
+                  rotated: sessionOf(result.tokens.accessToken)!,
+                  setCookies,
+                }
+              : { value: null, setCookies };
+          },
+          "refresh",
+          cookies.get(AUTH_REFRESH_COOKIE) as string | undefined,
         );
-      };
-    return { refreshSession: send("refresh"), signOut: send("signOut") };
+      },
+      // As `signOutHandler` does.
+      signOut: () => {
+        const { cookies, setCookies } = this.requestCookies();
+        return this.send(
+          live,
+          async () => {
+            const refreshToken = await cookies.get(AUTH_REFRESH_COOKIE);
+            if (refreshToken !== undefined) await this.signOut(refreshToken);
+            await clearAuthCookies(cookies, { secure: true });
+            return { value: undefined, setCookies };
+          },
+          "signOut",
+          cookies.get(AUTH_REFRESH_COOKIE) as string | undefined,
+        );
+      },
+    };
+  }
+
+  /**
+   * A sign-in through the host's auth proxy, which moves the refresh token
+   * into the cookie and replies with the access-only bundle.
+   */
+  signInProxy(live: () => boolean) {
+    const { cookies, setCookies } = this.requestCookies();
+    return this.send(
+      live,
+      async () => {
+        const bundle = await this.app.mint();
+        await writeAuthCookies(cookies, bundle, { secure: true });
+        return {
+          value: { status: "complete", tokens: makeSlimBundle(bundle) },
+          setCookies,
+        };
+      },
+      "signIn",
+    );
+  }
+
+  /**
+   * A page load under SSR: the host renders the page with `getToken`, which
+   * refreshes an expiring access token, and hands the page its token.
+   */
+  loadPage(live: () => boolean): Promise<string | null> {
+    const { cookies, setCookies } = this.requestCookies();
+    return this.send(
+      live,
+      async () => {
+        const before = await cookies.get(AUTH_JWT_COOKIE);
+        const token = await this.hostSession(cookies).getToken();
+        return {
+          value: token,
+          rotated:
+            token !== null && token !== before ? sessionOf(token)! : undefined,
+          setCookies,
+        };
+      },
+      "page",
+      cookies.get(AUTH_REFRESH_COOKIE) as string | undefined,
+    );
+  }
+
+  /**
+   * Under SSR, only the host can clear the httpOnly refresh cookie. A sign-out
+   * request that never reaches it leaves the cookie, so the next refresh or
+   * page load signs the user back in. This is a known gap.
+   */
+  private async lostSignOut(request: Network["pending"][number]) {
+    if (!this.app.ssr || request.kind !== "signOut") return;
+    if (request.presents === undefined) return;
+    const session = await this.app.sessionOfRefreshToken(request.presents);
+    if (session !== null) this.app.signOutLost.add(session);
   }
 
   /**
@@ -176,6 +401,7 @@ class Network {
         await this.serve(index, "lostResponse");
       } else {
         this.pending.splice(index, 1);
+        await this.lostSignOut(request);
       }
     }
   }
@@ -194,32 +420,50 @@ class Network {
     }
     const [request] = this.pending.splice(index % this.pending.length, 1);
     if (outcome === "lostRequest") {
+      await this.lostSignOut(request);
       if (request.live()) request.reject(networkError());
       return true;
     }
     const delivered = outcome === "ok" && request.live();
-    let result: RefreshResult | null;
-    if (request.kind === "refresh") {
-      result = await this.t.mutation(api.public.refresh, {
-        refreshToken: request.refreshToken,
-        ...TTL,
-      });
-      if (result.kind === "rotated") {
-        const session = sessionOf(result.tokens.accessToken)!;
-        const lost = this.lostRotations.get(session) ?? 0;
-        // Once excused, a session stays excused: the server may revoke it at
-        // any later refresh.
-        if (!this.excused(session)) {
-          this.lostRotations.set(session, delivered ? 0 : lost + 1);
-        }
+    const stale =
+      this.app.ssr &&
+      request.presents !== undefined &&
+      request.presents !== this.app.cookies.get(AUTH_REFRESH_COOKIE);
+    if (stale) {
+      const session = await this.app.sessionOfRefreshToken(request.presents!);
+      if (session !== null) this.staleInFlight.add(session);
+    }
+    const served = await request.execute();
+    // A page load sent before the cookie changed may refresh on the host and
+    // set the old session's cookies again. The page can't hold the refresh
+    // lock across a navigation, so this is a known gap.
+    if (
+      delivered &&
+      stale &&
+      request.kind === "page" &&
+      (served.setCookies?.size ?? 0) > 0
+    ) {
+      this.app.staleCookies = true;
+    }
+    if (served.rotated !== undefined) {
+      const session = served.rotated;
+      const lost = this.lostRotations.get(session) ?? 0;
+      // Once excused, a session stays excused: the server may revoke it at
+      // any later refresh.
+      const raced = this.pending.some(
+        (other) =>
+          other.presents !== undefined && other.presents === request.presents,
+      );
+      if (!this.excused(session)) {
+        this.lostRotations.set(session, delivered && !raced ? 0 : lost + 1);
       }
-    } else {
-      result = await this.t.mutation(api.public.signOut, {
-        refreshToken: request.refreshToken,
-      });
     }
     if (delivered) {
-      request.resolve(result as never);
+      for (const [name, value] of served.setCookies ?? []) {
+        if (value === null) this.app.cookies.delete(name);
+        else this.app.cookies.set(name, value);
+      }
+      request.resolve(served.value as never);
     } else if (request.live()) {
       request.reject(networkError());
     }
@@ -358,20 +602,38 @@ class Tab {
     };
   }
 
-  /** Loads a new page with its own `AuthClient`. */
-  load() {
+  /** Whether a page is loaded: under SSR, none is while the host renders. */
+  loaded = false;
+
+  /** Unloads the current page. */
+  unload() {
+    this.loaded = false;
     this.client?.dispose();
     this.page++;
     this.jwtWrites = [];
     this.lastWrite = null;
     this.events = [];
+  }
+
+  /**
+   * Loads a new page with its own `AuthClient`. Under SSR the host rendered
+   * it with `initialAccessToken`.
+   */
+  load(initialAccessToken: string | null = null) {
+    this.unload();
+    this.loaded = true;
     const live = this.liveCheck();
-    this.client = new AuthClient({
-      mode: "spa",
-      authApi: this.app.network.api(live),
+    const { network } = this.app;
+    const base = {
       storage: this.storage(live),
       storageNamespace: NAMESPACE,
-    });
+      initialAccessToken,
+    };
+    this.client = new AuthClient(
+      this.app.ssr
+        ? { ...base, mode: "ssr", authApi: network.ssrApi(live) }
+        : { ...base, mode: "spa", authApi: network.spaApi(live) },
+    );
   }
 
   /**
@@ -483,9 +745,11 @@ type Call = {
 class App {
   t = convexTest(schema, modules);
   locks = new Locks();
-  network = new Network(this.t, this.locks);
+  network = new Network(this, this.t, this.locks);
   asyncStorage: AsyncStorageQueue | null;
   shared = new Map<string, string>();
+  /** The browser's cookie jar under SSR. */
+  cookies = new Map<string, string>();
   tabs: Tab[] = [];
   /** The session the user last signed in to, or null after a sign-out. */
   wanted: string | null = null;
@@ -494,8 +758,16 @@ class App {
   reuseRevocations: string[] = [];
   /** Whether a page was unloaded in the middle of storing its tokens. */
   torn = false;
+  /** Whether a page load set cookies from before the jar last changed. */
+  staleCookies = false;
+  /** Sessions whose SSR sign-out request never reached the host. */
+  signOutLost = new Set<string>();
 
-  constructor(numTabs: number, asyncStorage: boolean) {
+  constructor(
+    numTabs: number,
+    asyncStorage: boolean,
+    readonly ssr: boolean,
+  ) {
     this.asyncStorage = asyncStorage ? new AsyncStorageQueue(this.locks) : null;
     Object.defineProperty(navigator, "locks", {
       value: this.locks,
@@ -508,6 +780,22 @@ class App {
 
   tab(index: number): Tab {
     return this.tabs[index % this.tabs.length];
+  }
+
+  /** Signs the user in on the server, as a sign-in method does. */
+  mint() {
+    return this.t.mutation(api.public._internal_dangerous_signIn, {
+      claims: { method: "usernamePassword", profile: {} },
+      componentPath: "authPassword",
+      userId: "user1",
+      ...TTL,
+    });
+  }
+
+  /** The tab, if it has a page for the user to act on. */
+  loadedTab(index: number): Tab | null {
+    const tab = this.tab(index);
+    return tab.loaded ? tab : null;
   }
 
   async start() {
@@ -554,32 +842,48 @@ class App {
         // The user wants whichever of overlapping sign-ins and sign-outs
         // finishes last, which the test doesn't know.
         if (this.liveCalls("signIn") + this.liveCalls("signOut") > 0) break;
-        const bundle = await this.t.mutation(
-          api.public._internal_dangerous_signIn,
-          {
-            claims: { method: "usernamePassword", profile: {} },
-            componentPath: "authPassword",
-            userId: "user1",
-            ...TTL,
-          },
-        );
+        const tab = this.loadedTab(op.tab);
+        if (tab === null) break;
         const wantedBefore = this.wanted;
-        this.wanted = sessionOf(bundle.accessToken);
-        const tab = this.tab(op.tab);
-        this.track(
-          "signIn",
-          tab,
-          () => tab.client.setSession(bundle),
-          wantedBefore,
-          bundle.accessToken,
-        );
+        if (!this.ssr) {
+          const bundle = await this.mint();
+          this.wanted = sessionOf(bundle.accessToken);
+          this.track(
+            "signIn",
+            tab,
+            () => tab.client.setSession(bundle),
+            wantedBefore,
+            bundle.accessToken,
+          );
+          break;
+        }
+        // As a method's hook does under `ConvexAuthNextjsProvider`: the
+        // sign-in goes through the host's auth proxy, which mints the
+        // session. The user is signed in once its response sets the cookies;
+        // if it never arrives, the sign-in failed.
+        const signIn = async () => {
+          const live = tab.liveCheck();
+          const proxy = {
+            mutation: () => this.network.signInProxy(live),
+            setAuth: () => {},
+            clearAuth: () => {},
+          } as unknown as ProxyClient;
+          const { tokens } = (await proxySignInApi(
+            proxy,
+            () => tab.client,
+          ).mutation(SIGN_IN, {})) as { tokens: SlimTokenBundle };
+          this.wanted = sessionOf(tokens.accessToken);
+          await tab.client.setSession(tokens);
+        };
+        this.track("signIn", tab, signIn, wantedBefore);
         break;
       }
       case "signOut": {
         if (this.liveCalls("signIn") + this.liveCalls("signOut") > 0) break;
+        const tab = this.loadedTab(op.tab);
+        if (tab === null) break;
         const wantedBefore = this.wanted;
         this.wanted = null;
-        const tab = this.tab(op.tab);
         this.track(
           "signOut",
           tab,
@@ -590,7 +894,8 @@ class App {
         break;
       }
       case "fetch": {
-        const tab = this.tab(op.tab);
+        const tab = this.loadedTab(op.tab);
+        if (tab === null) break;
         this.track("other", tab, () =>
           tab.client.fetchAccessToken({ forceRefreshToken: op.force }),
         );
@@ -610,6 +915,8 @@ class App {
         for (const call of this.calls) {
           if (call.tab !== tab || !call.live()) continue;
           // A sign-in or sign-out still waiting for the lock never happened.
+          // An SSR sign-in counts once its cookies are set.
+          if (this.ssr && call.kind === "signIn") continue;
           if (
             call.writes !== undefined &&
             !tab.jwtWrites.slice(call.jwtWritesBefore).includes(call.writes) &&
@@ -621,10 +928,17 @@ class App {
         // `#storeTokens` writes the access token, then the refresh token. A
         // page unloaded between the two leaves them for different sessions.
         this.torn ||= tab.lastWrite === JWT_KEY;
-        tab.load();
-        this.locks.releaseUnloaded();
-        await this.network.unload(op.sent);
-        this.track("other", tab, () => tab.init());
+        if (this.ssr) {
+          tab.unload();
+          this.locks.releaseUnloaded();
+          await this.network.unload(op.sent);
+          this.navigate(tab);
+        } else {
+          tab.load();
+          this.locks.releaseUnloaded();
+          await this.network.unload(op.sent);
+          this.track("other", tab, () => tab.init());
+        }
         break;
       }
       case "wait":
@@ -632,6 +946,32 @@ class App {
         break;
     }
     await vi.advanceTimersByTimeAsync(0);
+  }
+
+  /**
+   * Under SSR, the tab requests a page from the host and loads it with the
+   * token the host rendered it with. A failed load is retried.
+   */
+  navigate(tab: Tab) {
+    const live = tab.liveCheck();
+    this.track("other", tab, () =>
+      this.network.loadPage(live).then(
+        (token) => {
+          tab.load(token);
+          this.track("other", tab, () => tab.init());
+        },
+        () => {
+          if (live()) this.navigate(tab);
+        },
+      ),
+    );
+  }
+
+  /** The stored refresh token: in the cookie jar under SSR. */
+  refreshToken(): string | undefined {
+    return this.ssr
+      ? this.cookies.get(AUTH_REFRESH_COOKIE)
+      : this.shared.get(REFRESH_KEY);
   }
 
   /** Deliver everything and let every call return. */
@@ -669,17 +1009,22 @@ class App {
 
   /** The session of the stored refresh token, or null if none is stored. */
   async storedRefreshSession(): Promise<string | null> {
-    const refreshToken = this.shared.get(REFRESH_KEY);
+    const refreshToken = this.refreshToken();
     if (refreshToken === undefined) {
       return null;
     }
+    return (await this.sessionOfRefreshToken(refreshToken)) ?? "unknown";
+  }
+
+  /** The session of a refresh token, or null if the server has no row. */
+  async sessionOfRefreshToken(refreshToken: string): Promise<string | null> {
     const hash = await sha256Hex(refreshToken);
     return await this.t.run(async (ctx) => {
       const row = await ctx.db
         .query("refreshTokens")
         .withIndex("by_hash", (q) => q.eq("hash", hash))
         .unique();
-      return row === null ? "unknown" : (row.sessionId as string);
+      return row === null ? null : (row.sessionId as string);
     });
   }
 
@@ -695,7 +1040,9 @@ class App {
       stored !== null &&
       sessionsBefore.includes(sessionOf(stored)!) &&
       !this.network.excused(this.wanted) &&
-      !this.torn
+      !this.torn &&
+      !this.staleCookies &&
+      !this.signOutLost.has(sessionOf(stored)!)
     ) {
       expect(
         await this.storedRefreshSession(),
@@ -714,12 +1061,23 @@ class App {
     );
     this.checkTabsMatchStorage();
     const refreshed = this.shared.get(JWT_KEY) ?? null;
-    if (this.torn) {
+    if (this.torn || this.staleCookies) {
+      return;
+    }
+    const lingering = [sessionOf(refreshed), await this.storedRefreshSession()];
+    if (
+      lingering.some(
+        (session) =>
+          session !== this.wanted &&
+          session !== null &&
+          this.signOutLost.has(session),
+      )
+    ) {
       return;
     }
     if (this.wanted === null) {
       expect(refreshed, "signed out").toBe(null);
-      expect(this.shared.get(REFRESH_KEY) ?? null).toBe(null);
+      expect(this.refreshToken() ?? null).toBe(null);
       return;
     }
     if (this.network.excused(this.wanted)) {
@@ -751,8 +1109,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function runOps(ops: Op[], platform: "browser" | "native" = "browser") {
-  app = platform === "browser" ? new App(MAX_TABS, false) : new App(1, true);
+async function runOps(
+  ops: Op[],
+  platform: "browser" | "native" | "ssr" = "browser",
+) {
+  app =
+    platform === "native"
+      ? new App(1, true, false)
+      : new App(MAX_TABS, false, platform === "ssr");
   await app.start();
   // Most bugs need a session, so every run starts signed in.
   for (const op of [{ type: "signIn", tab: 0 } as Op, ...ops]) {
@@ -774,6 +1138,13 @@ test("tabs keep the session they signed in to", async () => {
 test("a React Native app keeps the session it signed in to", async () => {
   await fc.assert(
     fc.asyncProperty(ops, (ops) => runOps(ops, "native")),
+    { numRuns: 300 },
+  );
+}, 300_000);
+
+test("tabs of an SSR app keep the session they signed in to", async () => {
+  await fc.assert(
+    fc.asyncProperty(ops, (ops) => runOps(ops, "ssr")),
     { numRuns: 300 },
   );
 }, 300_000);
@@ -824,5 +1195,30 @@ test("a React Native app signing in while it loads keeps the session", async () 
       { type: "storage" },
     ],
     "native",
+  );
+});
+
+// Under SSR, the first `serve` answers the proxy request of that sign-in.
+
+test("an SSR refresh in flight during a sign-in doesn't set the old cookies", async () => {
+  await runOps(
+    [
+      { type: "serve", index: 0, outcome: "ok" },
+      { type: "signIn", tab: 0 },
+      { type: "fetch", tab: 0, force: true },
+    ],
+    "ssr",
+  );
+});
+
+test("an SSR page rendered before a sign-in doesn't sign other tabs back in", async () => {
+  await runOps(
+    [
+      { type: "serve", index: 0, outcome: "ok" },
+      { type: "signIn", tab: 0 },
+      { type: "reload", tab: 1, sent: false },
+      { type: "deliver", tab: 0 },
+    ],
+    "ssr",
   );
 });
