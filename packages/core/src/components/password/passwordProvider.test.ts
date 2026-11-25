@@ -489,3 +489,115 @@ describe("rate limiting (verifyPassword only)", () => {
     }
   });
 });
+
+describe("deleteUser", () => {
+  test("deletes the password of a user, who can no longer sign in with it", async () => {
+    const t = setup();
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    expect(
+      await t.mutation(api.public.deleteUser, { userId: "alice" }),
+    ).toEqual({ deleted: true });
+    await expect(
+      t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).rejects.toThrow("No password stored for userId alice.");
+  });
+
+  test("reports deleted: false when the user has no password", async () => {
+    const t = setup();
+    expect(
+      await t.mutation(api.public.deleteUser, { userId: "nobody" }),
+    ).toEqual({ deleted: false });
+  });
+
+  test("deletes only the data of the given user", async () => {
+    const t = setup();
+    for (const userId of ["alice", "bob"]) {
+      await t.mutation(api.public._internal_dangerous_setPassword, {
+        userId,
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      });
+    }
+    // Exhaust bob's bucket, so the deletion of alice must leave it exhausted.
+    for (let i = 0; i < 5; i++) {
+      await t.mutation(api.public.verifyPassword, {
+        userId: "bob",
+        password: "wrong horse battery staple",
+      });
+    }
+    await t.mutation(api.public.deleteUser, { userId: "alice" });
+    const result = await t.mutation(api.public.verifyPassword, {
+      userId: "bob",
+      password: PASSWORD,
+    });
+    expect(result.success).toBe(false);
+    if (result.success === false) {
+      expect(result.userError.error).toBe("RATE_LIMITED");
+    }
+  });
+
+  test("resets the rate limit of the user", async () => {
+    const t = setup();
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    for (let i = 0; i < 5; i++) {
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: "wrong horse battery staple",
+      });
+    }
+    await t.mutation(api.public.deleteUser, { userId: "alice" });
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).toEqual({ success: true });
+  });
+
+  test("lets the user set a new password afterwards", async () => {
+    const t = setup();
+    await t.mutation(api.public._internal_dangerous_setPassword, {
+      userId: "alice",
+      password: PASSWORD,
+      minimumLength: MIN_PASSWORD_LENGTH,
+    });
+    await t.mutation(api.public.deleteUser, { userId: "alice" });
+    // The row is gone before the new password is set, so the set below
+    // inserts a row instead of patching the old one.
+    await expect(
+      t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).rejects.toThrow("No password stored for userId alice.");
+    expect(
+      await t.mutation(api.public._internal_dangerous_setPassword, {
+        userId: "alice",
+        password: PASSWORD,
+        minimumLength: MIN_PASSWORD_LENGTH,
+      }),
+    ).toEqual({ success: true });
+    expect(
+      await t.mutation(api.public.verifyPassword, {
+        userId: "alice",
+        password: PASSWORD,
+      }),
+    ).toEqual({ success: true });
+  });
+});
