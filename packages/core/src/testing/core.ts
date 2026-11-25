@@ -11,6 +11,7 @@
 import type { TestConvex } from "convex-test";
 import { decodeJwt } from "jose";
 import type { GenericSchema, SchemaDefinition } from "convex/server";
+import { register as registerBatchWorker } from "@convex-dev/batch-worker/test";
 import schema from "../component/schema.ts";
 const modules = import.meta.glob([
   "../component/**/*.ts",
@@ -18,7 +19,8 @@ const modules = import.meta.glob([
 ]);
 
 /**
- * Register the component with the test convex instance.
+ * Register the component with the test convex instance, along with the batch
+ * worker it mounts (the loop that erases expired sessions).
  * @param t - The test convex instance, e.g. from calling `convexTest`.
  * @param name - The name of the component, as registered in convex.config.ts.
  */
@@ -27,6 +29,7 @@ export function registerCore(
   name: string = "auth",
 ) {
   t.registerComponent(name, schema, modules);
+  registerBatchWorker(t, `${name}/batchWorker`);
 }
 /**
  * The identity Convex derives from the access token of a sign-in, for
