@@ -83,7 +83,8 @@ type ConvexClientProps = {
    *
    * Client runtimes with no `localStorage` like React Native are strongly
    * advised to provide an implementation, because the in-memory default will
-   * cause users to get logged out each time the app closes.
+   * cause users to get logged out each time the app closes. See
+   * {@link createAuthClient} for an example with Expo.
    */
   storage?: TokenStorage;
   /**

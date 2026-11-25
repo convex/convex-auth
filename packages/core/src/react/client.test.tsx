@@ -124,6 +124,24 @@ describe("React bindings", () => {
     await waitFor(() => expect(second.getAccessToken()).toBe("access-2"));
   });
 
+  test("a new initialToken alone doesn't init the auth client again", async () => {
+    const { client } = makeClient();
+    const init = vi.spyOn(client, "init");
+    const { rerender } = render(
+      <AuthProvider authClient={client} initialToken="access-1">
+        hi
+      </AuthProvider>,
+    );
+    rerender(
+      <AuthProvider authClient={client} initialToken="access-2">
+        hi
+      </AuthProvider>,
+    );
+
+    expect(init).toHaveBeenCalledOnce();
+    await waitFor(() => expect(client.getAccessToken()).toBe("access-1"));
+  });
+
   test("reports loading then unauthenticated for an empty store", async () => {
     const { client } = makeClient();
     const { result } = renderAuth(client);

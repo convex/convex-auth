@@ -158,6 +158,16 @@ describe("ConvexAuthProvider with an auth client", () => {
     expect(fromHook[0]).toBe(auth);
   });
 
+  test("passing neither the auth nor the client prop throws", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const props = { children: <div /> } as unknown as ComponentProps<
+      typeof ConvexAuthProvider
+    >;
+    expect(() => render(<ConvexAuthProvider {...props} />)).toThrow(
+      /needs an auth client/,
+    );
+  });
+
   test("passing the auth and client props together throws", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const props = {

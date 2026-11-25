@@ -397,6 +397,13 @@ describe("AuthClient", () => {
     });
   });
 
+  test("signInApi throws when the config has none", () => {
+    const { client } = makeClient();
+    expect(() => client.signInApi.mutation(SIGN_IN_REF, {})).toThrow(
+      /no signInApi option/,
+    );
+  });
+
   test("keeps cross-tab sync until every init is disposed", async () => {
     const listeners = new Set<(event: StorageEvent) => void>();
     const storage = new InMemoryStorage();
@@ -516,6 +523,11 @@ describe("AuthClient ambient sign-ins", () => {
         ),
       ),
     ).toBe("v1");
+  });
+
+  test("signInApi defaults to the sign-in API of ambientSignIns", () => {
+    const { client } = makeClientWithSignIns([]);
+    expect(client.signInApi).toBe(SIGN_IN_API);
   });
 
   test("every setup receives the same sign-in api and client", () => {

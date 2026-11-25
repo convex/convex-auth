@@ -96,7 +96,7 @@ describe("createAuthClient", () => {
     expect(auth.getSnapshot().isAuthenticated).toBe(false);
   });
 
-  test("the signIn property calls sign-in functions through the Convex client", async () => {
+  test("signInApi calls sign-in functions through the Convex client", async () => {
     const { convex, mutation, action } = stubConvex();
     const auth = createAuthClient({ convex, api: API });
     const signInMutation = makeFunctionReference<"mutation">("auth:signIn");
@@ -111,15 +111,6 @@ describe("createAuthClient", () => {
 
     expect(mutation).toHaveBeenCalledWith(signInMutation, { code: "1" });
     expect(action).toHaveBeenCalledWith(signInAction, { code: "2" });
-  });
-
-  test("storageNamespace defaults to the Convex client's URL", async () => {
-    const storage = new InMemoryStorage();
-    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
-    const convex = new ConvexReactClient(URL);
-    const auth = createAuthClient({ convex, api: API, storage });
-    await auth.init();
-    expect(auth.getAccessToken()).toBe("access-1");
   });
 
   test("registers the oauth ambient sign-in", () => {

@@ -311,10 +311,13 @@ export class AuthClient {
     return this.#accessToken;
   }
 
-  /** The `convex` option of the config. */
+  /** The app's Convex client. */
   readonly convex: ConvexReactClient | undefined;
 
-  /** The `isAuthenticatedQuery` option of the config. */
+  /**
+   * A reference to the app's `isAuthenticated` query. Subscribing to the query
+   * signs the client out when the server revokes the session.
+   */
   readonly isAuthenticatedQuery: IsAuthenticatedFn | undefined;
 
   /**
@@ -398,7 +401,7 @@ export class AuthClient {
    * after every call was disposed loads the session from storage again,
    * because another tab may have changed it in the meantime.
    *
-   * Call it in the browser only. A server can share one client across all
+   * Call it on the client only. A server can share one client across all
    * requests, so the client must never hold a user's token.
    */
   async init(options?: {
