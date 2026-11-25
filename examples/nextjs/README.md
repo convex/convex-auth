@@ -56,7 +56,7 @@ deployment's site URL plus `/oauth/github/callback` (get the site URL with
 
 ```sh
 npx convex env set AUTH_GITHUB_CLIENT_ID YOUR_GITHUB_OAUTH_CLIENT_ID
-npx convex env set AUTH_GITHUB_CLIENT_SECRET YOUR_GITHUB_OAUTH_CLIENT_SECRET
+npx convex env set AUTH_GITHUB_CLIENT_SECRET # Press Enter then enter your GitHub client secret
 ```
 
 Then open <http://localhost:3000> — you'll be redirected to `/signin`; create an
