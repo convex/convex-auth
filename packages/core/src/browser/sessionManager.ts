@@ -127,13 +127,10 @@ function hasRefreshToken(
  *    an access-only {@link SlimTokenBundle} under SSR where the host moved the
  *    refresh token into the cookie.
  *  - `noSession`: the session is gone; clear it.
- *  - `superseded`: a sign-in or sign-out replaced the refresh token while the
- *    refresh was in flight; keep the stored session.
  */
 type RefreshOutcome =
   | { kind: "rotated"; session: TokenBundle | SlimTokenBundle }
-  | { kind: "noSession" }
-  | { kind: "superseded" };
+  | { kind: "noSession" };
 
 /**
  * Returns the global `window` object when it supports DOM event listeners,
@@ -177,8 +174,11 @@ function replaceUrlKeepingState(url: string): void {
 export class AuthClient {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
-  /** Revoke the session on the server. */
-  readonly #signOutInternal: () => Promise<void>;
+  /**
+   * Revoke the session on the server, given the refresh token that was stored
+   * (always null under SSR, where the host reads it from the cookie).
+   */
+  readonly #revokeSession: (refreshToken: string | null) => Promise<void>;
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
@@ -216,12 +216,6 @@ export class AuthClient {
         // No token means there's no session to refresh — don't call the API.
         if (refreshToken === null) return { kind: "noSession" };
         const result = await authApi.refreshSession(refreshToken);
-        // `setSession` or `signOut` may have replaced the token in storage
-        // while the request was in flight, in this tab or another. Storing
-        // this result would overwrite the newer session.
-        if ((await this.#currentRefreshToken()) !== refreshToken) {
-          return { kind: "superseded" };
-        }
         switch (result.kind) {
           case "rotated":
             return { kind: "rotated", session: result.tokens };
@@ -229,8 +223,7 @@ export class AuthClient {
             return { kind: "noSession" };
         }
       };
-      this.#signOutInternal = async () => {
-        const refreshToken = await this.#currentRefreshToken();
+      this.#revokeSession = async (refreshToken) => {
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
     } else {
@@ -244,7 +237,7 @@ export class AuthClient {
           ? { kind: "noSession" }
           : { kind: "rotated", session };
       };
-      this.#signOutInternal = () => authApi.signOut();
+      this.#revokeSession = () => authApi.signOut();
     }
 
     // Runs last so setups see a fully initialized client.
@@ -373,11 +366,15 @@ export class AuthClient {
     }
     // An initially provided token is considered to be the freshest value, so
     // persist it before the load below reads it back (and so other tabs see
-    // it).
-    if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
-    }
-    this.#accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+    // it). Both run under the refresh lock: with an async storage, a
+    // `setSession` while the read is in flight would otherwise be overwritten
+    // by the older value.
+    await runWithMutex(this.#lockKey, async () => {
+      if (this.#initialAccessToken !== null) {
+        await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+      }
+      this.#accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+    });
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
@@ -409,7 +406,13 @@ export class AuthClient {
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
-    await this.#storeFullTokenResult(session);
+    // Under the refresh lock: a refresh in flight would otherwise store the
+    // previous session over this one when it returns, and with an async
+    // storage, a refresh between the two writes of `#storeTokens` would read
+    // no refresh token and sign the user out.
+    await runWithMutex(this.#lockKey, () =>
+      this.#storeFullTokenResult(session),
+    );
   };
 
   /**
@@ -435,13 +438,21 @@ export class AuthClient {
    * Revoke the current session on the server and clear it locally.
    */
   signOut = async (): Promise<void> => {
+    // Erase the tokens before revoking the session, so that a page unloaded
+    // during the request (e.g. navigating away right after `signOut()`) doesn't
+    // keep them. Under the refresh lock, so that a refresh in flight can't
+    // store a session after the erase.
+    const refreshToken = await runWithMutex(this.#lockKey, async () => {
+      const refreshToken = await this.#currentRefreshToken();
+      this.#log("signing out, erasing tokens");
+      await this.#storeTokens(null);
+      return refreshToken;
+    });
     try {
-      await this.#signOutInternal();
+      await this.#revokeSession(refreshToken);
     } catch {
       // Usually means we were already signed out, which is fine.
     }
-    this.#log("signed out, erasing tokens");
-    await this.#storeTokens(null);
   };
 
   /**
@@ -499,8 +510,6 @@ export class AuthClient {
         return;
       case "rotated":
         await this.#storeFullTokenResult(result.session);
-        return;
-      case "superseded":
         return;
     }
   }

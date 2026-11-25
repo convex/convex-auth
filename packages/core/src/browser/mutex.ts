@@ -14,9 +14,8 @@
  * is currently accepted since every major browser has Web Locks.
  */
 
-// TODO: SSR refreshes don't compare-and-swap. An SPA refresh stores its result
-// only if storage still holds the refresh token it presented (see `AuthClient`),
-// but under SSR the token is in a cookie the client can't read.
+// TODO: update client refresh code to use compare-and-swap to avoid concurrent
+// refreshes overwriting each other.
 
 /**
  * Run `callback` while holding the lock named `key`, resolving to its result.

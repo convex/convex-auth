@@ -4,10 +4,17 @@
 
 - A sign-in while a token refresh was in flight no longer ends with the
   previous session: the refresh result used to overwrite the new session, or
-  sign the user out if the previous session had expired.
+  sign the user out if the previous session had expired. `setSession`,
+  `signOut` and the initial load now wait for a refresh in flight.
 - A tab no longer signs the user back in after another tab signed out. It used
   to refresh with a copy of the refresh token it kept in memory, or adopt the
   value of a `storage` event that arrived after the sign-out.
+- `signOut` erases the tokens before revoking the session on the server, so a
+  page unloaded during the request (for example, navigating away right after
+  calling `signOut()`) no longer keeps the user signed in.
+- With an asynchronous storage, such as `expo-secure-store` in React Native, a
+  sign-in while the client is still loading the stored session is no longer
+  replaced by the older session.
 
 ## 2.1.0
 
