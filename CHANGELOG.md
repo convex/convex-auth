@@ -1,5 +1,29 @@
 # Changelog
 
+### Fixes
+
+- A sign-in while a token refresh was in flight no longer ends with the
+  previous session: the refresh result used to overwrite the new session, or
+  sign the user out if the previous session had expired. `setSession`,
+  `signOut` and the initial load now wait for a refresh in flight.
+- A tab no longer signs the user back in after another tab signed out. It used
+  to refresh with a copy of the refresh token it kept in memory, or adopt the
+  value of a `storage` event that arrived after the sign-out.
+- `signOut` erases the tokens before revoking the session on the server, so a
+  page unloaded during the request (for example, navigating away right after
+  calling `signOut()`) no longer keeps the user signed in.
+- With an asynchronous storage, such as `expo-secure-store` in React Native, a
+  sign-in while the client is still loading the stored session is no longer
+  replaced by the older session.
+- Under `ConvexAuthNextjsProvider`, a sign-in while a token refresh was in
+  flight no longer ends with the previous session's cookies: the refresh
+  response could arrive after the sign-in's and set them again. Sign-ins
+  through the auth proxy now wait for a refresh in flight.
+- Under SSR, a page that the host started rendering before a sign-in in
+  another tab no longer switches that tab back to the previous session. On
+  load, a page keeps a stored access token issued after the one it was
+  rendered with, and refreshes when the two belong to different sessions.
+
 ## 2.1.0
 
 ### New

@@ -174,8 +174,11 @@ function replaceUrlKeepingState(url: string): void {
 export class AuthClient {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
-  /** Revoke the session on the server. */
-  readonly #signOutInternal: () => Promise<void>;
+  /**
+   * Revoke the session on the server, given the refresh token that was stored
+   * (always null under SSR, where the host reads it from the cookie).
+   */
+  readonly #revokeSession: (refreshToken: string | null) => Promise<void>;
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
@@ -187,11 +190,6 @@ export class AuthClient {
   readonly #mode: "spa" | "ssr";
 
   #accessToken: string | null = null;
-  /**
-   * If the client code is running in SSR mode, this value will always be
-   * `null`.
-   */
-  #refreshToken: string | null = null;
   #isLoading = true;
   #pendingSignIns = 0;
   #initialized = false;
@@ -225,8 +223,7 @@ export class AuthClient {
             return { kind: "noSession" };
         }
       };
-      this.#signOutInternal = async () => {
-        const refreshToken = await this.#currentRefreshToken();
+      this.#revokeSession = async (refreshToken) => {
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
     } else {
@@ -240,7 +237,7 @@ export class AuthClient {
           ? { kind: "noSession" }
           : { kind: "rotated", session };
       };
-      this.#signOutInternal = () => authApi.signOut();
+      this.#revokeSession = () => authApi.signOut();
     }
 
     // Runs last so setups see a fully initialized client.
@@ -367,18 +364,43 @@ export class AuthClient {
         );
       }
     }
-    // An initially provided token is considered to be the freshest value, so
-    // persist it before the load below reads it back (and so other tabs see
-    // it).
-    if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+    // The SSR host may have refreshed while rendering, so an initially
+    // provided token is persisted before the load below reads it back (and so
+    // other tabs see it). But the host started rendering before this page
+    // loaded, and another tab may have signed in, out or refreshed since. A
+    // stored token issued later is kept. A stored token of another session
+    // leaves the page unsure which one the cookie holds, so it asks the host
+    // with a refresh. Both run under the refresh lock:
+    // with an async storage, a `setSession` while the read is in flight would
+    // otherwise be overwritten by the older value.
+    let sessionUnknown = false;
+    await runWithMutex(this.#lockKey, async () => {
+      const initial = this.#initialAccessToken;
+      if (initial !== null) {
+        const stored = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+        const claims = {
+          initial: tokenClaims(initial),
+          stored: tokenClaims(stored),
+        };
+        if (
+          claims.stored.sub !== null &&
+          claims.initial.sub !== null &&
+          claims.stored.sub !== claims.initial.sub
+        ) {
+          sessionUnknown = true;
+        } else if (claims.stored.iat <= claims.initial.iat) {
+          await this.#storage.set(JWT_STORAGE_KEY, initial);
+        }
+      }
+      this.#accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+    });
+    if (sessionUnknown) {
+      try {
+        await this.fetchAccessToken({ forceRefreshToken: true });
+      } catch (error) {
+        this.#log(`init: refresh failed: ${String(error)}`);
+      }
     }
-    const [accessToken, refreshToken] = await Promise.all([
-      this.#storage.get(JWT_STORAGE_KEY),
-      this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
-    ]);
-    this.#accessToken = accessToken ?? null;
-    this.#refreshToken = refreshToken ?? null;
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
@@ -410,7 +432,13 @@ export class AuthClient {
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
-    await this.#storeFullTokenResult(session);
+    // Under the refresh lock: a refresh in flight would otherwise store the
+    // previous session over this one when it returns, and with an async
+    // storage, a refresh between the two writes of `#storeTokens` would read
+    // no refresh token and sign the user out.
+    await runWithMutex(this.#lockKey, () =>
+      this.#storeFullTokenResult(session),
+    );
   };
 
   /**
@@ -436,13 +464,21 @@ export class AuthClient {
    * Revoke the current session on the server and clear it locally.
    */
   signOut = async (): Promise<void> => {
+    // Erase the tokens before revoking the session, so that a page unloaded
+    // during the request (e.g. navigating away right after `signOut()`) doesn't
+    // keep them. Under the refresh lock, so that a refresh in flight can't
+    // store a session after the erase.
+    const refreshToken = await runWithMutex(this.#lockKey, async () => {
+      const refreshToken = await this.#currentRefreshToken();
+      this.#log("signing out, erasing tokens");
+      await this.#storeTokens(null);
+      return refreshToken;
+    });
     try {
-      await this.#signOutInternal();
+      await this.#revokeSession(refreshToken);
     } catch {
       // Usually means we were already signed out, which is fine.
     }
-    this.#log("signed out, erasing tokens");
-    await this.#storeTokens(null);
   };
 
   /**
@@ -478,11 +514,13 @@ export class AuthClient {
 
   // --- Internals -----------------------------------------------------------
 
-  /** The authoritative refresh token: storage (shared across tabs) then memory. */
+  /**
+   * The refresh token in storage, which all tabs share. Read it each time
+   * rather than keeping a copy: another tab may have signed out or rotated
+   * the token, and this tab's `storage` event for that may not have arrived.
+   */
   async #currentRefreshToken(): Promise<string | null> {
-    return (
-      (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY)) ?? this.#refreshToken
-    );
+    return (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY)) ?? null;
   }
 
   /**
@@ -550,12 +588,10 @@ export class AuthClient {
   async #storeTokens(bundle: TokenBundle | null): Promise<void> {
     if (bundle === null) {
       this.#accessToken = null;
-      this.#refreshToken = null;
       await this.#storage.remove(JWT_STORAGE_KEY);
       await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
     } else {
       this.#accessToken = bundle.accessToken;
-      this.#refreshToken = bundle.refreshToken;
       await this.#storage.set(JWT_STORAGE_KEY, bundle.accessToken);
       await this.#storage.set(REFRESH_TOKEN_STORAGE_KEY, bundle.refreshToken);
     }
@@ -568,10 +604,9 @@ export class AuthClient {
    * the refresh token lives in the host's httpOnly cookie.
    */
   async #storeAccessOnly(session: { accessToken: string }): Promise<void> {
-    // Null out/remove any existing refresh token. It shouldn't be set unless
-    // this was somehow a client instance configured for SPA use being
-    // "upgraded" to SSR use.
-    this.#refreshToken = null;
+    // Remove any existing refresh token. It shouldn't be set unless this was
+    // somehow a client instance configured for SPA use being "upgraded" to SSR
+    // use.
     await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
 
     this.#accessToken = session.accessToken;
@@ -586,21 +621,21 @@ export class AuthClient {
     if (target === null) return;
     if (this.#storageListener !== null) return;
     const jwtKey = this.#storage.key(JWT_STORAGE_KEY);
-    const refreshKey = this.#storage.key(REFRESH_TOKEN_STORAGE_KEY);
     const listener = (event: StorageEvent) => {
       // Only react to our own storage area (e.g. ignore sessionStorage events
-      // when we use localStorage). Keys arrive as separate events, so we handle
-      // the JWT and refresh keys independently and never write back here (that
-      // would loop).
+      // when we use localStorage), and never write back here (that would
+      // loop). The refresh token is read from storage when it is used, so
+      // only the JWT key needs syncing.
       if (event.storageArea !== this.#storage.storage) return;
-      if (event.key === jwtKey) {
-        this.#accessToken = event.newValue;
-        this.#log(`synced access token, is null: ${event.newValue === null}`);
-        this.#isLoading = false;
-        this.#notify();
-      } else if (event.key === refreshKey) {
-        this.#refreshToken = event.newValue;
-      }
+      if (event.key !== jwtKey) return;
+      // An event can arrive after this tab changed the key again, e.g. a
+      // sign-in in another tab followed by a sign-out here, so read the value
+      // in storage now rather than `event.newValue`. Only a `Storage` fires
+      // events, and its `getItem` is synchronous.
+      this.#accessToken = event.storageArea.getItem(jwtKey);
+      this.#log(`synced access token, is null: ${this.#accessToken === null}`);
+      this.#isLoading = false;
+      this.#notify();
     };
     target.addEventListener("storage", listener);
     this.#storageListener = listener;
@@ -621,5 +656,20 @@ export class AuthClient {
     if (this.#verbose) {
       console.debug(`${new Date().toISOString()} [convex-auth] ${message}`);
     }
+  }
+}
+
+/**
+ * The `sub` (the session id) and `iat` (in seconds) claims of an access token,
+ * or `null` and `-Infinity` where it has none. The payload is read without
+ * checking the signature: this only compares tokens this client was handed.
+ */
+function tokenClaims(token: string | null): { sub: unknown; iat: number } {
+  try {
+    const payload = token!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { sub, iat } = JSON.parse(atob(payload)) as Record<string, unknown>;
+    return { sub: sub ?? null, iat: typeof iat === "number" ? iat : -Infinity };
+  } catch {
+    return { sub: null, iat: -Infinity };
   }
 }
