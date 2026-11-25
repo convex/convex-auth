@@ -546,6 +546,32 @@ describe("AuthClient ambient sign-ins", () => {
     expect(client.signInApi).toBe(SIGN_IN_API);
   });
 
+  test("setups receive the signInApi option over the sign-in API of ambientSignIns", () => {
+    const signInApi = {
+      mutation: vi.fn(),
+      action: vi.fn(),
+    } as unknown as AuthSignInApi;
+    const received: AuthSignInApi[] = [];
+    new AuthClient({
+      mode: "spa",
+      authApi: {
+        refreshSession: async () => ({ kind: "noSession" }),
+        signOut: async () => {},
+      },
+      storage: new InMemoryStorage(),
+      storageNamespace: NAMESPACE,
+      signInApi,
+      ambientSignIns: {
+        signIns: [
+          { id: "a", setup: (ctx) => void received.push(ctx.signInApi) },
+        ],
+        signInApi: SIGN_IN_API,
+        convex: { mutation: vi.fn() },
+      },
+    });
+    expect(received).toEqual([signInApi]);
+  });
+
   test("every setup receives the same sign-in api and client", () => {
     const received: Array<{ signInApi: AuthSignInApi; client: AuthClient }> =
       [];
@@ -969,6 +995,23 @@ describe("AuthClient (a token change while init reads storage)", () => {
       isAuthenticated: false,
       token: null,
     });
+  });
+
+  test("a concurrent init call resolves after the session loads", async () => {
+    const { tokenStorage, release } = gatedStorage({
+      [jwtKey]: "access-1",
+      [refreshKey]: "refresh-1",
+    });
+    const { client } = makeClient({}, tokenStorage);
+
+    const firstInit = client.init();
+    const tokenAfterSecondInit = client
+      .init()
+      .then(() => client.getAccessToken());
+    release();
+
+    expect(await tokenAfterSecondInit).toBe("access-1");
+    await firstInit;
   });
 
   test("ignores a read that started before a newer init", async () => {

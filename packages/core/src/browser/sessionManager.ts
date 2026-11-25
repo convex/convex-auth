@@ -229,6 +229,8 @@ export class AuthClient {
   #activeInits = 0;
   /** Counts storage reads, so only the latest read takes effect. */
   #loadGeneration = 0;
+  /** The latest session load, which concurrent {@link init} calls wait for. */
+  #loading: Promise<void> = Promise.resolve();
   /**
    * Counts changes to the tokens in memory, so {@link init} can tell when a
    * change happened during its storage read.
@@ -381,7 +383,7 @@ export class AuthClient {
         client: this,
         values: this.#ambientValues.forSignIn(id),
         storage: this.#storage.forSignIn(id),
-        signInApi: ambientSignIns.signInApi,
+        signInApi: this.signInApi,
         convex: ambientSignIns.convex,
         replaceUrl: ambientSignIns.replaceUrl ?? replaceUrlKeepingState,
       });
@@ -417,13 +419,19 @@ export class AuthClient {
     this.#activeInits++;
     if (this.#activeInits === 1) {
       this.#attachStorageListener();
-      if (this.#initialized) {
-        await this.#loadTokens();
-        return;
-      }
+      if (this.#initialized) this.#loading = this.#loadTokens();
     }
-    if (this.#initialized) return;
-    this.#initialized = true;
+    if (!this.#initialized) {
+      this.#initialized = true;
+      this.#loading = this.#firstLoad(options?.initialToken);
+    }
+    return this.#loading;
+  }
+
+  /** Runs the onInit callbacks, then loads the session from storage. */
+  async #firstLoad(
+    initialTokenOption: string | null | undefined,
+  ): Promise<void> {
     // Run ambient sign-in onInit callbacks before anything observable
     // happens, so a withSignInPending call inside one marks loading before
     // the session
@@ -442,7 +450,7 @@ export class AuthClient {
     // An initially provided token is considered to be the freshest value, so
     // persist it before the load below reads it back (and so other tabs see
     // it).
-    const initialToken = options?.initialToken ?? this.#initialAccessToken;
+    const initialToken = initialTokenOption ?? this.#initialAccessToken;
     if (initialToken !== null) {
       await this.#storage.set(JWT_STORAGE_KEY, initialToken);
     }
