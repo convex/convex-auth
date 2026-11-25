@@ -26,6 +26,10 @@ This is a pnpm monorepo:
 check:jsdoc`). It is not an example to copy.
 - `packages/docs` — the documentation site (private). The pages are in
   `docs/`.
+- `packages/demos` — deploys the live demos at
+  `https://<name>.demos.convex-auth.com` (private). Each demo is an example of
+  `examples/`. The `Deploy demos` workflow runs it on each push to `main`. See
+  its `README.md`.
 - `packages/passkey-test-authenticator` — a software WebAuthn authenticator
   for the passkey tests of this repository (private).
 - `examples/` — example apps, each an in-repo Convex backend run from its own
