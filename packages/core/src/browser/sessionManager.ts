@@ -66,9 +66,6 @@ interface AuthClientConfigBase {
   /**
    * An access token to store on {@link AuthClient.init}, typically provided by
    * an SSR host.
-   *
-   * @deprecated Pass the `initialToken` option to {@link AuthClient.init}
-   * instead, so a client shared on a server never holds a user's token.
    */
   initialAccessToken?: string | null;
   /**

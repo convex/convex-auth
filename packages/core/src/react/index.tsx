@@ -35,7 +35,10 @@ import {
   useAuth,
 } from "./client.tsx";
 
-export { createAuthClient } from "../browser/createAuthClient.ts";
+export {
+  createAuthClient,
+  type ConvexAuthClient,
+} from "../browser/createAuthClient.ts";
 export type { AuthClient } from "../browser/sessionManager.ts";
 export type { TokenStorage } from "../browser/storage.ts";
 export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
