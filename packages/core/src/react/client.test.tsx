@@ -142,6 +142,35 @@ describe("React bindings", () => {
     await waitFor(() => expect(client.getAccessToken()).toBe("access-1"));
   });
 
+  test("a remounted provider reports loading until it loads the stored session", async () => {
+    const { client, storage } = makeClient();
+    await client.init();
+    await client.setSession(bundle(1));
+    client.dispose();
+    const states: Array<{ isLoading: boolean; token: string | null }> = [];
+    function Capture() {
+      states.push({ isLoading: useAuth().isLoading, token: useAuthToken() });
+      return null;
+    }
+
+    // Another tab signed in as someone else while no provider was mounted.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-2");
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-2");
+    render(
+      <AuthProvider authClient={client}>
+        <Capture />
+      </AuthProvider>,
+    );
+
+    expect(states[0]!.isLoading).toBe(true);
+    await waitFor(() =>
+      expect(states.at(-1)).toEqual({ isLoading: false, token: "access-2" }),
+    );
+    expect(
+      states.some((state) => !state.isLoading && state.token === "access-1"),
+    ).toBe(false);
+  });
+
   test("reports loading then unauthenticated for an empty store", async () => {
     const { client } = makeClient();
     const { result } = renderAuth(client);

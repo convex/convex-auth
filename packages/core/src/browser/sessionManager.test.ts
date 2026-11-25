@@ -397,6 +397,22 @@ describe("AuthClient", () => {
     });
   });
 
+  test("reports loading from the last dispose until the next init loads storage", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundle(1));
+
+    client.dispose();
+    expect(client.getSnapshot().isLoading).toBe(true);
+
+    await client.init();
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: true,
+      token: "access-1",
+    });
+  });
+
   test("the signInApi property throws without a signInApi option", () => {
     const { client } = makeClient();
     expect(() => client.signInApi.mutation(SIGN_IN_REF, {})).toThrow(
@@ -947,6 +963,48 @@ describe("AuthClient (a token change while init reads storage)", () => {
     await client.signOut();
     release();
     await initialized;
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: false,
+      token: null,
+    });
+  });
+
+  test("ignores a read that started before a newer init", async () => {
+    const storage = new InMemoryStorage();
+    storage.setItem(jwtKey, "access-1");
+    storage.setItem(refreshKey, "refresh-1");
+    // Holds each access token read until its own release is called.
+    const releases: Array<() => void> = [];
+    const tokenStorage: TokenStorage = {
+      getItem: async (key) => {
+        const value = storage.getItem(key);
+        if (key === jwtKey) {
+          const gate = Promise.withResolvers<void>();
+          releases.push(gate.resolve);
+          await gate.promise;
+        }
+        return value;
+      },
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+    };
+    const { client } = makeClient({}, tokenStorage);
+
+    const firstInit = client.init();
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
+    client.dispose();
+    // Another tab signed out before the next init.
+    storage.removeItem(jwtKey);
+    storage.removeItem(refreshKey);
+    const secondInit = client.init();
+    await vi.waitFor(() => expect(releases).toHaveLength(2));
+
+    releases[1]!();
+    await secondInit;
+    releases[0]!();
+    await firstInit;
 
     expect(client.getSnapshot()).toEqual({
       isLoading: false,

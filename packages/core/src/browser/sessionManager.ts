@@ -227,6 +227,8 @@ export class AuthClient {
   #initialized = false;
   /** Counts the {@link init} calls that no {@link dispose} call has ended. */
   #activeInits = 0;
+  /** Counts storage reads, so only the latest read takes effect. */
+  #loadGeneration = 0;
   /**
    * Counts changes to the tokens in memory, so {@link init} can tell when a
    * change happened during its storage read.
@@ -397,9 +399,10 @@ export class AuthClient {
    * Until this resolves, the client reports `isLoading`.
    *
    * Each call needs a matching {@link dispose}. The `onInit` callbacks of the
-   * ambient sign-ins run on the first call only. The cross-tab listener stays attached while any call is active. An `init`
-   * after every call was disposed loads the session from storage again,
-   * because another tab may have changed it in the meantime.
+   * ambient sign-ins run on the first call only. The cross-tab listener stays
+   * attached while any call is active. An `init` after every call was disposed
+   * loads the session from storage again, because another tab may have
+   * changed it in the meantime.
    *
    * Call it on the client only, because it can store a user's token and a
    * server can share one client across all requests.
@@ -416,7 +419,6 @@ export class AuthClient {
       this.#attachStorageListener();
       if (this.#initialized) {
         await this.#loadTokens();
-        this.#notify();
         return;
       }
     }
@@ -445,17 +447,19 @@ export class AuthClient {
       await this.#storage.set(JWT_STORAGE_KEY, initialToken);
     }
     await this.#loadTokens();
-    this.#isLoading = false;
-    this.#notify();
   }
 
-  /** Read the tokens from storage into memory. */
+  /** Reads the tokens from storage into memory and ends loading. */
   async #loadTokens(): Promise<void> {
+    const generation = ++this.#loadGeneration;
     const versionBeforeRead = this.#tokenVersion;
     const [accessToken, refreshToken] = await Promise.all([
       this.#storage.get(JWT_STORAGE_KEY),
       this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
     ]);
+    // Drop the read if a newer read started or every init call was disposed,
+    // because storage may have changed since it started.
+    if (generation !== this.#loadGeneration || this.#activeInits === 0) return;
     // Keep a change made during the read, because it is newer than the stored
     // tokens.
     if (this.#tokenVersion === versionBeforeRead) {
@@ -463,11 +467,14 @@ export class AuthClient {
       this.#refreshToken = refreshToken ?? null;
     }
     this.#log(`load: token is null: ${this.#accessToken === null}`);
+    this.#isLoading = false;
+    this.#notify();
   }
 
   /**
    * Ends one {@link init} call. Ending the last active call detaches the
-   * cross-tab listener. Store subscribers stay, so a later `init` restores the client
+   * cross-tab listener and reports loading until the next `init` loads
+   * storage. Store subscribers stay, so a later `init` restores the client
    * with them.
    */
   dispose(): void {
@@ -479,6 +486,10 @@ export class AuthClient {
       target.removeEventListener("storage", this.#storageListener);
     }
     this.#storageListener = null;
+    // Another tab may change the session before the next init, so the cached
+    // session can't be trusted until then.
+    this.#isLoading = true;
+    this.#notify();
   }
 
   // --- Public actions ------------------------------------------------------
