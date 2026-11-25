@@ -20,8 +20,10 @@
 import { ConvexProviderWithAuth, type ConvexReactClient } from "convex/react";
 import { ReactNode, useContext, useMemo } from "react";
 import type { AmbientSignInClient } from "../browser/ambientSignInClient.ts";
-import { buildSpaAuthClient } from "../browser/createAuthClient.ts";
-import type { AuthClient } from "../browser/sessionManager.ts";
+import {
+  buildSpaAuthClient,
+  type ConvexAuthClient,
+} from "../browser/createAuthClient.ts";
 import type { TokenStorage } from "../browser/storage.ts";
 import { oauth } from "../methods/oauth/client.ts";
 import type { ConvexAuthApi } from "../lib/types.ts";
@@ -46,7 +48,7 @@ type AuthClientProps = {
    * An auth client that {@link createAuthClient} returns for a
    * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    */
-  auth: AuthClient<ConvexReactClient>;
+  auth: ConvexAuthClient<ConvexReactClient>;
   client?: never;
   api?: never;
   storage?: never;
@@ -152,19 +154,10 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
     // other props are ignored.
   }, [auth, client]);
 
-  const convex = authClient.convex;
-  const isAuthenticated = authClient.isAuthenticated;
-  if (convex === undefined || isAuthenticated === undefined) {
-    throw new Error(
-      "[convex-auth] ConvexAuthProvider needs an auth client from " +
-        "createAuthClient.",
-    );
-  }
-
   return (
     <AuthProvider authClient={authClient}>
-      <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
-        <SessionWatcher isAuthenticated={isAuthenticated} />
+      <ConvexProviderWithAuth client={authClient.convex} useAuth={useAuth}>
+        <SessionWatcher isAuthenticated={authClient.isAuthenticatedQuery} />
         {children}
       </ConvexProviderWithAuth>
     </AuthProvider>

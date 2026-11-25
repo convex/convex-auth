@@ -6,7 +6,7 @@
  */
 import { ConvexHttpClient } from "convex/browser";
 import type { ConvexReactClient } from "convex/react";
-import type { ConvexAuthApi } from "../lib/types.ts";
+import type { ConvexAuthApi, IsAuthenticatedFn } from "../lib/types.ts";
 import { oauth } from "../methods/oauth/client.ts";
 import type {
   AmbientSignInClient,
@@ -73,6 +73,14 @@ export type CreateAuthClientOptions<
   verbose?: boolean;
 } & DeploymentUrlOption<C>;
 
+/** An {@link AuthClient} that has its Convex client and `isAuthenticated` query. */
+export type ConvexAuthClient<
+  C extends SupportedConvexClient = SupportedConvexClient,
+> = AuthClient<C> & {
+  readonly convex: C;
+  readonly isAuthenticatedQuery: IsAuthenticatedFn;
+};
+
 /**
  * Returns an auth client that keeps the session in the app's own storage.
  *
@@ -87,7 +95,7 @@ export type CreateAuthClientOptions<
  */
 export function createAuthClient<C extends SupportedConvexClient>(
   options: CreateAuthClientOptions<C>,
-): AuthClient<C> {
+): ConvexAuthClient<C> {
   return buildSpaAuthClient(options, [oauth()]);
 }
 
@@ -100,7 +108,7 @@ export function createAuthClient<C extends SupportedConvexClient>(
 export function buildSpaAuthClient<C extends SupportedConvexClient>(
   options: CreateAuthClientOptions<C>,
   ambientSignIns: ReadonlyArray<AmbientSignInClient>,
-): AuthClient<C> {
+): ConvexAuthClient<C> {
   const { api } = options;
   const convex: SupportedConvexClient = options.convex;
   const isReactClient = "url" in convex;
@@ -122,10 +130,10 @@ export function buildSpaAuthClient<C extends SupportedConvexClient>(
     mutation: (fn, args) => convex.mutation(fn, args),
     action: (fn, args) => convex.action(fn, args),
   };
-  return new AuthClient<C>({
+  const authClient = new AuthClient<C>({
     mode: "spa",
     convex: options.convex,
-    isAuthenticated: api.isAuthenticated,
+    isAuthenticatedQuery: api.isAuthenticated,
     signInApi,
     authApi: {
       refreshSession: (refreshToken) =>
@@ -143,4 +151,6 @@ export function buildSpaAuthClient<C extends SupportedConvexClient>(
     },
     verbose: options.verbose,
   });
+  // The config above sets both fields from required options.
+  return authClient as ConvexAuthClient<C>;
 }

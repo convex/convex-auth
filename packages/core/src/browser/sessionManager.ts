@@ -57,7 +57,7 @@ interface AuthClientConfigBase<C extends SupportedConvexClient> {
    * A reference to the app's `isAuthenticated` query. Subscribing to the
    * query signs the client out when the server revokes the session.
    */
-  isAuthenticated?: IsAuthenticatedFn;
+  isAuthenticatedQuery?: IsAuthenticatedFn;
   /**
    * The API for calling the sign-in functions of the sign-in methods.
    * Defaults to `ambientSignIns.signInApi`.
@@ -221,8 +221,6 @@ export class AuthClient<
   readonly #verbose: boolean;
   readonly #lockKey: string;
   readonly #initialAccessToken: string | null;
-  readonly #convex: C | undefined;
-  readonly #isAuthenticated: IsAuthenticatedFn | undefined;
   /**
    * Which side owns the refresh token: this client (SPA) or an httpOnly cookie
    * (SSR). Enforced in {@link AuthClient.#storeFullTokenResult}.
@@ -251,8 +249,8 @@ export class AuthClient<
   #storageListener: ((event: StorageEvent) => void) | null = null;
 
   constructor(config: AuthClientConfig<C>) {
-    this.#convex = config.convex;
-    this.#isAuthenticated = config.isAuthenticated;
+    this.convex = config.convex;
+    this.isAuthenticatedQuery = config.isAuthenticatedQuery;
     this.signInApi = signInApiFor(config);
     this.#storage = new NamespacedStorage(
       config.storage,
@@ -324,21 +322,11 @@ export class AuthClient<
     return this.#accessToken;
   }
 
-  /**
-   * The `convex` option of the config, or undefined when the config has
-   * none. An auth client from {@link createAuthClient} always has it.
-   */
-  get convex(): C | undefined {
-    return this.#convex;
-  }
+  /** The `convex` option of the config. */
+  readonly convex: C | undefined;
 
-  /**
-   * The `isAuthenticated` option of the config, or undefined when the config
-   * has none. An auth client from {@link createAuthClient} always has it.
-   */
-  get isAuthenticated(): IsAuthenticatedFn | undefined {
-    return this.#isAuthenticated;
-  }
+  /** The `isAuthenticatedQuery` option of the config. */
+  readonly isAuthenticatedQuery: IsAuthenticatedFn | undefined;
 
   /**
    * Runs the sign-in functions of the sign-in methods for both SPA and SSR.
