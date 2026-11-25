@@ -4,11 +4,11 @@
  *
  * {@link useSignInWithUsernamePasskey} is the batteries-included hook for the
  * username + passkey login form. It drives the browser-side WebAuthn
- * ceremonies (through the internal client module built on
- * `@simplewebauthn/browser`) against the mutations of a passkey recipe,
- * and it handles both the identifier-first modal flow and passkey autofill
- * (conditional mediation), where the user selects an account directly in
- * the autocompletion list.
+ * ceremonies (through `@convex-dev/auth/methods/username-passkey/client`,
+ * built on `@simplewebauthn/browser`) against the mutations of a passkey
+ * recipe, and it handles both the identifier-first modal flow and passkey
+ * autofill (conditional mediation), where the user selects an account
+ * directly in the autocompletion list.
  *
  * {@link useAddPasskey} and {@link useRemovePasskey} (from
  * `management/react.tsx`) drive the passkey settings page of a signed-in

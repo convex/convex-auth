@@ -1,26 +1,28 @@
 /**
  * Framework-agnostic browser client for the username-passkey method.
  *
- * This module is internal: the public surface of the method is the React
- * hooks in `react.tsx`, which are built on it. The `exports` field of the
- * package blocks `methods/username-passkey/client`, so an app cannot import this
- * file. It becomes a public entry point only when a real non-React consumer
- * asks for one.
+ * The React hooks in `react.tsx` are built on it. Client libraries for other
+ * frameworks import it from `@convex-dev/auth/methods/username-passkey/client`.
  *
  * These functions wrap the modal WebAuthn ceremonies through
  * `@simplewebauthn/browser`. They do not call any Convex function: a flow
  * gets an `options` object from its start mutation, runs the ceremony here,
  * and sends the response to its finish mutation.
  *
- * The functions never throw. They return discriminated unions, and they
- * fold every failure into the {@link PasskeyClientError} shape, so callers
- * handle every failure through one `userError` switch and never need their
- * own `try`/`catch`.
+ * The ceremony functions never throw. They return discriminated unions, and
+ * they fold every failure into the {@link PasskeyClientError} shape, so
+ * callers handle every failure through one `userError` switch and never need
+ * their own `try`/`catch`.
  *
  * {@link browserCeremonies} bundles them in the {@link ResolvedPasskeyCeremonies}
  * shape that the flows and hooks take.
  *
- * @internal
+ * The flows ({@link runSignInOrSignUpFlow}, {@link runAddPasskeyFlow} and
+ * {@link runRemovePasskeyFlow}) come from `client-custom.ts`. Unlike the
+ * ceremonies, a flow rejects when a mutation throws; that file says what
+ * else the flows leave to the caller. This module exports everything that is
+ * there, so a client library on the browser ceremonies imports only this one.
+ *
  * @module
  */
 
@@ -50,30 +52,14 @@ import {
   type PasskeyRegistrationResult,
 } from "./ceremonies.ts";
 
-export {
-  foldClientError,
-  type PasskeyAuthenticationResult,
-  type ResolvedPasskeyCeremonies,
-  type PasskeyClientError,
-  type PasskeyClientFailure,
-  type PasskeyRegistrationResult,
-} from "./ceremonies.ts";
-
 // Apps and custom flows read the WebAuthn JSON types from here, so they
-// never depend on `@simplewebauthn/*` directly. The `Wire…` variants are
-// the exact shapes of the mutations of the method.
+// never depend on `@simplewebauthn/*` directly.
 export type {
   AuthenticationResponseJSON,
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 };
-export type {
-  WireAuthenticationResponse,
-  WireCreationOptions,
-  WireRegistrationResponse,
-  WireRequestOptions,
-} from "../../components/passkey/validation.ts";
 
 /**
  * Whether this browser can run WebAuthn ceremonies on this page. The
@@ -292,3 +278,42 @@ export const browserCeremonies: ResolvedPasskeyCeremonies = {
   authenticateWithAutofill,
   onResume: onPageResume,
 };
+
+// The rest of the client: what an app needs to bring its own ceremonies, and
+// the flows that run the ceremonies against the mutations of the method.
+export {
+  CHALLENGE_TTL_MS,
+  foldClientError,
+  resolveCeremonies,
+  runAddPasskeyFlow,
+  runRemovePasskeyFlow,
+  runSignInOrSignUpFlow,
+  type AddPasskeyApi,
+  type AddPasskeyFlowResult,
+  type FinishAddPasskeyResult,
+  type FinishRemovePasskeyResult,
+  type ManagementFlowContext,
+  type PasskeyAuthenticationResponse,
+  type PasskeyAuthenticationResult,
+  type PasskeyCeremonies,
+  type PasskeyClientError,
+  type PasskeyClientFailure,
+  type PasskeyRegistrationResponse,
+  type PasskeyRegistrationResult,
+  type ProtocolUserError,
+  type RemovePasskeyApi,
+  type RemovePasskeyFlowResult,
+  type RenamePasskeyResult,
+  type ResolvedPasskeyCeremonies,
+  type SignInFlowContext,
+  type SignInFlowResult,
+  type StartAddPasskeyResult,
+  type StartRemovePasskeyResult,
+  type UsernamePasskeyApi,
+  type UsernamePasskeyAutofillError,
+  type VerifyAddPasskeyResult,
+  type WireAuthenticationResponse,
+  type WireCreationOptions,
+  type WireRegistrationResponse,
+  type WireRequestOptions,
+} from "./client-custom.ts";

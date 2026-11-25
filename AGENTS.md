@@ -17,8 +17,10 @@ This is a pnpm monorepo:
   - The sign-in methods, which the app wires up: `anonymous` (not exported
     for now), `username-password`, `email-password`, `email-magic-link`,
     `username-passkey`, `oauth`
-    (only its shared React client is exported for now; the API for custom
-    providers is not), `google`, `apple`, `github`, and `discord`.
+    (only its shared client and that client's React hooks are exported for
+    now; the API for custom providers is not, and the client's `signIn`,
+    which takes the references of any provider, can change until that API
+    is stable), `google`, `apple`, `github`, and `discord`.
 - `packages/password-hash-wasm` — the `password-hash-wasm` package wrapping the argon2id WASM hasher used by the password component. It publishes compiled JavaScript plus declarations from `dist/`, so consumers never typecheck its source. Its `prepack` script builds the Rust/WASM output and then compiles the TypeScript wrapper, which keeps the Rust toolchain a publish-time requirement — `pnpm install` and TypeScript-only work don't need it. `packages/core` depends on the published package, not the workspace one, for the same reason.
 - `packages/jsdoc-typecheck-fixture` — a private Convex app that installs every
   component and sets up every sign-in method. The code examples in the doc
@@ -63,7 +65,15 @@ check:jsdoc`). It is not an example to copy.
   components: `server.ts` (Convex functions of the app), `react.tsx` or
   `react.ts` (hooks), and the browser code. A method is published at
   `@convex-dev/auth/methods/<method>/server` and
-  `@convex-dev/auth/methods/<method>/react`. `username-passkey` also has a
+  `@convex-dev/auth/methods/<method>/react`. `oauth` and `username-passkey`
+  also publish their `client.ts`, the client without React, at
+  `@convex-dev/auth/methods/<method>/client`, for client libraries of other
+  frameworks. `username-passkey` also has a `client-custom.ts`, published at
+  `@convex-dev/auth/methods/username-passkey/client-custom`, with the flows
+  of that client on top of passkey ceremonies that the app provides (for
+  example on a native passkey library); it does not import the browser
+  ceremony client (`client.ts`) or `@simplewebauthn/browser`, and `client.ts`
+  exports all of it too. `username-passkey` also has a
   `react-custom.tsx`, published at
   `@convex-dev/auth/methods/username-passkey/react-custom`, whose
   `createUsernamePasskeyHooks` makes the same hooks on top of passkey
@@ -116,6 +126,10 @@ and `verbatimModuleSyntax` settings. Two rules follow from it:
   every file of a directory, including the internal modules and the
   `_generated/` files of a component. `pnpm check:declarations` rejects a
   wildcard and an entry whose file does not exist.
+- Only an entry whose key names `react` or `nextjs` may load React.
+  `src/entries.test.ts` loads every other entry with React blocked, except
+  the `convex.config` keys (some only load in the Convex runtime) and the
+  `_generated` and `test` keys (types and test helpers).
 
 The one exception is the `./test` and `./components/<name>/test` entries, which ship as TypeScript from
 `src/`. Those helpers call `import.meta.glob`, a Vite macro that has to be
