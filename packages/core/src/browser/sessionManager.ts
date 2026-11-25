@@ -364,17 +364,43 @@ export class AuthClient {
         );
       }
     }
-    // An initially provided token is considered to be the freshest value, so
-    // persist it before the load below reads it back (and so other tabs see
-    // it). Both run under the refresh lock: with an async storage, a
-    // `setSession` while the read is in flight would otherwise be overwritten
-    // by the older value.
+    // The SSR host may have refreshed while rendering, so an initially
+    // provided token is persisted before the load below reads it back (and so
+    // other tabs see it). But the host started rendering before this page
+    // loaded, and another tab may have signed in, out or refreshed since. A
+    // stored token issued later is kept. A stored token of another session
+    // leaves the page unsure which one the cookie holds, so it asks the host
+    // with a refresh. Both run under the refresh lock:
+    // with an async storage, a `setSession` while the read is in flight would
+    // otherwise be overwritten by the older value.
+    let sessionUnknown = false;
     await runWithMutex(this.#lockKey, async () => {
-      if (this.#initialAccessToken !== null) {
-        await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+      const initial = this.#initialAccessToken;
+      if (initial !== null) {
+        const stored = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
+        const claims = {
+          initial: tokenClaims(initial),
+          stored: tokenClaims(stored),
+        };
+        if (
+          claims.stored.sub !== null &&
+          claims.initial.sub !== null &&
+          claims.stored.sub !== claims.initial.sub
+        ) {
+          sessionUnknown = true;
+        } else if (claims.stored.iat <= claims.initial.iat) {
+          await this.#storage.set(JWT_STORAGE_KEY, initial);
+        }
       }
       this.#accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
     });
+    if (sessionUnknown) {
+      try {
+        await this.fetchAccessToken({ forceRefreshToken: true });
+      } catch (error) {
+        this.#log(`init: refresh failed: ${String(error)}`);
+      }
+    }
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
@@ -630,5 +656,20 @@ export class AuthClient {
     if (this.#verbose) {
       console.debug(`${new Date().toISOString()} [convex-auth] ${message}`);
     }
+  }
+}
+
+/**
+ * The `sub` (the session id) and `iat` (in seconds) claims of an access token,
+ * or `null` and `-Infinity` where it has none. The payload is read without
+ * checking the signature: this only compares tokens this client was handed.
+ */
+function tokenClaims(token: string | null): { sub: unknown; iat: number } {
+  try {
+    const payload = token!.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const { sub, iat } = JSON.parse(atob(payload)) as Record<string, unknown>;
+    return { sub: sub ?? null, iat: typeof iat === "number" ? iat : -Infinity };
+  } catch {
+    return { sub: null, iat: -Infinity };
   }
 }

@@ -1,6 +1,8 @@
 import type { ConvexHttpClient } from "convex/browser";
 import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
+import { runWithMutex } from "../../browser/mutex.ts";
 import type { AuthClient } from "../../browser/sessionManager.ts";
+import { REFRESH_TOKEN_STORAGE_KEY } from "../../browser/storage.ts";
 
 /** The calls `proxySignInApi` makes on its `ConvexHttpClient`. */
 export type ProxyClient = Pick<
@@ -18,6 +20,11 @@ export type ProxyClient = Pick<
  * link an account to the signed-in user). `authClient` is a getter because
  * the provider builds this api before its `AuthClient`, which hands the api
  * to its ambient setups from inside its constructor.
+ *
+ * Each call holds the `AuthClient`'s refresh lock. The proxy's response sets
+ * the auth cookies, and so does the refresh handler's. A refresh sent before
+ * the sign-in carries the old cookie, and if its response arrives after the
+ * sign-in's, its `Set-Cookie` puts the old session back.
  */
 export function proxySignInApi(
   proxy: ProxyClient,
@@ -29,8 +36,10 @@ export function proxySignInApi(
     else proxy.clearAuth();
     return proxy;
   };
+  const locked = <T>(call: () => Promise<T>) =>
+    runWithMutex(authClient().storage.key(REFRESH_TOKEN_STORAGE_KEY), call);
   return {
-    mutation: (fn, args) => withAuth().mutation(fn, args),
-    action: (fn, args) => withAuth().action(fn, args),
+    mutation: (fn, args) => locked(() => withAuth().mutation(fn, args)),
+    action: (fn, args) => locked(() => withAuth().action(fn, args)),
   };
 }
