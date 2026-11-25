@@ -1,0 +1,7 @@
+.env.local
+.convex
+node_modules
+.svelte-kit
+build
+test-results
+playwright-report

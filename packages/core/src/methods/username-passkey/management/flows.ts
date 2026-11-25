@@ -4,8 +4,8 @@
  * @module
  */
 
-import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
+import type { ConvexMutationApi } from "../../../browser/ambientSignInClient.ts";
 import type {
   ResolvedPasskeyCeremonies,
   PasskeyClientFailure,
@@ -70,10 +70,19 @@ export type RemovePasskeyApi = {
   finishRemovePasskey: FinishRemovePasskeyMutation;
 };
 
-export type ManagementFlowContext<Api> = {
-  convex: ConvexReactClient;
+/**
+ * What the management clients, and the flows they run, take. They read it
+ * when they use it, so a binding can pass getters.
+ */
+export type PasskeyManagementOptions<Api> = {
+  /** Runs the mutations of the flow on the Convex client of the app. */
+  convex: ConvexMutationApi;
+  /** The passkey-management functions, usually `api.auth`. */
   api: Api;
-  /** The passkey ceremonies of the platform. */
+  /**
+   * The passkey ceremonies of the platform: `browserCeremonies` in a
+   * browser, or `resolveCeremonies(…)` of the app's own.
+   */
   ceremonies: ResolvedPasskeyCeremonies;
 };
 
@@ -95,7 +104,7 @@ export type RemovePasskeyFlowResult =
  * their identity, then registers a new passkey.
  */
 export async function runAddPasskeyFlow(
-  ctx: ManagementFlowContext<AddPasskeyApi>,
+  ctx: PasskeyManagementOptions<AddPasskeyApi>,
 ): Promise<AddPasskeyFlowResult> {
   const { convex, api, ceremonies } = ctx;
 
@@ -132,7 +141,7 @@ export async function runAddPasskeyFlow(
  * The user must authenticate with another passkey first.
  */
 export async function runRemovePasskeyFlow(
-  ctx: ManagementFlowContext<RemovePasskeyApi>,
+  ctx: PasskeyManagementOptions<RemovePasskeyApi>,
   { passkeyId }: { passkeyId: string },
 ): Promise<RemovePasskeyFlowResult> {
   const { convex, api, ceremonies } = ctx;

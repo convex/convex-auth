@@ -43,7 +43,7 @@ export type {
 export type {
   AlreadyPendingFailure,
   PasskeyAutofillStatus,
-} from "./react_impl.tsx";
+} from "./autofill.ts";
 
 /**
  * Make the passkey hooks on the given ceremonies. They take the same

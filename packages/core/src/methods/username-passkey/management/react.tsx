@@ -1,7 +1,8 @@
 /**
  * The shared bodies of the passkey-management hooks, `useAddPasskey` and
  * `useRemovePasskey`. Each entry point binds them to the ceremonies of its
- * platform.
+ * platform. They wrap the framework-agnostic {@link createAddPasskey} and
+ * {@link createRemovePasskey}.
  *
  * There is no list hook: `listPasskeys` is a plain reactive query, so a
  * page simply reads it with `useQuery(api.auth.listPasskeys, {})`.
@@ -11,29 +12,17 @@
 "use client";
 
 import { useConvex } from "convex/react";
-import { useCallback, useMemo } from "react";
-import { useStableFunctionReference } from "../../../react/functionReference.ts";
+import { useMethodClient, useReadableStore } from "../../../react/store.ts";
 import type { ResolvedPasskeyCeremonies } from "../ceremonies.ts";
-import {
-  usePasskeyCeremonySlot,
-  type AlreadyPendingFailure,
-} from "../react_impl.tsx";
-import {
-  runAddPasskeyFlow,
-  runRemovePasskeyFlow,
-  type AddPasskeyApi,
-  type AddPasskeyFlowResult,
-  type RemovePasskeyApi,
-  type RemovePasskeyFlowResult,
-} from "./flows.ts";
+import type { AddPasskeyApi, RemovePasskeyApi } from "./flows.ts";
+import { createAddPasskey, createRemovePasskey } from "./managementClient.ts";
 
-export type { AlreadyPendingFailure } from "../react_impl.tsx";
+export type { AlreadyPendingFailure } from "../autofill.ts";
 export type { AddPasskeyApi, RemovePasskeyApi } from "./flows.ts";
-
-export type AddPasskeyResult = AddPasskeyFlowResult | AlreadyPendingFailure;
-
-export type RemovePasskeyResult =
-  RemovePasskeyFlowResult | AlreadyPendingFailure;
+export type {
+  AddPasskeyResult,
+  RemovePasskeyResult,
+} from "./managementClient.ts";
 
 /**
  * The body of `useAddPasskey`, for the given platform.
@@ -46,36 +35,11 @@ export function useAddPasskeyImpl(
   managementApi: AddPasskeyApi,
   ceremonies: ResolvedPasskeyCeremonies,
 ) {
-  const convex = useConvex();
-
-  const { run, pending } = usePasskeyCeremonySlot({
-    // Not a log in page, so there is no autofill here
-    autofill: null,
+  const client = useMethodClient(createAddPasskey, {
+    convex: useConvex(),
+    api: managementApi,
+    ceremonies,
   });
-
-  const startAddPasskey = useStableFunctionReference(
-    managementApi.startAddPasskey,
-  );
-  const verifyAddPasskey = useStableFunctionReference(
-    managementApi.verifyAddPasskey,
-  );
-  const finishAddPasskey = useStableFunctionReference(
-    managementApi.finishAddPasskey,
-  );
-  const ctx = useMemo(
-    () => ({
-      convex,
-      api: { startAddPasskey, verifyAddPasskey, finishAddPasskey },
-      ceremonies,
-    }),
-    [convex, startAddPasskey, verifyAddPasskey, finishAddPasskey, ceremonies],
-  );
-
-  const addPasskey = useCallback(
-    (): Promise<AddPasskeyResult> => run(() => runAddPasskeyFlow(ctx)),
-    [run, ctx],
-  );
-
   return {
     /**
      * Adds a passkey to the account of the signed-in user.
@@ -83,9 +47,9 @@ export function useAddPasskeyImpl(
      * Returns an object with a `success` boolean flag. If it is `false`,
      * the object has a `userError` field that tells why.
      */
-    addPasskey,
+    addPasskey: client.addPasskey,
     /** `true` while an `addPasskey` call is running. */
-    pending,
+    pending: useReadableStore(client.pending),
   };
 }
 
@@ -100,30 +64,11 @@ export function useRemovePasskeyImpl(
   managementApi: RemovePasskeyApi,
   ceremonies: ResolvedPasskeyCeremonies,
 ) {
-  const convex = useConvex();
-  const { run, pending } = usePasskeyCeremonySlot({ autofill: null });
-
-  const startRemovePasskey = useStableFunctionReference(
-    managementApi.startRemovePasskey,
-  );
-  const finishRemovePasskey = useStableFunctionReference(
-    managementApi.finishRemovePasskey,
-  );
-  const ctx = useMemo(
-    () => ({
-      convex,
-      api: { startRemovePasskey, finishRemovePasskey },
-      ceremonies,
-    }),
-    [convex, startRemovePasskey, finishRemovePasskey, ceremonies],
-  );
-
-  const removePasskey = useCallback(
-    (passkeyId: string): Promise<RemovePasskeyResult> =>
-      run(() => runRemovePasskeyFlow(ctx, { passkeyId })),
-    [run, ctx],
-  );
-
+  const client = useMethodClient(createRemovePasskey, {
+    convex: useConvex(),
+    api: managementApi,
+    ceremonies,
+  });
   return {
     /**
      * Removes the given passkey from the account of the signed-in user.
@@ -131,8 +76,8 @@ export function useRemovePasskeyImpl(
      * Returns an object with a `success` boolean flag. If it is `false`,
      * the object has a `userError` field that tells why.
      */
-    removePasskey,
+    removePasskey: client.removePasskey,
     /** `true` while a `removePasskey` call is running. */
-    pending,
+    pending: useReadableStore(client.pending),
   };
 }

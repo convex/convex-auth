@@ -545,6 +545,23 @@ describe("useCompletePasswordRecovery", () => {
     await waitFor(() => expect(result.current.hook.status).toBe("ready"));
   });
 
+  test("a new code subscribes with that code in the same render", async () => {
+    secretStorage.set(RECOVERY_SECRET_KEY, "secret-9");
+    const { watch } = stubConvexQuery();
+    let emailCode = "code-9";
+    const { rerender } = renderWithProviders(() =>
+      useCompletePasswordRecovery(recoveryApi, { emailCode }),
+    );
+    await waitFor(() => expect(watch).toHaveBeenCalled());
+
+    emailCode = "code-10";
+    rerender();
+    expect(watch.mock.calls.at(-1)?.[1]).toEqual({
+      emailCode: "code-10",
+      browserSecret: "secret-9",
+    });
+  });
+
   test("a failing check ends the flow without a form", async () => {
     secretStorage.set(RECOVERY_SECRET_KEY, "secret-9");
     const { watch, emit } = stubConvexQuery();

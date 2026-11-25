@@ -13,65 +13,28 @@
  * Each hook returns a function for sending up the credentials and a `pending`
  * value that is flipped to `true` while the credentials are being validated.
  *
+ * The hooks wrap the framework-agnostic clients of
+ * `@convex-dev/auth/methods/username-password/browser`.
+ *
  * @module
  */
 "use client";
 
-import { FunctionReference } from "convex/server";
-import { useCallback, useState } from "react";
-import type { ClientView } from "../../lib/types.ts";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
-import { useStableFunctionReference } from "../../react/functionReference.ts";
-import type { SignInResult, SignUpResult } from "./server.ts";
+import { useMethodClient, useReadableStore } from "../../react/store.ts";
+import {
+  createSignInWithUsernamePassword,
+  createSignUpWithUsernamePassword,
+  type SignInWithUsernamePasswordMutation,
+  type SignUpWithUsernamePasswordMutation,
+} from "./browser.ts";
 
-/** The `(username, password)` pair both flows accept. */
-export type Credentials = { username: string; password: string };
-
-/**
- * The `signInWithUsernamePassword` mutation the app re-exports from its `setupUsernamePassword`.
- *
- * Its return value is the access-only {@link ClientView}, which is what both
- * session models have in common. Hand it to `setSession`, the only supported
- * consumer.
- */
-type SignInWithUsernamePasswordMutation = FunctionReference<
-  "mutation",
-  "public",
+export type {
   Credentials,
-  ClientView<SignInResult>
->;
-
-/**
- * The `signUpWithUsernamePassword` mutation the app re-exports from its `setupUsernamePassword`.
- */
-type SignUpWithUsernamePasswordMutation = FunctionReference<
-  "mutation",
-  "public",
-  Credentials,
-  ClientView<SignUpResult>
->;
-
-/**
- * A failure the client produces that the server never returns: the mutation
- * threw (a network blip, a bug, an unexpected server error) rather than
- * resolving to a `userError`. The flow hooks fold that into the result as
- * `OTHER_ERROR` so callers handle *every* failure through the one `userError`
- * switch and never need their own `try`/`catch`. The thrown value is preserved
- * on `cause` for callers that want to inspect or log it.
- */
-type UnexpectedFailure = {
-  status: "error";
-  userError: { error: "OTHER_ERROR"; cause: unknown };
-};
-
-/** The result of the `signIn` callback from {@link useSignInWithUsernamePassword}. */
-export type SignInWithUsernamePasswordResult =
-  ClientView<SignInResult> | UnexpectedFailure;
-
-/** The result of the `signUp` callback from {@link useSignUpWithUsernamePassword}. */
-export type SignUpWithUsernamePasswordResult =
-  ClientView<SignUpResult> | UnexpectedFailure;
+  SignInWithUsernamePasswordResult,
+  SignUpWithUsernamePasswordResult,
+} from "./browser.ts";
 
 /**
  * Client for the sign-in flow of the `usernamePassword` method: wire the backend's
@@ -145,10 +108,17 @@ export type SignUpWithUsernamePasswordResult =
 export function useSignInWithUsernamePassword(api: {
   signInWithUsernamePassword: SignInWithUsernamePasswordMutation;
 }) {
-  const signInMutation = useStableFunctionReference(
-    api.signInWithUsernamePassword,
-  );
-  const { run, pending } = usePasswordFlow(signInMutation);
+  const { setSession } = useAuthActions();
+  // Running through the signInApi rather than `useMutation` is what lets these
+  // hooks serve both session models. See {@link useAuthSignInApi}.
+  const signInApi = useAuthSignInApi();
+  // One client per hook instance, so each form keeps its own `pending`.
+  const client = useMethodClient(createSignInWithUsernamePassword, {
+    authClient: { setSession },
+    signInApi,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
   return {
     /**
      * Passes up the given credentials to perform a username/password sign in.
@@ -161,7 +131,7 @@ export function useSignInWithUsernamePassword(api: {
      * If it is `"error"` the returned object will have a `userError` field with
      * additional details about why sign-in failed.
      */
-    signIn: run,
+    signIn: client.signIn,
     /** `true` if the sign-in attempt is being validated. */
     pending,
   };
@@ -195,10 +165,14 @@ export function useSignInWithUsernamePassword(api: {
 export function useSignUpWithUsernamePassword(api: {
   signUpWithUsernamePassword: SignUpWithUsernamePasswordMutation;
 }) {
-  const signUpMutation = useStableFunctionReference(
-    api.signUpWithUsernamePassword,
-  );
-  const { run, pending } = usePasswordFlow(signUpMutation);
+  const { setSession } = useAuthActions();
+  const signInApi = useAuthSignInApi();
+  const client = useMethodClient(createSignUpWithUsernamePassword, {
+    authClient: { setSession },
+    signInApi,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
   return {
     /**
      * Passes up the given credentials to perform a username/password sign up.
@@ -211,49 +185,8 @@ export function useSignUpWithUsernamePassword(api: {
      * If it is `"error"` the returned object will have a `userError` field with
      * additional details about why sign-up failed.
      */
-    signUp: run,
+    signUp: client.signUp,
     /** `true` if the sign-up attempt is being validated. */
     pending,
   };
-}
-
-/**
- * Shared internals for sign-in and sign-up: run the mutation, adopt the
- * session on success, and track in-flight state. The two flows are
- * structurally identical and differ only in the mutation they call and the
- * name they expose the callback under.
- */
-function usePasswordFlow<
-  Result extends ClientView<SignInResult> | ClientView<SignUpResult>,
->(mutation: FunctionReference<"mutation", "public", Credentials, Result>) {
-  const { setSession } = useAuthActions();
-  // Running through the signInApi rather than `useAction` is what lets these hooks
-  // serve both session models. See {@link useAuthSignInApi}.
-  const signInApi = useAuthSignInApi();
-  const [pending, setPending] = useState(false);
-
-  const run = useCallback(
-    async (credentials: Credentials): Promise<Result | UnexpectedFailure> => {
-      setPending(true);
-      try {
-        const result = await signInApi.mutation(mutation, credentials);
-        if (result.status === "complete") {
-          await setSession(result.tokens);
-        }
-        return result;
-      } catch (cause) {
-        // The mutation threw instead of resolving to a `userError`. Fold it into
-        // the same discriminated result as `OTHER_ERROR`, preserving the thrown
-        // value on `cause`, so the caller handles it alongside every other
-        // failure and can still inspect or log the original error if it wants.
-        return { status: "error", userError: { error: "OTHER_ERROR", cause } };
-      } finally {
-        // Reset even when the mutation throws.
-        setPending(false);
-      }
-    },
-    [signInApi, mutation, setSession],
-  );
-
-  return { run, pending };
 }

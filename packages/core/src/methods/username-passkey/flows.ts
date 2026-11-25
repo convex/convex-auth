@@ -5,15 +5,13 @@
  * @module
  */
 
-import type { ConvexReactClient } from "convex/react";
 import type { FunctionReference } from "convex/server";
-import type { AuthSignInApi } from "../../browser/ambientSignInClient.ts";
 import type {
-  ClientView,
-  SignInError,
-  SlimTokenBundle,
-  TokenBundle,
-} from "../../lib/types.ts";
+  AuthSignInApi,
+  ConvexMutationApi,
+} from "../../browser/ambientSignInClient.ts";
+import type { AuthClient } from "../../browser/sessionManager.ts";
+import type { ClientView, SignInError } from "../../lib/types.ts";
 import type {
   ResolvedPasskeyCeremonies,
   PasskeyClientError,
@@ -65,21 +63,27 @@ export type UsernamePasskeyApi = {
   finishSignUpWithUsernamePasskey: FinishSignUpMutation;
 };
 
-/** What the sign-in flows need from the surrounding React tree. */
-export type SignInFlowContext = {
-  /** The Convex client of the surrounding provider. */
-  convex: ConvexReactClient;
-  /** The mutation references the app re-exported from its `setupConvexAuth`. */
-  api: UsernamePasskeyApi;
+/**
+ * What the passkey sign-in page takes: `createSignInWithUsernamePasskey`,
+ * and the flows it runs. They read it when they use it, so a binding can
+ * pass getters.
+ */
+export type SignInWithUsernamePasskeyOptions = {
+  /** The client the session goes to. */
+  authClient: Pick<AuthClient, "setSession">;
   /**
-   * Runs a mutation that mints a session. The finishing mutations go
-   * through this, and not through `convex`, because they must work under
-   * both session models (SPA and SSR).
+   * Runs the finish mutations, which mint a session, so under SSR they go
+   * through the auth proxy.
    */
   signInApi: AuthSignInApi;
-  /** Stores a minted session. */
-  setSession: (session: TokenBundle | SlimTokenBundle) => Promise<void>;
-  /** The passkey ceremonies of the platform. */
+  /** Runs the start mutations, which mint no session, on the Convex client. */
+  convex: ConvexMutationApi;
+  /** The functions of the method, usually `api.auth`. */
+  api: UsernamePasskeyApi;
+  /**
+   * The passkey ceremonies of the platform: `browserCeremonies` in a
+   * browser, or `resolveCeremonies(…)` of the app's own.
+   */
   ceremonies: ResolvedPasskeyCeremonies;
 };
 
@@ -121,10 +125,10 @@ export type UsernamePasskeyAutofillError =
  * username is new, then one ceremony makes a passkey or uses one.
  */
 export async function runSignInOrSignUpFlow(
-  ctx: SignInFlowContext,
+  ctx: SignInWithUsernamePasskeyOptions,
   { username }: { username: string },
 ): Promise<SignInFlowResult> {
-  const { convex, api, signInApi, setSession, ceremonies } = ctx;
+  const { convex, api, signInApi, authClient, ceremonies } = ctx;
 
   if (!ceremonies.isSupported()) {
     return { status: "error", userError: { error: "WEBAUTHN_UNSUPPORTED" } };
@@ -152,7 +156,7 @@ export async function runSignInOrSignUpFlow(
     if (result.status !== "complete") {
       return result;
     }
-    await setSession(result.tokens);
+    await authClient.setSession(result.tokens);
     return { ...result, flow: "signUp" };
   }
 
@@ -166,6 +170,6 @@ export async function runSignInOrSignUpFlow(
   if (result.status !== "complete") {
     return result;
   }
-  await setSession(result.tokens);
+  await authClient.setSession(result.tokens);
   return { ...result, flow: "signIn" };
 }

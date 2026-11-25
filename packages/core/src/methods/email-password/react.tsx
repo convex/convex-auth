@@ -2,358 +2,55 @@
  * React client for the `emailPassword` method, exported at
  * `@convex-dev/auth/methods/email-password/react`.
  *
+ * The hooks wrap the framework-agnostic clients of
+ * `@convex-dev/auth/methods/email-password/browser`.
+ *
  * @module
  */
 "use client";
 
-import { FunctionReference } from "convex/server";
-import { useMutation, useQuery } from "convex/react";
-import { useCallback, useRef, useContext, useEffect, useState } from "react";
-import type { ClientView } from "../../lib/types.ts";
-import { AuthClientContext, useAuth } from "../../react/client.tsx";
+import { useQuery } from "convex/react";
+import { useEffect } from "react";
+import {
+  useAuth,
+  useAuthClient,
+  useAuthSignInApi,
+  useConvexMutations,
+} from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
-import { useStableFunctionReference } from "../../react/functionReference.ts";
-import type { NamespacedStorage } from "../../browser/storage.ts";
-import type {
-  SignUpResult as SignUpMutationResult,
-  CompleteSignUpResult,
-  SignInResult as SignInMutationResult,
-  StartChangeEmailResult as StartChangeEmailMutationResult,
-  CompleteChangeEmailResult,
-  StartPasswordRecoveryResult as StartPasswordRecoveryMutationResult,
-  CheckPasswordRecoveryResult as CheckPasswordRecoveryQueryResult,
-  CompletePasswordRecoveryResult as CompletePasswordRecoveryMutationResult,
-} from "./server.ts";
+import { useMethodClient, useReadableStore } from "../../react/store.ts";
+import {
+  createCompleteChangeEmail,
+  createCompletePasswordRecovery,
+  createCompleteSignUpWithEmailPassword,
+  createSignInWithEmailPassword,
+  createSignUpWithEmailPassword,
+  createStartChangeEmail,
+  createStartPasswordRecovery,
+  type CompleteChangeEmailMutation,
+  type CompleteChangeEmailState,
+  type CompletePasswordRecoveryState,
+  type CompleteSignUpMutation,
+  type CompleteSignUpState,
+  type PasswordRecoveryApi,
+  type SignInMutation,
+  type SignUpMutation,
+  type StartChangeEmailMutation,
+  type StartPasswordRecoveryMutation,
+} from "./browser.ts";
 
-/**
- * The flows that the user completes with a link from an email. Each flow keeps
- * a secret in the storage of the browser that started it.
- */
-type EmailLinkFlow = "signUp" | "changeEmail" | "passwordRecovery";
-
-// One storage key per type of flow, so flows of different types can run at
-// the same time. Two flows of the same type share one key: the second flow
-// replaces the secret of the first.
-const SECRET_STORAGE_KEYS: Record<EmailLinkFlow, string> = {
-  signUp: "__convexAuthEmailPasswordSignUpSecret",
-  changeEmail: "__convexAuthEmailPasswordChangeEmailSecret",
-  passwordRecovery: "__convexAuthEmailPasswordRecoverySecret",
-};
-
-//------------------------------------------------------------------------------
-// Result types
-//------------------------------------------------------------------------------
-
-/** The `userError` of the failure arm of a `success` envelope. */
-type ExtractError<Result> = Result extends {
-  success: false;
-  userError: infer UserError;
-}
-  ? UserError
-  : never;
-
-/** The `userError` of the error arm of a sign-in envelope. */
-type SignInError<Result> = Result extends {
-  status: "error";
-  userError: infer UserError;
-}
-  ? UserError
-  : never;
-
-/**
- * The mutation threw rather than resolving to a `userError`. The thrown value
- * is preserved on `cause`.
- */
-type OtherError = { error: "OTHER_ERROR"; cause: unknown };
-
-/**
- * A link was opened in a browser that did not start the flow: the flow's
- * secret is not in this browser's storage, so completion cannot proceed. Tell
- * the user to open the link in the browser they started from.
- */
-type MissingSecretError = { error: "MISSING_SECRET" };
-
-type UnexpectedFailure = { success: false; userError: OtherError };
-
-/**
- * The success arm of a "start" result, without the `browserSecret`. The hook
- * stores the secret itself; the caller has no use for it, and keeping it out
- * of the result keeps it out of URLs and logs.
- */
-type WithoutSecret<Result> = Result extends { success: true }
-  ? Omit<Result, "browserSecret">
-  : Result;
-
-type SignInUnexpectedFailure = { status: "error"; userError: OtherError };
-
-type SignUpMutation = FunctionReference<
-  "mutation",
-  "public",
-  { email: string; password: string },
-  ClientView<SignUpMutationResult>
->;
-
-type CompleteSignUpMutation = FunctionReference<
-  "mutation",
-  "public",
-  { emailCode: string; browserSecret: string },
-  ClientView<CompleteSignUpResult>
->;
-
-type SignInMutation = FunctionReference<
-  "mutation",
-  "public",
-  { email: string; password: string },
-  ClientView<SignInMutationResult>
->;
-
-type StartChangeEmailMutation = FunctionReference<
-  "mutation",
-  "public",
-  { newEmail: string; currentPassword: string },
-  StartChangeEmailMutationResult
->;
-
-type CompleteChangeEmailMutation = FunctionReference<
-  "mutation",
-  "public",
-  { emailCode: string; browserSecret: string },
-  CompleteChangeEmailResult
->;
-
-type StartPasswordRecoveryMutation = FunctionReference<
-  "mutation",
-  "public",
-  { email: string },
-  StartPasswordRecoveryMutationResult
->;
-
-type CheckPasswordRecoveryQuery = FunctionReference<
-  "query",
-  "public",
-  { emailCode: string; browserSecret: string },
-  CheckPasswordRecoveryQueryResult
->;
-
-type CompletePasswordRecoveryMutation = FunctionReference<
-  "mutation",
-  "public",
-  { emailCode: string; browserSecret: string; newPassword: string },
-  ClientView<CompletePasswordRecoveryMutationResult>
->;
-
-/**
- * The functions that {@link useCompletePasswordRecovery} calls. The app's
- * `api.auth` has both of them.
- */
-export type PasswordRecoveryApi = {
-  checkPasswordRecovery: CheckPasswordRecoveryQuery;
-  completePasswordRecovery: CompletePasswordRecoveryMutation;
-};
-
-/** The result of the `signIn` callback from {@link useSignInWithEmailPassword}. */
-export type SignInResult =
-  ClientView<SignInMutationResult> | SignInUnexpectedFailure;
-
-/** The result of the `signUp` callback from {@link useSignUpWithEmailPassword}. */
-export type SignUpResult =
-  WithoutSecret<ClientView<SignUpMutationResult>> | UnexpectedFailure;
-
-/** The result of the `startChangeEmail` callback from {@link useStartChangeEmail}. */
-export type StartChangeEmailResult =
-  WithoutSecret<StartChangeEmailMutationResult> | UnexpectedFailure;
-
-/** The result of the `startPasswordRecovery` callback from {@link useStartPasswordRecovery}. */
-export type StartPasswordRecoveryResult =
-  WithoutSecret<StartPasswordRecoveryMutationResult> | UnexpectedFailure;
-
-/**
- * The result of the `completePasswordRecovery` callback of the `ready` state
- * of {@link useCompletePasswordRecovery}.
- */
-export type CompletePasswordRecoveryResult =
-  ClientView<CompletePasswordRecoveryMutationResult> | SignInUnexpectedFailure;
-
-/**
- * The state of a landing page hook: `loading` until the link has been
- * presented, then `complete` or `error`.
- */
-export type LinkFlowState<UserError> =
-  | { status: "loading" }
-  | { status: "complete" }
-  | { status: "error"; userError: UserError };
-
-/** The state of {@link useCompleteSignUpWithEmailPassword}. */
-export type CompleteSignUpState = LinkFlowState<
-  | SignInError<ClientView<CompleteSignUpResult>>
-  | MissingSecretError
-  | OtherError
->;
-
-/** The state of {@link useCompleteChangeEmail}. */
-export type CompleteChangeEmailState = LinkFlowState<
-  ExtractError<CompleteChangeEmailResult> | MissingSecretError | OtherError
->;
-
-/**
- * The errors about the link rather than about the new password: the errors
- * of `checkPasswordRecovery`. They end the flow: the user needs a new link.
- */
-type PasswordRecoveryLinkError = ExtractError<CheckPasswordRecoveryQueryResult>;
-
-// One key for each link error. Thus a new error in the result of
-// `checkPasswordRecovery` is a compile error here.
-const PASSWORD_RECOVERY_LINK_ERRORS: Record<
-  PasswordRecoveryLinkError["error"],
-  true
-> = { INVALID_CHALLENGE: true, INCORRECT_CODE: true };
-
-function isPasswordRecoveryLinkError(
-  userError: SignInError<ClientView<CompletePasswordRecoveryMutationResult>>,
-): userError is PasswordRecoveryLinkError {
-  return userError.error in PASSWORD_RECOVERY_LINK_ERRORS;
-}
-
-/**
- * The state of {@link useCompletePasswordRecovery}. Unlike the other landing
- * page hooks, the flow needs input from the user (the new password) before it
- * can complete, so a `ready` state carries the function to submit it.
- */
-export type CompletePasswordRecoveryState =
-  | { status: "loading" }
-  | {
-      status: "ready";
-      /**
-       * Set the new password and sign the user in. Errors about the new
-       * password come back in the result and leave the state `ready`, so the
-       * user can try another password with the same link.
-       */
-      completePasswordRecovery: (args: {
-        newPassword: string;
-      }) => Promise<CompletePasswordRecoveryResult>;
-      /** `true` while `completePasswordRecovery` is in flight. */
-      pending: boolean;
-    }
-  | { status: "complete" }
-  | {
-      status: "error";
-      userError: PasswordRecoveryLinkError | MissingSecretError;
-    };
-
-//------------------------------------------------------------------------------
-// Shared helpers
-//------------------------------------------------------------------------------
-
-function useSecretStorage(): NamespacedStorage {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
-  return authClient.storage;
-}
-
-/**
- * The auth client's `withSignInPending`: while its call runs, the auth state
- * reports `isLoading` instead of signed out.
- */
-function useWithSignInPending() {
-  const authClient = useContext(AuthClientContext);
-  if (authClient === undefined) {
-    throw new Error("Must be used within a <ConvexAuthProvider>.");
-  }
-  return authClient.withSignInPending;
-}
-
-/**
- * Track the in-flight state of async calls.
- */
-function usePending() {
-  const [pending, setPending] = useState(false);
-
-  // We count the number of pending calls out of safety.
-  // Normally apps shouldn’t start concurrent flows (e.g. they should disable
-  // form submission when a current submission is ongoing), this is just a layer
-  // of extra safey in case they don’t do it correctly.
-  const inFlight = useRef(0);
-
-  const track = useCallback(async <T,>(work: () => Promise<T>): Promise<T> => {
-    inFlight.current++;
-    setPending(true);
-    try {
-      return await work();
-    } finally {
-      if (--inFlight.current === 0) setPending(false);
-    }
-  }, []);
-  return { pending, track };
-}
-
-const foldError = (cause: unknown): UnexpectedFailure => ({
-  success: false,
-  userError: { error: "OTHER_ERROR", cause },
-});
-
-const foldSignInError = (cause: unknown): SignInUnexpectedFailure => ({
-  status: "error",
-  userError: { error: "OTHER_ERROR", cause },
-});
-
-/**
- * Present a link once, as soon as the page opens: wait for the auth client to
- * load, read the flow's secret, run `complete` with it, and clear the secret
- * when the flow is done. A failed completion keeps the secret: the user may
- * have opened an older link, and the newest one must still work.
- *
- * Runs on initial mount. We want for this to run on page load. This is
- * acceptable: since we use browser secrets, we don’t need an additional
- * user confirmation.
- */
-function useLinkFlow<UserError>(
-  flow: EmailLinkFlow,
-  complete: (
-    browserSecret: string,
-  ) => Promise<{ done: true } | { done: false; userError: UserError }>,
-): LinkFlowState<UserError | MissingSecretError | OtherError> {
-  const { isLoading } = useAuth();
-  const storage = useSecretStorage();
-  const [state, setState] = useState<
-    LinkFlowState<UserError | MissingSecretError | OtherError>
-  >({ status: "loading" });
-
-  // Make sure it’s the first useEffect run to avoid issues in React strict mode
-  const started = useRef(false);
-
-  useEffect(() => {
-    if (isLoading || started.current) {
-      return;
-    }
-    started.current = true;
-    void (async () => {
-      try {
-        const browserSecret = await storage.get(SECRET_STORAGE_KEYS[flow]);
-        if (browserSecret === null || browserSecret === undefined) {
-          setState({ status: "error", userError: { error: "MISSING_SECRET" } });
-          return;
-        }
-        const result = await complete(browserSecret);
-        if (result.done) {
-          await storage.remove(SECRET_STORAGE_KEYS[flow]);
-          setState({ status: "complete" });
-        } else {
-          setState({ status: "error", userError: result.userError });
-        }
-      } catch (cause) {
-        setState({
-          status: "error",
-          userError: { error: "OTHER_ERROR", cause },
-        });
-      }
-    })();
-  }, [isLoading, storage, flow, complete]);
-
-  return state;
-}
+export type {
+  CompleteChangeEmailState,
+  CompletePasswordRecoveryResult,
+  CompletePasswordRecoveryState,
+  CompleteSignUpState,
+  LinkFlowState,
+  PasswordRecoveryApi,
+  SignInResult,
+  SignUpResult,
+  StartChangeEmailResult,
+  StartPasswordRecoveryResult,
+} from "./browser.ts";
 
 //------------------------------------------------------------------------------
 // Sign-in
@@ -415,33 +112,16 @@ function useLinkFlow<UserError>(
 export function useSignInWithEmailPassword(api: {
   signInWithEmailPassword: SignInMutation;
 }) {
-  const signInMutation = useStableFunctionReference(
-    api.signInWithEmailPassword,
-  );
   const { setSession } = useAuthActions();
   const signInApi = useAuthSignInApi();
-  const { pending, track } = usePending();
-
-  const signIn = useCallback(
-    async (credentials: {
-      email: string;
-      password: string;
-    }): Promise<SignInResult> =>
-      track(async () => {
-        try {
-          const result = await signInApi.mutation(signInMutation, credentials);
-          if (result.status === "complete") {
-            await setSession(result.tokens);
-          }
-          return result;
-        } catch (cause) {
-          return foldSignInError(cause);
-        }
-      }),
-    [signInApi, signInMutation, setSession, track],
-  );
-
-  return { signIn, pending };
+  // One client per hook instance, so each form keeps its own `pending`.
+  const client = useMethodClient(createSignInWithEmailPassword, {
+    authClient: { setSession },
+    signInApi,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
+  return { signIn: client.signIn, pending };
 }
 
 //------------------------------------------------------------------------------
@@ -516,35 +196,18 @@ export function useSignInWithEmailPassword(api: {
 export function useSignUpWithEmailPassword(api: {
   signUpWithEmailPassword: SignUpMutation;
 }) {
-  const signUpMutation = api.signUpWithEmailPassword;
   // Sign-up mints no session, so it calls Convex directly rather than going
   // through the `AuthSignInApi`. Under SSR, that API is the auth proxy, which
   // only serves functions returning the sign-in envelope.
-  const runSignUp = useMutation(signUpMutation);
-  const storage = useSecretStorage();
-  const { pending, track } = usePending();
-
-  const signUp = useCallback(
-    async (credentials: {
-      email: string;
-      password: string;
-    }): Promise<SignUpResult> =>
-      track(async () => {
-        try {
-          const result = await runSignUp(credentials);
-          if (result.success) {
-            await storage.set(SECRET_STORAGE_KEYS.signUp, result.browserSecret);
-            return { success: true };
-          }
-          return result;
-        } catch (cause) {
-          return foldError(cause);
-        }
-      }),
-    [runSignUp, storage, track],
-  );
-
-  return { signUp, pending };
+  const convex = useConvexMutations();
+  const authClient = useAuthClient();
+  const client = useMethodClient(createSignUpWithEmailPassword, {
+    authClient,
+    convex,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
+  return { signUp: client.signUp, pending };
 }
 
 /**
@@ -570,42 +233,20 @@ export function useCompleteSignUpWithEmailPassword(
   api: { completeSignUpWithEmailPassword: CompleteSignUpMutation },
   { emailCode }: { emailCode: string },
 ): CompleteSignUpState {
-  const completeSignUpMutation = useStableFunctionReference(
-    api.completeSignUpWithEmailPassword,
-  );
-  const { setSession } = useAuthActions();
+  // Outside a provider, throw the error this hook has always thrown.
+  useAuthActions();
+  const authClient = useAuthClient();
   const signInApi = useAuthSignInApi();
-  const withSignInPending = useWithSignInPending();
-
-  // Keep `isLoading` true while the server validates the link and the client
-  // stores the new session, so the app does not see a signed-out user and
-  // go to the sign-in page during this time.
-  const complete = useCallback(
-    (browserSecret: string) =>
-      withSignInPending(async () => {
-        const result = await signInApi.mutation(completeSignUpMutation, {
-          emailCode,
-          browserSecret,
-        });
-        if (result.status === "complete") {
-          await setSession(result.tokens);
-          return { done: true } as const;
-        }
-        return { done: false, userError: result.userError } as const;
-      }),
-    [
-      signInApi,
-      completeSignUpMutation,
-      emailCode,
-      setSession,
-      withSignInPending,
-    ],
-  );
-
-  return useLinkFlow<SignInError<ClientView<CompleteSignUpResult>>>(
-    "signUp",
-    complete,
-  );
+  const client = useMethodClient(createCompleteSignUpWithEmailPassword, {
+    authClient,
+    signInApi,
+    api,
+    emailCode,
+  });
+  // Presents the link once, on page load. In StrictMode the cleanup of the
+  // first run only cancels a start that still waits for the auth client.
+  useEffect(() => client.start(), [client]);
+  return useReadableStore(client.state);
 }
 
 //------------------------------------------------------------------------------
@@ -624,32 +265,15 @@ export function useCompleteSignUpWithEmailPassword(
 export function useStartPasswordRecovery(api: {
   startPasswordRecovery: StartPasswordRecoveryMutation;
 }) {
-  const startPasswordRecoveryMutation = api.startPasswordRecovery;
-  const runStartPasswordRecovery = useMutation(startPasswordRecoveryMutation);
-  const storage = useSecretStorage();
-  const { pending, track } = usePending();
-
-  const startPasswordRecovery = useCallback(
-    async (args: { email: string }): Promise<StartPasswordRecoveryResult> =>
-      track(async () => {
-        try {
-          const result = await runStartPasswordRecovery(args);
-          if (result.success) {
-            await storage.set(
-              SECRET_STORAGE_KEYS.passwordRecovery,
-              result.browserSecret,
-            );
-            return { success: true, sentTo: result.sentTo };
-          }
-          return result;
-        } catch (cause) {
-          return foldError(cause);
-        }
-      }),
-    [runStartPasswordRecovery, storage, track],
-  );
-
-  return { startPasswordRecovery, pending };
+  const convex = useConvexMutations();
+  const authClient = useAuthClient();
+  const client = useMethodClient(createStartPasswordRecovery, {
+    authClient,
+    convex,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
+  return { startPasswordRecovery: client.startPasswordRecovery, pending };
 }
 
 /**
@@ -722,99 +346,27 @@ export function useCompletePasswordRecovery(
   recoveryApi: PasswordRecoveryApi,
   { emailCode }: { emailCode: string },
 ): CompletePasswordRecoveryState {
-  const { checkPasswordRecovery } = recoveryApi;
-  const completeMutation = useStableFunctionReference(
-    recoveryApi.completePasswordRecovery,
-  );
-  const { isLoading } = useAuth();
-  const { setSession } = useAuthActions();
+  // Outside a provider, throw the error this hook has always thrown.
+  useAuth();
+  const authClient = useAuthClient();
   const signInApi = useAuthSignInApi();
-  const storage = useSecretStorage();
-  const { pending, track } = usePending();
-  // The secret from storage: not read yet, missing, or found.
-  const [browserSecret, setBrowserSecret] = useState<undefined | null | string>(
-    undefined,
-  );
-  // The end of the flow, once `completePasswordRecovery` reaches it. It
-  // wins over the check: a completed link is a dead link for the check.
-  const [outcome, setOutcome] =
-    useState<
-      Extract<CompletePasswordRecoveryState, { status: "complete" | "error" }>
-    >();
-
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
-    void (async () => {
-      const secret = await storage.get(SECRET_STORAGE_KEYS.passwordRecovery);
-      setBrowserSecret(secret ?? null);
-    })();
-  }, [isLoading, storage]);
-
+  const client = useMethodClient(createCompletePasswordRecovery, {
+    authClient,
+    signInApi,
+    api: recoveryApi,
+    emailCode,
+  });
+  useEffect(() => client.start(), [client]);
+  // Render again when the secret is read, or the completion moves on.
+  useReadableStore(client.progress);
+  // The client reads the options of the last committed render, so take the
+  // code of this render: the subscription must follow a new code right away.
+  const args = client.checkArgs();
   const check = useQuery(
-    checkPasswordRecovery,
-    typeof browserSecret === "string" ? { emailCode, browserSecret } : "skip",
+    recoveryApi.checkPasswordRecovery,
+    args === "skip" ? args : { ...args, emailCode },
   );
-
-  const completePasswordRecovery = useCallback(
-    async ({
-      newPassword,
-    }: {
-      newPassword: string;
-    }): Promise<CompletePasswordRecoveryResult> =>
-      track(async () => {
-        if (typeof browserSecret !== "string") {
-          // Only reachable through the `ready` state, which has the secret.
-          throw new Error(
-            "completePasswordRecovery was called before the flow was ready",
-          );
-        }
-        try {
-          const result = await signInApi.mutation(completeMutation, {
-            emailCode,
-            browserSecret,
-            newPassword,
-          });
-          if (result.status === "complete") {
-            await setSession(result.tokens);
-            await storage.remove(SECRET_STORAGE_KEYS.passwordRecovery);
-            setOutcome({ status: "complete" });
-          } else if (isPasswordRecoveryLinkError(result.userError)) {
-            setOutcome({ status: "error", userError: result.userError });
-          }
-          return result;
-        } catch (cause) {
-          return foldSignInError(cause);
-        }
-      }),
-    [
-      signInApi,
-      completeMutation,
-      emailCode,
-      browserSecret,
-      storage,
-      setSession,
-      track,
-    ],
-  );
-
-  if (outcome !== undefined) {
-    return outcome;
-  }
-  if (browserSecret === null) {
-    return { status: "error", userError: { error: "MISSING_SECRET" } };
-  }
-  if (browserSecret === undefined || check === undefined) {
-    return { status: "loading" };
-  }
-  // While `completePasswordRecovery` runs, the claim of the link reaches
-  // the subscription before the mutation result reaches the page. Keep the
-  // form until the result says what happened to the link.
-  if (!check.success && !pending) {
-    return { status: "error", userError: check.userError };
-  }
-  return { status: "ready", completePasswordRecovery, pending };
+  return client.stateFor(check);
 }
 
 //------------------------------------------------------------------------------
@@ -830,35 +382,15 @@ export function useCompletePasswordRecovery(
 export function useStartChangeEmail(api: {
   startChangeEmail: StartChangeEmailMutation;
 }) {
-  const startChangeEmailMutation = api.startChangeEmail;
-  const runStartChangeEmail = useMutation(startChangeEmailMutation);
-  const storage = useSecretStorage();
-  const { pending, track } = usePending();
-
-  const startChangeEmail = useCallback(
-    async (args: {
-      newEmail: string;
-      currentPassword: string;
-    }): Promise<StartChangeEmailResult> =>
-      track(async () => {
-        try {
-          const result = await runStartChangeEmail(args);
-          if (result.success) {
-            await storage.set(
-              SECRET_STORAGE_KEYS.changeEmail,
-              result.browserSecret,
-            );
-            return { success: true };
-          }
-          return result;
-        } catch (cause) {
-          return foldError(cause);
-        }
-      }),
-    [runStartChangeEmail, storage, track],
-  );
-
-  return { startChangeEmail, pending };
+  const convex = useConvexMutations();
+  const authClient = useAuthClient();
+  const client = useMethodClient(createStartChangeEmail, {
+    authClient,
+    convex,
+    api,
+  });
+  const pending = useReadableStore(client.pending);
+  return { startChangeEmail: client.startChangeEmail, pending };
 }
 
 /**
@@ -874,22 +406,16 @@ export function useCompleteChangeEmail(
   api: { completeChangeEmail: CompleteChangeEmailMutation },
   { emailCode }: { emailCode: string },
 ): CompleteChangeEmailState {
-  const completeChangeEmailMutation = api.completeChangeEmail;
-  const runCompleteChangeEmail = useMutation(completeChangeEmailMutation);
-
-  const complete = useCallback(
-    async (browserSecret: string) => {
-      const result = await runCompleteChangeEmail({ emailCode, browserSecret });
-      if (result.success) {
-        return { done: true } as const;
-      }
-      return { done: false, userError: result.userError } as const;
-    },
-    [runCompleteChangeEmail, emailCode],
-  );
-
-  return useLinkFlow<ExtractError<CompleteChangeEmailResult>>(
-    "changeEmail",
-    complete,
-  );
+  const convex = useConvexMutations();
+  // Outside a provider, throw the error this hook has always thrown.
+  useAuth();
+  const authClient = useAuthClient();
+  const client = useMethodClient(createCompleteChangeEmail, {
+    authClient,
+    convex,
+    api,
+    emailCode,
+  });
+  useEffect(() => client.start(), [client]);
+  return useReadableStore(client.state);
 }

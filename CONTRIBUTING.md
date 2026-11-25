@@ -22,6 +22,8 @@ so the first `pnpm dev` prompts you to pick or create a deployment.
 - `examples/react-discord` adds the Discord OAuth provider.
 - `examples/react-google` adds the Google OAuth provider.
 - `examples/nextjs` covers the Next.js integration.
+- `examples/sveltekit` covers the SvelteKit integration, with e2e tests
+  (`pnpm --filter example-sveltekit test:e2e`).
 
 ## Common tasks
 

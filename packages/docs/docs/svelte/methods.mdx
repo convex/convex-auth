@@ -1,0 +1,195 @@
+---
+sidebar_position: 3
+title: Sign-in methods with Svelte
+description: How the sign-in method guides apply to a Svelte or SvelteKit app.
+---
+
+The backend steps of each [sign-in method guide](../methods/username-password.mdx)
+apply to a Svelte app without changes. This page covers the frontend. It
+assumes you have followed [Setting up Svelte](./setup.mdx) or
+[Setting up SvelteKit](./sveltekit.mdx).
+
+## The hooks of the methods
+
+Each sign-in method has the hooks of its React client, under the same names,
+and they take the same arguments:
+
+| React (`@convex-dev/auth/...`)    | Svelte (`@convex-dev/auth/...`)    |
+| --------------------------------- | ---------------------------------- |
+| `methods/username-password/react` | `methods/username-password/svelte` |
+| `methods/username-passkey/react`  | `methods/username-passkey/svelte`  |
+| `methods/email-password/react`    | `methods/email-password/svelte`    |
+| `methods/email-magic-link/react`  | `methods/email-magic-link/svelte`  |
+| `methods/<provider>/react`        | `methods/<provider>/svelte`        |
+| `methods/oauth/react`             | `methods/oauth/svelte`             |
+
+The providers are `google`, `apple`, `github`, and `discord`.
+
+Call the hooks during component initialization, in the `<script>` of a
+component below `setupConvexAuth` or `setupConvexAuthSvelteKit`. They return
+an object whose state fields are getters, like `pending`. Read them from the
+object: destructuring `pending` reads its value once, and the template won't
+update when it changes.
+
+The functions resolve to a result and never reject. A thrown error comes back
+as `OTHER_ERROR`, with the original error on `cause`. The `userError` codes are
+the ones of the method guides.
+
+{/* prettier-ignore */}
+```html title="src/SignIn.svelte"
+<script lang="ts">
+  import { useSignInWithUsernamePassword } from "@convex-dev/auth/methods/username-password/svelte";
+  import { api } from "../convex/_generated/api";
+
+  const login = useSignInWithUsernamePassword(api.auth);
+  let username = $state("");
+  let password = $state("");
+  let error = $state<string | null>(null);
+
+  async function onsubmit(event: SubmitEvent) {
+    event.preventDefault();
+    const result = await login.signIn({ username, password });
+    if (result.status === "error") {
+      error = result.userError.error; // INVALID_CREDENTIALS, RATE_LIMITED, OTHER_ERROR, …
+    }
+  }
+</script>
+
+<form {onsubmit}>
+  <input
+    id="username"
+    autocomplete="username"
+    bind:value={username}
+    disabled={login.pending}
+  />
+  <input
+    id="password"
+    type="password"
+    autocomplete="current-password"
+    bind:value={password}
+    disabled={login.pending}
+  />
+  {#if error}
+    <p role="alert">{error}</p>
+  {/if}
+  <button disabled={login.pending}>Sign in</button>
+</form>
+```
+
+### Email + password and magic link
+
+The hooks of the landing pages of the emailed links
+(`useCompleteSignUpWithEmailPassword`, `useCompletePasswordRecovery`,
+`useCompleteChangeEmail`, and `useSignInWithEmailMagicLink`) return `{ current }` where the React hooks return
+the state itself. They start when the component mounts:
+
+{/* prettier-ignore */}
+```html title="src/routes/validate-email/+page.svelte"
+<script lang="ts">
+  import { page } from "$app/state";
+  import { useCompleteSignUpWithEmailPassword } from "@convex-dev/auth/methods/email-password/svelte";
+  import { api } from "../../../convex/_generated/api";
+
+  const signUp = useCompleteSignUpWithEmailPassword(api.auth, {
+    emailCode: page.url.searchParams.get("code") ?? "",
+  });
+</script>
+
+{#if signUp.current.status === "loading"}
+  <p>Validating your email…</p>
+{:else if signUp.current.status === "complete"}
+  <p>Your email is validated, and you're signed in.</p>
+{:else}
+  <p role="alert">{signUp.current.userError.error}</p>
+{/if}
+```
+
+`useCompletePasswordRecovery` checks the link with `useQuery` of
+`convex-svelte`, which returns its errors where the one of `convex/react`
+throws them. When the check fails, the state is `error` with `OTHER_ERROR`
+and the error on `cause`.
+
+### Passkeys
+
+`useSignInWithUsernamePasskey(api.auth)` also offers the stored passkeys in the
+autocompletion list of the username field while the component is mounted. The
+field needs `autocomplete="username webauthn"`. The browser runs one such
+request at a time, so call the hook once per page. Read the state of the
+autofill flow from `login.autofill.available`, `login.autofill.status`, and
+`login.autofill.lastError`.
+
+For the settings page, `useAddPasskey(api.auth)` and `useRemovePasskey(api.auth)`
+run the passkey dialogs. Listing and renaming have no hook, as with React:
+call `useQuery(api.auth.listPasskeys, {})` and
+`useConvexClient().mutation(api.auth.renamePasskey, { passkeyId, name })` from
+`convex-svelte`.
+
+### OAuth
+
+`useSignInWithGithub(api.auth).signIn()` navigates to GitHub, and the other
+providers work the same way. The client finishes the sign-in on the page the
+provider redirects back to. A failure after the redirect, like the user
+cancelling at GitHub, shows up in `useOauth().flowError` on that page:
+
+{/* prettier-ignore */}
+```html title="src/SocialButtons.svelte"
+<script lang="ts">
+  import {
+    useOauth,
+    useSignInWithGithub,
+  } from "@convex-dev/auth/methods/github/svelte";
+  import { api } from "../convex/_generated/api";
+
+  const github = useSignInWithGithub(api.auth);
+  const oauth = useOauth();
+</script>
+
+<button onclick={() => github.signIn()}>Continue with GitHub</button>
+{#if oauth.flowError}
+  <p role="alert">Sign-in failed: {oauth.flowError.error}</p>
+{/if}
+```
+
+`setupConvexAuth` and `setupConvexAuthSvelteKit` register `oauth()` by default.
+If you set their `ambientSignIns` option, include `oauth()` from
+`@convex-dev/auth/methods/oauth/svelte`.
+
+## With SvelteKit
+
+### Add the sign-in functions to the `signIn` list
+
+The `/auth/signin` route only forwards the functions listed in `signIn` in
+`setupConvexAuthServer`. If a function the hooks need isn't listed, the route
+refuses the call with a `403` error. Add these functions for each sign-in
+method:
+
+| Method           | Functions to list in `signIn`                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| Password         | `signUpWithUsernamePassword`, `signInWithUsernamePassword`                               |
+| Passkey          | `finishSignUpWithUsernamePasskey`, `finishSignInWithUsernamePasskey`                     |
+| Email + password | `signInWithEmailPassword`, `completeSignUpWithEmailPassword`, `completePasswordRecovery` |
+| OAuth            | `completeSignInWith<Provider>`, like `completeSignInWithGithub`                          |
+
+Only list functions that create a session. The other functions run on the
+Convex client and don't need to be listed.
+
+### Let signed-out users reach your auth pages
+
+Your `handle` hook decides which pages need a signed-in user. Let signed-out
+users reach every page they need to sign in: the sign-in and sign-up pages,
+the pages that emailed links open (like `/validate-email` and
+`/reset-password`), and the page an OAuth provider redirects back to. The
+client redeems the OAuth code on that page, and a redirect away from it drops
+the code.
+
+## Use your app's origin in the method config
+
+The method guides use the Vite dev server, `http://localhost:5173`, which is
+also the default of `vite dev` in SvelteKit. `vite preview` serves on
+`http://localhost:4173`. List each origin you serve the app from:
+
+- **Passkey:** `origin` in `setupUsernamePasskey`.
+- **Email + password:** the `SITE_URL` environment variable of your
+  deployment, so the emailed links open your app.
+- **OAuth:** `allowedRedirectOrigins` in `setupGoogle`, `setupApple`,
+  `setupGithub`, or `setupDiscord`.

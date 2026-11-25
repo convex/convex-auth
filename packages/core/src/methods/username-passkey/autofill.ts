@@ -1,34 +1,44 @@
 /**
- * Internal building blocks of the passkey React hooks (see `./react.tsx`):
- * the autofill request loop, and the modal ceremony slot of a page. They
- * are not part of the public API (at least for now — we might export
- * them later to make it easier to implement custom flows).
+ * The framework-agnostic building blocks of the passkey clients: the
+ * autofill request loop of a sign-in page ({@link createPasskeyAutofill}),
+ * and the slot that runs one modal ceremony at a time
+ * ({@link createPasskeyCeremonySlot}). The page clients of `signInClient.ts`
+ * and `management/managementClient.ts` are made of them. They are internal:
+ * a binding uses the page clients.
+ *
+ * This module holds no platform code: the ceremonies come in as a
+ * {@link ResolvedPasskeyCeremonies}. It thus never imports `client.ts` or
+ * `@simplewebauthn/browser`, which keeps it usable from `react-custom.tsx`.
  *
  * @module
  */
-"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  foldClientError,
-  type PasskeyClientFailure,
-  type ResolvedPasskeyCeremonies,
-  type PasskeyClientError,
-} from "./ceremonies.ts";
 import { CHALLENGE_TTL_MS } from "../../components/passkey/constants.ts";
 import type {
   WireAuthenticationResponse,
   WireRequestOptions,
 } from "../../components/passkey/validation.ts";
+import { createStore, type ReadableStore } from "../../browser/store.ts";
+import {
+  foldClientError,
+  type PasskeyClientError,
+  type PasskeyClientFailure,
+  type ResolvedPasskeyCeremonies,
+} from "./ceremonies.ts";
 
 //------------------------------------------------------------------------------
 // Autofill
 //------------------------------------------------------------------------------
 
 /**
- * The states of {@link usePasskeyAutofill}:
+ * The states of the autofill flow:
  *
- * - `"idle"`: the flow has not started yet, or autofill is off.
+ * - `"idle"`: the flow has not started yet, or `stop()`
+ *   ended it (a microtask after the call, unless the flow started again in
+ *   the meantime). A pick that still verified at the stop reports its end
+ *   once no loop runs any more: `"idle"` with its `lastError` when it fails,
+ *   or `"signedIn"`. While a newer loop runs, the state moves on to
+ *   `"waiting"` instead.
  * - `"waiting"`: the autofill request is pending in the browser.
  * - `"signingIn"`: a picked assertion is being handled (`onAssertion` is
  *   running, usually a server verification).
@@ -39,14 +49,27 @@ import type {
 export type PasskeyAutofillStatus =
   "idle" | "waiting" | "signingIn" | "signedIn" | "stopped";
 
+/** The state of an autofill flow. */
+export type PasskeyAutofillState<E> = {
+  /**
+   * Whether the platform can offer passkeys in the autocompletion list.
+   * `null` while detection runs; `false` when the platform has no autofill.
+   * A stop keeps the last value.
+   */
+  available: boolean | null;
+  /** The state of the request; see {@link PasskeyAutofillStatus}. */
+  status: PasskeyAutofillStatus;
+  /** The most recent failure, for display or logging. */
+  lastError: E | PasskeyClientError | null;
+};
+
 /**
- * The gates of an autofill flow, which {@link usePasskeyAutofill} returns
+ * The gates of an autofill flow, which {@link createPasskeyAutofill} returns
  * among its fields.
  * `pauseAutofillFlow()` aborts the in-flight browser request and keeps the
  * loop parked; `resumeAutofillFlow()` lets the loop start a fresh request.
  * The pauses are reference-counted, so two modal flows on one page compose,
- * and they act on the hook, so they survive a restart of the autofill
- * effect. Both callbacks keep their identity for the life of the hook.
+ * and they act on the flow, so they survive a restart of the loop.
  *
  * The browser runs one WebAuthn ceremony at a time per page, thus **every**
  * modal ceremony on a page that runs autofill must pause the autofill flow
@@ -62,6 +85,43 @@ export type PasskeyAutofillGates = {
   pauseAutofillFlow: () => void;
   resumeAutofillFlow: () => void;
   isAutofillSigningIn: () => boolean;
+};
+
+/** What {@link createPasskeyAutofill} takes. */
+export type PasskeyAutofillOptions<E> = {
+  /**
+   * The passkey ceremonies of the platform. The loop reads them once per
+   * {@link PasskeyAutofill.start}.
+   */
+  ceremonies: ResolvedPasskeyCeremonies;
+  /**
+   * Mint fresh options (with a fresh challenge) for a conditional-mediation
+   * request, usually through the start mutation of the flow (the
+   * `startAutofillSignInWithUsernamePasskey` mutation of a passkey recipe).
+   */
+  start: () => Promise<WireRequestOptions>;
+  /**
+   * Handle the assertion of the passkey the user picked, usually by sending
+   * it to the flow's finish mutation. Return `success: false` with the
+   * flow's error to make the loop retry with a fresh challenge (up to a
+   * small cap); return `success: true` to end the flow as `"signedIn"`.
+   */
+  onAssertion: (
+    response: WireAuthenticationResponse,
+  ) => Promise<{ success: true } | { success: false; userError: E }>;
+};
+
+/** An autofill flow; see {@link createPasskeyAutofill}. */
+export type PasskeyAutofill<E> = PasskeyAutofillGates & {
+  /** The state of the flow. */
+  state: ReadableStore<PasskeyAutofillState<E>>;
+  /**
+   * Start the request loop. Call it when the sign-in page mounts. Returns
+   * the function that stops the loop and aborts its request, for the
+   * unmount. The flow can be started again after a stop: the pauses carry
+   * over.
+   */
+  start: () => () => void;
 };
 
 // A pending autofill request refreshes its challenge before the server's
@@ -81,7 +141,7 @@ const AUTOFILL_STALENESS_CHECK_MS = 10 * 1000;
 // the autofill flow stops instead of asking the browser again.
 const MAX_AUTOFILL_FAILURES = 3;
 
-// What this hook tells a developer whose own ceremony took the browser's
+// What this flow tells a developer whose own ceremony took the browser's
 // single ceremony slot without pausing the flow first.
 const FOREIGN_CEREMONY_WARNING =
   "[convex-auth] The passkey autofill request was ended by another WebAuthn " +
@@ -117,38 +177,16 @@ const FOREIGN_CEREMONY_WARNING =
  *    ╰────────────────────────────────────────────────╯
  * ```
  *
- * This hook only handles the behavior. The login form is required to
- * render an `<input autoComplete="… webauthn">` input field.
+ * This only handles the behavior. The login form is required to render an
+ * `<input autoComplete="… webauthn">` input field. The flow reads its
+ * options when it uses them, so a binding can pass getters.
  */
-export function usePasskeyAutofill<E = never>(options: {
-  /**
-   * Set `false` to keep the autofill request off. Defaults to `true`.
-   */
-  enabled?: boolean;
-  /**
-   * The passkey ceremonies of the platform. The loop reads them once per
-   * run of its effect, thus they must keep their identity.
-   */
-  ceremonies: ResolvedPasskeyCeremonies;
-  /**
-   * Mint fresh options (with a fresh challenge) for a
-   * conditional-mediation request, usually through the start mutation of
-   * the flow (the `startAutofillSignInWithUsernamePasskey` mutation of a passkey recipe).
-   */
-  start: () => Promise<WireRequestOptions>;
-  /**
-   * Handle the assertion of the passkey the user picked, usually by
-   * sending it to the flow's finish mutation. Return `success: false` with
-   * the flow's error to make the loop retry with a fresh challenge (up to
-   * a small cap); return `success: true` to end the flow as `"signedIn"`.
-   */
-  onAssertion: (
-    response: WireAuthenticationResponse,
-  ) => Promise<{ success: true } | { success: false; userError: E }>;
-}) {
+export function createPasskeyAutofill<E = never>(
+  options: PasskeyAutofillOptions<E>,
+): PasskeyAutofill<E> {
   // The implementation flows from the following constraints:
-  // - While usePasskeyAutofill is mounted, we (generally) have an ongoing
-  //   conditional mediation request running.
+  // - While the flow is started, we (generally) have an ongoing conditional
+  //   mediation request running.
   // - We start a new request once the challenge is ~8 minutes old (by the
   //   wall clock) because the challenge has a TTL of 10 minutes.
   // - The autofill system can be paused and then resumed. This is necessary
@@ -156,84 +194,90 @@ export function usePasskeyAutofill<E = never>(options: {
   //   challenges, so we need to pause autofill while a modal passkey
   //   challenge is running.
 
-  const { enabled = true, ceremonies } = options;
-
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [status, setStatus] = useState<PasskeyAutofillStatus>("idle");
-  const [lastError, setLastError] = useState<E | PasskeyClientError | null>(
-    null,
-  );
+  const state = createStore<PasskeyAutofillState<E>>({
+    available: null,
+    status: "idle",
+    lastError: null,
+  });
+  const update = (patch: Partial<PasskeyAutofillState<E>>) => {
+    const current = state.get();
+    if (
+      Object.entries(patch).every(
+        ([key, value]) =>
+          current[key as keyof PasskeyAutofillState<E>] === value,
+      )
+    ) {
+      return;
+    }
+    state.set({ ...current, ...patch });
+  };
 
   // Reference-counted pauses, so that two modal flows on one page compose:
   // the first one to resume must not restart the loop while the second
-  // still holds the ceremony slot. The count lives on the hook, so a pause
-  // holds across an effect restart.
-  const pauseCountRef = useRef(0);
+  // still holds the ceremony slot. The count lives on the flow, so a pause
+  // holds across a restart of the loop.
+  let pauseCount = 0;
   // Wakes the parked loop; `null` while the loop is not parked.
-  const wakeRef = useRef<(() => void) | null>(null);
-  // The `AbortController` of the conditional request that this hook has in
-  // flight, or `null` when it has none. The hook owns it, rather than
+  let wake: (() => void) | null = null;
+  // The `AbortController` of the conditional request that this flow has in
+  // flight, or `null` when it has none. The flow owns it, rather than
   // letting `@simplewebauthn/browser` own the ceremony slot, because an
   // `AbortSignal` latches: an abort holds whether it arrives before, during,
   // or after the `get()` call, so `pause` needs no acknowledgement from the
   // loop and no ordering rule. It is also how the loop knows *who* ended a
-  // request: this hook aborts this controller and nobody else does, so an
+  // request: this flow aborts this controller and nobody else does, so an
   // abort here is never another ceremony taking the browser's ceremony slot.
-  const controllerRef = useRef<AbortController | null>(null);
-  // `true` while `onAssertion` runs. A ref, not the `status` state, so that
-  // a modal flow started in the same tick as the pick sees it.
-  const signingInRef = useRef(false);
+  let activeController: AbortController | null = null;
+  // How many `onAssertion` calls run. A variable, not the `status` of the
+  // state, so that a modal flow started in the same tick as the pick sees
+  // it. A count, because a loop that was stopped mid-verification keeps
+  // verifying, and its end must not unlock the verification of a newer loop.
+  let verifying = 0;
+  // The verification that runs, if any. A new loop waits for it before it
+  // asks the browser for another assertion, so two picks never verify at
+  // once.
+  let verification: Promise<void> | null = null;
 
-  // The loop reads the options through a ref: the callback identities
-  // change on every render (they are usually inline closures), and the
-  // pending browser request must not restart on a render.
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+  const pauseAutofillFlow = () => {
+    pauseCount += 1;
+    activeController?.abort();
+  };
 
-  const pauseAutofillFlow = useCallback(() => {
-    pauseCountRef.current += 1;
-    controllerRef.current?.abort();
-  }, []);
-
-  const resumeAutofillFlow = useCallback(() => {
-    pauseCountRef.current = Math.max(0, pauseCountRef.current - 1);
-    if (pauseCountRef.current === 0) {
-      wakeRef.current?.();
+  const resumeAutofillFlow = () => {
+    pauseCount = Math.max(0, pauseCount - 1);
+    if (pauseCount === 0) {
+      wake?.();
     }
-  }, []);
+  };
 
-  const isAutofillSigningIn = useCallback(() => signingInRef.current, []);
+  const isAutofillSigningIn = () => verifying > 0;
 
-  useEffect(() => {
-    if (!enabled) {
-      // Report the off state, so `status` does not stay stuck on the last
-      // value of a previous enabled run.
-      setStatus("idle");
-      // No detection runs and the autocompletion list will not offer
-      // passkeys. Report `false`, so `available` does not stay on `null`
-      // ("detection runs") forever.
-      setAvailable(false);
-      return;
-    }
-    // The cleanup flips this, which makes the loop StrictMode-safe by
-    // construction: the throwaway first mount's loop sees `alive: false`
-    // after its first await and exits, while the second mount runs its own
-    // loop.
+  // The stop of the running loop. A second `start` stops the first loop, so
+  // two loops never compete for the browser's single conditional request.
+  let stopRunning: (() => void) | null = null;
+
+  const start = () => {
+    stopRunning?.();
+    const ceremonies = options.ceremonies;
+    // The stop flips this, which makes the loop safe to start again (as
+    // React's StrictMode does) by construction: the stopped loop sees
+    // `alive: false` after its next await and exits, while the new start
+    // runs its own loop.
     let alive = true;
 
-    /** Park until `resume()` or the effect cleanup wakes us. */
+    /** Park until `resume()` or the stop wakes us. */
     const park = () =>
-      new Promise<void>((wake) => {
-        wakeRef.current = () => {
-          wakeRef.current = null;
-          wake();
+      new Promise<void>((resolve) => {
+        wake = () => {
+          wake = null;
+          resolve();
         };
       });
 
     const runLoop = async () => {
       // Feature-detect autofill through the ceremonies of the platform. Count
       // a rejection as "not available": if it escaped, the promise chain
-      // below would reject unhandled and the hook would stay on
+      // below would reject unhandled and the flow would stay on
       // `available: null` and `status: "idle"` forever.
       let supported = false;
       try {
@@ -244,38 +288,42 @@ export function usePasskeyAutofill<E = never>(options: {
       if (!alive) {
         return;
       }
-      setAvailable(supported);
+      update({ available: supported });
       if (!supported) {
-        setStatus("stopped");
+        update({ status: "stopped" });
         return;
       }
 
       let failures = 0;
       while (alive) {
-        if (pauseCountRef.current > 0) {
+        if (pauseCount > 0) {
           await park();
           continue;
         }
+        if (verification !== null) {
+          // A stopped loop still verifies its pick. Wait for its end.
+          await verification;
+          continue;
+        }
 
-        setStatus("waiting");
+        update({ status: "waiting" });
         // Taken before the start mutation runs, so the age this loop
         // measures is never shorter than the age the server measures.
         const requestedAt = Date.now();
         let requestOptions;
         try {
-          requestOptions = await optionsRef.current.start();
+          requestOptions = await options.start();
         } catch (cause) {
           if (!alive) {
             return;
           }
-          setLastError(foldClientError(cause));
-          setStatus("stopped");
+          update({ lastError: foldClientError(cause), status: "stopped" });
           return;
         }
         if (!alive) {
           return;
         }
-        if (pauseCountRef.current > 0) {
+        if (pauseCount > 0) {
           // A pause came in while the challenge was being minted: park (at
           // the top of the loop) before a new browser request starts.
           continue;
@@ -289,7 +337,7 @@ export function usePasskeyAutofill<E = never>(options: {
         // arrives while it is pending, and `get()` refuses an
         // already-aborted signal on entry.
         const controller = new AbortController();
-        controllerRef.current = controller;
+        activeController = controller;
 
         // Refresh before the server's challenge TTL, so the challenge
         // that the user finally redeems is never expired. A refresh that
@@ -319,8 +367,8 @@ export function usePasskeyAutofill<E = never>(options: {
           requestOptions,
           controller.signal,
         );
-        if (controllerRef.current === controller) {
-          controllerRef.current = null;
+        if (activeController === controller) {
+          activeController = null;
         }
         clearInterval(refreshTimer);
         stopResumeChecks();
@@ -330,13 +378,13 @@ export function usePasskeyAutofill<E = never>(options: {
 
         if (!result.success) {
           if (controller.signal.aborted) {
-            // This hook ended its own request: a refresh, or a pause. The
+            // This flow ended its own request: a refresh, or a pause. The
             // two need no telling apart, because the top of the loop parks
             // if a pause is still owed and otherwise starts a request with
             // a fresh challenge, which is what both want.
             continue;
           }
-          // Nothing this hook did ended the request, so another WebAuthn
+          // Nothing this flow did ended the request, so another WebAuthn
           // ceremony took the browser's single ceremony slot, or the
           // browser refuses conditional requests outright. The two are
           // indistinguishable, and starting a fresh request would abort
@@ -345,40 +393,72 @@ export function usePasskeyAutofill<E = never>(options: {
           if (result.userError.error === "CEREMONY_ABORTED") {
             console.warn(FOREIGN_CEREMONY_WARNING);
           }
-          setLastError(result.userError);
-          setStatus("stopped");
+          update({ lastError: result.userError, status: "stopped" });
           return;
         }
 
-        setStatus("signingIn");
-        signingInRef.current = true;
-        let outcome;
-        try {
-          outcome = await optionsRef.current.onAssertion(result.response);
-        } catch (cause) {
-          if (!alive) {
-            return;
+        // Lock out the modal flow before telling subscribers: a listener
+        // runs synchronously and may call `signIn` right away.
+        verifying += 1;
+        update({ status: "signingIn" });
+        const run = (async (): Promise<
+          | { outcome: Awaited<ReturnType<typeof options.onAssertion>> }
+          | { thrown: unknown }
+        > => {
+          try {
+            return { outcome: await options.onAssertion(result.response) };
+          } catch (cause) {
+            return { thrown: cause };
+          } finally {
+            // Unlock before anything below tells subscribers.
+            verifying -= 1;
           }
-          setLastError(foldClientError(cause));
-          setStatus("stopped");
-          return;
-        } finally {
-          signingInRef.current = false;
+        })();
+        const settled = run.then(() => {});
+        verification = settled;
+        const ended = await run;
+        if (verification === settled) {
+          verification = null;
         }
+        const error =
+          "thrown" in ended
+            ? foldClientError(ended.thrown)
+            : ended.outcome.success
+              ? null
+              : ended.outcome.userError;
         if (!alive) {
+          // Stopped mid-verification. Settle the state of this pick, so it
+          // doesn't stay on "signingIn" for good: by its end when no loop
+          // runs, or as "waiting" for the newer loop, which may sit parked on
+          // a pause and publish nothing until the resume.
+          if (stopRunning === null) {
+            // No loop runs, so this pick is the latest news: report its end,
+            // whatever a newer loop that ran in between published.
+            update(
+              error === null
+                ? { lastError: null, status: "signedIn" }
+                : { lastError: error, status: "idle" },
+            );
+          } else if (state.get().status === "signingIn") {
+            update({ status: "waiting" });
+          }
           return;
         }
+        if ("thrown" in ended) {
+          update({ lastError: error, status: "stopped" });
+          return;
+        }
+        const outcome = ended.outcome;
         if (outcome.success) {
           // A failed attempt earlier in this loop can have set
           // `lastError`. The flow succeeded, so clear it.
-          setLastError(null);
-          setStatus("signedIn");
+          update({ lastError: null, status: "signedIn" });
           return;
         }
-        setLastError(outcome.userError);
+        update({ lastError: outcome.userError });
         failures += 1;
         if (failures >= MAX_AUTOFILL_FAILURES) {
-          setStatus("stopped");
+          update({ status: "stopped" });
           return;
         }
         // Try again with a fresh challenge.
@@ -387,41 +467,38 @@ export function usePasskeyAutofill<E = never>(options: {
 
     void runLoop();
 
-    return () => {
+    const stop = () => {
+      // A second call, or the stop of a loop that a later `start` already
+      // stopped, must not abort the request of the loop that runs now.
+      if (!alive) return;
       alive = false;
-      controllerRef.current?.abort();
+      stopRunning = null;
+      // A request that waits ends with the stop. A pick that verifies keeps
+      // "signingIn" until its loop settles it. Checked a microtask later, so
+      // a restart in the same tick (an effect's cleanup, then its next run)
+      // keeps "waiting" instead of flickering through "idle".
+      if (state.get().status === "waiting") {
+        queueMicrotask(() => {
+          if (stopRunning === null && state.get().status === "waiting") {
+            update({ status: "idle" });
+          }
+        });
+      }
+      activeController?.abort();
       // Never leave the loop parked; it exits on `alive`.
-      wakeRef.current?.();
+      wake?.();
     };
-  }, [enabled, ceremonies]);
+    stopRunning = stop;
+    return stop;
+  };
 
-  return useMemo(
-    () => ({
-      /**
-       * Whether the browser can offer passkeys in the autocompletion list.
-       * `null` while detection runs; `false` when autofill is off.
-       */
-      available,
-      /** The state of the request; see {@link PasskeyAutofillStatus}. */
-      status,
-      /** The most recent failure, for display or logging. */
-      lastError,
-      /** Pause the flow; see {@link PasskeyAutofillGates}. */
-      pauseAutofillFlow,
-      /** Resume the flow; see {@link PasskeyAutofillGates}. */
-      resumeAutofillFlow,
-      /** See {@link PasskeyAutofillGates}. */
-      isAutofillSigningIn,
-    }),
-    [
-      available,
-      status,
-      lastError,
-      pauseAutofillFlow,
-      resumeAutofillFlow,
-      isAutofillSigningIn,
-    ],
-  );
+  return {
+    state: { get: state.get, subscribe: state.subscribe },
+    start,
+    pauseAutofillFlow,
+    resumeAutofillFlow,
+    isAutofillSigningIn,
+  };
 }
 
 //------------------------------------------------------------------------------
@@ -443,8 +520,18 @@ export type AlreadyPendingFailure = {
   userError: AlreadyPendingError;
 };
 
+/** A slot for modal ceremonies; see {@link createPasskeyCeremonySlot}. */
+export type PasskeyCeremonySlot = {
+  /** Run `fn` as the one modal ceremony of the page. */
+  run: <T>(
+    fn: () => Promise<T>,
+  ) => Promise<T | PasskeyClientFailure | AlreadyPendingFailure>;
+  /** `true` while a `run` call is running. */
+  pending: ReadableStore<boolean>;
+};
+
 /**
- * Building block for modal passkey flows: a `run` callback that runs one
+ * Building block for modal passkey flows: a `run` function that runs one
  * modal ceremony at a time, plus its `pending` state.
  *
  * `run(fn)` guards the invariants every modal flow needs:
@@ -457,74 +544,55 @@ export type AlreadyPendingFailure = {
  *   That sign-in cannot be paused, and both flows would set a session.
  * - It pauses the autofill flow of the page, when there is one, before
  *   `fn` and resumes it when `fn` is done, whatever the outcome. The
- *   ceremony of `fn` displaces the pending conditional request anyway (the browser runs one ceremony at a
- *   time per page); the pause keeps the autofill loop from starting a new
- *   request mid-ceremony, and the resume restarts it.
+ *   ceremony of `fn` displaces the pending conditional request anyway (the
+ *   browser runs one ceremony at a time per page); the pause keeps the
+ *   autofill loop from starting a new request mid-ceremony, and the resume
+ *   restarts it.
  * - It folds every value `fn` throws into the envelope's error arm, so
  *   callers handle every failure through one `userError` switch.
  *
  * `pause()` returns at once and needs no acknowledgement, because the
- * autofill hook aborts its request through an `AbortSignal` it owns, and an
+ * autofill flow aborts its request through an `AbortSignal` it owns, and an
  * `AbortSignal` latches. A pause that lands while a conditional request is
  * still starting up aborts it just as well as one that lands while it is
  * pending: `get()` refuses an already-aborted signal on entry. The pause
  * thus holds for every interleaving, and `fn` never has its ceremony taken
  * by the autofill loop.
  */
-export function usePasskeyCeremonySlot(options: {
+export function createPasskeyCeremonySlot(options: {
   /**
    * The gates of the autofill flow of the page, or `null` when the page
-   * runs none, which is the case of a settings page.
+   * runs none, which is the case of a settings page. Read at each `run`.
    */
   autofill: PasskeyAutofillGates | null;
-}) {
-  // Depend on destructured values, not on `options.autofill`, which changes
-  // identity on each state change.
-  const { pauseAutofillFlow, resumeAutofillFlow, isAutofillSigningIn } =
-    options.autofill ?? {};
+}): PasskeyCeremonySlot {
+  const pending = createStore(false);
 
-  const [pending, setPending] = useState(false);
-  // The re-entry guard reads through a ref: `pending` from `useState`
-  // would be stale inside the callback.
-  const pendingRef = useRef(false);
-
-  const run = useCallback(
-    // The trailing comma keeps the generic from parsing as JSX in a .tsx
-    // file.
-    async <T,>(
-      fn: () => Promise<T>,
-    ): Promise<T | PasskeyClientFailure | AlreadyPendingFailure> => {
-      if (pendingRef.current || isAutofillSigningIn?.()) {
-        // TODO(nicolas): Consider a different behavior here. The caller has
-        // nothing to show for this error, since the first ceremony keeps its
-        // dialog and resolves as usual.
-        return { success: false, userError: { error: "ALREADY_PENDING" } };
-      }
-      pendingRef.current = true;
-      setPending(true);
-      // The closure holds one pair of gates, so pause and resume act on
-      // the same autofill flow even when a render hands over a different
-      // flow mid-ceremony. The pauses are counted by the autofill hook
-      // itself, so the pair stays balanced even when its effect restarts
-      // mid-ceremony.
-      pauseAutofillFlow?.();
-      try {
-        return await fn();
-      } catch (cause) {
-        return { success: false, userError: foldClientError(cause) };
-      } finally {
-        resumeAutofillFlow?.();
-        pendingRef.current = false;
-        setPending(false);
-      }
-    },
-    [pauseAutofillFlow, resumeAutofillFlow, isAutofillSigningIn],
-  );
-
-  return {
-    /** Run `fn` as the one modal ceremony of the page. */
-    run,
-    /** `true` while a `run` call is running. */
-    pending,
+  const run = async <T>(
+    fn: () => Promise<T>,
+  ): Promise<T | PasskeyClientFailure | AlreadyPendingFailure> => {
+    // One pair of gates per call, so pause and resume act on the same
+    // autofill flow even when the options hand over a different flow
+    // mid-ceremony. The pauses are counted by the autofill flow itself, so
+    // the pair stays balanced even when its loop restarts mid-ceremony.
+    const gates = options.autofill;
+    if (pending.get() || gates?.isAutofillSigningIn()) {
+      // TODO(nicolas): Consider a different behavior here. The caller has
+      // nothing to show for this error, since the first ceremony keeps its
+      // dialog and resolves as usual.
+      return { success: false, userError: { error: "ALREADY_PENDING" } };
+    }
+    pending.set(true);
+    gates?.pauseAutofillFlow();
+    try {
+      return await fn();
+    } catch (cause) {
+      return { success: false, userError: foldClientError(cause) };
+    } finally {
+      gates?.resumeAutofillFlow();
+      pending.set(false);
+    }
   };
+
+  return { run, pending: { get: pending.get, subscribe: pending.subscribe } };
 }

@@ -1,11 +1,10 @@
 /**
- * Framework-agnostic browser client for the username-passkey method.
+ * The browser ceremonies of the username-passkey method.
  *
- * This module is internal: the public surface of the method is the React
- * hooks in `react.tsx`, which are built on it. The `exports` field of the
- * package blocks `methods/username-passkey/client`, so an app cannot import this
- * file. It becomes a public entry point only when a real non-React consumer
- * asks for one.
+ * The React hooks in `react.tsx` run them, and
+ * `@convex-dev/auth/methods/username-passkey/browser` exports them, as
+ * `browserCeremonies`, for the bindings of other frameworks. The `exports`
+ * field of the package blocks `methods/username-passkey/client` itself.
  *
  * These functions wrap the modal WebAuthn ceremonies through
  * `@simplewebauthn/browser`. They do not call any Convex function: a flow
@@ -20,7 +19,6 @@
  * {@link browserCeremonies} bundles them in the {@link ResolvedPasskeyCeremonies}
  * shape that the flows and hooks take.
  *
- * @internal
  * @module
  */
 

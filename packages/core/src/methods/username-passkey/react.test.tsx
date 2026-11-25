@@ -15,7 +15,11 @@ import {
   SignInWithUsernamePasskeyResult,
   useSignInWithUsernamePasskey,
 } from "./react.tsx";
-import { usePasskeyAutofill, usePasskeyCeremonySlot } from "./react_impl.tsx";
+import {
+  createPasskeyAutofill,
+  createPasskeyCeremonySlot,
+  type PasskeyAutofillOptions,
+} from "./autofill.ts";
 
 import { toBase64URL } from "./base64url.ts";
 import { browserCeremonies } from "./client.ts";
@@ -705,99 +709,98 @@ describe("useSignInWithUsernamePasskey autofill", () => {
   });
 });
 
-describe("usePasskeyCeremonySlot", () => {
+// The slot and the autofill flow below are the controllers that the
+// sign-in hook is made of. They run here on the browser ceremonies, against
+// the same fake browser as the hooks above.
+
+/** Let the pending promises and the zero-delay timers run. */
+const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Make an autofill flow on the browser ceremonies, and start it the way the
+ * sign-in hook does on mount. `stop` is the cleanup of the unmount.
+ */
+function startAutofill(
+  options: Omit<
+    PasskeyAutofillOptions<{ error: "VERIFICATION_FAILED" }>,
+    "ceremonies"
+  >,
+) {
+  const autofill = createPasskeyAutofill({
+    ceremonies: browserCeremonies,
+    ...options,
+  });
+  const stop = autofill.start();
+  return { autofill, state: autofill.state.get, stop };
+}
+
+describe("createPasskeyCeremonySlot", () => {
   test("run returns the callback's result and tracks pending", async () => {
-    const { result } = renderHook(() =>
-      usePasskeyCeremonySlot({ autofill: noopAutofill }),
-    );
-    expect(result.current.pending).toBe(false);
+    const slot = createPasskeyCeremonySlot({ autofill: noopAutofill });
+    expect(slot.pending.get()).toBe(false);
 
     let resolveCeremony!: (value: string) => void;
-    let running!: Promise<string | { success: false }>;
-    act(() => {
-      running = result.current.run(
-        () =>
-          new Promise<string>((resolve) => {
-            resolveCeremony = resolve;
-          }),
-      );
-    });
-    await waitFor(() => expect(result.current.pending).toBe(true));
+    const running = slot.run(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveCeremony = resolve;
+        }),
+    );
+    expect(slot.pending.get()).toBe(true);
 
-    let returned!: string | { success: false };
-    await act(async () => {
-      resolveCeremony("done");
-      returned = await running;
-    });
-    expect(returned).toBe("done");
-    expect(result.current.pending).toBe(false);
+    resolveCeremony("done");
+    expect(await running).toBe("done");
+    expect(slot.pending.get()).toBe(false);
   });
 
   test("a second run while one is running fails fast", async () => {
-    const { result } = renderHook(() =>
-      usePasskeyCeremonySlot({ autofill: noopAutofill }),
-    );
+    const slot = createPasskeyCeremonySlot({ autofill: noopAutofill });
 
     let resolveCeremony!: (value: string) => void;
-    act(() => {
-      void result.current.run(
-        () =>
-          new Promise<string>((resolve) => {
-            resolveCeremony = resolve;
-          }),
-      );
-    });
-    await waitFor(() => expect(result.current.pending).toBe(true));
+    const running = slot.run(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveCeremony = resolve;
+        }),
+    );
+    expect(slot.pending.get()).toBe(true);
 
     const second = vi.fn(async () => "second");
-    let returned!: string | { success: false; userError: unknown };
-    await act(async () => {
-      returned = await result.current.run(second);
-    });
-    expect(returned).toEqual({
+    expect(await slot.run(second)).toEqual({
       success: false,
       userError: { error: "ALREADY_PENDING" },
     });
     expect(second).not.toHaveBeenCalled();
 
-    await act(async () => {
-      resolveCeremony("done");
-    });
-    expect(result.current.pending).toBe(false);
+    resolveCeremony("done");
+    await running;
+    expect(slot.pending.get()).toBe(false);
   });
 
   test("a thrown value folds into the failure shape", async () => {
-    const { result } = renderHook(() =>
-      usePasskeyCeremonySlot({ autofill: noopAutofill }),
-    );
+    const slot = createPasskeyCeremonySlot({ autofill: noopAutofill });
     const cause = new Error("boom");
-    let returned!: never | { success: false; userError: unknown };
-    await act(async () => {
-      returned = await result.current.run(async () => {
+    expect(
+      await slot.run(async () => {
         throw cause;
-      });
-    });
-    expect(returned).toEqual({
+      }),
+    ).toEqual({
       success: false,
       userError: { error: "OTHER_ERROR", cause },
     });
-    expect(result.current.pending).toBe(false);
+    expect(slot.pending.get()).toBe(false);
   });
 
   test("run refuses while the server verifies an autofill sign-in", async () => {
     const autofill = { ...noopAutofill, isAutofillSigningIn: () => true };
     const fn = vi.fn(async () => "done");
-    const { result } = renderHook(() => usePasskeyCeremonySlot({ autofill }));
-    let returned: unknown;
-    await act(async () => {
-      returned = await result.current.run(fn);
-    });
-    expect(returned).toEqual({
+    const slot = createPasskeyCeremonySlot({ autofill });
+    expect(await slot.run(fn)).toEqual({
       success: false,
       userError: { error: "ALREADY_PENDING" },
     });
     expect(fn).not.toHaveBeenCalled();
-    expect(result.current.pending).toBe(false);
+    expect(slot.pending.get()).toBe(false);
   });
 
   test("run pauses the autofill gates around the callback, also on a throw", async () => {
@@ -811,33 +814,29 @@ describe("usePasskeyCeremonySlot", () => {
       },
       isAutofillSigningIn: () => false,
     };
-    const { result } = renderHook(() => usePasskeyCeremonySlot({ autofill }));
-    await act(async () => {
-      await result.current.run(async () => {
-        calls.push("ceremony");
-        throw new Error("boom");
-      });
+    const slot = createPasskeyCeremonySlot({ autofill });
+    await slot.run(async () => {
+      calls.push("ceremony");
+      throw new Error("boom");
     });
     expect(calls).toEqual(["pause", "ceremony", "resume"]);
   });
 });
 
-describe("usePasskeyAutofill", () => {
+describe("createPasskeyAutofill on the browser ceremonies", () => {
   test("hands the picked response to onAssertion and reports success", async () => {
     conditionalGet.mockResolvedValue(conditionalCredential);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
+    const { state, stop } = startAutofill({ start, onAssertion });
 
-    await waitFor(() => expect(result.current.status).toBe("signedIn"));
-    expect(result.current.available).toBe(true);
-    expect(result.current.lastError).toBe(null);
+    await waitFor(() => expect(state().status).toBe("signedIn"));
+    expect(state().available).toBe(true);
+    expect(state().lastError).toBe(null);
     expect(onAssertion).toHaveBeenCalledWith(wireAuthenticationResponse);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("stops after three failed assertions in a row", async () => {
@@ -848,44 +847,36 @@ describe("usePasskeyAutofill", () => {
       success: false as const,
       userError: flowError,
     }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
+    const { state, stop } = startAutofill({ start, onAssertion });
 
-    await waitFor(() => expect(result.current.status).toBe("stopped"));
+    await waitFor(() => expect(state().status).toBe("stopped"));
     // Each retry asks for a fresh challenge.
     expect(start).toHaveBeenCalledTimes(3);
     expect(onAssertion).toHaveBeenCalledTimes(3);
-    expect(result.current.lastError).toBe(flowError);
+    expect(state().lastError).toBe(flowError);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("a pause taken before the loop starts holds the first request", async () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
+    const { autofill, state, stop } = startAutofill({ start, onAssertion });
 
     // Pause right away, while feature detection is still in flight: the
     // loop must park before it mints its first challenge.
-    act(() => {
-      result.current.pauseAutofillFlow();
-    });
-    await act(async () => {});
+    autofill.pauseAutofillFlow();
+    await flush();
     expect(start).not.toHaveBeenCalled();
 
-    act(() => {
-      result.current.resumeAutofillFlow();
-    });
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
+    autofill.resumeAutofillFlow();
+    await waitFor(() => expect(state().status).toBe("waiting"));
     expect(start).toHaveBeenCalledTimes(1);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("a pause while the challenge is being minted holds the request", async () => {
@@ -906,29 +897,22 @@ describe("usePasskeyAutofill", () => {
       });
     });
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
+    const { autofill, stop } = startAutofill({ start, onAssertion });
     await waitFor(() => expect(start).toHaveBeenCalledTimes(1));
 
     // The pause lands first, then the challenge arrives. No request may
     // reach the browser: the loop would take the ceremony slot from
     // whoever the pause was making room for.
-    act(() => {
-      result.current.pauseAutofillFlow();
-    });
-    await act(async () => {
-      mintChallenge();
-    });
+    autofill.pauseAutofillFlow();
+    mintChallenge();
+    await flush();
     expect(conditionalGet).not.toHaveBeenCalled();
 
-    act(() => {
-      result.current.resumeAutofillFlow();
-    });
+    autofill.resumeAutofillFlow();
     await waitFor(() => expect(conditionalGet).toHaveBeenCalledTimes(1));
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("a ceremony that takes the slot without pausing stops the flow", async () => {
@@ -936,118 +920,85 @@ describe("usePasskeyAutofill", () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
+    const { state, stop } = startAutofill({ start, onAssertion });
+    await waitFor(() => expect(state().status).toBe("waiting"));
 
     // A ceremony that skipped `pause()` takes the slot, which ends the
-    // pending conditional request without this hook aborting it. The loop
+    // pending conditional request without this flow aborting it. The loop
     // must not start a new request: it would abort that ceremony right
     // back, and against a browser that refuses conditional requests it
     // would spin on the start mutation.
-    act(() => {
-      abortPending?.(abortError());
-      abortPending = null;
-    });
-    await waitFor(() => expect(result.current.status).toBe("stopped"));
-    expect(result.current.lastError).toEqual({ error: "CEREMONY_ABORTED" });
+    abortPending?.(abortError());
+    abortPending = null;
+    await waitFor(() => expect(state().status).toBe("stopped"));
+    expect(state().lastError).toEqual({ error: "CEREMONY_ABORTED" });
     expect(start).toHaveBeenCalledTimes(1);
-    // The developer is told, because this is a misuse of the hook that
+    // The developer is told, because this is a misuse of the flow that
     // nothing else can report: the foreign ceremony itself succeeds.
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][0]).toContain("autofill has stopped");
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
-  test("an autofill effect restart mid-ceremony keeps the pause", async () => {
+  test("a restart of the loop mid-ceremony keeps the pause", async () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, rerender, unmount } = renderHook(
-      ({ enabled }: { enabled: boolean }) => {
-        const autofill = usePasskeyAutofill({
-          ceremonies: browserCeremonies,
-          start,
-          onAssertion,
-          enabled,
-        });
-        const modal = usePasskeyCeremonySlot({ autofill });
-        return { autofill, modal };
-      },
-      { initialProps: { enabled: true } },
-    );
-    await waitFor(() => expect(result.current.autofill.status).toBe("waiting"));
+    const { autofill, state, stop } = startAutofill({ start, onAssertion });
+    const modal = createPasskeyCeremonySlot({ autofill });
+    await waitFor(() => expect(state().status).toBe("waiting"));
 
     let finishCeremony!: () => void;
-    let running!: Promise<string | { success: false }>;
-    act(() => {
-      running = result.current.modal.run(
-        () =>
-          new Promise<string>((resolve) => {
-            finishCeremony = () => resolve("done");
-          }),
-      );
-    });
-    await waitFor(() => expect(result.current.modal.pending).toBe(true));
+    const running = modal.run(
+      () =>
+        new Promise<string>((resolve) => {
+          finishCeremony = () => resolve("done");
+        }),
+    );
+    expect(modal.pending.get()).toBe(true);
     expect(start).toHaveBeenCalledTimes(1);
 
-    // Restart the autofill effect while the modal ceremony is running. The
-    // pause lives on the hook, so the restarted loop must stay parked
+    // Turn autofill off and on again while the modal ceremony is running.
+    // The pause lives on the flow, so the restarted loop must stay parked
     // instead of starting a request that would displace the ceremony.
-    rerender({ enabled: false });
-    rerender({ enabled: true });
-    await act(async () => {});
+    stop();
+    const stopRestarted = autofill.start();
+    await flush();
     expect(start).toHaveBeenCalledTimes(1);
 
-    let returned!: string | { success: false };
-    await act(async () => {
-      finishCeremony();
-      returned = await running;
-    });
-    expect(returned).toBe("done");
-    expect(result.current.modal.pending).toBe(false);
+    finishCeremony();
+    expect(await running).toBe("done");
+    expect(modal.pending.get()).toBe(false);
     // The resume of the finished ceremony lets the restarted loop start a
     // fresh request.
-    await waitFor(() => expect(result.current.autofill.status).toBe("waiting"));
+    await waitFor(() => expect(state().status).toBe("waiting"));
     expect(start).toHaveBeenCalledTimes(2);
 
-    unmount();
-    await act(async () => {});
+    stopRestarted();
+    await flush();
   });
 
   test("a modal ceremony that ends before its abort settles restarts the loop", async () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() => {
-      const autofill = usePasskeyAutofill({
-        ceremonies: browserCeremonies,
-        start,
-        onAssertion,
-      });
-      const modal = usePasskeyCeremonySlot({ autofill });
-      return { autofill, modal };
-    });
-    await waitFor(() => expect(result.current.autofill.status).toBe("waiting"));
+    const { autofill, state, stop } = startAutofill({ start, onAssertion });
+    const modal = createPasskeyCeremonySlot({ autofill });
+    await waitFor(() => expect(state().status).toBe("waiting"));
 
     // The modal ceremony pauses the loop, aborting the pending request,
     // and is over before that abort settles. The loop then sees its own
     // abort with the pause already retracted: it must not read that as a
     // foreign ceremony that displaced it and park for good.
-    let returned!: string | { success: false };
-    await act(async () => {
-      returned = await result.current.modal.run(async () => "done");
-    });
-    expect(returned).toBe("done");
+    expect(await modal.run(async () => "done")).toBe("done");
 
-    await waitFor(() => expect(result.current.autofill.status).toBe("waiting"));
+    await waitFor(() => expect(state().status).toBe("waiting"));
     expect(start).toHaveBeenCalledTimes(2);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("a challenge that aged while no timer ran is refreshed when the user comes back", async () => {
@@ -1058,26 +1009,22 @@ describe("usePasskeyAutofill", () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
+    const { state, stop } = startAutofill({ start, onAssertion });
+    await waitFor(() => expect(state().status).toBe("waiting"));
     expect(start).toHaveBeenCalledTimes(1);
 
     now += 9 * 60 * 1000;
     // The user focuses the username field to open its autocompletion
     // list. The pending challenge is too old to redeem, so the request
     // starts over with a fresh one before the user can pick a passkey.
-    act(() => {
-      document.dispatchEvent(new Event("focusin"));
-    });
+    document.dispatchEvent(new Event("focusin"));
     await waitFor(() => expect(start).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(conditionalGet).toHaveBeenCalledTimes(2));
-    expect(result.current.status).toBe("waiting");
-    expect(result.current.lastError).toBe(null);
+    expect(state().status).toBe("waiting");
+    expect(state().lastError).toBe(null);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("the periodic check refreshes a challenge that aged past the refresh point", async () => {
@@ -1087,12 +1034,10 @@ describe("usePasskeyAutofill", () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
+    const { state, stop } = startAutofill({ start, onAssertion });
+    await waitFor(() => expect(state().status).toBe("waiting"));
 
-    // The hook's staleness check is the interval it sets with its own
+    // The flow's staleness check is the interval it sets with its own
     // period; run it by hand rather than waiting for it.
     const check = setIntervalSpy.mock.calls.find(
       ([, ms]) => ms === 10 * 1000,
@@ -1101,17 +1046,17 @@ describe("usePasskeyAutofill", () => {
 
     // A fresh challenge stays pending.
     now += 60 * 1000;
-    act(() => check());
-    await act(async () => {});
+    check();
+    await flush();
     expect(start).toHaveBeenCalledTimes(1);
 
     // An old one starts over.
     now += 8 * 60 * 1000;
-    act(() => check());
+    check();
     await waitFor(() => expect(start).toHaveBeenCalledTimes(2));
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
   test("coming back to the page keeps a challenge that is still fresh", async () => {
@@ -1120,50 +1065,34 @@ describe("usePasskeyAutofill", () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, unmount } = renderHook(() =>
-      usePasskeyAutofill({ ceremonies: browserCeremonies, start, onAssertion }),
-    );
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
+    const { state, stop } = startAutofill({ start, onAssertion });
+    await waitFor(() => expect(state().status).toBe("waiting"));
 
     now += 5 * 60 * 1000;
-    act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
-      window.dispatchEvent(new Event("focus"));
-      document.dispatchEvent(new Event("focusin"));
-    });
-    await act(async () => {});
+    document.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("focusin"));
+    await flush();
     expect(start).toHaveBeenCalledTimes(1);
     expect(conditionalGet).toHaveBeenCalledTimes(1);
 
-    unmount();
-    await act(async () => {});
+    stop();
+    await flush();
   });
 
-  test("disabling the hook stops the pending request for good", async () => {
+  test("stopping the flow stops the pending request for good", async () => {
     conditionalGet.mockImplementation(pendingForever);
     const start = vi.fn(async () => requestOptions);
     const onAssertion = vi.fn(async () => ({ success: true as const }));
-    const { result, rerender, unmount } = renderHook(
-      ({ enabled }: { enabled: boolean }) =>
-        usePasskeyAutofill({
-          ceremonies: browserCeremonies,
-          start,
-          onAssertion,
-          enabled,
-        }),
-      { initialProps: { enabled: true } },
-    );
+    const { state, stop } = startAutofill({ start, onAssertion });
 
-    await waitFor(() => expect(result.current.status).toBe("waiting"));
-    rerender({ enabled: false });
-    await waitFor(() => expect(result.current.status).toBe("idle"));
-    expect(result.current.available).toBe(false);
+    await waitFor(() => expect(state().status).toBe("waiting"));
+    // What a page that turns autofill off does: stop the running loop.
+    stop();
+    await waitFor(() => expect(state().status).toBe("idle"));
     expect(onAssertion).not.toHaveBeenCalled();
     // The loop really exited: no fresh challenge is minted afterwards.
-    await act(async () => {});
+    await flush();
     expect(start).toHaveBeenCalledTimes(1);
-
-    unmount();
-    await act(async () => {});
   });
 });

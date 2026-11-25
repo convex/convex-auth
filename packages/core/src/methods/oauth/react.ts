@@ -26,18 +26,14 @@
 
 import { getFunctionName } from "convex/server";
 import { useMemo } from "react";
-import { useAmbientSignInValue } from "../../react/methods.ts";
+import { useAuthClient } from "../../react/client.tsx";
+import { useReadableStore } from "../../react/store.ts";
 import {
-  OAUTH_ACTIONS_KEY,
-  OAUTH_FLOW_ERROR_KEY,
-  OAUTH_SETUP_ID,
-  type OauthActions,
-  type OauthCompleteResult,
-  type OauthFlowError,
-  type OauthProviderRefs,
-  type OauthStartResult,
-  type SignInOptions,
-} from "./client.ts";
+  createOauthSignIn,
+  createOauthState,
+  type OauthSignIn,
+} from "./browser.ts";
+import type { OauthFlowError, OauthProviderRefs } from "./client.ts";
 
 export { oauth } from "./client.ts";
 export type {
@@ -49,13 +45,6 @@ export type {
   OauthStartResult,
   SignInOptions,
 } from "./client.ts";
-
-/** What every hook here throws when the OAuth setup published nothing. */
-const NOT_REGISTERED_ERROR =
-  "No OAuth setup is registered. ConvexAuthProvider and " +
-  "ConvexAuthNextjsProvider register oauth() from " +
-  "@convex-dev/auth/methods/oauth/react by default, so include it yourself " +
-  "if you set the `ambientSignIns` prop.";
 
 /** What {@link useOauth} returns. */
 export type UseOauthReturn = {
@@ -73,16 +62,10 @@ export type UseOauthReturn = {
  * here without any provider's function references.
  */
 export function useOauth(): UseOauthReturn {
-  const flowError = useAmbientSignInValue<OauthFlowError | null>(
-    OAUTH_SETUP_ID,
-    OAUTH_FLOW_ERROR_KEY,
-  );
-  // The value is published at setup, so `undefined` means oauth() was never
-  // registered.
-  if (flowError === undefined) {
-    throw new Error(NOT_REGISTERED_ERROR);
-  }
-  return { flowError };
+  const authClient = useAuthClient();
+  // Throws when oauth() was never registered.
+  const state = useMemo(() => createOauthState(authClient), [authClient]);
+  return { flowError: useReadableStore(state.flowError) };
 }
 
 /** What the sign-in hooks of the OAuth providers return. */
@@ -98,12 +81,7 @@ export type UseOauthSignInReturn = {
    * `undefined` so options that might hold a code match neither shape,
    * rather than being typed as a start that could finish a flow.
    */
-  signIn: {
-    (options: SignInOptions & { code: string }): Promise<OauthCompleteResult>;
-    (
-      options?: Omit<SignInOptions, "code"> & { code?: undefined },
-    ): Promise<OauthStartResult>;
-  };
+  signIn: OauthSignIn;
 };
 
 /**
@@ -132,10 +110,7 @@ export type UseOauthSignInReturn = {
  * @internal Not public until the API for custom OAuth providers is stable.
  */
 export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
-  const actions = useAmbientSignInValue<OauthActions>(
-    OAUTH_SETUP_ID,
-    OAUTH_ACTIONS_KEY,
-  );
+  const authClient = useAuthClient();
   // Generated api objects create a fresh reference object on every property
   // access, so the memo depends on the function paths instead. The `refs` it
   // captures can then be from an earlier render, which is fine because the
@@ -143,14 +118,9 @@ export function useOauthSignIn(refs: OauthProviderRefs): UseOauthSignInReturn {
   const startPath = getFunctionName(refs.startSignIn);
   const completePath = getFunctionName(refs.completeSignIn);
   const { providerName } = refs;
-  const signIn = useMemo(() => {
-    if (actions === undefined) {
-      throw new Error(NOT_REGISTERED_ERROR);
-    }
-    // One function serves both call shapes. The action picks the path from
-    // whether `code` is set, and the result matches the shape called.
-    return ((options?: SignInOptions) =>
-      actions.signIn(refs, options)) as UseOauthSignInReturn["signIn"];
-  }, [actions, providerName, startPath, completePath]);
-  return { signIn };
+  // Throws when oauth() was never registered.
+  return useMemo(
+    () => createOauthSignIn(authClient, refs),
+    [authClient, providerName, startPath, completePath],
+  );
 }

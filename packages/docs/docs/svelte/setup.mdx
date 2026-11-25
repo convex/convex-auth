@@ -1,0 +1,128 @@
+---
+sidebar_position: 1
+title: Setting up Svelte
+description: Use Convex Auth in a client-only Svelte app.
+---
+
+`@convex-dev/auth/svelte` is the Svelte counterpart of `@convex-dev/auth/react`.
+`setupConvexAuth` replaces `ConvexAuthProvider`, and `useAuthActions` and
+`useAuthToken` work the same. The browser holds the session: the access and
+refresh tokens live in `localStorage`, or in the storage you pass.
+
+With SvelteKit and server-side rendering, follow
+[Setting up SvelteKit](./sveltekit.mdx) instead. It keeps the refresh token in
+an `httpOnly` cookie.
+
+## Setting up Convex Auth in a Svelte app
+
+<StepByStep>
+
+<Step title="Follow the “Getting started” guide">
+
+Install Convex Auth and set up the core as described in the
+[Getting started](../getting-started.mdx) guide. Also install the Svelte
+bindings of Convex:
+
+```sh
+npm i convex-svelte
+```
+
+The Svelte bindings need `svelte` 5.19, `convex-svelte` 0.15 or later, and
+`convex` 1.48 or later.
+
+</Step>
+
+<Step title="Set up the backend for your sign-in methods">
+
+Follow the backend steps of the guide for each sign-in method you want to use:
+install the components, add the `users` table, set up user creation, and export
+the public functions from `convex/auth.ts`. The Convex functions are the same
+as with React. Skip the frontend steps: this guide and
+[Sign-in methods with Svelte](./methods.mdx) replace them.
+
+The Svelte client watches the `isAuthenticated` query of the core. Keep the
+export of `isAuthenticated`, `signOut`, and `refreshSession` that the
+[Getting started](../getting-started.mdx) guide adds to `convex/auth.ts`.
+
+</Step>
+
+<Step title="Set up Convex Auth on the client">
+
+Call `setupConvexAuth` in your root component, in place of `setupConvex` from
+`convex-svelte`:
+
+{/* prettier-ignore */}
+```html title="src/App.svelte"
+<script lang="ts">
+  import { setupConvexAuth } from "@convex-dev/auth/svelte";
+  import { api } from "../convex/_generated/api";
+
+  let { children } = $props();
+
+  setupConvexAuth({
+    convexUrl: import.meta.env.VITE_CONVEX_URL,
+    api: api.auth,
+  });
+</script>
+
+{@render children()}
+```
+
+It takes the props of `ConvexAuthProvider`, with two differences. `client` is
+optional, because `convex-svelte` creates a `ConvexClient` with
+`setupConvex(convexUrl, clientOptions)`. `convexUrl` is required, because the
+client of `convex-svelte` doesn't expose its URL during server-side rendering.
+
+| Option             | Default                               | Purpose                                                                                        |
+| ------------------ | ------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `client`           | created with `setupConvex(convexUrl)` | An existing `ConvexClient`                                                                     |
+| `clientOptions`    | none                                  | The options of the `ConvexClient` that `setupConvexAuth` creates                               |
+| `storage`          | `localStorage`, or memory without one | Where the tokens are kept. `sessionStorage` gives each tab its own session                     |
+| `storageNamespace` | `convexUrl`                           | Clients that share a namespace share a session                                                 |
+| `ambientSignIns`   | `[oauth()]`                           | The sign-ins that run at startup. Include `oauth()` from `/methods/oauth/svelte` if you set it |
+
+</Step>
+
+<Step title="Set up the authentication UI">
+
+Each sign-in method has the hooks of its React client, under the same names,
+at `@convex-dev/auth/methods/<method>/svelte`. See
+[Sign-in methods with Svelte](./methods.mdx).
+
+</Step>
+
+</StepByStep>
+
+## Reading the auth state
+
+The state comes from `convex-svelte` and the actions from Convex Auth, as with
+React:
+
+| React                                 | Svelte                                            |
+| ------------------------------------- | ------------------------------------------------- |
+| `useConvexAuth()` from `convex/react` | `useAuth()` from `convex-svelte`                  |
+| `useAuthActions()`                    | `useAuthActions()` from `@convex-dev/auth/svelte` |
+| `useAuthToken()`                      | `useAuthToken()`, which you read as `.current`    |
+
+Call them during component initialization:
+
+{/* prettier-ignore */}
+```html title="src/SignOut.svelte"
+<script lang="ts">
+  import { useAuth } from "convex-svelte";
+  import { useAuthActions } from "@convex-dev/auth/svelte";
+
+  const auth = useAuth();
+  const { signOut } = useAuthActions();
+</script>
+
+{#if auth.isLoading}
+  <p>Loading…</p>
+{:else if auth.isAuthenticated}
+  <button onclick={() => signOut()}>Sign out</button>
+{/if}
+```
+
+When a session is revoked on the server, for example by a password reset, the
+client signs out as soon as its `isAuthenticated` query updates. It doesn't
+wait for the access token to expire.

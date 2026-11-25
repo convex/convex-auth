@@ -15,8 +15,8 @@
  */
 "use client";
 
-import type { OauthProviderApi } from "../oauth/client.ts";
 import { useOauthSignIn, type UseOauthSignInReturn } from "../oauth/react.ts";
+import { discordRefs, type SignInWithDiscordApi } from "./browser.ts";
 
 export { useOauth, type UseOauthReturn } from "../oauth/react.ts";
 export type {
@@ -37,14 +37,8 @@ export type UseSignInWithDiscordReturn = {
  * (usually the generated `api.auth`), or an object mapping the canonical keys
  * to renamed exports.
  */
-export function useSignInWithDiscord(api: {
-  startSignInWithDiscord: OauthProviderApi["startSignIn"];
-  completeSignInWithDiscord: OauthProviderApi["completeSignIn"];
-}): UseSignInWithDiscordReturn {
-  const { signIn } = useOauthSignIn({
-    providerName: "discord",
-    startSignIn: api.startSignInWithDiscord,
-    completeSignIn: api.completeSignInWithDiscord,
-  });
-  return { signIn };
+export function useSignInWithDiscord(
+  api: SignInWithDiscordApi,
+): UseSignInWithDiscordReturn {
+  return useOauthSignIn(discordRefs(api));
 }

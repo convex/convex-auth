@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased
+
+### New
+
+- Framework-agnostic method clients, for bindings to other frameworks
+  (Svelte, Vue, Solid). The React hooks now wrap them, with no change in
+  behaviour.
+  - `@convex-dev/auth/methods/<method>/browser` for `username-password`,
+    `email-password`, `email-magic-link`, `username-passkey`, `oauth`,
+    `google`, `apple`, `github`, and `discord`: one `create…` factory per
+    hook, returning plain async functions and its state (like `pending`) as
+    a `ReadableStore`.
+  - The passkey entry also exports the ceremonies (`browserCeremonies`,
+    `resolveCeremonies`) and the wire and result types.
+  - `@convex-dev/auth/browser` exports `AmbientSignInClient`,
+    `AmbientSignInContext`, `AuthSignInApi`, `ConvexMutationApi`,
+    `SignInFunction`, `SignInStorage`, `SignInValues`, `SignInValuesReader`,
+    and `ReadableStore`.
+  - `AuthClient.methodStorage`: the storage for the client-side secrets of
+    sign-in methods, under the namespace of the session. The keys of the
+    session tokens and of the ambient sign-ins are refused.
+  - `stateFor` of `createCompletePasswordRecovery` takes the error of the
+    check query as a second argument, for a binding whose query returns its
+    error rather than throwing it. It then answers with an `OTHER_ERROR`
+    state (`PasswordRecoveryCheckFailedState`).
+- Svelte and SvelteKit bindings, on top of the method clients, with the API
+  of `@mmailaender/convex-auth-svelte`. They need `svelte` 5.19,
+  `convex-svelte` 0.15, and, for SvelteKit, `@sveltejs/kit` 2.12, which are
+  optional peer dependencies.
+  - `@convex-dev/auth/svelte`: `setupConvexAuth`, `useAuthActions`, and
+    `useAuthToken`, the counterpart of `@convex-dev/auth/react`.
+  - `@convex-dev/auth/ssr/sveltekit` (`setupConvexAuthSvelteKit` with the
+    `handle` hook) and `@convex-dev/auth/ssr/sveltekit/client`
+    (`setupConvexAuthSvelteKit` of the root layout), the counterparts of the
+    Next.js bindings.
+  - `@convex-dev/auth/methods/<method>/svelte` for the same methods as
+    `/browser`, with the hooks of the React clients under the same names.
+
+### Changed
+
+- The `pending` flag of the username + password hooks
+  (`useSignInWithUsernamePassword`, `useSignUpWithUsernamePassword`) stays
+  `true` until the last of several concurrent calls ends. It used to turn
+  `false` when the first one ended.
+- The errors of the OAuth hooks (`useOauth`, and the sign-in hooks of the
+  providers): outside of a provider, they throw "Must be used within a
+  <ConvexAuthProvider>.", as the other hooks do, where the message named the
+  internal `useAmbientSignInValue`. When `oauth()` is not
+  registered, the error names `oauth()` from
+  `@convex-dev/auth/methods/oauth/browser`, which `/oauth/react` and
+  `/oauth/svelte` also export.
+
 ## 2.1.0
 
 ### New

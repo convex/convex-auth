@@ -1,0 +1,306 @@
+---
+sidebar_position: 2
+title: Setting up SvelteKit
+description: Use Convex Auth with server-side rendering in a SvelteKit app.
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+Convex Auth supports server-side rendering (SSR) with SvelteKit, the same way
+it does with the [Next.js App Router](../ssr-nextjs/setup.mdx):
+
+- The **refresh token** is stored in an `httpOnly` cookie, so it never reaches
+  client JavaScript. Sign-in, refresh, and sign-out run on your SvelteKit
+  server.
+- The **access token** is available to both sides: load functions use it to
+  run authenticated Convex queries, and the browser uses it to authenticate
+  the Convex client. Pages render signed in on the first request.
+
+The auth routes are the ones of the Next.js setup. Where Next.js has a proxy, a
+server provider, and a client provider, SvelteKit has a `handle` hook, a
+layout load, and a setup function:
+
+| Next.js (`@convex-dev/auth/ssr/nextjs`) | SvelteKit (`@convex-dev/auth/ssr/sveltekit`) |
+| --------------------------------------- | -------------------------------------------- |
+| `setupConvexAuthNextjs`                 | `setupConvexAuthSvelteKit`                   |
+| `convexAuthNextjsProxy`                 | `convexAuthSvelteKitHandle`                  |
+| `nextjsProxyRedirect`                   | SvelteKit's `redirect()`                     |
+| `convexAuthNextjsAccessToken`           | `convexAuthSvelteKitAccessToken(event)`      |
+| `isAuthenticatedNextjs`                 | `isAuthenticatedSvelteKit(event)`            |
+| `ConvexAuthNextjsServerProvider`        | `setupConvexAuthSvelteKit` of `/client`      |
+
+The
+[SvelteKit example](https://github.com/convex/convex-auth/tree/main/examples/sveltekit)
+follows this guide, with username + password and GitHub sign-in. For a
+client-only Svelte app, see [Setting up Svelte](./setup.mdx).
+
+## Setting up Convex Auth in a SvelteKit app
+
+<StepByStep>
+
+<Step title="Follow the “Getting started” guide">
+
+Start from a SvelteKit project. Install Convex Auth and set up the core as
+described in the [Getting started](../getting-started.mdx) guide. Also install
+the Svelte bindings of Convex:
+
+```sh
+npm i convex-svelte
+```
+
+The SvelteKit bindings need `svelte` 5.19, `@sveltejs/kit` 2.12,
+`convex-svelte` 0.15 or later, and `convex` 1.48 or later.
+
+The examples of this guide import the generated `api` from the `convex/`
+directory at the root of the project, where the Getting started guide puts
+it. If you moved your functions to `src/convex/` with a `convex.json`, as the
+`convex-svelte` README suggests, drop one `../` from each of these imports.
+
+</Step>
+
+<Step title="Set up the backend for your sign-in methods">
+
+Follow the backend steps of the guide for each sign-in method you want to use:
+install the components, add the `users` table, set up user creation, and export
+the public functions from `convex/auth.ts`. Skip the frontend steps: this guide
+and [Sign-in methods with Svelte](./methods.mdx) replace them.
+
+The server checks access tokens with the `isAuthenticated` query of the core.
+Keep the export of `isAuthenticated`, `signOut`, and `refreshSession` that the
+[Getting started](../getting-started.mdx) guide adds to `convex/auth.ts`.
+
+</Step>
+
+<Step title="Set up the auth route handlers">
+
+Create `src/lib/server/serverAuth.ts` and call `setupConvexAuthServer`. It
+returns the handlers that sign users in, refresh the session, and sign them
+out.
+
+List every function that creates a session in `signIn`: the sign-in route
+refuses any function that isn't listed. See
+[Sign-in methods with Svelte](./methods.mdx#add-the-sign-in-functions-to-the-signin-list)
+for the functions each method needs.
+
+```ts title="src/lib/server/serverAuth.ts"
+import { dev } from "$app/environment";
+import { PUBLIC_CONVEX_URL } from "$env/static/public";
+import { setupConvexAuthServer } from "@convex-dev/auth/ssr";
+import { api } from "../../../convex/_generated/api";
+
+export const auth = setupConvexAuthServer({
+  convexUrl: PUBLIC_CONVEX_URL,
+  refreshSession: api.auth.refreshSession,
+  signOut: api.auth.signOut,
+  signIn: [
+    api.auth.signInWithUsernamePassword,
+    api.auth.signUpWithUsernamePassword,
+  ],
+  cookieOptions: { secure: !dev },
+});
+```
+
+</Step>
+
+<Step title="Mount the auth routes">
+
+The client posts to `/auth/signin`, `/auth/refresh`, and `/auth/signout`, so
+mount one handler at each path:
+
+{/* prettier-ignore-start */}
+
+<Tabs>
+  <TabItem value="signin" label="signin">
+    ```ts title="src/routes/auth/signin/+server.ts"
+    import { auth } from "$lib/server/serverAuth";
+    import type { RequestHandler } from "./$types";
+
+    export const POST: RequestHandler = ({ request }) =>
+      auth.convexProxyHandler(request);
+    ```
+  </TabItem>
+  <TabItem value="refresh" label="refresh">
+    ```ts title="src/routes/auth/refresh/+server.ts"
+    import { auth } from "$lib/server/serverAuth";
+    import type { RequestHandler } from "./$types";
+
+    export const POST: RequestHandler = ({ request }) =>
+      auth.refreshHandler(request);
+    ```
+  </TabItem>
+  <TabItem value="signout" label="signout">
+    ```ts title="src/routes/auth/signout/+server.ts"
+    import { auth } from "$lib/server/serverAuth";
+    import type { RequestHandler } from "./$types";
+
+    export const POST: RequestHandler = ({ request }) =>
+      auth.signOutHandler(request);
+    ```
+  </TabItem>
+</Tabs>
+
+{/* prettier-ignore-end */}
+
+To mount them elsewhere, pass the paths to both sides: `authRoutes` of the
+server's `setupConvexAuthSvelteKit`, and `signInRoute`, `refreshRoute`, and
+`signOutRoute` of the client's.
+
+</Step>
+
+<Step title="Set up the SvelteKit helpers">
+
+Create `src/lib/server/convexAuth.ts` and call `setupConvexAuthSvelteKit` from
+`@convex-dev/auth/ssr/sveltekit`:
+
+```ts title="src/lib/server/convexAuth.ts"
+import { PUBLIC_CONVEX_URL } from "$env/static/public";
+import { setupConvexAuthSvelteKit } from "@convex-dev/auth/ssr/sveltekit";
+import { api } from "../../../convex/_generated/api";
+
+export const {
+  convexAuthSvelteKitHandle,
+  convexAuthSvelteKitAccessToken,
+  isAuthenticatedSvelteKit,
+} = setupConvexAuthSvelteKit({
+  convexUrl: PUBLIC_CONVEX_URL,
+  refreshSession: api.auth.refreshSession,
+  isAuthenticated: api.auth.isAuthenticated,
+});
+```
+
+`cookieOptions` takes the same values as in `setupConvexAuthServer`. Its
+`secure` defaults to `true` outside of `vite dev`.
+
+</Step>
+
+<Step title="Set up the handle hook">
+
+The hook runs before each request. It refreshes the session when the access
+token is within 10 seconds of its expiry, so your load functions see a current
+token. It skips the auth routes, which set their own cookies.
+
+Pass a handler to redirect based on whether the request is signed in. Throw
+`redirect()` or return a `Response` to leave, or return nothing to render the
+page:
+
+```ts title="src/hooks.server.ts"
+import { redirect } from "@sveltejs/kit";
+import { convexAuthSvelteKitHandle } from "$lib/server/convexAuth";
+
+export const handle = convexAuthSvelteKitHandle(
+  async (event, { isAuthenticated }) => {
+    if (
+      event.url.pathname.startsWith("/product") &&
+      !(await isAuthenticated())
+    ) {
+      redirect(307, "/signin");
+    }
+  },
+);
+```
+
+`isAuthenticated()` checks the token with your deployment, so a forged cookie
+doesn't pass. To combine the hook with others, use
+`sequence(convexAuthSvelteKitHandle(), yourHandle)`.
+
+:::warning
+
+Don't throw `error()` in the handler or in a later hook. SvelteKit leaves the
+cookies off error responses, so a session that the hook refreshed in that request would
+be lost. Return a `Response` with the error status instead.
+
+:::
+
+</Step>
+
+<Step title="Set up the client">
+
+Return the access token from the server load of your root layout:
+
+```ts title="src/routes/+layout.server.ts"
+import { convexAuthSvelteKitAccessToken } from "$lib/server/convexAuth";
+import type { LayoutServerLoad } from "./$types";
+
+export const load: LayoutServerLoad = (event) => ({
+  convexAuthToken: convexAuthSvelteKitAccessToken(event),
+});
+```
+
+Then call `setupConvexAuthSvelteKit` from
+`@convex-dev/auth/ssr/sveltekit/client` in the root layout, in place of
+`setupConvex`:
+
+{/* prettier-ignore */}
+```html title="src/routes/+layout.svelte"
+<script lang="ts">
+  import { setupConvexAuthSvelteKit } from "@convex-dev/auth/ssr/sveltekit/client";
+  import { PUBLIC_CONVEX_URL } from "$env/static/public";
+  import { api } from "../../convex/_generated/api";
+
+  let { children, data } = $props();
+
+  setupConvexAuthSvelteKit({
+    convexUrl: PUBLIC_CONVEX_URL,
+    initialToken: () => data.convexAuthToken,
+    api: api.auth,
+  });
+</script>
+
+{@render children()}
+```
+
+`initialToken` is a getter, so the `data` prop isn't captured at its initial
+value. It's read once. When the user signs in, signs out, or switches to
+another session, the client calls `invalidateAll()`, so your load functions
+run again with the new cookies. Pass `invalidateOnAuthChange: false` to turn
+that off.
+
+</Step>
+
+<Step title="Render authenticated data on the server">
+
+The hook resolves each request inside `withServerConvexToken` of
+`convex-svelte`. A load function thus gets an authenticated client from
+`createConvexHttpClient()`:
+
+```ts title="src/routes/product/+page.server.ts"
+import { createConvexHttpClient } from "convex-svelte/sveltekit";
+import { PUBLIC_CONVEX_URL } from "$env/static/public";
+import { api } from "../../../convex/_generated/api";
+import type { PageServerLoad } from "./$types";
+
+export const load: PageServerLoad = async () => {
+  const client = createConvexHttpClient({ url: PUBLIC_CONVEX_URL });
+  return { viewer: await client.query(api.users.viewer, {}) };
+};
+```
+
+To decide on the server whether the user is signed in, use
+`isAuthenticatedSvelteKit(event)` and not the presence of a token.
+`convexAuthSvelteKitAccessToken` only checks that the token hasn't expired.
+
+</Step>
+
+<Step title="Use Convex Auth in components">
+
+Import `useAuthActions` and `useAuthToken` from `@convex-dev/auth/svelte`, and
+`useAuth` from `convex-svelte`, as in a
+[Svelte app](./setup.mdx#reading-the-auth-state). For your sign-in and sign-up
+pages, use the hooks of each sign-in method. See
+[Sign-in methods with Svelte](./methods.mdx).
+
+</Step>
+
+</StepByStep>
+
+## Deploying
+
+The auth cookies are marked `Secure` (sent only over HTTPS) outside of
+`vite dev`, so they also work on `http://localhost` in development. Set
+`secure` in `cookieOptions` of both `setupConvexAuthServer` and
+`setupConvexAuthSvelteKit` to change that.
+
+The auth routes reject cross-site requests by comparing the request's `Origin`
+with its `Host`. If your app runs behind a proxy that rewrites `Host`, add your
+public origin to `allowedOrigins` in `setupConvexAuthServer`.

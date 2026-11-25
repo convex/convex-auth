@@ -83,9 +83,9 @@ export function defaultStorage(): TokenStorage {
 }
 
 /**
- * A read/write view over a {@link NamespacedStorage} for one ambient sign-in,
- * with every key prefixed by that sign-in's id. The shape handed to an
- * ambient sign-in's setup.
+ * A read/write view over the namespaced storage of an `AuthClient`. An
+ * ambient sign-in's setup gets one with every key prefixed by that sign-in's
+ * id, and `AuthClient.methodStorage` is one without a prefix.
  *
  * Keys are stored as-is, so use only characters in `[A-Za-z0-9._-]` to stay
  * compatible with React Native storage backends like Expo SecureStore.
@@ -98,6 +98,9 @@ export type SignInStorage = {
   /** Remove a value. */
   remove(key: string): ReturnType<TokenStorage["removeItem"]>;
 };
+
+/** The start of every storage key of an ambient sign-in. */
+export const AMBIENT_SIGN_IN_STORAGE_PREFIX = "__convexAuthProvider_";
 
 /**
  * A view over a {@link TokenStorage} that suffixes every key with a sanitized
@@ -143,7 +146,7 @@ export class NamespacedStorage {
    * or another sign-in's.
    */
   forSignIn(id: string): SignInStorage {
-    const prefix = `__convexAuthProvider_${id}_`;
+    const prefix = `${AMBIENT_SIGN_IN_STORAGE_PREFIX}${id}_`;
     return {
       get: (key) => this.get(`${prefix}${key}`),
       set: (key, value) => this.set(`${prefix}${key}`, value),

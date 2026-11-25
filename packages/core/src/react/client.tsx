@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvex, useConvexAuth, useQuery } from "convex/react";
 import {
   ReactNode,
   createContext,
@@ -10,7 +10,10 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import type { AuthSignInApi } from "../browser/ambientSignInClient.ts";
+import type {
+  AuthSignInApi,
+  ConvexMutationApi,
+} from "../browser/ambientSignInClient.ts";
 import {
   INITIAL_AUTH_STATE,
   type AuthClient,
@@ -71,11 +74,43 @@ export const ConvexAuthActionsContext = createContext<
 
 /**
  * The bound {@link AuthClient}. The sign-in methods read it through
- * `useAmbientSignInValue` in `react/methods.ts`. Apps do not use it.
+ * {@link useAuthClient}, or `useAmbientSignInValue` in `react/methods.ts`.
+ * Apps do not use it.
  */
 export const AuthClientContext = createContext<AuthClient | undefined>(
   undefined,
 );
+
+/**
+ * The bound {@link AuthClient}, for the hooks of the sign-in methods that
+ * hand it to their framework-agnostic clients.
+ */
+export function useAuthClient(): AuthClient {
+  const authClient = useContext(AuthClientContext);
+  if (authClient === undefined) {
+    throw new Error("Must be used within a <ConvexAuthProvider>.");
+  }
+  return authClient;
+}
+
+/**
+ * The mutations of the Convex client, for the method clients whose mutation
+ * mints no session and thus does not go through the `AuthSignInApi`.
+ */
+export function useConvexMutations(): ConvexMutationApi {
+  const convex = useConvex();
+  if (convex === undefined) {
+    throw new Error(
+      "Could not find Convex client! `useMutation` must be used in the React " +
+        "component tree under `ConvexProvider`. Did you forget it? See " +
+        "https://docs.convex.dev/quick-start#set-up-convex-in-your-react-app",
+    );
+  }
+  return useMemo(
+    () => ({ mutation: (fn, args) => convex.mutation(fn, args) }),
+    [convex],
+  );
+}
 
 /** The current access token (a JWT), or null when signed out. */
 export const ConvexAuthTokenContext = createContext<string | null>(null);
