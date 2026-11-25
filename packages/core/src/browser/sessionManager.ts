@@ -127,10 +127,13 @@ function hasRefreshToken(
  *    an access-only {@link SlimTokenBundle} under SSR where the host moved the
  *    refresh token into the cookie.
  *  - `noSession`: the session is gone; clear it.
+ *  - `superseded`: a sign-in or sign-out replaced the refresh token while the
+ *    refresh was in flight; keep the stored session.
  */
 type RefreshOutcome =
   | { kind: "rotated"; session: TokenBundle | SlimTokenBundle }
-  | { kind: "noSession" };
+  | { kind: "noSession" }
+  | { kind: "superseded" };
 
 /**
  * Returns the global `window` object when it supports DOM event listeners,
@@ -187,11 +190,6 @@ export class AuthClient {
   readonly #mode: "spa" | "ssr";
 
   #accessToken: string | null = null;
-  /**
-   * If the client code is running in SSR mode, this value will always be
-   * `null`.
-   */
-  #refreshToken: string | null = null;
   #isLoading = true;
   #pendingSignIns = 0;
   #initialized = false;
@@ -218,6 +216,12 @@ export class AuthClient {
         // No token means there's no session to refresh — don't call the API.
         if (refreshToken === null) return { kind: "noSession" };
         const result = await authApi.refreshSession(refreshToken);
+        // `setSession` or `signOut` may have replaced the token in storage
+        // while the request was in flight, in this tab or another. Storing
+        // this result would overwrite the newer session.
+        if ((await this.#currentRefreshToken()) !== refreshToken) {
+          return { kind: "superseded" };
+        }
         switch (result.kind) {
           case "rotated":
             return { kind: "rotated", session: result.tokens };
@@ -373,12 +377,7 @@ export class AuthClient {
     if (this.#initialAccessToken !== null) {
       await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
     }
-    const [accessToken, refreshToken] = await Promise.all([
-      this.#storage.get(JWT_STORAGE_KEY),
-      this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
-    ]);
-    this.#accessToken = accessToken ?? null;
-    this.#refreshToken = refreshToken ?? null;
+    this.#accessToken = (await this.#storage.get(JWT_STORAGE_KEY)) ?? null;
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
@@ -478,11 +477,13 @@ export class AuthClient {
 
   // --- Internals -----------------------------------------------------------
 
-  /** The authoritative refresh token: storage (shared across tabs) then memory. */
+  /**
+   * The refresh token in storage, which all tabs share. Read it each time
+   * rather than keeping a copy: another tab may have signed out or rotated
+   * the token, and this tab's `storage` event for that may not have arrived.
+   */
   async #currentRefreshToken(): Promise<string | null> {
-    return (
-      (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY)) ?? this.#refreshToken
-    );
+    return (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY)) ?? null;
   }
 
   /**
@@ -498,6 +499,8 @@ export class AuthClient {
         return;
       case "rotated":
         await this.#storeFullTokenResult(result.session);
+        return;
+      case "superseded":
         return;
     }
   }
@@ -550,12 +553,10 @@ export class AuthClient {
   async #storeTokens(bundle: TokenBundle | null): Promise<void> {
     if (bundle === null) {
       this.#accessToken = null;
-      this.#refreshToken = null;
       await this.#storage.remove(JWT_STORAGE_KEY);
       await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
     } else {
       this.#accessToken = bundle.accessToken;
-      this.#refreshToken = bundle.refreshToken;
       await this.#storage.set(JWT_STORAGE_KEY, bundle.accessToken);
       await this.#storage.set(REFRESH_TOKEN_STORAGE_KEY, bundle.refreshToken);
     }
@@ -568,10 +569,9 @@ export class AuthClient {
    * the refresh token lives in the host's httpOnly cookie.
    */
   async #storeAccessOnly(session: { accessToken: string }): Promise<void> {
-    // Null out/remove any existing refresh token. It shouldn't be set unless
-    // this was somehow a client instance configured for SPA use being
-    // "upgraded" to SSR use.
-    this.#refreshToken = null;
+    // Remove any existing refresh token. It shouldn't be set unless this was
+    // somehow a client instance configured for SPA use being "upgraded" to SSR
+    // use.
     await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
 
     this.#accessToken = session.accessToken;
@@ -586,21 +586,21 @@ export class AuthClient {
     if (target === null) return;
     if (this.#storageListener !== null) return;
     const jwtKey = this.#storage.key(JWT_STORAGE_KEY);
-    const refreshKey = this.#storage.key(REFRESH_TOKEN_STORAGE_KEY);
     const listener = (event: StorageEvent) => {
       // Only react to our own storage area (e.g. ignore sessionStorage events
-      // when we use localStorage). Keys arrive as separate events, so we handle
-      // the JWT and refresh keys independently and never write back here (that
-      // would loop).
+      // when we use localStorage), and never write back here (that would
+      // loop). The refresh token is read from storage when it is used, so
+      // only the JWT key needs syncing.
       if (event.storageArea !== this.#storage.storage) return;
-      if (event.key === jwtKey) {
-        this.#accessToken = event.newValue;
-        this.#log(`synced access token, is null: ${event.newValue === null}`);
-        this.#isLoading = false;
-        this.#notify();
-      } else if (event.key === refreshKey) {
-        this.#refreshToken = event.newValue;
-      }
+      if (event.key !== jwtKey) return;
+      // An event can arrive after this tab changed the key again, e.g. a
+      // sign-in in another tab followed by a sign-out here, so read the value
+      // in storage now rather than `event.newValue`. Only a `Storage` fires
+      // events, and its `getItem` is synchronous.
+      this.#accessToken = event.storageArea.getItem(jwtKey);
+      this.#log(`synced access token, is null: ${this.#accessToken === null}`);
+      this.#isLoading = false;
+      this.#notify();
     };
     target.addEventListener("storage", listener);
     this.#storageListener = listener;

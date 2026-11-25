@@ -259,6 +259,7 @@ describe("AuthClient", () => {
     expect(client.getSnapshot().isAuthenticated).toBe(true);
 
     // Another tab cleared the JWT key.
+    storage.removeItem(`${JWT_STORAGE_KEY}_${SUFFIX}`);
     listeners.forEach((l) =>
       l({
         storageArea: storage,
@@ -365,6 +366,7 @@ describe("AuthClient", () => {
     expect(listeners.size).toBe(1);
 
     // Another tab cleared the JWT key.
+    storage.removeItem(`${JWT_STORAGE_KEY}_${SUFFIX}`);
     listeners.forEach((l) =>
       l({
         storageArea: storage,

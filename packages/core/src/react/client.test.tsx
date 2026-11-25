@@ -207,6 +207,7 @@ describe("React bindings", () => {
 
     // Another tab cleared the JWT key: dispatch the storage event to the window
     // listener the re-init should have re-attached.
+    storage.removeItem(`${JWT_STORAGE_KEY}_${SUFFIX}`);
     const event = Object.assign(new Event("storage"), {
       storageArea: storage,
       key: `${JWT_STORAGE_KEY}_${SUFFIX}`,

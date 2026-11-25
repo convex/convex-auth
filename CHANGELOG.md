@@ -1,5 +1,14 @@
 # Changelog
 
+### Fixes
+
+- A sign-in while a token refresh was in flight no longer ends with the
+  previous session: the refresh result used to overwrite the new session, or
+  sign the user out if the previous session had expired.
+- A tab no longer signs the user back in after another tab signed out. It used
+  to refresh with a copy of the refresh token it kept in memory, or adopt the
+  value of a `storage` event that arrived after the sign-out.
+
 ## 2.1.0
 
 ### New
