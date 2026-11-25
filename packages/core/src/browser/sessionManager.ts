@@ -1,4 +1,3 @@
-import type { ConvexClient } from "convex/browser";
 import type { ConvexReactClient } from "convex/react";
 import type {
   IsAuthenticatedFn,
@@ -46,13 +45,10 @@ export interface SsrAuthApi {
   signOut: () => Promise<void>;
 }
 
-/** A Convex client that an auth client accepts. */
-export type SupportedConvexClient = ConvexReactClient | ConvexClient;
-
 /** Config common to both session models. */
-interface AuthClientConfigBase<C extends SupportedConvexClient> {
+interface AuthClientConfigBase {
   /** The app's Convex client. */
-  convex?: C;
+  convex?: ConvexReactClient;
   /**
    * A reference to the app's `isAuthenticated` query. Subscribing to the
    * query signs the client out when the server revokes the session.
@@ -103,11 +99,9 @@ interface AuthClientConfigBase<C extends SupportedConvexClient> {
  *  - `"ssr"`: the refresh token is in an httpOnly cookie; a {@link SsrAuthApi}
  *    is called without one and reads the cookie server-side.
  */
-export type AuthClientConfig<
-  C extends SupportedConvexClient = SupportedConvexClient,
-> =
-  | (AuthClientConfigBase<C> & { mode: "spa"; authApi: SpaAuthApi })
-  | (AuthClientConfigBase<C> & { mode: "ssr"; authApi: SsrAuthApi });
+export type AuthClientConfig =
+  | (AuthClientConfigBase & { mode: "spa"; authApi: SpaAuthApi })
+  | (AuthClientConfigBase & { mode: "ssr"; authApi: SsrAuthApi });
 
 /** Auth state that can be subscribed to via {@link AuthClient.subscribe} */
 export interface AuthState {
@@ -210,9 +204,7 @@ function signInApiFor(config: AuthClientConfig): AuthSignInApi {
  * Methods authenticate and sign-in users and call {@link AuthClient.setSession} with
  * a token bundle.
  */
-export class AuthClient<
-  C extends SupportedConvexClient = SupportedConvexClient,
-> {
+export class AuthClient {
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
   readonly #refresh: () => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */
@@ -248,7 +240,7 @@ export class AuthClient<
   readonly #listeners = new Set<Listener>();
   #storageListener: ((event: StorageEvent) => void) | null = null;
 
-  constructor(config: AuthClientConfig<C>) {
+  constructor(config: AuthClientConfig) {
     this.convex = config.convex;
     this.isAuthenticatedQuery = config.isAuthenticatedQuery;
     this.signInApi = signInApiFor(config);
@@ -323,7 +315,7 @@ export class AuthClient<
   }
 
   /** The `convex` option of the config. */
-  readonly convex: C | undefined;
+  readonly convex: ConvexReactClient | undefined;
 
   /** The `isAuthenticatedQuery` option of the config. */
   readonly isAuthenticatedQuery: IsAuthenticatedFn | undefined;

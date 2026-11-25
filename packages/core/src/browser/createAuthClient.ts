@@ -12,33 +12,16 @@ import type {
   AmbientSignInClient,
   AuthSignInApi,
 } from "./ambientSignInClient.ts";
-import { AuthClient, type SupportedConvexClient } from "./sessionManager.ts";
+import { AuthClient } from "./sessionManager.ts";
 import { defaultStorage, type TokenStorage } from "./storage.ts";
 
-/**
- * The `url` option of {@link createAuthClient}. The option is required with a
- * `ConvexClient` because a disabled `ConvexClient` has no readable URL.
- */
-export type DeploymentUrlOption<C extends SupportedConvexClient> =
-  C extends ConvexReactClient
-    ? {
-        /** The Convex deployment URL. Defaults to the Convex client's URL. */
-        url?: string;
-      }
-    : {
-        /** The Convex deployment URL. */
-        url: string;
-      };
-
 /** Options for {@link createAuthClient}. */
-export type CreateAuthClientOptions<
-  C extends SupportedConvexClient = SupportedConvexClient,
-> = {
+export type CreateAuthClientOptions = {
   /**
-   * The app's `ConvexReactClient` or `ConvexClient`. The auth client uses this
-   * to call sign-in functions.
+   * The app's `ConvexReactClient`. The auth client uses this to call sign-in
+   * functions.
    */
-  convex: C;
+  convex: ConvexReactClient;
   /**
    * References to the app's `refreshSession` and `signOut` mutations and its
    * `isAuthenticated` query. Most apps pass `api.auth`.
@@ -71,13 +54,11 @@ export type CreateAuthClientOptions<
   storageNamespace?: string;
   /** Log refresh and lifecycle steps to the console. */
   verbose?: boolean;
-} & DeploymentUrlOption<C>;
+};
 
 /** An {@link AuthClient} that has its Convex client and `isAuthenticated` query. */
-export type ConvexAuthClient<
-  C extends SupportedConvexClient = SupportedConvexClient,
-> = AuthClient<C> & {
-  readonly convex: C;
+export type ConvexAuthClient = AuthClient & {
+  readonly convex: ConvexReactClient;
   readonly isAuthenticatedQuery: IsAuthenticatedFn;
 };
 
@@ -93,9 +74,9 @@ export type ConvexAuthClient<
  * const auth = createAuthClient({ convex, api: api.auth });
  * ```
  */
-export function createAuthClient<C extends SupportedConvexClient>(
-  options: CreateAuthClientOptions<C>,
-): ConvexAuthClient<C> {
+export function createAuthClient(
+  options: CreateAuthClientOptions,
+): ConvexAuthClient {
   return buildSpaAuthClient(options, [oauth()]);
 }
 
@@ -105,34 +86,25 @@ export function createAuthClient<C extends SupportedConvexClient>(
  *
  * @internal
  */
-export function buildSpaAuthClient<C extends SupportedConvexClient>(
-  options: CreateAuthClientOptions<C>,
+export function buildSpaAuthClient(
+  options: CreateAuthClientOptions,
   ambientSignIns: ReadonlyArray<AmbientSignInClient>,
-): ConvexAuthClient<C> {
-  const { api } = options;
-  const convex: SupportedConvexClient = options.convex;
-  const isReactClient = "url" in convex;
-  const url = options.url ?? (isReactClient ? convex.url : undefined);
-  if (url === undefined) {
-    throw new Error(
-      "[convex-auth] createAuthClient needs a url option with a ConvexClient.",
-    );
-  }
+): ConvexAuthClient {
+  const { api, convex } = options;
+  const url = convex.url;
   // Refresh and sign-out use their own HTTP client. The app's websocket client
   // is paused while it waits for a token, so a refresh sent over it would
   // deadlock.
-  const httpClient = new ConvexHttpClient(url, {
-    logger: isReactClient ? convex.logger : undefined,
-  });
+  const httpClient = new ConvexHttpClient(url, { logger: convex.logger });
   // Sign-in functions can go through the websocket client because it is not
   // paused before the user signs in.
   const signInApi: AuthSignInApi = {
     mutation: (fn, args) => convex.mutation(fn, args),
     action: (fn, args) => convex.action(fn, args),
   };
-  const authClient = new AuthClient<C>({
+  const authClient = new AuthClient({
     mode: "spa",
-    convex: options.convex,
+    convex,
     isAuthenticatedQuery: api.isAuthenticated,
     signInApi,
     authApi: {
@@ -152,5 +124,5 @@ export function buildSpaAuthClient<C extends SupportedConvexClient>(
     verbose: options.verbose,
   });
   // The config above sets both fields from required options.
-  return authClient as ConvexAuthClient<C>;
+  return authClient as ConvexAuthClient;
 }

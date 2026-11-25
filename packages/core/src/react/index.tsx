@@ -48,7 +48,7 @@ type AuthClientProps = {
    * An auth client that {@link createAuthClient} returns for a
    * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
    */
-  auth: ConvexAuthClient<ConvexReactClient>;
+  auth: ConvexAuthClient;
   client?: never;
   api?: never;
   storage?: never;
