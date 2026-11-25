@@ -507,6 +507,7 @@
     "@types/react": "^19.2.17",
     "convex": "1.48.0",
     "convex-test": "^0.0.65",
+    "fast-check": "3.23.2",
     "hash-wasm": "^4.12.0",
     "jsdom": "^31.0.0",
     "next": "^16.0.0",
