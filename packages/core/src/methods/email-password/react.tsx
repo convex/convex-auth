@@ -14,6 +14,7 @@ import { AuthClientContext, useAuth } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useAuthSignInApi } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
+import { usePending } from "../../react/pending.ts";
 import type { NamespacedStorage } from "../../browser/storage.ts";
 import type {
   SignUpResult as SignUpMutationResult,
@@ -263,30 +264,6 @@ function useWithSignInPending() {
     throw new Error("Must be used within a <ConvexAuthProvider>.");
   }
   return authClient.withSignInPending;
-}
-
-/**
- * Track the in-flight state of async calls.
- */
-function usePending() {
-  const [pending, setPending] = useState(false);
-
-  // We count the number of pending calls out of safety.
-  // Normally apps shouldn’t start concurrent flows (e.g. they should disable
-  // form submission when a current submission is ongoing), this is just a layer
-  // of extra safey in case they don’t do it correctly.
-  const inFlight = useRef(0);
-
-  const track = useCallback(async <T,>(work: () => Promise<T>): Promise<T> => {
-    inFlight.current++;
-    setPending(true);
-    try {
-      return await work();
-    } finally {
-      if (--inFlight.current === 0) setPending(false);
-    }
-  }, []);
-  return { pending, track };
 }
 
 const foldError = (cause: unknown): UnexpectedFailure => ({
