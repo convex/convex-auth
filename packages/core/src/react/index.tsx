@@ -62,17 +62,12 @@ type ConvexClientProps = {
   auth?: never;
   /**
    * Your [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
-   *
-   * @deprecated Create the auth client with {@link createAuthClient} and pass
-   * it as the `auth` prop.
    */
   client: ConvexReactClient;
   /**
    * References to the app's `refreshSession` and `signOut` mutations and its
    * `isAuthenticated` query. The provider subscribes to the `isAuthenticated`
    * query, so revoking the session on the server signs the client out.
-   *
-   * @deprecated Pass it as the `api` option of {@link createAuthClient}.
    */
   api: ConvexAuthApi;
   /**
@@ -84,16 +79,11 @@ type ConvexClientProps = {
    * Client runtimes with no `localStorage` like React Native are strongly
    * advised to provide an implementation, because the in-memory default will
    * cause users to get logged out each time the app closes.
-   *
-   * @deprecated Pass it as the `storage` option of {@link createAuthClient}.
    */
   storage?: TokenStorage;
   /**
    * Namespace for storage keys, which determines whether tokens are shared.
    * Non-alphanumeric characters are ignored. Defaults to the deployment URL.
-   *
-   * @deprecated Pass it as the `storageNamespace` option of
-   * {@link createAuthClient}.
    */
   storageNamespace?: string;
   /**

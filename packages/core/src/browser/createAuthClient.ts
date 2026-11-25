@@ -1,5 +1,6 @@
 /**
- * The factory for the {@link AuthClient} of a single-page app.
+ * The factory for an {@link AuthClient} that keeps the session in the app's
+ * own storage.
  *
  * @module
  */
@@ -73,7 +74,7 @@ export type CreateAuthClientOptions<
 } & DeploymentUrlOption<C>;
 
 /**
- * Returns the auth client of a single-page app.
+ * Returns an auth client that keeps the session in the app's own storage.
  *
  * ```ts
  * import { createAuthClient } from "@convex-dev/auth/react";
@@ -91,8 +92,8 @@ export function createAuthClient<C extends SupportedConvexClient>(
 }
 
 /**
- * Returns the auth client of a single-page app with the given ambient
- * sign-ins.
+ * Returns an auth client that keeps the session in the app's own storage,
+ * with the given ambient sign-ins.
  *
  * @internal
  */

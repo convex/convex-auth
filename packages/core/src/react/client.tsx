@@ -32,8 +32,8 @@ export function useAuthClient(): AuthClient {
   const authClient = useContext(AuthClientContext);
   if (authClient === undefined) {
     throw new Error(
-      "useAuthClient must be used within a <ConvexAuthProvider> (or, under " +
-        "Next.js, a <ConvexAuthNextjsProvider>).",
+      "Convex Auth hooks must be used within a <ConvexAuthProvider> (or, " +
+        "under Next.js, a <ConvexAuthNextjsProvider>).",
     );
   }
   return authClient;

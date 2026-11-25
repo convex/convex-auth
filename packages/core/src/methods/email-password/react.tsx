@@ -13,7 +13,6 @@ import type { ClientView } from "../../lib/types.ts";
 import { useAuth, useAuthClient } from "../../react/client.tsx";
 import { useAuthActions } from "../../react/index.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
-import type { NamespacedStorage } from "../../browser/storage.ts";
 import type {
   SignUpResult as SignUpMutationResult,
   CompleteSignUpResult,
@@ -244,20 +243,6 @@ export type CompletePasswordRecoveryState =
 // Shared helpers
 //------------------------------------------------------------------------------
 
-function useSecretStorage(): NamespacedStorage {
-  const authClient = useAuthClient();
-  return authClient.storage;
-}
-
-/**
- * The auth client's `withSignInPending`: while its call runs, the auth state
- * reports `isLoading` instead of signed out.
- */
-function useWithSignInPending() {
-  const authClient = useAuthClient();
-  return authClient.withSignInPending;
-}
-
 /**
  * Track the in-flight state of async calls.
  */
@@ -309,7 +294,7 @@ function useLinkFlow<UserError>(
   ) => Promise<{ done: true } | { done: false; userError: UserError }>,
 ): LinkFlowState<UserError | MissingSecretError | OtherError> {
   const { isLoading } = useAuth();
-  const storage = useSecretStorage();
+  const { storage } = useAuthClient();
   const [state, setState] = useState<
     LinkFlowState<UserError | MissingSecretError | OtherError>
   >({ status: "loading" });
@@ -514,7 +499,7 @@ export function useSignUpWithEmailPassword(api: {
   // through the `AuthSignInApi`. Under SSR, that API is the auth proxy, which
   // only serves functions returning the sign-in envelope.
   const runSignUp = useMutation(signUpMutation);
-  const storage = useSecretStorage();
+  const { storage } = useAuthClient();
   const { pending, track } = usePending();
 
   const signUp = useCallback(
@@ -567,8 +552,7 @@ export function useCompleteSignUpWithEmailPassword(
     api.completeSignUpWithEmailPassword,
   );
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signInApi;
-  const withSignInPending = useWithSignInPending();
+  const { signInApi, withSignInPending } = useAuthClient();
 
   // Keep `isLoading` true while the server validates the link and the client
   // stores the new session, so the app does not see a signed-out user and
@@ -619,7 +603,7 @@ export function useStartPasswordRecovery(api: {
 }) {
   const startPasswordRecoveryMutation = api.startPasswordRecovery;
   const runStartPasswordRecovery = useMutation(startPasswordRecoveryMutation);
-  const storage = useSecretStorage();
+  const { storage } = useAuthClient();
   const { pending, track } = usePending();
 
   const startPasswordRecovery = useCallback(
@@ -721,8 +705,7 @@ export function useCompletePasswordRecovery(
   );
   const { isLoading } = useAuth();
   const { setSession } = useAuthActions();
-  const signInApi = useAuthClient().signInApi;
-  const storage = useSecretStorage();
+  const { signInApi, storage } = useAuthClient();
   const { pending, track } = usePending();
   // The secret from storage: not read yet, missing, or found.
   const [browserSecret, setBrowserSecret] = useState<undefined | null | string>(
@@ -825,7 +808,7 @@ export function useStartChangeEmail(api: {
 }) {
   const startChangeEmailMutation = api.startChangeEmail;
   const runStartChangeEmail = useMutation(startChangeEmailMutation);
-  const storage = useSecretStorage();
+  const { storage } = useAuthClient();
   const { pending, track } = usePending();
 
   const startChangeEmail = useCallback(
