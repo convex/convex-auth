@@ -396,13 +396,13 @@ export class AuthClient {
    * storage, and start listening for cross-tab changes (if applicable).
    * Until this resolves, the client reports `isLoading`.
    *
-   * Each call needs a matching {@link dispose}. The callbacks run once. The
-   * cross-tab listener stays attached while any call is active. An `init`
+   * Each call needs a matching {@link dispose}. The `onInit` callbacks of the
+   * ambient sign-ins run on the first call only. The cross-tab listener stays attached while any call is active. An `init`
    * after every call was disposed loads the session from storage again,
    * because another tab may have changed it in the meantime.
    *
-   * Call it on the client only. A server can share one client across all
-   * requests, so the client must never hold a user's token.
+   * Call it on the client only, because it can store a user's token and a
+   * server can share one client across all requests.
    */
   async init(options?: {
     /**
@@ -466,8 +466,8 @@ export class AuthClient {
   }
 
   /**
-   * End one {@link init} call. The last active call detaches the cross-tab
-   * listener. Store subscribers stay, so a later `init` restores the client
+   * Ends one {@link init} call. Ending the last active call detaches the
+   * cross-tab listener. Store subscribers stay, so a later `init` restores the client
    * with them.
    */
   dispose(): void {

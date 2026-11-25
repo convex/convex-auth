@@ -56,7 +56,10 @@ export type CreateAuthClientOptions = {
   verbose?: boolean;
 };
 
-/** An {@link AuthClient} that has its Convex client and `isAuthenticated` query. */
+/**
+ * An {@link AuthClient} whose `convex` and `isAuthenticatedQuery` properties
+ * are always set.
+ */
 export type ConvexAuthClient = AuthClient & {
   readonly convex: ConvexReactClient;
   readonly isAuthenticatedQuery: IsAuthenticatedFn;
@@ -123,6 +126,7 @@ export function buildSpaAuthClient(
     },
     verbose: options.verbose,
   });
-  // The config above sets both fields from required options.
+  // The cast is safe because the config sets `convex` and
+  // `isAuthenticatedQuery` from required options.
   return authClient as ConvexAuthClient;
 }

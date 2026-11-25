@@ -45,12 +45,9 @@ export type { ConvexAuthApi, TokenBundle } from "../lib/types.ts";
 export type { ConvexAuthActionsContextType } from "./client.tsx";
 export { useAuthClient } from "./client.tsx";
 
-/** The props of {@link ConvexAuthProvider} with an auth client. */
+/** The props of {@link ConvexAuthProvider} when the app passes an auth client. */
 type AuthClientProps = {
-  /**
-   * An auth client that {@link createAuthClient} returns for a
-   * [`ConvexReactClient`](https://docs.convex.dev/api/classes/react.ConvexReactClient).
-   */
+  /** An auth client that {@link createAuthClient} returns. */
   auth: ConvexAuthClient;
   client?: never;
   api?: never;
@@ -153,8 +150,8 @@ export function ConvexAuthProvider(props: ConvexAuthProviderProps) {
       },
       props.ambientSignIns ?? [oauth()],
     );
-    // The provider builds the auth client once per `client`, so changes to the
-    // other props are ignored.
+    // The provider builds the auth client once per `client` prop and ignores
+    // changes to the other props.
   }, [props.auth, props.client]);
 
   return (

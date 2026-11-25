@@ -143,7 +143,7 @@ describe("ConvexAuthProvider with an auth client", () => {
     });
   }
 
-  test("useAuthClient returns the auth client from the auth prop", () => {
+  test("the useAuthClient hook returns the auth client of the auth prop", () => {
     const auth = makeAuthClient();
     const fromHook: unknown[] = [];
     function Capture() {

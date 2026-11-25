@@ -164,8 +164,8 @@ export function AuthProvider({
     getServerSnapshot,
   );
 
-  // Init reads the latest token, but a new token alone doesn't re-run init,
-  // because the client uses the token on its first init only.
+  // Keep the latest token in a ref instead of the effect's dependencies,
+  // because the client uses the token on its first `init` only.
   const initialTokenRef = useRef(initialToken);
   useEffect(() => {
     initialTokenRef.current = initialToken;
@@ -176,8 +176,8 @@ export function AuthProvider({
     // client instance, so it is init'd, disposed, then init'd again. That's
     // fine because init()/dispose() are symmetric, and the second init()
     // re-attaches the cross-tab listener the dispose() removed. Effects never
-    // run on a server, so a client shared by server requests never receives
-    // a user's token here.
+    // run on a server, so a client that a server shares never receives a
+    // user's token here.
     void authClient.init({ initialToken: initialTokenRef.current });
     return () => authClient.dispose();
   }, [authClient]);

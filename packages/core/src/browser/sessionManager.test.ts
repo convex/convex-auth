@@ -379,7 +379,7 @@ describe("AuthClient", () => {
     });
   });
 
-  test("init after dispose loads a session changed while disposed", async () => {
+  test("init after the last dispose loads the session from storage again", async () => {
     const storage = new InMemoryStorage();
     const { client } = makeClient({}, storage);
     await client.init();
@@ -397,14 +397,14 @@ describe("AuthClient", () => {
     });
   });
 
-  test("signInApi throws when the config has none", () => {
+  test("the signInApi property throws without a signInApi option", () => {
     const { client } = makeClient();
     expect(() => client.signInApi.mutation(SIGN_IN_REF, {})).toThrow(
       /no signInApi option/,
     );
   });
 
-  test("keeps cross-tab sync until every init is disposed", async () => {
+  test("keeps cross-tab sync until every init call is disposed", async () => {
     const listeners = new Set<(event: StorageEvent) => void>();
     const storage = new InMemoryStorage();
     (globalThis as { window?: unknown }).window = {
@@ -525,7 +525,7 @@ describe("AuthClient ambient sign-ins", () => {
     ).toBe("v1");
   });
 
-  test("signInApi defaults to the sign-in API of ambientSignIns", () => {
+  test("the signInApi property defaults to the sign-in API of the ambientSignIns option", () => {
     const { client } = makeClientWithSignIns([]);
     expect(client.signInApi).toBe(SIGN_IN_API);
   });
@@ -782,7 +782,7 @@ describe("AuthClient (SSR)", () => {
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
   });
 
-  test("init uses the initialToken option on the first call only", async () => {
+  test("the init method uses the initialToken option on the first call only", async () => {
     const storage = new InMemoryStorage();
     const { client } = makeSsrClient({}, storage);
     await client.init({ initialToken: "access-1" });

@@ -107,7 +107,7 @@ describe("React bindings", () => {
     expect(dispose).toHaveBeenCalledTimes(1);
   });
 
-  test("a new auth client starts with the current initialToken", async () => {
+  test("a new auth client gets the current value of the initialToken prop", async () => {
     const first = makeClient().client;
     const second = makeClient().client;
     const { rerender } = render(
@@ -124,7 +124,7 @@ describe("React bindings", () => {
     await waitFor(() => expect(second.getAccessToken()).toBe("access-2"));
   });
 
-  test("a new initialToken alone doesn't init the auth client again", async () => {
+  test("changing only the initialToken prop doesn't init the auth client again", async () => {
     const { client } = makeClient();
     const init = vi.spyOn(client, "init");
     const { rerender } = render(
