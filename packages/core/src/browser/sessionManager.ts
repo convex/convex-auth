@@ -1,4 +1,6 @@
+import type { ConvexReactClient } from "convex/react";
 import type {
+  IsAuthenticatedFn,
   RefreshResult,
   SlimTokenBundle,
   TokenBundle,
@@ -45,6 +47,18 @@ export interface SsrAuthApi {
 
 /** Config common to both session models. */
 interface AuthClientConfigBase {
+  /** The app's Convex client. */
+  convex?: ConvexReactClient;
+  /**
+   * A reference to the app's `isAuthenticated` query. Subscribing to the
+   * query signs the client out when the server revokes the session.
+   */
+  isAuthenticatedQuery?: IsAuthenticatedFn;
+  /**
+   * The API for calling the sign-in functions of the sign-in methods.
+   * Defaults to `ambientSignIns.signInApi`.
+   */
+  signInApi?: AuthSignInApi;
   /** Where tokens are persisted. */
   storage: TokenStorage;
   /** Namespace for storage keys; typically the deployment URL. */
@@ -161,6 +175,22 @@ function replaceUrlKeepingState(url: string): void {
 }
 
 /**
+ * Returns the configured sign-in API, or `ambientSignIns.signInApi` when there
+ * is none. Without either, every call to the returned API throws.
+ */
+function signInApiFor(config: AuthClientConfig): AuthSignInApi {
+  const configured = config.signInApi ?? config.ambientSignIns?.signInApi;
+  if (configured !== undefined) return configured;
+  const missing = (): never => {
+    throw new Error(
+      "[convex-auth] This auth client can't call sign-in functions because " +
+        "its config has no signInApi option.",
+    );
+  };
+  return { mutation: missing, action: missing };
+}
+
+/**
  * Framework-agnostic owner of the auth session on the client.
  *
  * It persists the {@link TokenBundle} from a sign-in, hands out the access
@@ -195,6 +225,12 @@ export class AuthClient {
   #isLoading = true;
   #pendingSignIns = 0;
   #initialized = false;
+  /** Counts the {@link init} calls that no {@link dispose} call has ended. */
+  #activeInits = 0;
+  /** Counts storage reads, so only the latest read takes effect. */
+  #loadGeneration = 0;
+  /** The latest session load, which concurrent {@link init} calls wait for. */
+  #loading: Promise<void> = Promise.resolve();
   /**
    * Counts changes to the tokens in memory, so {@link init} can tell when a
    * change happened during its storage read.
@@ -206,6 +242,9 @@ export class AuthClient {
   #storageListener: ((event: StorageEvent) => void) | null = null;
 
   constructor(config: AuthClientConfig) {
+    this.convex = config.convex;
+    this.isAuthenticatedQuery = config.isAuthenticatedQuery;
+    this.signInApi = signInApiFor(config);
     this.#storage = new NamespacedStorage(
       config.storage,
       config.storageNamespace,
@@ -276,6 +315,21 @@ export class AuthClient {
     return this.#accessToken;
   }
 
+  /** The app's Convex client. */
+  readonly convex: ConvexReactClient | undefined;
+
+  /**
+   * A reference to the app's `isAuthenticated` query. Subscribing to the query
+   * signs the client out when the server revokes the session.
+   */
+  readonly isAuthenticatedQuery: IsAuthenticatedFn | undefined;
+
+  /**
+   * Runs the sign-in functions of the sign-in methods for both SPA and SSR.
+   * See {@link AuthSignInApi}.
+   */
+  readonly signInApi: AuthSignInApi;
+
   /** @internal */
   get storage(): NamespacedStorage {
     return this.#storage;
@@ -329,7 +383,7 @@ export class AuthClient {
         client: this,
         values: this.#ambientValues.forSignIn(id),
         storage: this.#storage.forSignIn(id),
-        signInApi: ambientSignIns.signInApi,
+        signInApi: this.signInApi,
         convex: ambientSignIns.convex,
         replaceUrl: ambientSignIns.replaceUrl ?? replaceUrlKeepingState,
       });
@@ -346,17 +400,38 @@ export class AuthClient {
    * storage, and start listening for cross-tab changes (if applicable).
    * Until this resolves, the client reports `isLoading`.
    *
-   * Symmetric and repeatable with {@link dispose}. The callbacks and session
-   * load happen once, but the cross-tab listener is (re)attached on every
-   * call, so an `init` after a `dispose` fully restores the client.
+   * Each call needs a matching {@link dispose}. The `onInit` callbacks of the
+   * ambient sign-ins run on the first call only. The cross-tab listener stays
+   * attached while any call is active. An `init` after every call was disposed
+   * loads the session from storage again, because another tab may have
+   * changed it in the meantime.
+   *
+   * Call it on the client only, because it can store a user's token and a
+   * server can share one client across all requests.
    */
-  async init(): Promise<void> {
-    // Attach before the one-time guard so a dispose()/init() cycle re-attaches
-    // the listener rather than skipping it. Idempotent, so repeat calls are
-    // harmless.
-    this.#attachStorageListener();
-    if (this.#initialized) return;
-    this.#initialized = true;
+  async init(options?: {
+    /**
+     * An access token to store before the session loads. SSR hosts render it
+     * into the page. Only the first call uses it.
+     */
+    initialToken?: string | null;
+  }): Promise<void> {
+    this.#activeInits++;
+    if (this.#activeInits === 1) {
+      this.#attachStorageListener();
+      if (this.#initialized) this.#loading = this.#loadTokens();
+    }
+    if (!this.#initialized) {
+      this.#initialized = true;
+      this.#loading = this.#firstLoad(options?.initialToken);
+    }
+    return this.#loading;
+  }
+
+  /** Runs the onInit callbacks, then loads the session from storage. */
+  async #firstLoad(
+    initialTokenOption: string | null | undefined,
+  ): Promise<void> {
     // Run ambient sign-in onInit callbacks before anything observable
     // happens, so a withSignInPending call inside one marks loading before
     // the session
@@ -375,38 +450,54 @@ export class AuthClient {
     // An initially provided token is considered to be the freshest value, so
     // persist it before the load below reads it back (and so other tabs see
     // it).
-    if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+    const initialToken = initialTokenOption ?? this.#initialAccessToken;
+    if (initialToken !== null) {
+      await this.#storage.set(JWT_STORAGE_KEY, initialToken);
     }
+    await this.#loadTokens();
+  }
+
+  /** Reads the tokens from storage into memory and ends loading. */
+  async #loadTokens(): Promise<void> {
+    const generation = ++this.#loadGeneration;
     const versionBeforeRead = this.#tokenVersion;
     const [accessToken, refreshToken] = await Promise.all([
       this.#storage.get(JWT_STORAGE_KEY),
       this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
     ]);
+    // Drop the read if a newer read started or every init call was disposed,
+    // because storage may have changed since it started.
+    if (generation !== this.#loadGeneration || this.#activeInits === 0) return;
     // Keep a change made during the read, because it is newer than the stored
     // tokens.
     if (this.#tokenVersion === versionBeforeRead) {
       this.#accessToken = accessToken ?? null;
       this.#refreshToken = refreshToken ?? null;
     }
-    this.#log(`init: token is null: ${this.#accessToken === null}`);
+    this.#log(`load: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
     this.#notify();
   }
 
   /**
-   * Detach a registered cross-tab storage listener, if applicable.
-   *
-   * Call on teardown. Store subscribers are intentionally left in place — each
-   * is removed via the unsubscribe returned by {@link subscribe} — so a later
-   * {@link init} restores the client without losing its subscribers.
+   * Ends one {@link init} call. Ending the last active call detaches the
+   * cross-tab listener and reports loading until the next `init` loads
+   * storage. Store subscribers stay, so a later `init` restores the client
+   * with them.
    */
   dispose(): void {
+    if (this.#activeInits === 0) return;
+    this.#activeInits--;
+    if (this.#activeInits > 0) return;
     const target = domEventTarget();
     if (this.#storageListener !== null && target !== null) {
       target.removeEventListener("storage", this.#storageListener);
     }
     this.#storageListener = null;
+    // Another tab may change the session before the next init, so the cached
+    // session can't be trusted until then.
+    this.#isLoading = true;
+    this.#notify();
   }
 
   // --- Public actions ------------------------------------------------------

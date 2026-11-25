@@ -9,7 +9,7 @@
 import { useConvex } from "convex/react";
 import { useCallback, useMemo } from "react";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import {
   runSignInOrSignUpFlow,
@@ -54,8 +54,10 @@ export function useSignInWithUsernamePasskeyImpl(
 ) {
   const { setSession } = useAuthActions();
 
-  // Using useAuthSignInApi for mutations that return a session to support SSR
-  const signInApi = useAuthSignInApi();
+  // Run the mutations that return a session through `signInApi`, not
+  // `useMutation`, so these hooks work for both SPA and SSR. See
+  // {@link AuthSignInApi}.
+  const signInApi = useAuthClient().signInApi;
   const convex = useConvex();
 
   const startSignIn = useStableFunctionReference(

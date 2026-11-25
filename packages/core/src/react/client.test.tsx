@@ -12,7 +12,6 @@ import {
 } from "../browser/storage.ts";
 import type { TokenBundle } from "../lib/types.ts";
 import { AuthProvider, SessionWatcher, useAuth } from "./client.tsx";
-import { stubSignInApi } from "./testSignInApi.ts";
 import { useAuthActions, useAuthToken } from "./index.tsx";
 
 // `SessionWatcher` subscribes through convex/react's `useQuery` and gates on
@@ -58,9 +57,7 @@ function makeClient(
 /** Render the provider around a hook and expose every auth hook's value. */
 function renderAuth(client: AuthClient) {
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({
@@ -101,15 +98,77 @@ describe("React bindings", () => {
     const dispose = vi.spyOn(client, "dispose");
 
     const { unmount } = render(
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-        hi
-      </AuthProvider>,
+      <AuthProvider authClient={client}>hi</AuthProvider>,
     );
     expect(init).toHaveBeenCalledTimes(1);
     expect(dispose).not.toHaveBeenCalled();
 
     unmount();
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  test("a new auth client gets the current value of the initialToken prop", async () => {
+    const first = makeClient().client;
+    const second = makeClient().client;
+    const { rerender } = render(
+      <AuthProvider authClient={first} initialToken="access-1">
+        hi
+      </AuthProvider>,
+    );
+    rerender(
+      <AuthProvider authClient={second} initialToken="access-2">
+        hi
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(second.getAccessToken()).toBe("access-2"));
+  });
+
+  test("changing only the initialToken prop doesn't init the auth client again", async () => {
+    const { client } = makeClient();
+    const init = vi.spyOn(client, "init");
+    const { rerender } = render(
+      <AuthProvider authClient={client} initialToken="access-1">
+        hi
+      </AuthProvider>,
+    );
+    rerender(
+      <AuthProvider authClient={client} initialToken="access-2">
+        hi
+      </AuthProvider>,
+    );
+
+    expect(init).toHaveBeenCalledOnce();
+    await waitFor(() => expect(client.getAccessToken()).toBe("access-1"));
+  });
+
+  test("a remounted provider reports loading until it loads the stored session", async () => {
+    const { client, storage } = makeClient();
+    await client.init();
+    await client.setSession(bundle(1));
+    client.dispose();
+    const states: Array<{ isLoading: boolean; token: string | null }> = [];
+    function Capture() {
+      states.push({ isLoading: useAuth().isLoading, token: useAuthToken() });
+      return null;
+    }
+
+    // Another tab signed in as someone else while no provider was mounted.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-2");
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-2");
+    render(
+      <AuthProvider authClient={client}>
+        <Capture />
+      </AuthProvider>,
+    );
+
+    expect(states[0]!.isLoading).toBe(true);
+    await waitFor(() =>
+      expect(states.at(-1)).toEqual({ isLoading: false, token: "access-2" }),
+    );
+    expect(
+      states.some((state) => !state.isLoading && state.token === "access-1"),
+    ).toBe(false);
   });
 
   test("reports loading then unauthenticated for an empty store", async () => {
@@ -192,11 +251,7 @@ describe("React bindings", () => {
     // dev, or an ordinary route change — disposes then re-inits it. Cross-tab
     // sign-out must still work afterward, which only holds if the re-init
     // re-attaches the window storage listener the dispose removed.
-    render(
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-        hi
-      </AuthProvider>,
-    ).unmount();
+    render(<AuthProvider authClient={client}>hi</AuthProvider>).unmount();
 
     const { result } = renderAuth(client);
     await waitFor(() => expect(result.current.auth.isLoading).toBe(false));
@@ -264,7 +319,7 @@ describe("SessionWatcher", () => {
 
   function renderWatcher(client: AuthClient) {
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
+      <AuthProvider authClient={client}>
         <SessionWatcher isAuthenticated={isAuthenticatedRef} />
         {children}
       </AuthProvider>

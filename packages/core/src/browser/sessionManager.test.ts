@@ -378,6 +378,76 @@ describe("AuthClient", () => {
       token: null,
     });
   });
+
+  test("init after the last dispose loads the session from storage again", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeClient({}, storage);
+    await client.init();
+    client.dispose();
+
+    // Another tab signed in while no listener was attached.
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "access-1");
+    storage.setItem(`${REFRESH_TOKEN_STORAGE_KEY}_${SUFFIX}`, "refresh-1");
+    await client.init();
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: true,
+      token: "access-1",
+    });
+  });
+
+  test("reports loading from the last dispose until the next init loads storage", async () => {
+    const { client } = makeClient();
+    await client.init();
+    await client.setSession(bundle(1));
+
+    client.dispose();
+    expect(client.getSnapshot().isLoading).toBe(true);
+
+    await client.init();
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: true,
+      token: "access-1",
+    });
+  });
+
+  test("the signInApi property throws without a signInApi option", () => {
+    const { client } = makeClient();
+    expect(() => client.signInApi.mutation(SIGN_IN_REF, {})).toThrow(
+      /no signInApi option/,
+    );
+  });
+
+  test("keeps cross-tab sync until every init call is disposed", async () => {
+    const listeners = new Set<(event: StorageEvent) => void>();
+    const storage = new InMemoryStorage();
+    (globalThis as { window?: unknown }).window = {
+      addEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.add(l),
+      removeEventListener: (_type: string, l: (event: StorageEvent) => void) =>
+        listeners.delete(l),
+    };
+    const { client } = makeClient({}, storage);
+    await client.init();
+    await client.init();
+    await client.setSession(bundle(1));
+
+    client.dispose();
+    // Another tab cleared the JWT key.
+    listeners.forEach((l) =>
+      l({
+        storageArea: storage,
+        key: `${JWT_STORAGE_KEY}_${SUFFIX}`,
+        newValue: null,
+      } as unknown as StorageEvent),
+    );
+    expect(client.getSnapshot().isAuthenticated).toBe(false);
+
+    client.dispose();
+    expect(listeners.size).toBe(0);
+  });
 });
 
 /** The mutation stub behind {@link SIGN_IN_API}. */
@@ -469,6 +539,37 @@ describe("AuthClient ambient sign-ins", () => {
         ),
       ),
     ).toBe("v1");
+  });
+
+  test("the signInApi property defaults to the sign-in API of the ambientSignIns option", () => {
+    const { client } = makeClientWithSignIns([]);
+    expect(client.signInApi).toBe(SIGN_IN_API);
+  });
+
+  test("setups receive the signInApi option over the sign-in API of ambientSignIns", () => {
+    const signInApi = {
+      mutation: vi.fn(),
+      action: vi.fn(),
+    } as unknown as AuthSignInApi;
+    const received: AuthSignInApi[] = [];
+    new AuthClient({
+      mode: "spa",
+      authApi: {
+        refreshSession: async () => ({ kind: "noSession" }),
+        signOut: async () => {},
+      },
+      storage: new InMemoryStorage(),
+      storageNamespace: NAMESPACE,
+      signInApi,
+      ambientSignIns: {
+        signIns: [
+          { id: "a", setup: (ctx) => void received.push(ctx.signInApi) },
+        ],
+        signInApi: SIGN_IN_API,
+        convex: { mutation: vi.fn() },
+      },
+    });
+    expect(received).toEqual([signInApi]);
   });
 
   test("every setup receives the same sign-in api and client", () => {
@@ -710,6 +811,30 @@ describe("AuthClient (SSR)", () => {
     expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
   });
 
+  test("the initialToken option of init replaces a persisted token", async () => {
+    const storage = new InMemoryStorage();
+    storage.setItem(`${JWT_STORAGE_KEY}_${SUFFIX}`, "stale-access");
+    const { client } = makeSsrClient({}, storage);
+    await client.init({ initialToken: "access-ssr" });
+
+    expect(client.getSnapshot()).toMatchObject({
+      isAuthenticated: true,
+      token: "access-ssr",
+    });
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-ssr");
+  });
+
+  test("the init method uses the initialToken option on the first call only", async () => {
+    const storage = new InMemoryStorage();
+    const { client } = makeSsrClient({}, storage);
+    await client.init({ initialToken: "access-1" });
+    client.dispose();
+    await client.init({ initialToken: "access-2" });
+
+    expect(client.getSnapshot().token).toBe("access-1");
+    expect(storage.getItem(`${JWT_STORAGE_KEY}_${SUFFIX}`)).toBe("access-1");
+  });
+
   test("clears refresh token if present", async () => {
     const refreshSession = vi.fn(async () => ssrAuthResult(2));
     const storage = new InMemoryStorage();
@@ -864,6 +989,65 @@ describe("AuthClient (a token change while init reads storage)", () => {
     await client.signOut();
     release();
     await initialized;
+
+    expect(client.getSnapshot()).toEqual({
+      isLoading: false,
+      isAuthenticated: false,
+      token: null,
+    });
+  });
+
+  test("a concurrent init call resolves after the session loads", async () => {
+    const { tokenStorage, release } = gatedStorage({
+      [jwtKey]: "access-1",
+      [refreshKey]: "refresh-1",
+    });
+    const { client } = makeClient({}, tokenStorage);
+
+    const firstInit = client.init();
+    const tokenAfterSecondInit = client
+      .init()
+      .then(() => client.getAccessToken());
+    release();
+
+    expect(await tokenAfterSecondInit).toBe("access-1");
+    await firstInit;
+  });
+
+  test("ignores a read that started before a newer init", async () => {
+    const storage = new InMemoryStorage();
+    storage.setItem(jwtKey, "access-1");
+    storage.setItem(refreshKey, "refresh-1");
+    // Holds each access token read until its own release is called.
+    const releases: Array<() => void> = [];
+    const tokenStorage: TokenStorage = {
+      getItem: async (key) => {
+        const value = storage.getItem(key);
+        if (key === jwtKey) {
+          const gate = Promise.withResolvers<void>();
+          releases.push(gate.resolve);
+          await gate.promise;
+        }
+        return value;
+      },
+      setItem: (key, value) => storage.setItem(key, value),
+      removeItem: (key) => storage.removeItem(key),
+    };
+    const { client } = makeClient({}, tokenStorage);
+
+    const firstInit = client.init();
+    await vi.waitFor(() => expect(releases).toHaveLength(1));
+    client.dispose();
+    // Another tab signed out before the next init.
+    storage.removeItem(jwtKey);
+    storage.removeItem(refreshKey);
+    const secondInit = client.init();
+    await vi.waitFor(() => expect(releases).toHaveLength(2));
+
+    releases[1]!();
+    await secondInit;
+    releases[0]!();
+    await firstInit;
 
     expect(client.getSnapshot()).toEqual({
       isLoading: false,

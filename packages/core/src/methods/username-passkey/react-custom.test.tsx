@@ -65,6 +65,7 @@ afterEach(() => {
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new AuthClient({
+    signInApi,
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
@@ -74,7 +75,7 @@ function wrapper({ children }: { children: ReactNode }) {
     storageNamespace: "https://happy-animal-123.convex.cloud",
   });
   return (
-    <AuthProvider authClient={client} signInApi={signInApi}>
+    <AuthProvider authClient={client}>
       <ConvexProvider client={convexClient}>{children}</ConvexProvider>
     </AuthProvider>
   );

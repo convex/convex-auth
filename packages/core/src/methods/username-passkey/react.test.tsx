@@ -296,6 +296,7 @@ afterEach(() => {
 
 function makeWrapper() {
   const client = new AuthClient({
+    signInApi,
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
@@ -305,7 +306,7 @@ function makeWrapper() {
     storageNamespace: NAMESPACE,
   });
   return ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
+    <AuthProvider authClient={client}>
       <ConvexProvider client={convexClient}>{children}</ConvexProvider>
     </AuthProvider>
   );

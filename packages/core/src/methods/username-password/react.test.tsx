@@ -62,6 +62,7 @@ const flows = [
 
 function renderFlow(useFlow: () => Flow) {
   const client = new AuthClient({
+    signInApi,
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
@@ -71,9 +72,7 @@ function renderFlow(useFlow: () => Flow) {
     storageNamespace: NAMESPACE,
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
   return renderHook(
     () => ({ auth: useAuth(), token: useAuthToken(), flow: useFlow() }),

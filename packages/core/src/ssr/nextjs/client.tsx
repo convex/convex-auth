@@ -127,7 +127,7 @@ export function ConvexAuthNextjsProvider({
   isAuthenticatedFunctionName: string;
   children: ReactNode;
 }) {
-  const { authClient, convex, signInApi } = useMemo(() => {
+  const { authClient, convex } = useMemo(() => {
     const convex =
       client ??
       new ConvexReactClient(convexUrl ?? process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -174,9 +174,6 @@ export function ConvexAuthNextjsProvider({
       },
       storage: storage ?? defaultStorage(),
       storageNamespace: convex.url,
-      // The SSR host may have refreshed on our behalf, so this is the freshest
-      // access token; the client adopts it on init.
-      initialAccessToken: initialToken,
       ambientSignIns: {
         signIns: ambientSignIns ?? [oauth()],
         signInApi,
@@ -198,7 +195,7 @@ export function ConvexAuthNextjsProvider({
       },
     });
 
-    return { authClient, convex, signInApi };
+    return { authClient, convex };
     // `client`/`convexUrl` identity is what matters; other props are read once.
   }, [client, convexUrl]);
 
@@ -209,7 +206,9 @@ export function ConvexAuthNextjsProvider({
   );
 
   return (
-    <AuthProvider authClient={authClient} signInApi={signInApi}>
+    // The SSR host may have refreshed the session, so `initialToken` is the
+    // freshest access token.
+    <AuthProvider authClient={authClient} initialToken={initialToken}>
       <ConvexProviderWithAuth client={convex} useAuth={useAuth}>
         <SessionWatcher isAuthenticated={isAuthenticated} />
         {children}

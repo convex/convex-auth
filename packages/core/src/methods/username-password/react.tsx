@@ -21,7 +21,7 @@ import { FunctionReference } from "convex/server";
 import { useCallback, useState } from "react";
 import type { ClientView } from "../../lib/types.ts";
 import { useAuthActions } from "../../react/index.tsx";
-import { useAuthSignInApi } from "../../react/client.tsx";
+import { useAuthClient } from "../../react/client.tsx";
 import { useStableFunctionReference } from "../../react/functionReference.ts";
 import type { SignInResult, SignUpResult } from "./server.ts";
 
@@ -227,9 +227,9 @@ function usePasswordFlow<
   Result extends ClientView<SignInResult> | ClientView<SignUpResult>,
 >(mutation: FunctionReference<"mutation", "public", Credentials, Result>) {
   const { setSession } = useAuthActions();
-  // Running through the signInApi rather than `useAction` is what lets these hooks
-  // serve both session models. See {@link useAuthSignInApi}.
-  const signInApi = useAuthSignInApi();
+  // Run the mutation through `signInApi`, not `useMutation`, so these hooks
+  // work for both SPA and SSR. See {@link AuthSignInApi}.
+  const signInApi = useAuthClient().signInApi;
   const [pending, setPending] = useState(false);
 
   const run = useCallback(

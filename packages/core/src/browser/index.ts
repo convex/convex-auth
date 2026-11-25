@@ -4,6 +4,8 @@
  * ties them together. The React bindings (`@convex-dev/auth/react`) build on
  * these, and other client libraries can too.
  *
+ * Create the auth client with {@link createAuthClient}.
+ *
  * @module
  */
 
@@ -22,3 +24,7 @@ export {
   type AuthClientConfig,
   type AuthState,
 } from "./sessionManager.ts";
+export {
+  createAuthClient,
+  type CreateAuthClientOptions,
+} from "./createAuthClient.ts";

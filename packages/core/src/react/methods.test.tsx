@@ -58,9 +58,7 @@ function makeProbeClient() {
 
 function wrapperFor(client: AuthClient) {
   return ({ children }: { children: ReactNode }) => (
-    <AuthProvider authClient={client} signInApi={stubSignInApi().signInApi}>
-      {children}
-    </AuthProvider>
+    <AuthProvider authClient={client}>{children}</AuthProvider>
   );
 }
 
@@ -68,9 +66,7 @@ describe("useAmbientSignInValue", () => {
   test("throws when used outside a provider", () => {
     expect(() =>
       renderHook(() => useAmbientSignInValue("probe", "greeting")),
-    ).toThrow(
-      /useAmbientSignInValue must be used within a <ConvexAuthProvider>/,
-    );
+    ).toThrow(/must be used within a <ConvexAuthProvider>/);
   });
 
   test("returns undefined for an unregistered key", () => {

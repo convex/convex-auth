@@ -97,6 +97,7 @@ function renderWithProviders<T>(
   storage: TokenStorage = window.localStorage,
 ) {
   const authClient = new AuthClient({
+    signInApi,
     mode: "spa",
     authApi: {
       refreshSession: async () => ({ kind: "noSession" as const }),
@@ -110,9 +111,7 @@ function renderWithProviders<T>(
   const wrapper = ({ children }: { children: ReactNode }) => (
     <StrictMode>
       <ConvexProvider client={convexClient}>
-        <AuthProvider authClient={authClient} signInApi={signInApi}>
-          {children}
-        </AuthProvider>
+        <AuthProvider authClient={authClient}>{children}</AuthProvider>
       </ConvexProvider>
     </StrictMode>
   );
