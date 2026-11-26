@@ -39,6 +39,12 @@ export type RecordingEvent = {
   v: number;
   /** When the recorder started, in ms. */
   time: number;
+  /**
+   * The name of the app: the last segment of the app directory given to
+   * `record` (e.g. "react-username-password"), or `--app`. Recordings made
+   * before the field existed have none.
+   */
+  app?: string;
   /** The URL of the deployment. */
   deploymentUrl: string;
   /** The name of the project config, e.g. "generic" or "convex-auth". */

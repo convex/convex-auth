@@ -11,7 +11,8 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { BrowserRedactor } from "./browser.ts";
 import { BrowserSession } from "./browserRecorder.ts";
 import type { ResolvedTarget } from "./config.ts";
-import { TIMELINE_VERSION, type TimelineEvent } from "./events.ts";
+import type { TimelineEvent } from "./events.ts";
+import { recordingHeader } from "./header.ts";
 import { LogPoller, type TimedLogPage } from "./logPoller.ts";
 import { eventsFromLogEntry, isLogEntry } from "./logs.ts";
 import { nodeDigest } from "./nodeDigest.ts";
@@ -36,6 +37,8 @@ export type BrowserRecording = {
 };
 
 export type RecordOptions = ResolvedTarget & {
+  /** The name of the app, in the `recording` event; see `defaultAppName`. */
+  app: string;
   out: string;
   project: ProjectConfig;
   history: number;
@@ -151,21 +154,14 @@ export async function record(
   const stop = new AbortController();
   hooks.stop?.addEventListener("abort", () => stop.abort(), { once: true });
   const stopped = () => stop.signal.aborted;
-  const header: TimelineEvent = {
-    kind: "recording",
-    v: TIMELINE_VERSION,
+  const header = recordingHeader({
     time: startedAt,
+    app: options.app,
     deploymentUrl: options.url,
     project: options.project.name,
-    ...(options.browser === null
-      ? {}
-      : {
-          page: options.browser.url,
-          ...(options.browser.scenario === null
-            ? {}
-            : { scenario: options.browser.scenario.name }),
-        }),
-  };
+    page: options.browser?.url ?? null,
+    scenario: options.browser?.scenario?.name ?? null,
+  });
   writeFileSync(options.out, JSON.stringify(header) + "\n");
   const counts: Record<string, number> = {};
 

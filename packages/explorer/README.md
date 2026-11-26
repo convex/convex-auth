@@ -126,6 +126,8 @@ wrong password, sign in. The passwords are random on each run.
 ## Options
 
 - `--cloud`: record a cloud deployment, with `CONVEX_DEPLOY_KEY`.
+- `--app <name>`: the name of the app in the `recording` event. Default: the
+  last segment of the app directory, e.g. `react-username-password`.
 - `--out <file>`: where to write the timeline. Default:
   `timeline-<time>.ndjson`. An existing file is overwritten.
 - `--url <url>`: the deployment URL.
@@ -152,8 +154,8 @@ arrives more than `--settle` late is written when it arrives. The types, with
 the meaning of each field, are in [`src/events.ts`](src/events.ts).
 
 - `recording`: the first line. The version of the format (`v`), the start of
-  the recording, the deployment URL, the name of the project config, and with
-  a browser, the page and the scenario.
+  the recording, the name of the app (`app`), the deployment URL, the name of
+  the project config, and with a browser, the page and the scenario.
 - `run`: one execution of a function. `id` is the execution id; `time` and
   `endTime` are its start and its end. `componentPath` is `""` for a function
   of the app. `writeCount` is the number of documents it wrote.

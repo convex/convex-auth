@@ -30,6 +30,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { readAppVariables, readLocalAdminKey } from "../src/appFiles.ts";
 import { resolveTarget } from "../src/config.ts";
+import { defaultAppName } from "../src/header.ts";
 import type {
   HttpEvent,
   SecretEvent,
@@ -77,6 +78,7 @@ const { code } = await record(
   {
     ...target,
     out,
+    app: defaultAppName(appDir),
     project: convexAuthProject,
     history: 0,
     pollMs: 1000,

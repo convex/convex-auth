@@ -15,6 +15,7 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { keyMismatchWarning, resolveTarget, TargetError } from "./config.ts";
 import { readAppVariables, readLocalAdminKey } from "./appFiles.ts";
+import { defaultAppName } from "./header.ts";
 import { PROJECTS } from "./projects/index.ts";
 import { record, type RecordOptions } from "./recorder.ts";
 import type { Scenario } from "./scenario.ts";
@@ -36,6 +37,7 @@ Options:
   --history <n>          Also record the last n function runs before the start
   --poll <ms>            How often to poll the data sync once it caught up (default: 1000)
   --settle <ms>          How long to wait for the other feed before writing (default: 3000)
+  --app <name>           The name of the app in the timeline (default: the app directory's name)
 
 Browser:
   --page <url>           Open the app's page, served against the deployment, and record it
@@ -65,6 +67,7 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       history: { type: "string" },
       poll: { type: "string" },
       settle: { type: "string" },
+      app: { type: "string" },
       page: { type: "string" },
       scenario: { type: "string" },
       headed: { type: "boolean" },
@@ -123,6 +126,7 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
   }
   return {
     ...target,
+    app: values.app ?? defaultAppName(appDir),
     browser:
       values.page === undefined
         ? null
