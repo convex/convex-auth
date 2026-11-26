@@ -100,11 +100,23 @@ const MAX_DEPTH = 30;
 
 export type Resolvers = {
   /** The part id of a function a generated ref names, or null. */
-  functionFromRef(ref: Extract<Val, { k: "ref" }>): string | null;
+  /**
+   * The part id of the function a generated ref names, or null. `owner` is the
+   * owner of the walk: code shared by several instances of a component (one
+   * npm package mounted twice) resolves its refs for the instance walked.
+   */
+  functionFromRef(
+    ref: Extract<Val, { k: "ref" }>,
+    owner: Owner | null,
+  ): string | null;
   /** The part id of a function named by a property of a `ComponentApi` type. */
   functionFromComponentApi(dir: string, path: string[]): string | null;
   /** The component a `components.<name>` ref names, from inside `ownerDir`. */
-  componentFromRef(ownerDir: string, name: string): string | null;
+  componentFromRef(
+    ownerDir: string,
+    name: string,
+    owner: Owner | null,
+  ): string | null;
   /** The npm package of a component part, or null for one of this repository. */
   componentPackage(id: string): string | null;
   /** The part id of a table of the owner, or null. */
@@ -289,8 +301,9 @@ export class Analyzer {
   ): Extract<Val, { k: "ref" }> | null {
     const fileName = declaration.getSourceFile().fileName;
     if (
+      // A `_generated/api` of an npm package names that package's functions;
+      // the resolvers know it when the project reads its source.
       !/\/_generated\/api\.(ts|js|d\.ts)$/.test(fileName) ||
-      fileName.includes("/node_modules/") ||
       (name !== "api" && name !== "internal" && name !== "components")
     ) {
       return null;
@@ -1159,7 +1172,7 @@ export class Analyzer {
       if (value.k !== "ref") {
         continue;
       }
-      const target = this.resolvers.functionFromRef(value);
+      const target = this.resolvers.functionFromRef(value, unit.owner);
       if (target !== null) {
         this.emit(unit, "referencesFunction", target, [this.location(access)], {
           app: unit.app,
@@ -1171,13 +1184,19 @@ export class Analyzer {
   private readonly consumed = new Set<ts.Node>();
 
   /** The function a reference names: through the evaluator, then through its type. */
-  private resolveFunctionRef(expr: ts.Expression, env: Env): string[] | null {
+  private resolveFunctionRef(
+    expr: ts.Expression,
+    env: Env,
+    unit: Unit,
+  ): string[] | null {
     const values = this.evaluate(expr, env);
     const targets = new Set<string>();
     let unknown = values.length === 0;
     for (const value of values) {
       const target =
-        value.k === "ref" ? this.resolvers.functionFromRef(value) : null;
+        value.k === "ref"
+          ? this.resolvers.functionFromRef(value, unit.owner)
+          : null;
       if (target === null) {
         unknown = true;
       } else {
@@ -1425,7 +1444,7 @@ export class Analyzer {
     via: string,
   ): void {
     this.consumed.add(refExpr);
-    const targets = this.resolveFunctionRef(refExpr, env);
+    const targets = this.resolveFunctionRef(refExpr, env, unit);
     if (targets === null) {
       const isHandle = [
         { expr: refExpr as ts.Node | undefined },
@@ -1491,7 +1510,7 @@ export class Analyzer {
     }
     let all = true;
     for (const ref of refs) {
-      const target = this.resolvers.functionFromRef(ref);
+      const target = this.resolvers.functionFromRef(ref, unit.owner);
       if (target === null) {
         all = false;
         continue;
@@ -1658,6 +1677,7 @@ export class Analyzer {
           const target = this.resolvers.componentFromRef(
             value.ownerDir,
             value.path[0]!,
+            unit.owner,
           );
           const pkg =
             target === null ? null : this.resolvers.componentPackage(target);

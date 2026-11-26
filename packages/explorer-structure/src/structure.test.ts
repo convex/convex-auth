@@ -149,6 +149,37 @@ describe("child components", () => {
   });
 });
 
+describe("components from npm", () => {
+  test("come with their tables, read from the source they ship", () => {
+    const table = part("table:authPassword/rateLimiter.rateLimits");
+    expect(table.parent).toBe("component:authPassword/rateLimiter");
+    expect(table.source?.file).toMatch(
+      /^@convex-dev\/rate-limiter@[^/]+\/src\/component\/schema\.ts$/,
+    );
+    expect(childrenOf("component:authEmail/batchWorker", "table")).toEqual([
+      "workerState",
+      "workers",
+    ]);
+  });
+
+  test("each instance has its own functions and table accesses", () => {
+    expect(
+      targets("writes", "fn:authPassword/rateLimiter:lib.rateLimit"),
+    ).toEqual(["table:authPassword/rateLimiter.rateLimits"]);
+    expect(targets("writes", "fn:authEmail/rateLimiter:lib.rateLimit")).toEqual(
+      ["table:authEmail/rateLimiter.rateLimits"],
+    );
+  });
+
+  test("mount their own children", () => {
+    expect(targets("usesComponent", "component:resend")).toEqual([
+      "component:resend/callbackWorkpool",
+      "component:resend/emailWorkpool",
+      "component:resend/rateLimiter",
+    ]);
+  });
+});
+
 describe("sign-in methods", () => {
   test("signInWithUsernamePassword calls what it calls, and nothing it does not", () => {
     expect(
@@ -226,7 +257,8 @@ describe("example apps", () => {
     expect(targets("mounts", "app:react-email-password")).toContain(
       "component:resend",
     );
-    expect(targets("fetches", "component:resend")).toEqual([
+    // Read from the source the package ships: the function that sends a batch.
+    expect(targets("fetches", "fn:resend:lib.callResendAPIWithBatch")).toEqual([
       "thirdParty:resend",
     ]);
   });
@@ -235,11 +267,15 @@ describe("example apps", () => {
 describe("the layers", () => {
   // The generic layer reads any Convex project; only the Convex Auth layer
   // may know this repository.
-  const generic = import.meta.glob<string>("./generate/convex/*.ts", {
-    query: "?raw",
-    import: "default",
-    eager: true,
-  });
+  const generic = import.meta.glob<string>(
+    // The tests run the generic layer on this repository's examples.
+    ["./generate/convex/*.ts", "!./generate/convex/*.test.ts"],
+    {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    },
+  );
 
   test("the generic layer knows nothing of Convex Auth", () => {
     expect(Object.keys(generic).length).toBeGreaterThan(0);

@@ -1,6 +1,157 @@
 {
-  "version": 2,
+  "version": 3,
   "project": "convex-auth",
+  "kinds": {
+    "parts": {
+      "app": {
+        "layer": "convex",
+        "label": "App",
+        "description": "A Convex app: a convex/ directory with defineApp."
+      },
+      "component": {
+        "layer": "convex",
+        "label": "Component",
+        "description": "A Convex component, mounted by an app or by another component."
+      },
+      "envVar": {
+        "layer": "convex",
+        "label": "Env var",
+        "description": "An environment variable a component or an app declares."
+      },
+      "function": {
+        "layer": "convex",
+        "label": "Function",
+        "description": "A registered query, mutation, action, or HTTP action."
+      },
+      "hook": {
+        "layer": "convex-auth",
+        "label": "React hook",
+        "description": "A React hook of the core or of a sign-in method."
+      },
+      "httpRoute": {
+        "layer": "convex",
+        "label": "HTTP route",
+        "description": "A route of a component's HTTP router."
+      },
+      "method": {
+        "layer": "convex-auth",
+        "label": "Sign-in method",
+        "description": "A sign-in method of Convex Auth (methods/<name>)."
+      },
+      "methodFunction": {
+        "layer": "convex-auth",
+        "label": "Method function",
+        "description": "An app function a setup… function returns, as the library defines it."
+      },
+      "module": {
+        "layer": "convex-auth",
+        "label": "Client module",
+        "description": "A module of the browser or SSR code."
+      },
+      "region": {
+        "layer": "convex",
+        "label": "Region",
+        "description": "Where code runs."
+      },
+      "setupFunction": {
+        "layer": "convex-auth",
+        "label": "Setup function",
+        "description": "A setup… function: the app calls it to get its auth functions."
+      },
+      "table": {
+        "layer": "convex",
+        "label": "Table",
+        "description": "A table of a component's or an app's schema."
+      },
+      "thirdParty": {
+        "layer": "convex",
+        "label": "Third party",
+        "description": "A service outside the project that the code talks to."
+      }
+    },
+    "dependencies": {
+      "calls": {
+        "layer": "convex",
+        "label": "calls",
+        "description": "Calls a function through ctx.runQuery, runMutation, or runAction."
+      },
+      "callsChildComponent": {
+        "layer": "convex",
+        "label": "calls component",
+        "description": "Calls a child component through its client library."
+      },
+      "callsThirdParty": {
+        "layer": "convex",
+        "label": "calls third party",
+        "description": "Calls a library that talks to a third party."
+      },
+      "clientCalls": {
+        "layer": "convex",
+        "label": "client calls",
+        "description": "Client code calls an app function."
+      },
+      "definedBy": {
+        "layer": "convex-auth",
+        "label": "defined by",
+        "description": "An app function is the one a sign-in method's setup… returns."
+      },
+      "fetches": {
+        "layer": "convex",
+        "label": "fetches",
+        "description": "Fetches a URL of a third party."
+      },
+      "imports": {
+        "layer": "convex-auth",
+        "label": "imports",
+        "description": "A module imports another."
+      },
+      "mounts": {
+        "layer": "convex",
+        "label": "mounts",
+        "description": "An app mounts a component (app.use)."
+      },
+      "reads": {
+        "layer": "convex",
+        "label": "reads",
+        "description": "Reads a table through ctx.db."
+      },
+      "readsEnv": {
+        "layer": "convex",
+        "label": "reads env",
+        "description": "Reads an environment variable."
+      },
+      "referencesFunction": {
+        "layer": "convex",
+        "label": "references",
+        "description": "Names a function without calling it: passes it on, or makes a handle."
+      },
+      "routesTo": {
+        "layer": "convex",
+        "label": "routes to",
+        "description": "An HTTP route is served by a handler."
+      },
+      "schedules": {
+        "layer": "convex",
+        "label": "schedules",
+        "description": "Schedules a function with ctx.scheduler."
+      },
+      "usesComponent": {
+        "layer": "convex",
+        "label": "uses",
+        "description": "Mounts a child component (component.use)."
+      },
+      "usesMethod": {
+        "layer": "convex-auth",
+        "label": "uses method",
+        "description": "An app sets up a sign-in method by calling its setup… function."
+      },
+      "writes": {
+        "layer": "convex",
+        "label": "writes",
+        "description": "Writes a table through ctx.db."
+      }
+    }
+  },
   "parts": [
     {
       "kind": "app",
@@ -178,8 +329,8 @@
       "name": "batchWorker",
       "parent": "component:authEmail",
       "source": {
-        "file": "packages/core/src/components/email/convex.config.ts",
-        "line": 20
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/convex.config.ts",
+        "line": 5
       },
       "componentName": "batchWorker",
       "package": "@convex-dev/batch-worker"
@@ -190,8 +341,8 @@
       "name": "rateLimiter",
       "parent": "component:authEmail",
       "source": {
-        "file": "packages/core/src/components/email/convex.config.ts",
-        "line": 19
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/convex.config.ts",
+        "line": 3
       },
       "componentName": "rateLimiter",
       "package": "@convex-dev/rate-limiter"
@@ -250,8 +401,8 @@
       "name": "batchWorker",
       "parent": "component:authPasskey",
       "source": {
-        "file": "packages/core/src/components/passkey/convex.config.ts",
-        "line": 19
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/convex.config.ts",
+        "line": 5
       },
       "componentName": "batchWorker",
       "package": "@convex-dev/batch-worker"
@@ -274,8 +425,8 @@
       "name": "rateLimiter",
       "parent": "component:authPassword",
       "source": {
-        "file": "packages/core/src/components/password/convex.config.ts",
-        "line": 15
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/convex.config.ts",
+        "line": 3
       },
       "componentName": "rateLimiter",
       "package": "@convex-dev/rate-limiter"
@@ -309,9 +460,72 @@
       "id": "component:resend",
       "name": "resend",
       "parent": "region:app",
-      "source": null,
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/convex.config.ts",
+        "line": 5
+      },
       "componentName": "resend",
       "package": "@convex-dev/resend"
+    },
+    {
+      "kind": "component",
+      "id": "component:resend/callbackWorkpool",
+      "name": "callbackWorkpool",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/convex.config.ts",
+        "line": 4
+      },
+      "componentName": "workpool",
+      "package": "@convex-dev/workpool"
+    },
+    {
+      "kind": "component",
+      "id": "component:resend/callbackWorkpool/batchWorker",
+      "name": "batchWorker",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/convex.config.ts",
+        "line": 5
+      },
+      "componentName": "batchWorker",
+      "package": "@convex-dev/batch-worker"
+    },
+    {
+      "kind": "component",
+      "id": "component:resend/emailWorkpool",
+      "name": "emailWorkpool",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/convex.config.ts",
+        "line": 4
+      },
+      "componentName": "workpool",
+      "package": "@convex-dev/workpool"
+    },
+    {
+      "kind": "component",
+      "id": "component:resend/emailWorkpool/batchWorker",
+      "name": "batchWorker",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/convex.config.ts",
+        "line": 5
+      },
+      "componentName": "batchWorker",
+      "package": "@convex-dev/batch-worker"
+    },
+    {
+      "kind": "component",
+      "id": "component:resend/rateLimiter",
+      "name": "rateLimiter",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/convex.config.ts",
+        "line": 3
+      },
+      "componentName": "rateLimiter",
+      "package": "@convex-dev/rate-limiter"
     },
     {
       "kind": "envVar",
@@ -723,6 +937,18 @@
     },
     {
       "kind": "envVar",
+      "id": "env:authEmail/batchWorker.LOG_LEVEL",
+      "name": "LOG_LEVEL",
+      "parent": "component:authEmail/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/convex.config.ts",
+        "line": 7
+      },
+      "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+      "optional": true
+    },
+    {
+      "kind": "envVar",
       "id": "env:authGithub.CLIENT_ID",
       "name": "CLIENT_ID",
       "parent": "component:authGithub",
@@ -792,6 +1018,42 @@
       },
       "type": "string",
       "optional": false
+    },
+    {
+      "kind": "envVar",
+      "id": "env:authPasskey/batchWorker.LOG_LEVEL",
+      "name": "LOG_LEVEL",
+      "parent": "component:authPasskey/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/convex.config.ts",
+        "line": 7
+      },
+      "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+      "optional": true
+    },
+    {
+      "kind": "envVar",
+      "id": "env:resend/callbackWorkpool/batchWorker.LOG_LEVEL",
+      "name": "LOG_LEVEL",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/convex.config.ts",
+        "line": 7
+      },
+      "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+      "optional": true
+    },
+    {
+      "kind": "envVar",
+      "id": "env:resend/emailWorkpool/batchWorker.LOG_LEVEL",
+      "name": "LOG_LEVEL",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/convex.config.ts",
+        "line": 7
+      },
+      "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+      "optional": true
     },
     {
       "kind": "function",
@@ -2482,8 +2744,8 @@
       "name": "getCursor",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 23
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 68
       },
       "module": "lib",
       "functionType": "query",
@@ -2495,8 +2757,8 @@
       "name": "kick",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 26
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 48
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2508,8 +2770,8 @@
       "name": "ping",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 29
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 19
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2521,8 +2783,8 @@
       "name": "setCursor",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 38
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 89
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2534,8 +2796,8 @@
       "name": "start",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 42
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 31
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2547,8 +2809,8 @@
       "name": "status",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 45
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 54
       },
       "module": "lib",
       "functionType": "query",
@@ -2560,8 +2822,8 @@
       "name": "stop",
       "parent": "component:authEmail/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 54
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 37
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2569,12 +2831,38 @@
     },
     {
       "kind": "function",
+      "id": "fn:authEmail/batchWorker:loop.loop",
+      "name": "loop",
+      "parent": "component:authEmail/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/loop.ts",
+        "line": 34
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:authEmail/batchWorker:monitor.monitor",
+      "name": "monitor",
+      "parent": "component:authEmail/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/monitor.ts",
+        "line": 22
+      },
+      "module": "monitor",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
       "id": "fn:authEmail/rateLimiter:lib.checkRateLimit",
       "name": "checkRateLimit",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 23
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 36
       },
       "module": "lib",
       "functionType": "query",
@@ -2586,21 +2874,8 @@
       "name": "clearAll",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 53
-      },
-      "module": "lib",
-      "functionType": "mutation",
-      "visibility": "public"
-    },
-    {
-      "kind": "function",
-      "id": "fn:authEmail/rateLimiter:lib.getServerTime",
-      "name": "getServerTime",
-      "parent": "component:authEmail/rateLimiter",
-      "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 56
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 119
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2612,8 +2887,8 @@
       "name": "getValue",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 57
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 45
       },
       "module": "lib",
       "functionType": "query",
@@ -2625,8 +2900,8 @@
       "name": "rateLimit",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 100
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 18
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2638,8 +2913,8 @@
       "name": "resetRateLimit",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 130
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 102
       },
       "module": "lib",
       "functionType": "mutation",
@@ -2651,8 +2926,8 @@
       "name": "getServerTime",
       "parent": "component:authEmail/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 136
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/time.ts",
+        "line": 10
       },
       "module": "time",
       "functionType": "mutation",
@@ -3106,8 +3381,8 @@
       "name": "getCursor",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 23
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 68
       },
       "module": "lib",
       "functionType": "query",
@@ -3119,8 +3394,8 @@
       "name": "kick",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 26
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 48
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3132,8 +3407,8 @@
       "name": "ping",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 29
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 19
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3145,8 +3420,8 @@
       "name": "setCursor",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 38
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 89
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3158,8 +3433,8 @@
       "name": "start",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 42
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 31
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3171,8 +3446,8 @@
       "name": "status",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 45
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 54
       },
       "module": "lib",
       "functionType": "query",
@@ -3184,12 +3459,38 @@
       "name": "stop",
       "parent": "component:authPasskey/batchWorker",
       "source": {
-        "file": "@convex-dev/batch-worker@0.3.4/dist/component/_generated/component.d.ts",
-        "line": 54
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+        "line": 37
       },
       "module": "lib",
       "functionType": "mutation",
       "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:authPasskey/batchWorker:loop.loop",
+      "name": "loop",
+      "parent": "component:authPasskey/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/loop.ts",
+        "line": 34
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:authPasskey/batchWorker:monitor.monitor",
+      "name": "monitor",
+      "parent": "component:authPasskey/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/monitor.ts",
+        "line": 22
+      },
+      "module": "monitor",
+      "functionType": "mutation",
+      "visibility": "internal"
     },
     {
       "kind": "function",
@@ -3223,8 +3524,8 @@
       "name": "checkRateLimit",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 23
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 36
       },
       "module": "lib",
       "functionType": "query",
@@ -3236,21 +3537,8 @@
       "name": "clearAll",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 53
-      },
-      "module": "lib",
-      "functionType": "mutation",
-      "visibility": "public"
-    },
-    {
-      "kind": "function",
-      "id": "fn:authPassword/rateLimiter:lib.getServerTime",
-      "name": "getServerTime",
-      "parent": "component:authPassword/rateLimiter",
-      "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 56
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 119
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3262,8 +3550,8 @@
       "name": "getValue",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 57
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 45
       },
       "module": "lib",
       "functionType": "query",
@@ -3275,8 +3563,8 @@
       "name": "rateLimit",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 100
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 18
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3288,8 +3576,8 @@
       "name": "resetRateLimit",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 130
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 102
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3301,8 +3589,8 @@
       "name": "getServerTime",
       "parent": "component:authPassword/rateLimiter",
       "source": {
-        "file": "@convex-dev/rate-limiter@0.3.2/dist/component/_generated/component.d.ts",
-        "line": 136
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/time.ts",
+        "line": 10
       },
       "module": "time",
       "functionType": "mutation",
@@ -3414,12 +3702,25 @@
     },
     {
       "kind": "function",
+      "id": "fn:resend:lib.callResendAPIWithBatch",
+      "name": "callResendAPIWithBatch",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 555
+      },
+      "module": "lib",
+      "functionType": "action",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
       "id": "fn:resend:lib.cancelEmail",
       "name": "cancelEmail",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 23
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 309
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3431,8 +3732,8 @@
       "name": "cleanupAbandonedEmails",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 26
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 1032
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3444,8 +3745,8 @@
       "name": "cleanupOldEmails",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 29
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 95
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3457,8 +3758,8 @@
       "name": "createManualEmail",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 32
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 239
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3470,8 +3771,8 @@
       "name": "get",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 44
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 366
       },
       "module": "lib",
       "functionType": "query",
@@ -3479,12 +3780,51 @@
     },
     {
       "kind": "function",
+      "id": "fn:resend:lib.getAllContentByIds",
+      "name": "getAllContentByIds",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 760
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend:lib.getEmailByResendId",
+      "name": "getEmailByResendId",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 797
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend:lib.getEmailsByIds",
+      "name": "getEmailsByIds",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 782
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
       "id": "fn:resend:lib.getStatus",
       "name": "getStatus",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 77
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 330
       },
       "module": "lib",
       "functionType": "query",
@@ -3496,8 +3836,8 @@
       "name": "handleEmailEvent",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 89
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 930
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3505,12 +3845,51 @@
     },
     {
       "kind": "function",
+      "id": "fn:resend:lib.makeBatch",
+      "name": "makeBatch",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 441
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend:lib.markEmailsFailed",
+      "name": "markEmailsFailed",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 617
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend:lib.onEmailComplete",
+      "name": "onEmailComplete",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 648
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
       "id": "fn:resend:lib.sendEmail",
       "name": "sendEmail",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 92
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 123
       },
       "module": "lib",
       "functionType": "mutation",
@@ -3522,10 +3901,868 @@
       "name": "updateManualEmail",
       "parent": "component:resend",
       "source": {
-        "file": "@convex-dev/resend@0.2.8/dist/component/_generated/component.d.ts",
-        "line": 120
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 285
       },
       "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:complete.complete",
+      "name": "complete",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/complete.ts",
+        "line": 233
+      },
+      "module": "complete",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:config.update",
+      "name": "update",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/config.ts",
+        "line": 9
+      },
+      "module": "config",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "name": "clearOldWork",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+        "line": 55
+      },
+      "module": "danger",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:danger.clearPending",
+      "name": "clearPending",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+        "line": 9
+      },
+      "module": "danger",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:kick.forceKick",
+      "name": "forceKick",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+        "line": 32
+      },
+      "module": "kick",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.cancel",
+      "name": "cancel",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 137
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.cancelAll",
+      "name": "cancelAll",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 156
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.enqueue",
+      "name": "enqueue",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 50
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.enqueueBatch",
+      "name": "enqueueBatch",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 123
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.status",
+      "name": "status",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 200
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:lib.statusBatch",
+      "name": "statusBatch",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 228
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:loop.getBatch",
+      "name": "getBatch",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 128
+      },
+      "module": "loop",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:loop.main",
+      "name": "main",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 742
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:loop.run",
+      "name": "run",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 234
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:loop.updateRunStatus",
+      "name": "updateRunStatus",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 753
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:recovery.recover",
+      "name": "recover",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/recovery.ts",
+        "line": 32
+      },
+      "module": "recovery",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:stats.calculateBacklogAndReport",
+      "name": "calculateBacklogAndReport",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 110
+      },
+      "module": "stats",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "name": "diagnostics",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 183
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:stats.running",
+      "name": "running",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 150
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:stats.scheduledFunctionsInRange",
+      "name": "scheduledFunctionsInRange",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 217
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:worker.getWorkArgs",
+      "name": "getWorkArgs",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 203
+      },
+      "module": "worker",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:worker.runActionWrapper",
+      "name": "runActionWrapper",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 96
+      },
+      "module": "worker",
+      "functionType": "action",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:worker.runBatch",
+      "name": "runBatch",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 116
+      },
+      "module": "worker",
+      "functionType": "action",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool:worker.runMutationWrapper",
+      "name": "runMutationWrapper",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 35
+      },
+      "module": "worker",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:lib.ping",
+      "name": "ping",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 17
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:lib.start",
+      "name": "start",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 29
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:lib.status",
+      "name": "status",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 41
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:lib.stop",
+      "name": "stop",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 35
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:loop.loop",
+      "name": "loop",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/loop.ts",
+        "line": 40
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/callbackWorkpool/batchWorker:monitor.monitor",
+      "name": "monitor",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/monitor.ts",
+        "line": 23
+      },
+      "module": "monitor",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:complete.complete",
+      "name": "complete",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/complete.ts",
+        "line": 233
+      },
+      "module": "complete",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:config.update",
+      "name": "update",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/config.ts",
+        "line": 9
+      },
+      "module": "config",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "name": "clearOldWork",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+        "line": 55
+      },
+      "module": "danger",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:danger.clearPending",
+      "name": "clearPending",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+        "line": 9
+      },
+      "module": "danger",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:kick.forceKick",
+      "name": "forceKick",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+        "line": 32
+      },
+      "module": "kick",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.cancel",
+      "name": "cancel",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 137
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.cancelAll",
+      "name": "cancelAll",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 156
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.enqueue",
+      "name": "enqueue",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 50
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.enqueueBatch",
+      "name": "enqueueBatch",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 123
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.status",
+      "name": "status",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 200
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:lib.statusBatch",
+      "name": "statusBatch",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+        "line": 228
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:loop.getBatch",
+      "name": "getBatch",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 128
+      },
+      "module": "loop",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:loop.main",
+      "name": "main",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 742
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:loop.run",
+      "name": "run",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 234
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:loop.updateRunStatus",
+      "name": "updateRunStatus",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+        "line": 753
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:recovery.recover",
+      "name": "recover",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/recovery.ts",
+        "line": 32
+      },
+      "module": "recovery",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:stats.calculateBacklogAndReport",
+      "name": "calculateBacklogAndReport",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 110
+      },
+      "module": "stats",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:stats.diagnostics",
+      "name": "diagnostics",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 183
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:stats.running",
+      "name": "running",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 150
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:stats.scheduledFunctionsInRange",
+      "name": "scheduledFunctionsInRange",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 217
+      },
+      "module": "stats",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:worker.getWorkArgs",
+      "name": "getWorkArgs",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 203
+      },
+      "module": "worker",
+      "functionType": "query",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:worker.runActionWrapper",
+      "name": "runActionWrapper",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 96
+      },
+      "module": "worker",
+      "functionType": "action",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:worker.runBatch",
+      "name": "runBatch",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 116
+      },
+      "module": "worker",
+      "functionType": "action",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool:worker.runMutationWrapper",
+      "name": "runMutationWrapper",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 35
+      },
+      "module": "worker",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:lib.ping",
+      "name": "ping",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 17
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:lib.start",
+      "name": "start",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 29
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:lib.status",
+      "name": "status",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 41
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:lib.stop",
+      "name": "stop",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/lib.ts",
+        "line": 35
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:loop.loop",
+      "name": "loop",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/loop.ts",
+        "line": 40
+      },
+      "module": "loop",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/emailWorkpool/batchWorker:monitor.monitor",
+      "name": "monitor",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/monitor.ts",
+        "line": 23
+      },
+      "module": "monitor",
+      "functionType": "mutation",
+      "visibility": "internal"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:lib.checkRateLimit",
+      "name": "checkRateLimit",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 36
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:lib.clearAll",
+      "name": "clearAll",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 119
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:lib.getValue",
+      "name": "getValue",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 45
+      },
+      "module": "lib",
+      "functionType": "query",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:lib.rateLimit",
+      "name": "rateLimit",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 18
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:lib.resetRateLimit",
+      "name": "resetRateLimit",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+        "line": 102
+      },
+      "module": "lib",
+      "functionType": "mutation",
+      "visibility": "public"
+    },
+    {
+      "kind": "function",
+      "id": "fn:resend/rateLimiter:time.getServerTime",
+      "name": "getServerTime",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/time.ts",
+        "line": 10
+      },
+      "module": "time",
       "functionType": "mutation",
       "visibility": "public"
     },
@@ -5574,6 +6811,78 @@
     },
     {
       "kind": "table",
+      "id": "table:authEmail/batchWorker.workers",
+      "name": "workers",
+      "parent": "component:authEmail/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/schema.ts",
+        "line": 10
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "workQuery", "type": "string", "optional": false },
+        { "name": "workerMutation", "type": "string", "optional": false },
+        {
+          "name": "config",
+          "type": "{ debounceMs?: number | undefined; monitorLagMs?: number | undefined; }",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "{ kind: \"idle\"; } | { kind: \"running\"; } | { kind: \"stopped\"; }",
+          "optional": false
+        },
+        { "name": "stateId", "type": "Id<\"workerState\">", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name"] }]
+    },
+    {
+      "kind": "table",
+      "id": "table:authEmail/batchWorker.workerState",
+      "name": "workerState",
+      "parent": "component:authEmail/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/schema.ts",
+        "line": 24
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": false },
+        { "name": "lastWorkTs", "type": "number", "optional": false },
+        {
+          "name": "runnerId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        {
+          "name": "monitorId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        { "name": "monitorRunAtMs", "type": "number", "optional": true },
+        { "name": "cursor", "type": "any", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:authEmail/rateLimiter.rateLimits",
+      "name": "rateLimits",
+      "parent": "component:authEmail/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/schema.ts",
+        "line": 5
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "key", "type": "string", "optional": true },
+        { "name": "shard", "type": "number", "optional": false },
+        { "name": "value", "type": "number", "optional": false },
+        { "name": "ts", "type": "number", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name", "key", "shard"] }]
+    },
+    {
+      "kind": "table",
       "id": "table:authGithub.accounts",
       "name": "accounts",
       "parent": "component:authGithub",
@@ -5797,6 +7106,60 @@
     },
     {
       "kind": "table",
+      "id": "table:authPasskey/batchWorker.workers",
+      "name": "workers",
+      "parent": "component:authPasskey/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/schema.ts",
+        "line": 10
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "workQuery", "type": "string", "optional": false },
+        { "name": "workerMutation", "type": "string", "optional": false },
+        {
+          "name": "config",
+          "type": "{ debounceMs?: number | undefined; monitorLagMs?: number | undefined; }",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "{ kind: \"idle\"; } | { kind: \"running\"; } | { kind: \"stopped\"; }",
+          "optional": false
+        },
+        { "name": "stateId", "type": "Id<\"workerState\">", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name"] }]
+    },
+    {
+      "kind": "table",
+      "id": "table:authPasskey/batchWorker.workerState",
+      "name": "workerState",
+      "parent": "component:authPasskey/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/schema.ts",
+        "line": 24
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": false },
+        { "name": "lastWorkTs", "type": "number", "optional": false },
+        {
+          "name": "runnerId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        {
+          "name": "monitorId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        { "name": "monitorRunAtMs", "type": "number", "optional": true },
+        { "name": "cursor", "type": "any", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
       "id": "table:authPassword.passwords",
       "name": "passwords",
       "parent": "component:authPassword",
@@ -5809,6 +7172,24 @@
         { "name": "passwordHashPHC", "type": "string", "optional": false }
       ],
       "indexes": [{ "name": "by_userId", "fields": ["userId"] }]
+    },
+    {
+      "kind": "table",
+      "id": "table:authPassword/rateLimiter.rateLimits",
+      "name": "rateLimits",
+      "parent": "component:authPassword/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/schema.ts",
+        "line": 5
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "key", "type": "string", "optional": true },
+        { "name": "shard", "type": "number", "optional": false },
+        { "name": "value", "type": "number", "optional": false },
+        { "name": "ts", "type": "number", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name", "key", "shard"] }]
     },
     {
       "kind": "table",
@@ -5875,6 +7256,577 @@
         { "name": "by_userId", "fields": ["userId"] },
         { "name": "by_usernameNormalized", "fields": ["usernameNormalized"] }
       ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend.content",
+      "name": "content",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/schema.ts",
+        "line": 6
+      },
+      "fields": [
+        { "name": "content", "type": "ArrayBuffer", "optional": false },
+        { "name": "mimeType", "type": "string", "optional": false },
+        { "name": "filename", "type": "string", "optional": true },
+        { "name": "path", "type": "string", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend.deliveryEvents",
+      "name": "deliveryEvents",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/schema.ts",
+        "line": 18
+      },
+      "fields": [
+        { "name": "emailId", "type": "Id<\"emails\">", "optional": false },
+        { "name": "resendId", "type": "string", "optional": false },
+        {
+          "name": "eventType",
+          "type": "\"email.sent\" | \"email.delivered\" | \"email.bounced\" | \"email.complained\" | \"email.failed\" | \"email.delivery_delayed\" | \"email.opened\" | \"email.clicked\"",
+          "optional": false
+        },
+        { "name": "createdAt", "type": "string", "optional": false },
+        { "name": "message", "type": "string", "optional": true }
+      ],
+      "indexes": [
+        { "name": "by_emailId_eventType", "fields": ["emailId", "eventType"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend.emails",
+      "name": "emails",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/schema.ts",
+        "line": 25
+      },
+      "fields": [
+        { "name": "from", "type": "string", "optional": false },
+        { "name": "to", "type": "string | string[]", "optional": false },
+        { "name": "cc", "type": "string[]", "optional": true },
+        { "name": "bcc", "type": "string[]", "optional": true },
+        { "name": "subject", "type": "string", "optional": true },
+        { "name": "replyTo", "type": "string[]", "optional": false },
+        { "name": "html", "type": "Id<\"content\">", "optional": true },
+        { "name": "text", "type": "Id<\"content\">", "optional": true },
+        {
+          "name": "template",
+          "type": "{ variables?: Record<string, string | number> | undefined; id: string; }",
+          "optional": true
+        },
+        {
+          "name": "headers",
+          "type": "{ value: string; name: string; }[]",
+          "optional": true
+        },
+        {
+          "name": "status",
+          "type": "\"waiting\" | \"queued\" | \"cancelled\" | \"sent\" | \"delivered\" | \"delivery_delayed\" | \"bounced\" | \"failed\"",
+          "optional": false
+        },
+        { "name": "complained", "type": "boolean", "optional": false },
+        { "name": "errorMessage", "type": "string", "optional": true },
+        { "name": "opened", "type": "boolean", "optional": false },
+        { "name": "bounced", "type": "boolean", "optional": true },
+        { "name": "failed", "type": "boolean", "optional": true },
+        { "name": "deliveryDelayed", "type": "boolean", "optional": true },
+        { "name": "clicked", "type": "boolean", "optional": true },
+        { "name": "resendId", "type": "string", "optional": true },
+        { "name": "idempotencyKey", "type": "string", "optional": true },
+        { "name": "segment", "type": "number", "optional": false },
+        { "name": "finalizedAt", "type": "number", "optional": false }
+      ],
+      "indexes": [
+        { "name": "by_status_segment", "fields": ["status", "segment"] },
+        { "name": "by_resendId", "fields": ["resendId"] },
+        { "name": "by_idempotencyKey", "fields": ["idempotencyKey"] },
+        { "name": "by_finalizedAt", "fields": ["finalizedAt"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend.lastOptions",
+      "name": "lastOptions",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/schema.ts",
+        "line": 15
+      },
+      "fields": [
+        {
+          "name": "options",
+          "type": "{ onEmailEvent?: { fnHandle: string; } | undefined; apiKey: string; initialBackoffMs: number; retryAttempts: number; testMode: boolean; }",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend.nextBatchRun",
+      "name": "nextBatchRun",
+      "parent": "component:resend",
+      "source": {
+        "file": "@convex-dev/resend@0.2.8/src/component/schema.ts",
+        "line": 12
+      },
+      "fields": [
+        {
+          "name": "runId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.globals",
+      "name": "globals",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 16
+      },
+      "fields": [
+        { "name": "maxParallelism", "type": "number", "optional": false },
+        {
+          "name": "logLevel",
+          "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.internalState",
+      "name": "internalState",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 18
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": true },
+        {
+          "name": "segmentCursors",
+          "type": "{ incoming: bigint; completion: bigint; cancelation: bigint; }",
+          "optional": false
+        },
+        { "name": "lastRecovery", "type": "bigint", "optional": false },
+        {
+          "name": "report",
+          "type": "{ conflicted?: number | undefined; failed: number; completed: number; succeeded: number; retries: number; canceled: number; lastReportTs: number; }",
+          "optional": false
+        },
+        {
+          "name": "running",
+          "type": "{ workId: Id<\"work\">; scheduledId: Id<\"_scheduled_functions\">; started: number; }[]",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.payload",
+      "name": "payload",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 89
+      },
+      "fields": [
+        { "name": "args", "type": "Record<string, any>", "optional": true },
+        { "name": "context", "type": "any", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.pendingCancelation",
+      "name": "pendingCancelation",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 81
+      },
+      "fields": [
+        { "name": "segment", "type": "bigint", "optional": false },
+        { "name": "workId", "type": "Id<\"work\">", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.pendingCompletion",
+      "name": "pendingCompletion",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 71
+      },
+      "fields": [
+        { "name": "segment", "type": "bigint", "optional": false },
+        {
+          "name": "runResult",
+          "type": "{ kind: \"success\"; returnValue: any; } | { error: string; kind: \"failed\"; } | { kind: \"canceled\"; }",
+          "optional": false
+        },
+        { "name": "workId", "type": "Id<\"work\">", "optional": false },
+        { "name": "retry", "type": "boolean", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.pendingStart",
+      "name": "pendingStart",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 63
+      },
+      "fields": [
+        { "name": "workId", "type": "Id<\"work\">", "optional": false },
+        { "name": "segment", "type": "bigint", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool.work",
+      "name": "work",
+      "parent": "component:resend/callbackWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 48
+      },
+      "fields": [
+        {
+          "name": "fnType",
+          "type": "\"mutation\" | \"query\" | \"action\"",
+          "optional": false
+        },
+        { "name": "fnHandle", "type": "string", "optional": false },
+        { "name": "fnName", "type": "string", "optional": false },
+        { "name": "fnArgs", "type": "any", "optional": true },
+        { "name": "payloadId", "type": "Id<\"payload\">", "optional": true },
+        { "name": "payloadSize", "type": "number", "optional": true },
+        { "name": "attempts", "type": "number", "optional": false },
+        {
+          "name": "onComplete",
+          "type": "{ context?: any; fnHandle: string; }",
+          "optional": true
+        },
+        {
+          "name": "retryBehavior",
+          "type": "{ initialBackoffMs: number; maxAttempts: number; base: number; }",
+          "optional": true
+        },
+        { "name": "canceled", "type": "boolean", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool/batchWorker.workers",
+      "name": "workers",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/schema.ts",
+        "line": 10
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "workQuery", "type": "string", "optional": false },
+        { "name": "workerMutation", "type": "string", "optional": false },
+        {
+          "name": "config",
+          "type": "{ debounceMs?: number | undefined; monitorLagMs?: number | undefined; }",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "{ kind: \"idle\"; } | { kind: \"running\"; } | { kind: \"stopped\"; }",
+          "optional": false
+        },
+        { "name": "stateId", "type": "Id<\"workerState\">", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name"] }]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/callbackWorkpool/batchWorker.workerState",
+      "name": "workerState",
+      "parent": "component:resend/callbackWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/schema.ts",
+        "line": 24
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": false },
+        { "name": "lastWorkTs", "type": "number", "optional": false },
+        {
+          "name": "runnerId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        {
+          "name": "monitorId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        { "name": "monitorRunAtMs", "type": "number", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.globals",
+      "name": "globals",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 16
+      },
+      "fields": [
+        { "name": "maxParallelism", "type": "number", "optional": false },
+        {
+          "name": "logLevel",
+          "type": "\"DEBUG\" | \"TRACE\" | \"INFO\" | \"REPORT\" | \"WARN\" | \"ERROR\"",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.internalState",
+      "name": "internalState",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 18
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": true },
+        {
+          "name": "segmentCursors",
+          "type": "{ incoming: bigint; completion: bigint; cancelation: bigint; }",
+          "optional": false
+        },
+        { "name": "lastRecovery", "type": "bigint", "optional": false },
+        {
+          "name": "report",
+          "type": "{ conflicted?: number | undefined; failed: number; completed: number; succeeded: number; retries: number; canceled: number; lastReportTs: number; }",
+          "optional": false
+        },
+        {
+          "name": "running",
+          "type": "{ workId: Id<\"work\">; scheduledId: Id<\"_scheduled_functions\">; started: number; }[]",
+          "optional": false
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.payload",
+      "name": "payload",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 89
+      },
+      "fields": [
+        { "name": "args", "type": "Record<string, any>", "optional": true },
+        { "name": "context", "type": "any", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.pendingCancelation",
+      "name": "pendingCancelation",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 81
+      },
+      "fields": [
+        { "name": "segment", "type": "bigint", "optional": false },
+        { "name": "workId", "type": "Id<\"work\">", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.pendingCompletion",
+      "name": "pendingCompletion",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 71
+      },
+      "fields": [
+        { "name": "segment", "type": "bigint", "optional": false },
+        {
+          "name": "runResult",
+          "type": "{ kind: \"success\"; returnValue: any; } | { error: string; kind: \"failed\"; } | { kind: \"canceled\"; }",
+          "optional": false
+        },
+        { "name": "workId", "type": "Id<\"work\">", "optional": false },
+        { "name": "retry", "type": "boolean", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.pendingStart",
+      "name": "pendingStart",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 63
+      },
+      "fields": [
+        { "name": "workId", "type": "Id<\"work\">", "optional": false },
+        { "name": "segment", "type": "bigint", "optional": false }
+      ],
+      "indexes": [
+        { "name": "workId", "fields": ["workId"] },
+        { "name": "segment", "fields": ["segment"] }
+      ]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool.work",
+      "name": "work",
+      "parent": "component:resend/emailWorkpool",
+      "source": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/schema.ts",
+        "line": 48
+      },
+      "fields": [
+        {
+          "name": "fnType",
+          "type": "\"mutation\" | \"query\" | \"action\"",
+          "optional": false
+        },
+        { "name": "fnHandle", "type": "string", "optional": false },
+        { "name": "fnName", "type": "string", "optional": false },
+        { "name": "fnArgs", "type": "any", "optional": true },
+        { "name": "payloadId", "type": "Id<\"payload\">", "optional": true },
+        { "name": "payloadSize", "type": "number", "optional": true },
+        { "name": "attempts", "type": "number", "optional": false },
+        {
+          "name": "onComplete",
+          "type": "{ context?: any; fnHandle: string; }",
+          "optional": true
+        },
+        {
+          "name": "retryBehavior",
+          "type": "{ initialBackoffMs: number; maxAttempts: number; base: number; }",
+          "optional": true
+        },
+        { "name": "canceled", "type": "boolean", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool/batchWorker.workers",
+      "name": "workers",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/schema.ts",
+        "line": 10
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "workQuery", "type": "string", "optional": false },
+        { "name": "workerMutation", "type": "string", "optional": false },
+        {
+          "name": "config",
+          "type": "{ debounceMs?: number | undefined; monitorLagMs?: number | undefined; }",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "{ kind: \"idle\"; } | { kind: \"running\"; } | { kind: \"stopped\"; }",
+          "optional": false
+        },
+        { "name": "stateId", "type": "Id<\"workerState\">", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name"] }]
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/emailWorkpool/batchWorker.workerState",
+      "name": "workerState",
+      "parent": "component:resend/emailWorkpool/batchWorker",
+      "source": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/schema.ts",
+        "line": 24
+      },
+      "fields": [
+        { "name": "generation", "type": "bigint", "optional": false },
+        { "name": "lastWorkTs", "type": "number", "optional": false },
+        {
+          "name": "runnerId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        {
+          "name": "monitorId",
+          "type": "Id<\"_scheduled_functions\">",
+          "optional": true
+        },
+        { "name": "monitorRunAtMs", "type": "number", "optional": true }
+      ],
+      "indexes": []
+    },
+    {
+      "kind": "table",
+      "id": "table:resend/rateLimiter.rateLimits",
+      "name": "rateLimits",
+      "parent": "component:resend/rateLimiter",
+      "source": {
+        "file": "@convex-dev/rate-limiter@0.3.2/src/component/schema.ts",
+        "line": 5
+      },
+      "fields": [
+        { "name": "name", "type": "string", "optional": false },
+        { "name": "key", "type": "string", "optional": true },
+        { "name": "shard", "type": "number", "optional": false },
+        { "name": "value", "type": "number", "optional": false },
+        { "name": "ts", "type": "number", "optional": false }
+      ],
+      "indexes": [{ "name": "name", "fields": ["name", "key", "shard"] }]
     },
     {
       "kind": "thirdParty",
@@ -7923,6 +9875,87 @@
     },
     {
       "kind": "calls",
+      "from": "fn:resend:lib.callResendAPIWithBatch",
+      "to": "fn:resend:lib.markEmailsFailed",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 595 }
+      ],
+      "via": ["runMutation"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/callbackWorkpool:kick.forceKick",
+      "to": "fn:resend/callbackWorkpool/batchWorker:lib.start",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+          "line": 38
+        }
+      ],
+      "via": ["runMutation"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/callbackWorkpool:kick.forceKick",
+      "to": "fn:resend/callbackWorkpool/batchWorker:lib.stop",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+          "line": 35
+        }
+      ],
+      "via": ["runMutation"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "fn:resend/callbackWorkpool/batchWorker:lib.status",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 198
+        }
+      ],
+      "via": ["runQuery"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/emailWorkpool:kick.forceKick",
+      "to": "fn:resend/emailWorkpool/batchWorker:lib.start",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+          "line": 38
+        }
+      ],
+      "via": ["runMutation"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/emailWorkpool:kick.forceKick",
+      "to": "fn:resend/emailWorkpool/batchWorker:lib.stop",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/kick.ts",
+          "line": 35
+        }
+      ],
+      "via": ["runMutation"]
+    },
+    {
+      "kind": "calls",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "fn:resend/emailWorkpool/batchWorker:lib.status",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 198
+        }
+      ],
+      "via": ["runQuery"]
+    },
+    {
+      "kind": "calls",
       "from": "httpAction:authApple:/callback",
       "to": "fn:authApple:provider.claimAuthorizationRequest",
       "evidence": [
@@ -9530,6 +11563,24 @@
         }
       ],
       "via": ["limit"]
+    },
+    {
+      "kind": "callsChildComponent",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "component:resend/emailWorkpool",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 481 }
+      ],
+      "via": ["enqueueAction"]
+    },
+    {
+      "kind": "callsChildComponent",
+      "from": "fn:resend:lib.onEmailComplete",
+      "to": "component:resend/emailWorkpool",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 648 }
+      ],
+      "via": ["defineOnComplete"]
     },
     {
       "kind": "callsThirdParty",
@@ -11221,17 +13272,10 @@
     },
     {
       "kind": "fetches",
-      "from": "component:resend",
+      "from": "fn:resend:lib.callResendAPIWithBatch",
       "to": "thirdParty:resend",
       "evidence": [
-        {
-          "file": "@convex-dev/resend@0.2.6/dist/component/lib.js",
-          "line": 461
-        },
-        {
-          "file": "@convex-dev/resend@0.2.8/dist/component/lib.js",
-          "line": 476
-        }
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 574 }
       ],
       "via": ["api.resend.com"]
     },
@@ -12366,7 +14410,8 @@
       "to": "component:auth",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 15 }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12374,7 +14419,8 @@
       "to": "component:authGithub",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 22 }
-      ]
+      ],
+      "via": ["authGithub"]
     },
     {
       "kind": "mounts",
@@ -12382,7 +14428,8 @@
       "to": "component:authPassword",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 16 }
-      ]
+      ],
+      "via": ["authPassword"]
     },
     {
       "kind": "mounts",
@@ -12390,7 +14437,8 @@
       "to": "component:authUsername",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 17 }
-      ]
+      ],
+      "via": ["authUsername"]
     },
     {
       "kind": "mounts",
@@ -12398,7 +14446,8 @@
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-apple/convex/convex.config.ts", "line": 17 }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12406,7 +14455,8 @@
       "to": "component:authApple",
       "evidence": [
         { "file": "examples/react-apple/convex/convex.config.ts", "line": 34 }
-      ]
+      ],
+      "via": ["authApple"]
     },
     {
       "kind": "mounts",
@@ -12414,7 +14464,8 @@
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-discord/convex/convex.config.ts", "line": 15 }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12422,7 +14473,8 @@
       "to": "component:authDiscord",
       "evidence": [
         { "file": "examples/react-discord/convex/convex.config.ts", "line": 24 }
-      ]
+      ],
+      "via": ["authDiscord"]
     },
     {
       "kind": "mounts",
@@ -12433,7 +14485,8 @@
           "file": "examples/react-email-magic-link/convex/convex.config.ts",
           "line": 17
         }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12444,7 +14497,8 @@
           "file": "examples/react-email-magic-link/convex/convex.config.ts",
           "line": 18
         }
-      ]
+      ],
+      "via": ["authEmail"]
     },
     {
       "kind": "mounts",
@@ -12455,7 +14509,8 @@
           "file": "examples/react-email-magic-link/convex/convex.config.ts",
           "line": 19
         }
-      ]
+      ],
+      "via": ["resend"]
     },
     {
       "kind": "mounts",
@@ -12466,7 +14521,8 @@
           "file": "examples/react-email-password/convex/convex.config.ts",
           "line": 18
         }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12477,7 +14533,8 @@
           "file": "examples/react-email-password/convex/convex.config.ts",
           "line": 20
         }
-      ]
+      ],
+      "via": ["authEmail"]
     },
     {
       "kind": "mounts",
@@ -12488,7 +14545,8 @@
           "file": "examples/react-email-password/convex/convex.config.ts",
           "line": 19
         }
-      ]
+      ],
+      "via": ["authPassword"]
     },
     {
       "kind": "mounts",
@@ -12499,7 +14557,8 @@
           "file": "examples/react-email-password/convex/convex.config.ts",
           "line": 21
         }
-      ]
+      ],
+      "via": ["resend"]
     },
     {
       "kind": "mounts",
@@ -12507,7 +14566,8 @@
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-github/convex/convex.config.ts", "line": 15 }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12515,7 +14575,8 @@
       "to": "component:authGithub",
       "evidence": [
         { "file": "examples/react-github/convex/convex.config.ts", "line": 24 }
-      ]
+      ],
+      "via": ["authGithub"]
     },
     {
       "kind": "mounts",
@@ -12523,7 +14584,8 @@
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-google/convex/convex.config.ts", "line": 15 }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12531,7 +14593,8 @@
       "to": "component:authGoogle",
       "evidence": [
         { "file": "examples/react-google/convex/convex.config.ts", "line": 24 }
-      ]
+      ],
+      "via": ["authGoogle"]
     },
     {
       "kind": "mounts",
@@ -12542,7 +14605,8 @@
           "file": "examples/react-username-passkey/convex/convex.config.ts",
           "line": 15
         }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12553,7 +14617,8 @@
           "file": "examples/react-username-passkey/convex/convex.config.ts",
           "line": 16
         }
-      ]
+      ],
+      "via": ["authPasskey"]
     },
     {
       "kind": "mounts",
@@ -12564,7 +14629,8 @@
           "file": "examples/react-username-passkey/convex/convex.config.ts",
           "line": 17
         }
-      ]
+      ],
+      "via": ["authUsername"]
     },
     {
       "kind": "mounts",
@@ -12575,7 +14641,8 @@
           "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
           "line": 15
         }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12586,7 +14653,8 @@
           "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
           "line": 16
         }
-      ]
+      ],
+      "via": ["authPasskey"]
     },
     {
       "kind": "mounts",
@@ -12597,7 +14665,8 @@
           "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
           "line": 17
         }
-      ]
+      ],
+      "via": ["authUsername"]
     },
     {
       "kind": "mounts",
@@ -12608,7 +14677,8 @@
           "file": "examples/react-username-password/convex/convex.config.ts",
           "line": 8
         }
-      ]
+      ],
+      "via": ["auth"]
     },
     {
       "kind": "mounts",
@@ -12619,7 +14689,8 @@
           "file": "examples/react-username-password/convex/convex.config.ts",
           "line": 9
         }
-      ]
+      ],
+      "via": ["authPassword"]
     },
     {
       "kind": "mounts",
@@ -12630,7 +14701,8 @@
           "file": "examples/react-username-password/convex/convex.config.ts",
           "line": 10
         }
-      ]
+      ],
+      "via": ["authUsername"]
     },
     {
       "kind": "reads",
@@ -13295,6 +15367,42 @@
     },
     {
       "kind": "reads",
+      "from": "fn:authEmail/batchWorker:lib.getCursor",
+      "to": "table:authEmail/batchWorker.workerState",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+          "line": 74
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:authEmail/rateLimiter:lib.clearAll",
+      "to": "table:authEmail/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 123
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:authEmail/rateLimiter:lib.resetRateLimit",
+      "to": "table:authEmail/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 109
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
       "from": "fn:authGithub:provider._internal_dangerous_createAccount",
       "to": "table:authGithub.accounts",
       "evidence": [
@@ -13750,6 +15858,18 @@
     },
     {
       "kind": "reads",
+      "from": "fn:authPasskey/batchWorker:lib.getCursor",
+      "to": "table:authPasskey/batchWorker.workerState",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+          "line": 74
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
       "from": "fn:authPassword:public._internal_dangerous_setPassword",
       "to": "table:authPassword.passwords",
       "evidence": [
@@ -13768,6 +15888,30 @@
         {
           "file": "packages/core/src/components/password/public.ts",
           "line": 167
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:authPassword/rateLimiter:lib.clearAll",
+      "to": "table:authPassword/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 123
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:authPassword/rateLimiter:lib.resetRateLimit",
+      "to": "table:authPassword/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 109
         }
       ],
       "via": ["query"]
@@ -13880,6 +16024,595 @@
       "via": ["query"]
     },
     {
+      "kind": "reads",
+      "from": "fn:resend:lib.cancelEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 315 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.cleanupAbandonedEmails",
+      "to": "table:resend.emails",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+          "line": 1037
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.cleanupOldEmails",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 101 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.get",
+      "to": "table:resend.content",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+          "line": 387
+        },
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 392 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.get",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 381 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.getAllContentByIds",
+      "to": "table:resend.content",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 767 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.getEmailByResendId",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 800 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.getEmailsByIds",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 786 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.getStatus",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 348 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.handleEmailEvent",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 948 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 453 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "table:resend.lastOptions",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 446 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.onEmailComplete",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 675 }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend:lib.sendEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 152 }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 81
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 77
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 73
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 68
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 22
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 27
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:lib.cancelAll",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 165
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:loop.getBatch",
+      "to": "table:resend/callbackWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+          "line": 133
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.calculateBacklogAndReport",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 120
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "table:resend/callbackWorkpool.globals",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 187
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "table:resend/callbackWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 188
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "table:resend/callbackWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 196
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "table:resend/callbackWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 193
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.diagnostics",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 191
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.running",
+      "to": "table:resend/callbackWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 162
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:stats.running",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 166
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:worker.getWorkArgs",
+      "to": "table:resend/callbackWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 209
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/callbackWorkpool:worker.runMutationWrapper",
+      "to": "table:resend/callbackWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 51
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 81
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 77
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 73
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 68
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 22
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 27
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:lib.cancelAll",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 165
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:loop.getBatch",
+      "to": "table:resend/emailWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+          "line": 133
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.calculateBacklogAndReport",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 120
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "table:resend/emailWorkpool.globals",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 187
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "table:resend/emailWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 188
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "table:resend/emailWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 196
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "table:resend/emailWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 193
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.diagnostics",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 191
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.running",
+      "to": "table:resend/emailWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 162
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:stats.running",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+          "line": 166
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:worker.getWorkArgs",
+      "to": "table:resend/emailWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 209
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/emailWorkpool:worker.runMutationWrapper",
+      "to": "table:resend/emailWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 51
+        }
+      ],
+      "via": ["get"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/rateLimiter:lib.clearAll",
+      "to": "table:resend/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 123
+        }
+      ],
+      "via": ["query"]
+    },
+    {
+      "kind": "reads",
+      "from": "fn:resend/rateLimiter:lib.resetRateLimit",
+      "to": "table:resend/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 109
+        }
+      ],
+      "via": ["query"]
+    },
+    {
       "kind": "readsEnv",
       "from": "fn:authApple:provider._internal_dangerous_createAuthorizationRequest",
       "to": "env:authApple.CLIENT_ID",
@@ -13926,6 +16659,50 @@
       "to": "env:authOauth.CLIENT_ID",
       "evidence": [
         { "file": "packages/core/src/components/oauth/provider.ts", "line": 41 }
+      ]
+    },
+    {
+      "kind": "readsEnv",
+      "from": "fn:resend/callbackWorkpool/batchWorker:loop.loop",
+      "to": "env:resend/callbackWorkpool/batchWorker.LOG_LEVEL",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.2.2/src/component/loop.ts",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "kind": "readsEnv",
+      "from": "fn:resend/callbackWorkpool/batchWorker:monitor.monitor",
+      "to": "env:resend/callbackWorkpool/batchWorker.LOG_LEVEL",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.2.2/src/component/monitor.ts",
+          "line": 27
+        }
+      ]
+    },
+    {
+      "kind": "readsEnv",
+      "from": "fn:resend/emailWorkpool/batchWorker:loop.loop",
+      "to": "env:resend/emailWorkpool/batchWorker.LOG_LEVEL",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.2.2/src/component/loop.ts",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "kind": "readsEnv",
+      "from": "fn:resend/emailWorkpool/batchWorker:monitor.monitor",
+      "to": "env:resend/emailWorkpool/batchWorker.LOG_LEVEL",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.2.2/src/component/monitor.ts",
+          "line": 27
+        }
       ]
     },
     {
@@ -14571,6 +17348,22 @@
     },
     {
       "kind": "referencesFunction",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "fn:resend:lib.callResendAPIWithBatch",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 483 }
+      ]
+    },
+    {
+      "kind": "referencesFunction",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "fn:resend:lib.onEmailComplete",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 496 }
+      ]
+    },
+    {
+      "kind": "referencesFunction",
       "from": "hook:methods/apple/react.useSignInWithApple",
       "to": "fn:app:react-apple:auth.completeSignInWithApple",
       "evidence": [
@@ -15152,6 +17945,176 @@
       "via": ["runAfter"]
     },
     {
+      "kind": "schedules",
+      "from": "fn:authEmail/rateLimiter:lib.clearAll",
+      "to": "fn:authEmail/rateLimiter:lib.clearAll",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 134
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:authPassword/rateLimiter:lib.clearAll",
+      "to": "fn:authPassword/rateLimiter:lib.clearAll",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 134
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend:lib.cleanupAbandonedEmails",
+      "to": "fn:resend:lib.cleanupAbandonedEmails",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+          "line": 1052
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend:lib.cleanupOldEmails",
+      "to": "fn:resend:lib.cleanupOldEmails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 114 }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "fn:resend:lib.makeBatch",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 501 }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 123
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "fn:resend/callbackWorkpool:danger.clearPending",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 46
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/callbackWorkpool:lib.cancelAll",
+      "to": "fn:resend/callbackWorkpool:lib.cancelAll",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 191
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/callbackWorkpool:worker.runMutationWrapper",
+      "to": "fn:resend/callbackWorkpool:complete.complete",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 62
+        },
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 70
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 123
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "fn:resend/emailWorkpool:danger.clearPending",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 46
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/emailWorkpool:lib.cancelAll",
+      "to": "fn:resend/emailWorkpool:lib.cancelAll",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 191
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/emailWorkpool:worker.runMutationWrapper",
+      "to": "fn:resend/emailWorkpool:complete.complete",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 62
+        },
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+          "line": 70
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
+      "kind": "schedules",
+      "from": "fn:resend/rateLimiter:lib.clearAll",
+      "to": "fn:resend/rateLimiter:lib.clearAll",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 134
+        }
+      ],
+      "via": ["runAfter"]
+    },
+    {
       "kind": "usesComponent",
       "from": "component:authEmail",
       "to": "component:authEmail/batchWorker",
@@ -15192,6 +18155,61 @@
         {
           "file": "packages/core/src/components/password/convex.config.ts",
           "line": 15
+        }
+      ]
+    },
+    {
+      "kind": "usesComponent",
+      "from": "component:resend",
+      "to": "component:resend/callbackWorkpool",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/convex.config.ts",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "kind": "usesComponent",
+      "from": "component:resend",
+      "to": "component:resend/emailWorkpool",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/convex.config.ts",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "kind": "usesComponent",
+      "from": "component:resend",
+      "to": "component:resend/rateLimiter",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/convex.config.ts",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "kind": "usesComponent",
+      "from": "component:resend/callbackWorkpool",
+      "to": "component:resend/callbackWorkpool/batchWorker",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/convex.config.ts",
+          "line": 5
+        }
+      ]
+    },
+    {
+      "kind": "usesComponent",
+      "from": "component:resend/emailWorkpool",
+      "to": "component:resend/emailWorkpool/batchWorker",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/convex.config.ts",
+          "line": 5
         }
       ]
     },
@@ -15964,6 +18982,58 @@
     },
     {
       "kind": "writes",
+      "from": "fn:authEmail/batchWorker:lib.setCursor",
+      "to": "table:authEmail/batchWorker.workerState",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+          "line": 101
+        }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authEmail/rateLimiter:lib.clearAll",
+      "to": "table:authEmail/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 131
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authEmail/rateLimiter:lib.rateLimit",
+      "to": "table:authEmail/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 25
+        },
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 29
+        }
+      ],
+      "via": ["insert", "patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authEmail/rateLimiter:lib.resetRateLimit",
+      "to": "table:authEmail/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 114
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
       "from": "fn:authGithub:provider._internal_dangerous_createAccount",
       "to": "table:authGithub.accounts",
       "evidence": [
@@ -16397,6 +19467,18 @@
     },
     {
       "kind": "writes",
+      "from": "fn:authPasskey/batchWorker:lib.setCursor",
+      "to": "table:authPasskey/batchWorker.workerState",
+      "evidence": [
+        {
+          "file": "@convex-dev/batch-worker@0.3.4/src/component/lib.ts",
+          "line": 101
+        }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
       "from": "fn:authPassword:public._internal_dangerous_setPassword",
       "to": "table:authPassword.passwords",
       "evidence": [
@@ -16410,6 +19492,46 @@
         }
       ],
       "via": ["insert", "patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authPassword/rateLimiter:lib.clearAll",
+      "to": "table:authPassword/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 131
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authPassword/rateLimiter:lib.rateLimit",
+      "to": "table:authPassword/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 25
+        },
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 29
+        }
+      ],
+      "via": ["insert", "patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:authPassword/rateLimiter:lib.resetRateLimit",
+      "to": "table:authPassword/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 114
+        }
+      ],
+      "via": ["delete"]
     },
     {
       "kind": "writes",
@@ -16476,9 +19598,529 @@
         }
       ],
       "via": ["insert", "patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.cancelEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 322 }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.createManualEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 258 }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.handleEmailEvent",
+      "to": "table:resend.deliveryEvents",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 962 }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.handleEmailEvent",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 979 }
+      ],
+      "via": ["replace"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.makeBatch",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 471 }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.onEmailComplete",
+      "to": "table:resend.emails",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+          "line": 661
+        },
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 679 }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.sendEmail",
+      "to": "table:resend.content",
+      "evidence": [
+        {
+          "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+          "line": 190
+        },
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 199 }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.sendEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 210 }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend:lib.updateManualEmail",
+      "to": "table:resend.emails",
+      "evidence": [
+        { "file": "@convex-dev/resend@0.2.8/src/component/lib.ts", "line": 298 }
+      ],
+      "via": ["patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 108
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 104
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 101
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 98
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearOldWork",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 120
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "table:resend/callbackWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 40
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "table:resend/callbackWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 36
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:danger.clearPending",
+      "to": "table:resend/callbackWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 42
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:lib.cancel",
+      "to": "table:resend/callbackWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 147
+        }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:lib.cancelAll",
+      "to": "table:resend/callbackWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 183
+        }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/callbackWorkpool:loop.run",
+      "to": "table:resend/callbackWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+          "line": 318
+        }
+      ],
+      "via": ["replace"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 108
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 104
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingCompletion",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 101
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 98
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearOldWork",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 120
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "table:resend/emailWorkpool.payload",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 40
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "table:resend/emailWorkpool.pendingStart",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 36
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:danger.clearPending",
+      "to": "table:resend/emailWorkpool.work",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/danger.ts",
+          "line": 42
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:lib.cancel",
+      "to": "table:resend/emailWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 147
+        }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:lib.cancelAll",
+      "to": "table:resend/emailWorkpool.pendingCancelation",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/lib.ts",
+          "line": 183
+        }
+      ],
+      "via": ["insert"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/emailWorkpool:loop.run",
+      "to": "table:resend/emailWorkpool.internalState",
+      "evidence": [
+        {
+          "file": "@convex-dev/workpool@0.4.11/src/component/loop.ts",
+          "line": 318
+        }
+      ],
+      "via": ["replace"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/rateLimiter:lib.clearAll",
+      "to": "table:resend/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 131
+        }
+      ],
+      "via": ["delete"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/rateLimiter:lib.rateLimit",
+      "to": "table:resend/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 25
+        },
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 29
+        }
+      ],
+      "via": ["insert", "patch"]
+    },
+    {
+      "kind": "writes",
+      "from": "fn:resend/rateLimiter:lib.resetRateLimit",
+      "to": "table:resend/rateLimiter.rateLimits",
+      "evidence": [
+        {
+          "file": "@convex-dev/rate-limiter@0.3.2/src/component/lib.ts",
+          "line": 114
+        }
+      ],
+      "via": ["delete"]
     }
   ],
   "unresolved": [
+    {
+      "kind": "functionReference",
+      "location": {
+        "file": "@convex-dev/batch-worker@0.2.2/src/component/loop.ts",
+        "line": 81
+      },
+      "code": "ctx.runMutation(mutationRef, result.batch)",
+      "reason": "A function handle, which names a function only at run time",
+      "from": [
+        "fn:resend/callbackWorkpool/batchWorker:loop.loop",
+        "fn:resend/emailWorkpool/batchWorker:loop.loop"
+      ]
+    },
+    {
+      "kind": "functionReference",
+      "location": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/loop.ts",
+        "line": 67
+      },
+      "code": "ctx.runQuery(queryRef, queryArgs, { useStaleSnapshot: true, })",
+      "reason": "A function handle, which names a function only at run time",
+      "from": [
+        "fn:authEmail/batchWorker:loop.loop",
+        "fn:authPasskey/batchWorker:loop.loop"
+      ]
+    },
+    {
+      "kind": "functionReference",
+      "location": {
+        "file": "@convex-dev/batch-worker@0.3.4/src/component/loop.ts",
+        "line": 78
+      },
+      "code": "ctx.runMutation(mutationRef, result.batch)",
+      "reason": "A function handle, which names a function only at run time",
+      "from": [
+        "fn:authEmail/batchWorker:loop.loop",
+        "fn:authPasskey/batchWorker:loop.loop"
+      ]
+    },
+    {
+      "kind": "call",
+      "location": {
+        "file": "@convex-dev/resend@0.2.8/src/component/lib.ts",
+        "line": 611
+      },
+      "code": "data.data.map((d: { id: string }) => d.id)",
+      "reason": "The callee is a value the analysis cannot trace",
+      "from": ["fn:resend:lib.callResendAPIWithBatch"]
+    },
+    {
+      "kind": "call",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 120
+      },
+      "code": "(ctx.db.query(\"pendingStart\") as any).count()",
+      "reason": "The callee is a value the analysis cannot trace",
+      "from": [
+        "fn:resend/callbackWorkpool:stats.calculateBacklogAndReport",
+        "fn:resend/emailWorkpool:stats.calculateBacklogAndReport"
+      ]
+    },
+    {
+      "kind": "call",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 191
+      },
+      "code": "(ctx.db.query(\"pendingStart\") as any).count()",
+      "reason": "The callee is a value the analysis cannot trace",
+      "from": [
+        "fn:resend/callbackWorkpool:stats.diagnostics",
+        "fn:resend/emailWorkpool:stats.diagnostics"
+      ]
+    },
+    {
+      "kind": "call",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 192
+      },
+      "code": "( ctx.db.query(\"pendingCompletion\") as any ).count()",
+      "reason": "The callee is a value the analysis cannot trace",
+      "from": [
+        "fn:resend/callbackWorkpool:stats.diagnostics",
+        "fn:resend/emailWorkpool:stats.diagnostics"
+      ]
+    },
+    {
+      "kind": "call",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/stats.ts",
+        "line": 195
+      },
+      "code": "( ctx.db.query(\"pendingCancelation\") as any ).count()",
+      "reason": "The callee is a value the analysis cannot trace",
+      "from": [
+        "fn:resend/callbackWorkpool:stats.diagnostics",
+        "fn:resend/emailWorkpool:stats.diagnostics"
+      ]
+    },
+    {
+      "kind": "functionReference",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 58
+      },
+      "code": "ctx.runQuery(args.fnHandle as FunctionHandle<\"query\">, fnArgs)",
+      "reason": "A function handle, which names a function only at run time",
+      "from": [
+        "fn:resend/callbackWorkpool:worker.runMutationWrapper",
+        "fn:resend/emailWorkpool:worker.runMutationWrapper"
+      ]
+    },
+    {
+      "kind": "functionReference",
+      "location": {
+        "file": "@convex-dev/workpool@0.4.11/src/component/worker.ts",
+        "line": 59
+      },
+      "code": "ctx.runMutation(args.fnHandle as FunctionHandle<\"mutation\">, fnArgs)",
+      "reason": "A function handle, which names a function only at run time",
+      "from": [
+        "fn:resend/callbackWorkpool:worker.runMutationWrapper",
+        "fn:resend/emailWorkpool:worker.runMutationWrapper"
+      ]
+    },
     {
       "kind": "clientCall",
       "location": { "file": "examples/nextjs/app/Dashboard.tsx", "line": 13 },
@@ -17277,9 +20919,9 @@
   "counts": {
     "parts": {
       "app": 10,
-      "component": 17,
-      "envVar": 40,
-      "function": 224,
+      "component": 22,
+      "envVar": 44,
+      "function": 299,
       "hook": 32,
       "httpRoute": 6,
       "method": 10,
@@ -17287,32 +20929,32 @@
       "module": 50,
       "region": 3,
       "setupFunction": 11,
-      "table": 39,
+      "table": 69,
       "thirdParty": 6
     },
     "dependencies": {
-      "calls": 301,
-      "callsChildComponent": 17,
+      "calls": 308,
+      "callsChildComponent": 19,
       "callsThirdParty": 10,
       "clientCalls": 87,
       "definedBy": 71,
       "fetches": 5,
       "imports": 117,
       "mounts": 28,
-      "reads": 118,
-      "readsEnv": 17,
-      "referencesFunction": 101,
+      "reads": 176,
+      "readsEnv": 21,
+      "referencesFunction": 103,
       "routesTo": 6,
-      "schedules": 6,
-      "usesComponent": 4,
+      "schedules": 20,
+      "usesComponent": 9,
       "usesMethod": 21,
-      "writes": 102
+      "writes": 144
     },
     "unresolved": {
-      "call": 46,
+      "call": 51,
       "clientCall": 6,
       "fetch": 2,
-      "functionReference": 3
+      "functionReference": 8
     }
   }
 }

@@ -21,8 +21,10 @@ import type {
 import type { FunctionType, Visibility } from "../../model.ts";
 import { isFunctionLike, propertyNameText } from "../convex/analyzer.ts";
 import {
+  componentSourceFiles,
   createProgram,
   exportsToSource,
+  packageComponentSources,
   isTypeScriptSource,
   listFiles,
   pathAliases,
@@ -90,11 +92,31 @@ function examples(): string[] {
 
 const isDirectory = (path: string) => statSync(path).isDirectory();
 
+function ownComponentDirs(): string[] {
+  return [
+    join(coreSrc, "component"),
+    ...readdirSync(join(coreSrc, "components"))
+      .sort()
+      .map((name) => join(coreSrc, "components", name))
+      .filter((dir) => existsSync(join(dir, "convex.config.ts"))),
+  ];
+}
+
 export function buildConvexAuthModel(): ConvexAuthStructure {
   const exampleNames = examples();
+  const componentDirs = ownComponentDirs();
+  const appDirs = exampleNames.map((name) =>
+    join(examplesRoot, name, "convex"),
+  );
   const program = createProgram({
     root: repoRoot,
     files: [
+      // The shipped source of the npm components they mount.
+      ...packageComponentSources(
+        [...componentDirs, ...appDirs].map((dir) =>
+          join(dir, "convex.config.ts"),
+        ),
+      ).flatMap(componentSourceFiles),
       ...listFiles(coreSrc, (p) => isTypeScriptSource(p) && !isInRepoOnly(p)),
       ...exampleNames.flatMap((example) =>
         listFiles(
@@ -462,7 +484,48 @@ export function buildConvexAuthModel(): ConvexAuthStructure {
   }
   project.scanPackageFetches();
 
-  return project.model<ConvexAuthPart, ConvexAuthDependencyKind>("convex-auth");
+  return project.model<ConvexAuthPart, ConvexAuthDependencyKind>(
+    "convex-auth",
+    {
+      parts: {
+        method: {
+          label: "Sign-in method",
+          description: "A sign-in method of Convex Auth (methods/<name>).",
+        },
+        setupFunction: {
+          label: "Setup function",
+          description:
+            "A setup… function: the app calls it to get its auth functions.",
+        },
+        methodFunction: {
+          label: "Method function",
+          description:
+            "An app function a setup… function returns, as the library defines it.",
+        },
+        hook: {
+          label: "React hook",
+          description: "A React hook of the core or of a sign-in method.",
+        },
+        module: {
+          label: "Client module",
+          description: "A module of the browser or SSR code.",
+        },
+      },
+      dependencies: {
+        usesMethod: {
+          label: "uses method",
+          description:
+            "An app sets up a sign-in method by calling its setup… function.",
+        },
+        definedBy: {
+          label: "defined by",
+          description:
+            "An app function is the one a sign-in method's setup… returns.",
+        },
+        imports: { label: "imports", description: "A module imports another." },
+      },
+    },
+  );
 }
 
 /**

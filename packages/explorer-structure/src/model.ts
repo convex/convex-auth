@@ -158,6 +158,17 @@ export type Unresolved = {
 };
 
 /**
+ * What a reader needs to draw a kind it does not know: the layer that defines
+ * it (`convex` for the generic layer, else the project layer's name), a label,
+ * and a sentence.
+ */
+export type KindInfo = {
+  layer: string;
+  label: string;
+  description: string;
+};
+
+/**
  * A structure model. `ExtraPart` and `ExtraDependencyKind` are the parts and
  * the dependency kinds a project's own layer adds to the generic ones.
  */
@@ -166,9 +177,14 @@ export type StructureModel<
   ExtraDependencyKind extends string = never,
 > = {
   /** Bumped on a breaking change to these types. */
-  version: 2;
-  /** The project layer that produced the model, e.g. `convex-auth`. */
+  version: 3;
+  /** The project layer that produced the model, e.g. `convex-auth`, or `convex` for the generic layer alone. */
   project: string;
+  /** Every part and dependency kind the model uses, with its layer and label. */
+  kinds: {
+    parts: Record<(ConvexPart | ExtraPart)["kind"], KindInfo>;
+    dependencies: Record<ConvexDependencyKind | ExtraDependencyKind, KindInfo>;
+  };
   parts: (ConvexPart | ExtraPart)[];
   dependencies: Dependency<ConvexDependencyKind | ExtraDependencyKind>[];
   unresolved: Unresolved[];

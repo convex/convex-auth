@@ -44,10 +44,31 @@ has. Convex Auth's is `src/generate/convex-auth/layer.ts`:
   return, the React hooks, the browser and SSR modules,
 - the walks of the example frontends, down through the hooks.
 
+The generic layer runs on its own, with no project layer, on any Convex
+project:
+
+```sh
+tsx src/generate/convex/cli.ts <repository root> <convex dir>... [--frontends] [--types=node,vite/client]
+```
+
+or `buildConvexModel` from `src/generate/convex/index.ts`. A test runs it on
+`examples/react-username-password` alone: the auth components arrive the way a
+published `@convex-dev/auth` ships them.
+
+Components come from source wherever it exists: the project's own, and an npm
+package's when it ships `src/<dir>` beside `dist/<dir>` with its `_generated`
+files (`@convex-dev/rate-limiter`, `batch-worker`, `workpool`, `resend`, and
+`@convex-dev/auth` all do). Each instance gets its own parts, so the rate
+limiter of `authPassword` and the one of `authEmail` each have their table and
+their functions. A package that ships no source contributes its functions from
+the `ComponentApi` type its parent sees, and the `fetch` calls of its compiled
+code.
+
 A layer for another project creates a `ConvexProject` with its own
 `ProjectOptions`, adds its parts with `addPart` and its dependencies with
 `addDependency`, calls `walkFunctions`, `walkHttpRouters`, and
-`scanPackageFetches`, and returns `model(projectName)`. Its part and
+`scanPackageFetches`, and returns `model(projectName, kinds)`, where `kinds`
+labels each part and dependency kind the layer adds. Its part and
 dependency types extend the generic ones through the type parameters of
 `StructureModel`, as `src/convex-auth/model.ts` does.
 
@@ -69,14 +90,21 @@ import {
 
 ```jsonc
 {
-  "version": 2,
+  "version": 3,
   "project": "convex-auth",
+  "kinds": {
+    "parts": { "table": { "layer": "convex", "label": "Table", "description": "…" }, "method": { "layer": "convex-auth", … } },
+    "dependencies": { … }
+  },
   "parts": [/* Part */],
   "dependencies": [/* Dependency */],
   "unresolved": [/* Unresolved */],
   "counts": { "parts": {}, "dependencies": {}, "unresolved": {} },
 }
 ```
+
+`kinds` lists every kind the model uses, with the layer that defines it and a
+label, so a reader that knows only the generic kinds can still draw the rest.
 
 Every location is `{ "file", "line" }`: a path from the repository root and a
 1-based line. A file of an npm package is named by the package and its
@@ -168,12 +196,36 @@ not listed. Most entries are function handles, references a library hook
 forwards from its caller, members of interfaces with more than one
 implementation (`TokenStorage`), and URLs built from configuration.
 
+## Joining a recording
+
+`joinRecording(model, appName)` maps what a recording of an app holds to part
+ids:
+
+```ts
+import { joinRecording, structure } from "@convex-dev/explorer-structure";
+
+const join = joinRecording(structure, "react-username-password");
+join.run({ componentPath: "", identifier: "auth:signUpWithUsernamePassword" });
+// "fn:app:react-username-password:auth.signUpWithUsernamePassword"
+join.run({ componentPath: "auth", identifier: "sessions:deleteSessionTokens" });
+// "fn:auth:sessions.deleteSessionTokens"
+join.callTarget("authUsername/public/getUserIdByUsername");
+// "fn:authUsername:public.getUserIdByUsername"
+join.table({ component: "authPassword/rateLimiter", table: "rateLimits" });
+// "table:authPassword/rateLimiter.rateLimits"
+```
+
+It reads the instance names from the app's `mounts` dependencies (`via`). A
+run of an app function maps to the app's function part, `fn:app:<app>:…`, not
+to the method function the library defines; follow its `definedBy` dependency
+to that. A name it cannot find gives `null`. A test maps every run, call
+target, and table of the recorder's fixture recording.
+
 ## What it does not model yet
 
 - Cron jobs. No component or app here has a `crons.ts`; the generator throws
   when one appears, so the model never misses one silently.
-- The functions inside child components from npm (`rateLimiter`,
-  `batchWorker`, `resend`) are listed from the `ComponentApi` types their
-  parents see, without their own tables or calls.
+- When two apps mount the same npm component at different versions (Resend
+  0.2.6 and 0.2.8 here), the first app read gives its parts.
 - A redirect of the browser to a provider's authorization endpoint is not a
   `fetch`, so it is not a dependency.

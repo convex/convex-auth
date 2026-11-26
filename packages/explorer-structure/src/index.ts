@@ -14,3 +14,5 @@ export type * from "./convex-auth/model.ts";
 // JSON imports type their strings as `string`; the generator writes the model
 // to this type.
 export const structure = model as unknown as ConvexAuthStructure;
+
+export { joinRecording, type Join } from "./join.ts";

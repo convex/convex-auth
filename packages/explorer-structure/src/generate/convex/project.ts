@@ -11,7 +11,9 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type {
+  ConvexDependencyKind,
   ConvexPart,
+  KindInfo,
   FunctionType,
   PartBase,
   StructureModel,
@@ -27,7 +29,7 @@ import {
   type Unit,
   type Val,
 } from "./analyzer.ts";
-import { rootPath, stablePath } from "./program.ts";
+import { packageComponentSource, rootPath, stablePath } from "./program.ts";
 
 /** A third party the code may talk to. */
 export type ThirdParty = {
@@ -52,9 +54,18 @@ export type ProjectOptions = {
 
 type ComponentInfo = {
   id: string;
-  name: string;
+  /**
+   * The key of its ids: its name for a component of the project
+   * (`authPassword`), its path of instance names for one from npm
+   * (`authPassword/rateLimiter`, `resend`).
+   */
+  key: string;
+  /** The name its `defineComponent` gives it. */
+  componentName: string;
   dir: string;
-  /** Child name → part id. */
+  /** The npm package it comes from, or null for one of the project. */
+  package: string | null;
+  /** Child instance name → part id. */
   children: Map<string, string>;
 };
 
@@ -88,11 +99,21 @@ export class ConvexProject {
   partOfFunction: (node: ts.Node) => string | null = () => null;
 
   private readonly thirdParties: ThirdParty[];
-  private readonly componentsByDir = new Map<string, ComponentInfo>();
+  /** Directory → the components read from it: one for the project's own, one per instance for an npm component's source. */
+  private readonly componentsByDir = new Map<string, ComponentInfo[]>();
+  private readonly ownComponentDirs: Set<string>;
+  /** Component part id → its npm package, for every component from npm. */
+  private readonly packages = new Map<string, string>();
   private readonly appsByDir = new Map<string, AppInfo>();
-  private readonly externalComponents = new Map<
+  /** The components from npm that ship no source: what the generic layer can still read of them. */
+  private readonly opaqueComponents = new Map<
     string,
-    { package: string; configFiles: Set<string> }
+    {
+      key: string;
+      ownerApiFile: string;
+      instance: string;
+      configFiles: Set<string>;
+    }
   >();
   private readonly tableIds = new Set<string>();
   private readonly functionIds = new Set<string>();
@@ -103,6 +124,7 @@ export class ConvexProject {
     this.root = options.root;
     this.program = options.program;
     this.thirdParties = options.thirdParties;
+    this.ownComponentDirs = new Set(options.components);
     this.analyzer = new Analyzer(options.program, options.root);
     this.checker = this.analyzer.checker;
 
@@ -124,9 +146,15 @@ export class ConvexProject {
         hosts: [],
       });
     }
+    for (const dir of options.components) {
+      this.readComponent(dir, { key: null, parent: null, package: null });
+    }
+    for (const app of options.apps) {
+      this.readApp(app.name, app.dir);
+    }
     for (const dir of [
-      ...options.components,
-      ...options.apps.map((a) => a.dir),
+      ...this.componentsByDir.keys(),
+      ...this.apps.map((a) => a.dir),
     ]) {
       if (existsSync(join(dir, "crons.ts"))) {
         throw new Error(
@@ -134,17 +162,11 @@ export class ConvexProject {
         );
       }
     }
-    for (const dir of options.components) {
-      this.readComponent(dir);
-    }
-    for (const app of options.apps) {
-      this.readApp(app.name, app.dir);
-    }
     for (const component of this.components) {
       this.readSchema(
         join(component.dir, "schema.ts"),
         component.id,
-        component.name,
+        component.key,
       );
     }
     for (const app of this.apps) {
@@ -153,9 +175,9 @@ export class ConvexProject {
     for (const component of this.components) {
       this.readFunctions(
         component.dir,
-        { kind: "component", name: component.name, dir: component.dir },
+        { kind: "component", name: component.key, dir: component.dir },
         component.id,
-        `fn:${component.name}`,
+        `fn:${component.key}`,
       );
     }
     for (const app of this.apps) {
@@ -166,27 +188,13 @@ export class ConvexProject {
         `fn:app:${app.name}`,
       );
     }
-    for (const component of this.components) {
-      for (const [child, id] of component.children) {
-        this.readPackageFunctions(
-          join(component.dir, "_generated", "api.ts"),
-          child,
-          id,
-          `fn:${component.name}/${child}`,
-        );
-      }
-    }
-    for (const app of this.apps) {
-      for (const [instance, id] of app.instances) {
-        if (this.externalComponents.has(id)) {
-          this.readPackageFunctions(
-            join(app.dir, "_generated", "api.d.ts"),
-            instance,
-            id,
-            `fn:${this.parts.get(id)!.name}`,
-          );
-        }
-      }
+    for (const [id, opaque] of this.opaqueComponents) {
+      this.readPackageFunctions(
+        opaque.ownerApiFile,
+        opaque.instance,
+        id,
+        `fn:${opaque.key}`,
+      );
     }
     this.analyzer.resolvers = this.resolvers();
   }
@@ -228,7 +236,19 @@ export class ConvexProject {
 
   // ------------------------------------------------------------- discovery
 
-  private readComponent(dir: string): void {
+  /**
+   * Read a component from its source directory: the project's own (`key`
+   * null: its ids use its name), or an npm component's shipped source, read
+   * once per instance under `key`.
+   */
+  private readComponent(
+    dir: string,
+    place: {
+      key: string | null;
+      parent: string | null;
+      package: string | null;
+    },
+  ): ComponentInfo {
     const config = this.sourceFile(join(dir, "convex.config.ts"));
     const define = findCalls(
       config,
@@ -239,43 +259,60 @@ export class ConvexProject {
         `${this.path(config.fileName)}: no defineComponent("<name>")`,
       );
     }
-    const name = define.arguments[0].text;
+    const componentName = define.arguments[0].text;
+    const key = place.key ?? componentName;
+    const existing = this.components.find((c) => c.key === key);
+    if (existing !== undefined) {
+      return existing;
+    }
     const info: ComponentInfo = {
-      id: `component:${name}`,
-      name,
+      id: `component:${key}`,
+      key,
+      componentName,
       dir,
+      package: place.package,
       children: new Map(),
     };
     this.components.push(info);
-    this.componentsByDir.set(dir, info);
+    this.componentsByDir.set(dir, [
+      ...(this.componentsByDir.get(dir) ?? []),
+      info,
+    ]);
+    if (place.package !== null) {
+      this.packages.set(info.id, place.package);
+    }
     this.addPart({
       kind: "component",
       id: info.id,
-      name,
-      parent: null,
+      name: key.split("/").at(-1)!,
+      parent: place.parent,
       source: this.location(define),
-      componentName: name,
-      package: null,
+      componentName,
+      package: place.package,
     });
-    this.readEnv(define.arguments[1], info.id, name);
+    this.readEnv(define.arguments[1], info.id, key);
     for (const use of useCalls(config)) {
       const target = this.useTarget(use);
       const childName =
-        optionName(use.arguments[1]) ?? packageComponentName(target.target);
-      const id = `component:${name}/${childName}`;
+        optionName(use.arguments[1]) ?? componentNameIn(target.target);
+      const childKey = `${key}/${childName}`;
+      const pkg = packageOf(target.specifier);
+      const source = this.packageSource(target.target);
+      const id =
+        source !== null
+          ? this.readComponent(source, {
+              key: childKey,
+              parent: info.id,
+              package: pkg,
+            }).id
+          : this.addOpaqueComponent(childKey, info.id, pkg, target.target, {
+              ownerApiFile: join(dir, "_generated", "api.ts"),
+              instance: childName,
+            });
       info.children.set(childName, id);
-      this.addPart({
-        kind: "component",
-        id,
-        name: childName,
-        parent: info.id,
-        source: this.location(use),
-        componentName: childName,
-        package: packageOf(target.specifier),
-      });
-      this.addExternal(id, packageOf(target.specifier), target.target);
       this.addDependency("usesComponent", info.id, id, use);
     }
+    return info;
   }
 
   private readApp(name: string, dir: string): void {
@@ -301,45 +338,82 @@ export class ConvexProject {
       path: this.path(dir),
     });
     this.readEnv(define.arguments[0], info.id, `app:${name}`);
-    const ownByConfig = new Map(
-      this.components.map((c) => [join(c.dir, "convex.config.ts"), c]),
-    );
     for (const use of useCalls(config)) {
       const target = this.useTarget(use);
-      const own = ownByConfig.get(target.target);
+      const own = this.components.find(
+        (c) =>
+          this.ownComponentDirs.has(c.dir) &&
+          join(c.dir, "convex.config.ts") === target.target,
+      );
+      const instance =
+        optionName(use.arguments[1]) ??
+        own?.componentName ??
+        componentNameIn(target.target);
       let id: string;
-      let defaultName: string;
       if (own !== undefined) {
         id = own.id;
-        defaultName = own.name;
       } else {
-        defaultName = packageComponentName(target.target);
-        id = `component:${defaultName}`;
-        if (!this.parts.has(id)) {
-          this.addPart({
-            kind: "component",
-            id,
-            name: defaultName,
-            parent: "region:app",
-            source: null,
-            componentName: defaultName,
-            package: packageOf(target.specifier),
-          });
-        }
-        this.addExternal(id, packageOf(target.specifier), target.target);
+        const pkg = packageOf(target.specifier);
+        const source = this.packageSource(target.target);
+        id =
+          source !== null
+            ? this.readComponent(source, {
+                key: instance,
+                parent: "region:app",
+                package: pkg,
+              }).id
+            : this.addOpaqueComponent(
+                instance,
+                "region:app",
+                pkg,
+                target.target,
+                {
+                  ownerApiFile: [
+                    join(dir, "_generated", "api.ts"),
+                    join(dir, "_generated", "api.d.ts"),
+                  ].find(existsSync)!,
+                  instance,
+                },
+              );
       }
-      info.instances.set(optionName(use.arguments[1]) ?? defaultName, id);
-      this.addDependency("mounts", info.id, id, use);
+      info.instances.set(instance, id);
+      this.addDependency("mounts", info.id, id, use, { via: instance });
     }
   }
 
-  private addExternal(id: string, pkg: string, configFile: string): void {
-    const entry = this.externalComponents.get(id) ?? {
-      package: pkg,
-      configFiles: new Set<string>(),
-    };
-    entry.configFiles.add(configFile);
-    this.externalComponents.set(id, entry);
+  /** The shipped source directory of an npm component, when the program holds it. */
+  private packageSource(configFile: string): string | null {
+    const dir = packageComponentSource(configFile);
+    return dir !== null &&
+      this.program.getSourceFile(join(dir, "convex.config.ts")) !== undefined
+      ? dir
+      : null;
+  }
+
+  /** A component from npm without source: a part, its functions from the `ComponentApi` its parent sees, and its compiled code to scan. */
+  private addOpaqueComponent(
+    key: string,
+    parent: string,
+    pkg: string,
+    configFile: string,
+    api: { ownerApiFile: string; instance: string },
+  ): string {
+    const id = `component:${key}`;
+    if (!this.parts.has(id)) {
+      this.addPart({
+        kind: "component",
+        id,
+        name: key.split("/").at(-1)!,
+        parent,
+        source: null,
+        componentName: componentNameIn(configFile),
+        package: pkg,
+      });
+      this.packages.set(id, pkg);
+      this.opaqueComponents.set(id, { key, ...api, configFiles: new Set() });
+    }
+    this.opaqueComponents.get(id)!.configFiles.add(configFile);
+    return id;
   }
 
   /** The component an `app.use` / `component.use` argument names. */
@@ -523,7 +597,7 @@ export class ConvexProject {
             unit,
             "call",
             declaration,
-            "The definition of the function is not one the analysis can trace",
+            "The function is built by a call the analysis cannot follow, such as library code it sees only as type declarations",
           );
         }
         this.functionDefinitions.push({ exprs, unit });
@@ -590,24 +664,36 @@ export class ConvexProject {
 
   // ------------------------------------------------------------- resolvers
 
-  private ownerOfDir(dir: string): Owner | null {
-    const component = this.componentsByDir.get(dir);
-    if (component !== undefined) {
-      return { kind: "component", name: component.name, dir };
+  /**
+   * The component or app whose `_generated` directory is `dir`. Code an npm
+   * package shares between instances resolves for the instance walked.
+   */
+  private ownerOfDir(
+    dir: string,
+    walking: Owner | null,
+  ): ComponentInfo | AppInfo | null {
+    const components = this.componentsByDir.get(dir);
+    if (components !== undefined) {
+      if (walking?.kind === "component" && walking.dir === dir) {
+        return components.find((c) => c.key === walking.name) ?? null;
+      }
+      return components.length === 1 ? components[0]! : null;
     }
-    const app = this.appsByDir.get(dir);
-    if (app !== undefined) {
-      return { kind: "app", name: app.name, dir };
-    }
-    return null;
+    return this.appsByDir.get(dir) ?? null;
   }
 
-  private componentFromRef(ownerDir: string, name: string): string | null {
-    const component = this.componentsByDir.get(ownerDir);
-    if (component !== undefined) {
-      return component.children.get(name) ?? null;
+  private componentFromRef(
+    ownerDir: string,
+    name: string,
+    walking: Owner | null,
+  ): string | null {
+    const owner = this.ownerOfDir(ownerDir, walking);
+    if (owner === null) {
+      return null;
     }
-    return this.appsByDir.get(ownerDir)?.instances.get(name) ?? null;
+    return "children" in owner
+      ? (owner.children.get(name) ?? null)
+      : (owner.instances.get(name) ?? null);
   }
 
   private checkFunction(id: string): string | null {
@@ -616,8 +702,11 @@ export class ConvexProject {
 
   private resolvers(): Analyzer["resolvers"] {
     return {
-      functionFromRef: (ref: Extract<Val, { k: "ref" }>) => {
-        const owner = this.ownerOfDir(ref.ownerDir);
+      functionFromRef: (
+        ref: Extract<Val, { k: "ref" }>,
+        walking: Owner | null,
+      ) => {
+        const owner = this.ownerOfDir(ref.ownerDir, walking);
         if (owner === null) {
           return null;
         }
@@ -625,7 +714,11 @@ export class ConvexProject {
           if (ref.path.length < 3) {
             return null;
           }
-          const component = this.componentFromRef(ref.ownerDir, ref.path[0]!);
+          const component = this.componentFromRef(
+            ref.ownerDir,
+            ref.path[0]!,
+            walking,
+          );
           if (component === null) {
             return null;
           }
@@ -638,26 +731,27 @@ export class ConvexProject {
           return null;
         }
         const prefix =
-          owner.kind === "component"
-            ? `fn:${owner.name}`
-            : `fn:app:${owner.name}`;
+          "key" in owner ? `fn:${owner.key}` : `fn:app:${owner.name}`;
         return this.checkFunction(
           `${prefix}:${ref.path.slice(0, -1).join("/")}.${ref.path.at(-1)}`,
         );
       },
       functionFromComponentApi: (dir: string, path: string[]) => {
-        const component = this.componentsByDir.get(dir);
-        if (component === undefined || path.length < 2) {
+        const components = this.componentsByDir.get(dir);
+        if (
+          components === undefined ||
+          components.length !== 1 ||
+          path.length < 2
+        ) {
           return null;
         }
         return this.checkFunction(
-          `fn:${component.name}:${path.slice(0, -1).join("/")}.${path.at(-1)}`,
+          `fn:${components[0]!.key}:${path.slice(0, -1).join("/")}.${path.at(-1)}`,
         );
       },
-      componentFromRef: (ownerDir, name) =>
-        this.componentFromRef(ownerDir, name),
-      componentPackage: (id: string) =>
-        this.externalComponents.get(id)?.package ?? null,
+      componentFromRef: (ownerDir, name, walking) =>
+        this.componentFromRef(ownerDir, name, walking),
+      componentPackage: (id: string) => this.packages.get(id) ?? null,
       table: (owner: Owner, table: string) => {
         const id =
           owner.kind === "component"
@@ -829,7 +923,7 @@ export class ConvexProject {
       }
       const owner: Owner = {
         kind: "component",
-        name: component.name,
+        name: component.key,
         dir: component.dir,
       };
       for (const statement of this.sourceFile(httpFile).statements) {
@@ -847,9 +941,13 @@ export class ConvexProject {
     }
   }
 
-  /** What the components from npm fetch: `fetch("<literal URL>")` in their compiled code. */
+  /**
+   * What the components from npm that ship no source fetch:
+   * `fetch("<literal URL>")` in their compiled code. (The walks see the
+   * fetches of the ones read from source.)
+   */
   scanPackageFetches(): void {
-    for (const [id, { configFiles }] of this.externalComponents) {
+    for (const [id, { configFiles }] of this.opaqueComponents) {
       const files = [...configFiles].sort().flatMap((f) =>
         readdirSync(dirname(f))
           .filter((name) => name.endsWith(".js"))
@@ -899,7 +997,13 @@ export class ConvexProject {
   model<
     P extends PartBase & { kind: string } = never,
     K extends string = never,
-  >(project: string): StructureModel<P, K> {
+  >(
+    project: string,
+    projectKinds: {
+      parts: Record<string, Omit<KindInfo, "layer">>;
+      dependencies: Record<string, Omit<KindInfo, "layer">>;
+    } = { parts: {}, dependencies: {} },
+  ): StructureModel<P, K> {
     const parts = [...this.parts.values()].sort((a, b) =>
       a.id.localeCompare(b.id),
     );
@@ -936,6 +1040,28 @@ export class ConvexProject {
         );
       }
     }
+    const kinds = (
+      generic: Record<string, Omit<KindInfo, "layer">>,
+      own: Record<string, Omit<KindInfo, "layer">>,
+      used: string[],
+    ) => {
+      const out: Record<string, KindInfo> = {};
+      for (const kind of [...new Set(used)].sort()) {
+        const info =
+          generic[kind] !== undefined
+            ? { layer: "convex", ...generic[kind] }
+            : own[kind] !== undefined
+              ? { layer: project, ...own[kind] }
+              : undefined;
+        if (info === undefined) {
+          throw new Error(
+            `The kind ${kind} has no label: add it to its layer's kinds`,
+          );
+        }
+        out[kind] = info;
+      }
+      return out;
+    };
     const count = (values: string[]) => {
       const out: Record<string, number> = {};
       for (const value of [...values].sort()) {
@@ -944,8 +1070,20 @@ export class ConvexProject {
       return out;
     };
     return {
-      version: 2,
+      version: 3,
       project,
+      kinds: {
+        parts: kinds(
+          CONVEX_KINDS.parts,
+          projectKinds.parts,
+          parts.map((p) => p.kind),
+        ),
+        dependencies: kinds(
+          CONVEX_KINDS.dependencies,
+          projectKinds.dependencies,
+          dependencies.map((d) => d.kind),
+        ),
+      },
       parts,
       dependencies,
       unresolved,
@@ -957,6 +1095,97 @@ export class ConvexProject {
     } as StructureModel<P, K>;
   }
 }
+
+// ------------------------------------------------------------------ kinds
+
+/** The labels of the generic layer's kinds. */
+export const CONVEX_KINDS: {
+  parts: Record<ConvexPart["kind"], Omit<KindInfo, "layer">>;
+  dependencies: Record<ConvexDependencyKind, Omit<KindInfo, "layer">>;
+} = {
+  parts: {
+    region: { label: "Region", description: "Where code runs." },
+    app: {
+      label: "App",
+      description: "A Convex app: a convex/ directory with defineApp.",
+    },
+    component: {
+      label: "Component",
+      description:
+        "A Convex component, mounted by an app or by another component.",
+    },
+    thirdParty: {
+      label: "Third party",
+      description: "A service outside the project that the code talks to.",
+    },
+    table: {
+      label: "Table",
+      description: "A table of a component's or an app's schema.",
+    },
+    function: {
+      label: "Function",
+      description: "A registered query, mutation, action, or HTTP action.",
+    },
+    httpRoute: {
+      label: "HTTP route",
+      description: "A route of a component's HTTP router.",
+    },
+    envVar: {
+      label: "Env var",
+      description: "An environment variable a component or an app declares.",
+    },
+  },
+  dependencies: {
+    calls: {
+      label: "calls",
+      description:
+        "Calls a function through ctx.runQuery, runMutation, or runAction.",
+    },
+    schedules: {
+      label: "schedules",
+      description: "Schedules a function with ctx.scheduler.",
+    },
+    reads: { label: "reads", description: "Reads a table through ctx.db." },
+    writes: { label: "writes", description: "Writes a table through ctx.db." },
+    usesComponent: {
+      label: "uses",
+      description: "Mounts a child component (component.use).",
+    },
+    mounts: {
+      label: "mounts",
+      description: "An app mounts a component (app.use).",
+    },
+    callsChildComponent: {
+      label: "calls component",
+      description: "Calls a child component through its client library.",
+    },
+    referencesFunction: {
+      label: "references",
+      description:
+        "Names a function without calling it: passes it on, or makes a handle.",
+    },
+    readsEnv: {
+      label: "reads env",
+      description: "Reads an environment variable.",
+    },
+    routesTo: {
+      label: "routes to",
+      description: "An HTTP route is served by a handler.",
+    },
+    fetches: {
+      label: "fetches",
+      description: "Fetches a URL of a third party.",
+    },
+    callsThirdParty: {
+      label: "calls third party",
+      description: "Calls a library that talks to a third party.",
+    },
+    clientCalls: {
+      label: "client calls",
+      description: "Client code calls an app function.",
+    },
+  },
+};
 
 // --------------------------------------------------------------- utilities
 
@@ -996,9 +1225,12 @@ const packageOf = (specifier: string) =>
     .slice(0, specifier.startsWith("@") ? 2 : 1)
     .join("/");
 
-/** The name `defineComponent` gives a component, in the compiled file of its npm package. */
-function packageComponentName(declarationFile: string): string {
-  const jsFile = declarationFile.replace(/\.d\.ts$/, ".js");
+/**
+ * The name `defineComponent` gives a component: in its source, or for a
+ * declaration file of an npm package, in the compiled file beside it.
+ */
+function componentNameIn(configFile: string): string {
+  const jsFile = configFile.replace(/\.d\.ts$/, ".js");
   const match = /defineComponent\(\s*["']([^"']+)["']/.exec(
     readFileSync(jsFile, "utf8"),
   );

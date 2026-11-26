@@ -5,8 +5,8 @@
  *
  * @module
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import ts from "typescript";
 
 /** A path relative to `root`, with `/` separators. */
@@ -219,8 +219,14 @@ export function createProgram(options: ProgramOptions): ts.Program {
       return ts.resolveModuleName(specifier, containingFile, opts, host);
     });
   const program = ts.createProgram(options.files, compilerOptions, host);
+  // Only the project's own files must typecheck: the shipped source of an npm
+  // component was checked under its own settings.
   const diagnostics = program
-    .getSemanticDiagnostics()
+    .getSourceFiles()
+    .filter(
+      (f) => !f.isDeclarationFile && !f.fileName.includes("/node_modules/"),
+    )
+    .flatMap((f) => program.getSemanticDiagnostics(f))
     .filter((d) => d.category === ts.DiagnosticCategory.Error);
   if (diagnostics.length > 0) {
     const shown = ts.formatDiagnostics(diagnostics.slice(0, 10), {
@@ -233,4 +239,82 @@ export function createProgram(options: ProgramOptions): ts.Program {
     );
   }
   return program;
+}
+
+/**
+ * The source directory of a component from a package, given the file its
+ * `convex.config` import resolves to: for `<package>/dist/<dir>/convex.config.*`,
+ * `<package>/src/<dir>` when the package ships it with its `_generated` files.
+ * Else null.
+ */
+export function packageComponentSource(
+  resolvedConfigFile: string,
+): string | null {
+  const marker = `${sep}dist${sep}`;
+  const at = resolvedConfigFile.lastIndexOf(marker);
+  if (at === -1) {
+    return null;
+  }
+  const relDir = dirname(resolvedConfigFile.slice(at + marker.length));
+  const dir = join(resolvedConfigFile.slice(0, at), "src", relDir);
+  return existsSync(join(dir, "convex.config.ts")) &&
+    existsSync(join(dir, "_generated", "api.ts"))
+    ? dir
+    : null;
+}
+
+/**
+ * The source directories of the npm components that a set of
+ * `convex.config.ts` files mount, and the ones those mount in turn, for the
+ * program to include.
+ */
+export function packageComponentSources(configFiles: string[]): string[] {
+  const options: ts.CompilerOptions = {
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+  };
+  const found = new Set<string>();
+  const queue = [...configFiles];
+  while (queue.length > 0) {
+    const configFile = queue.shift()!;
+    const file = ts.createSourceFile(
+      configFile,
+      readFileSync(configFile, "utf8"),
+      ts.ScriptTarget.ESNext,
+      true,
+    );
+    for (const statement of file.statements) {
+      if (
+        !ts.isImportDeclaration(statement) ||
+        !ts.isStringLiteral(statement.moduleSpecifier)
+      ) {
+        continue;
+      }
+      const specifier = statement.moduleSpecifier.text;
+      if (!/convex\.config(\.js)?$/.test(specifier)) {
+        continue;
+      }
+      const resolved = ts.resolveModuleName(
+        specifier,
+        configFile,
+        options,
+        ts.sys,
+      ).resolvedModule?.resolvedFileName;
+      const dir =
+        resolved === undefined ? null : packageComponentSource(resolved);
+      if (dir !== null && !found.has(dir)) {
+        found.add(dir);
+        queue.push(join(dir, "convex.config.ts"));
+      }
+    }
+  }
+  return [...found].sort();
+}
+
+/** The TypeScript files of a component's source directory, without its tests. */
+export function componentSourceFiles(dir: string): string[] {
+  return listFiles(
+    dir,
+    (p) => isTypeScriptSource(p) && !/\.test\.tsx?$/.test(p),
+  );
 }
