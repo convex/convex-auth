@@ -8,7 +8,10 @@ const name =
   chosen && PROJECTS[chosen] ? chosen : (Object.keys(PROJECTS)[0] ?? "");
 
 /** The world of the project in the URL (`?project=`), or the first one. */
-export const world = loadProject(PROJECTS[name]);
+export const world = loadProject(
+  PROJECTS[name],
+  params.get("recording") ?? undefined,
+);
 export const projectName = name;
 
 export type Selection =

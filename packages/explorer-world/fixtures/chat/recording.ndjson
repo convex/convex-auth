@@ -1,13 +1,23 @@
-{"kind":"recording","v":1,"time":1000,"deploymentUrl":"http://127.0.0.1:3210","project":"generic"}
-{"kind":"write","id":"presence/rooms/r1@1","time":1000,"ts":"1000000000","component":"presence","table":"rooms","documentId":"r1","deleted":false,"value":{"_id":"r1","user":"ada","status":"away"},"runId":null,"snapshot":true}
-{"kind":"run","id":"run-1","time":2000,"endTime":2012,"udfType":"Mutation","componentPath":"","identifier":"messages:send","caller":"Websocket","requestId":"q1","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":2,"readCount":1,"identityType":"user"}
-{"kind":"step","id":"run-1#0","time":2001,"runId":"run-1","v":1,"source":"chat","step":"call","detail":{"kind":"mutation","target":"presence/public/heartbeat"}}
-{"kind":"step","id":"run-1#1","time":2004,"runId":"run-1","v":1,"source":"chat","step":"return","detail":{"target":"presence/public/heartbeat"}}
-{"kind":"step","id":"run-1#2","time":2005,"runId":"run-1","v":1,"source":"chat","step":"posted","detail":{"room":"lobby"}}
-{"kind":"write","id":"/messages/m1@2","time":2012,"ts":"2012000000","component":"","table":"messages","documentId":"m1","deleted":false,"value":{"_id":"m1","author":"ada","body":"hello"},"runId":"run-1","snapshot":false}
-{"kind":"write","id":"presence/rooms/r1@2","time":2012,"ts":"2012000001","component":"presence","table":"rooms","documentId":"r1","deleted":false,"value":{"_id":"r1","user":"ada","status":"here"},"runId":"run-1","snapshot":false}
-{"kind":"page","id":"p1","time":2013,"action":"click"}
-{"kind":"run","id":"run-2","time":2100,"endTime":2103,"udfType":"Query","componentPath":"","identifier":"messages:list","caller":"Websocket","requestId":"q2","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":0,"readCount":1,"identityType":"user"}
-{"kind":"run","id":"run-3","time":2200,"endTime":2209,"udfType":"Mutation","componentPath":"","identifier":"messages:prune","caller":"Scheduler","requestId":"q3","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":1,"readCount":1,"identityType":null}
-{"kind":"log","id":"run-3#0","time":2201,"runId":"run-3","level":"WARN","componentPath":"","udfPath":"","message":"pruning 1 message","isTruncated":false}
-{"kind":"write","id":"/messages/m1@3","time":2209,"ts":"2209000000","component":"","table":"messages","documentId":"m1","deleted":true,"value":null,"runId":null,"snapshot":false}
+{"kind": "recording", "v": 1, "time": 1000, "deploymentUrl": "http://127.0.0.1:3210", "project": "generic"}
+{"kind": "write", "id": "presence/rooms/r1@1", "time": 1000, "ts": "1000000000", "component": "presence", "table": "rooms", "documentId": "r1", "deleted": false, "value": {"_id": "r1", "user": "ada", "status": "away"}, "runId": null, "snapshot": true}
+{"kind": "page", "id": "p1#0", "time": 1500, "pageId": "p1", "event": "load", "url": "http://localhost:5173/"}
+{"kind": "input", "id": "p1#1", "time": 1990, "pageId": "p1", "action": "click", "target": {"tag": "button", "type": "submit", "id": null, "name": null, "autocomplete": null, "text": "Send", "selector": "form > button"}, "value": null}
+{"kind": "socket", "id": "p1#2", "time": 1995, "pageId": "p1", "socketId": "w1", "direction": "sent", "type": "Mutation", "message": {"type": "Mutation", "udfPath": "messages:send"}}
+{"kind": "call", "id": "p1#5", "time": 1995, "endTime": 2014, "pageId": "p1", "transport": "socket", "udfType": "Mutation", "identifier": "messages:send", "requestEventId": "p1#2", "responseEventId": "p1#3", "ok": true, "commitTs": "2012000000", "logLineCount": 0, "runId": "run-1", "link": "commitTs", "unlinked": null, "candidateRunIds": []}
+{"kind": "run", "id": "run-1", "time": 2000, "endTime": 2012, "udfType": "Mutation", "componentPath": "", "identifier": "messages:send", "caller": "Websocket", "requestId": "q1", "parentExecutionId": null, "ok": true, "error": null, "cachedResult": false, "writeCount": 2, "readCount": 1, "identityType": "user"}
+{"kind": "step", "id": "run-1#0", "time": 2001, "runId": "run-1", "v": 1, "source": "chat", "step": "call", "detail": {"kind": "mutation", "target": "presence/public/heartbeat"}}
+{"kind": "step", "id": "run-1#1", "time": 2004, "runId": "run-1", "v": 1, "source": "chat", "step": "return", "detail": {"target": "presence/public/heartbeat"}}
+{"kind": "step", "id": "run-1#2", "time": 2005, "runId": "run-1", "v": 1, "source": "chat", "step": "posted", "detail": {"room": "lobby"}}
+{"kind": "write", "id": "/messages/m1@2", "time": 2012, "ts": "2012000000", "component": "", "table": "messages", "documentId": "m1", "deleted": false, "value": {"_id": "m1", "author": "ada", "body": "hello"}, "runId": "run-1", "snapshot": false}
+{"kind": "write", "id": "presence/rooms/r1@2", "time": 2012, "ts": "2012000001", "component": "presence", "table": "rooms", "documentId": "r1", "deleted": false, "value": {"_id": "r1", "user": "ada", "status": "here"}, "runId": "run-1", "snapshot": false}
+{"kind": "hologram", "id": "h1", "time": 2013, "note": "a kind no reader knows"}
+{"kind": "socket", "id": "p1#3", "time": 2014, "pageId": "p1", "socketId": "w1", "direction": "received", "type": "MutationResponse", "message": {"type": "MutationResponse", "result": {"ticket": {"$secret": "s1"}}}}
+{"kind": "secret", "id": "s1", "time": 2014, "type": "opaque", "firstSeenIn": "p1#3", "claims": null, "header": null}
+{"kind": "secretLink", "id": "l1", "time": 2014, "secret": "s1", "component": "presence", "table": "rooms", "documentId": "r1", "via": "test"}
+{"kind": "socket", "id": "p1#4", "time": 2015, "pageId": "p1", "socketId": "w1", "direction": "received", "type": "Transition", "message": {"type": "Transition"}}
+{"kind": "storage", "id": "p1#6", "time": 2016, "pageId": "p1", "area": "local", "origin": "http://localhost:5173", "op": "set", "key": "ticket", "value": {"$secret": "s1"}, "oldValue": null}
+{"kind": "call", "id": "p1#7", "time": 2099, "endTime": 2104, "pageId": "p1", "transport": "socket", "udfType": "Query", "identifier": "messages:list", "requestEventId": "p1#4", "responseEventId": "p1#4", "ok": true, "commitTs": null, "logLineCount": 0, "runId": null, "link": null, "unlinked": "2 runs fit", "candidateRunIds": ["run-2"]}
+{"kind": "run", "id": "run-2", "time": 2100, "endTime": 2103, "udfType": "Query", "componentPath": "", "identifier": "messages:list", "caller": "Websocket", "requestId": "q2", "parentExecutionId": null, "ok": true, "error": null, "cachedResult": false, "writeCount": 0, "readCount": 1, "identityType": "user"}
+{"kind": "run", "id": "run-3", "time": 2200, "endTime": 2209, "udfType": "Mutation", "componentPath": "", "identifier": "messages:prune", "caller": "Scheduler", "requestId": "q3", "parentExecutionId": null, "ok": true, "error": null, "cachedResult": false, "writeCount": 1, "readCount": 1, "identityType": null}
+{"kind": "log", "id": "run-3#0", "time": 2201, "runId": "run-3", "level": "WARN", "componentPath": "", "udfPath": "", "message": "pruning 1 message", "isTruncated": false}
+{"kind": "write", "id": "/messages/m1@3", "time": 2209, "ts": "2209000000", "component": "", "table": "messages", "documentId": "m1", "deleted": true, "value": null, "runId": null, "snapshot": false}

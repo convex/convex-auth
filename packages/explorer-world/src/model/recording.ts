@@ -63,7 +63,28 @@ export interface Cargo {
   table: string;
   row: string;
   label: string;
-  derived: Derivation;
+  /** The label of the secret in the recording (`s3`), when the recording shows it. */
+  secret?: string;
+  /** Set when the recording does not show the value travel. */
+  derived?: Derivation;
+}
+
+/**
+ * Something a client page did outside a function run: an input, a
+ * navigation, a change to its storage, a step of the scenario that drove it,
+ * a call the recording could not link to one run.
+ */
+export interface PageItem {
+  time: number;
+  kind: string;
+  /** The page part. */
+  part: string;
+  text: string;
+  tone: Tone;
+  /** What the page starts or stops holding (a token it stores or removes). */
+  hold?: { op: "gain" | "drop"; cargo: Cargo; where: string };
+  /** For an unlinked call: the runs it may be, one of which it is. */
+  candidates?: string[];
 }
 
 export interface Run {
@@ -89,6 +110,11 @@ export interface Run {
   /** Rows the request carries in, and the response carries out. */
   carriesIn: Cargo[];
   carriesOut: Cargo[];
+  /** What a page did before the run (only the first run has these) and after it. */
+  before: PageItem[];
+  after: PageItem[];
+  /** The step of the scenario the run happened in, if a scenario drove the page. */
+  section?: string;
   /** The facts of the run as recorded, for the inspector. */
   facts: [name: string, value: string][];
 }
@@ -100,6 +126,8 @@ export interface Unplaced {
 }
 
 export interface Recording {
+  /** Its name among the project's recordings. */
+  name?: string;
   /** When the recording started, in ms. */
   startedAt: number;
   runs: Run[];

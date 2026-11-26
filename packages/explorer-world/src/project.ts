@@ -21,8 +21,8 @@ import { extendPresentation, type Presentation } from "./presentation.ts";
 export interface ProjectSource {
   presentation: Presentation;
   structure: StructureInput;
-  /** The recorder's timeline, NDJSON. */
-  timeline: string;
+  /** The recorder's timelines (NDJSON), by name; the first is the default. */
+  timelines: Record<string, string>;
 }
 
 export function resolvePresentation(own: Presentation): Presentation {
@@ -32,12 +32,17 @@ export function resolvePresentation(own: Presentation): Presentation {
   return extendPresentation(resolvePresentation(base), own);
 }
 
-export function loadProject(source: ProjectSource): World {
+/** Loads a project with one of its recordings, by name (the first by default). */
+export function loadProject(source: ProjectSource, chosen?: string): World {
+  const name =
+    chosen && chosen in source.timelines
+      ? chosen
+      : Object.keys(source.timelines)[0];
   const own = resolvePresentation(source.presentation);
   const structure = graphFromStructure(source.structure, own);
   const presentation = withKindLabels(own, structure.kinds?.parts ?? {});
   const { recording, observed } = recordingFromTimeline(
-    parseNdjson(source.timeline),
+    parseNdjson(source.timelines[name] ?? ""),
     structure,
     presentation,
     (app) =>
@@ -48,7 +53,7 @@ export function loadProject(source: ProjectSource): World {
   );
   return createWorld(
     withObserved(structure, observed),
-    recording,
+    { ...recording, name },
     presentation,
   );
 }

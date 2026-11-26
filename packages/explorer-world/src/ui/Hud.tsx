@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { hover, usePlayback, world } from "../store.ts";
+import { PROJECTS } from "../project.ts";
+import { hover, projectName, usePlayback, world } from "../store.ts";
 
 const { timeline } = world;
 
@@ -37,6 +38,8 @@ export function Caption() {
 }
 
 /** The run, chapter by chapter: click one to jump there. */
+const recordings = Object.keys(PROJECTS[projectName]?.timelines ?? {});
+
 export function Chapters() {
   const time = usePlayback((s) => s.time);
   const current = world.stateAt(time).chapterIndex;
@@ -49,8 +52,26 @@ export function Chapters() {
           <span> · {world.presentation.subtitle}</span>
         )}
       </h1>
+      {recordings.length > 1 && (
+        <div className="recordings" role="group" aria-label="Recording">
+          {recordings.map((r) => (
+            <a
+              key={r}
+              className={r === world.recording.name ? "on" : ""}
+              href={`?${new URLSearchParams({ ...Object.fromEntries(new URLSearchParams(location.search)), recording: r, t: "0" })}`}
+            >
+              {r}
+            </a>
+          ))}
+        </div>
+      )}
       <ol>
-        {timeline.chapters.map((c, i) => (
+        {timeline.chapters.map((c, i) => [
+          c.section && c.section !== timeline.chapters[i - 1]?.section && (
+            <li key={`s${i}`} className="section">
+              {c.section}
+            </li>
+          ),
           <li
             key={c.run.id}
             className={i === current ? "current" : i < current ? "past" : ""}
@@ -67,8 +88,8 @@ export function Chapters() {
                 {Math.round(c.run.endedAt - c.run.startedAt)} ms
               </span>
             </button>
-          </li>
-        ))}
+          </li>,
+        ])}
       </ol>
       <p className="note">
         A recording of {world.recording.runs.length} runs, slowed to human

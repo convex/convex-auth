@@ -13,5 +13,5 @@ import structure from "./structure.json";
 export const source: ProjectSource = {
   presentation: presentation as Presentation,
   structure: structure as StructureInput,
-  timeline,
+  timelines: { main: timeline },
 };

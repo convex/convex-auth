@@ -21,7 +21,11 @@
       "noun": "method function",
       "color": "#ffd36b",
       "profileBy": "functionType",
-      "profiles": { "query": "round", "mutation": "hex", "action": "square" }
+      "profiles": {
+        "query": "round",
+        "mutation": "hex",
+        "action": "square"
+      }
     },
     "module": {
       "shape": "shard",
@@ -80,44 +84,79 @@
       "color": "#7ee081",
       "summary": "Stores usernames by user id."
     },
-    "component:authPassword/rateLimiter": { "color": "#ff7a45" }
+    "component:authPassword/rateLimiter": {
+      "color": "#ff7a45"
+    }
   },
   "tables": {
     "table:auth.refreshTokens": {
       "stateField": "state",
       "states": {
-        "issued": { "color": "#47e6ff" },
-        "redeemed": { "color": "#ffc24a" },
-        "spent": { "color": "#8f3a55", "retired": true }
+        "issued": {
+          "color": "#47e6ff"
+        },
+        "redeemed": {
+          "color": "#ffc24a"
+        },
+        "spent": {
+          "color": "#8f3a55",
+          "retired": true
+        }
       },
       "caption": "session {sessionId}"
     },
-    "table:authUsername.usernames": { "title": "{username}" }
+    "table:authUsername.usernames": {
+      "title": "{username}"
+    }
   },
   "cargo": [
     {
       "table": "table:auth.refreshTokens",
+      "secretType": "opaque",
       "noun": "refresh token",
       "shape": "key",
       "color": "#47e6ff",
       "out": "inserted",
-      "in": { "field": "state", "from": "issued" }
+      "in": {
+        "field": "state",
+        "from": "issued"
+      }
+    },
+    {
+      "table": "table:auth.sessions",
+      "secretType": "jwt",
+      "noun": "access token",
+      "shape": "coin",
+      "color": "#ffd36b"
     }
   ],
   "steps": {
-    "method.start": { "text": "the {method} method starts" },
+    "method.start": {
+      "text": "the {method} method starts"
+    },
     "session.issued": {
       "text": "a session is issued ({via}, by {authenticatedBy})"
     },
     "method.result": {
       "text": "the {method} method ends: {status} {error}",
       "statusField": "status",
-      "toneBy": { "field": "status", "tones": { "error": "error" } }
+      "toneBy": {
+        "field": "status",
+        "tones": {
+          "error": "error"
+        }
+      }
     },
     "refresh.result": {
       "text": "refresh: {kind}",
       "statusField": "kind",
-      "toneBy": { "field": "kind", "tones": { "noSession": "warn" } }
+      "toneBy": {
+        "field": "kind",
+        "tones": {
+          "noSession": "warn"
+        }
+      }
     }
-  }
+  },
+  "client": "region:browser"
 }

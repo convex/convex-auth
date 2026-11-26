@@ -1,5 +1,13 @@
 {
   "extends": "convex",
   "title": "Chat",
-  "subtitle": "a made-up app for the tests"
+  "subtitle": "a made-up app for the tests",
+  "cargo": [
+    {
+      "table": "table:presence.rooms",
+      "noun": "ticket",
+      "shape": "card",
+      "color": "#7ee081"
+    }
+  ]
 }

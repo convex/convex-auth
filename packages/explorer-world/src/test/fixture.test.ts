@@ -45,8 +45,8 @@ describe("a made-up chat app", () => {
     expect(events.log).toEqual({ seen: 1, played: 1 });
     expect(events.write).toEqual({ seen: 4, played: 4 });
     // A kind of event the world does not know is counted, not dropped silently.
-    expect(events.page).toEqual({ seen: 1, played: 0 });
-    expect(unplaced.map((u) => u.what)).toEqual(['1 event of kind "page"']);
+    expect(events.hologram).toEqual({ seen: 1, played: 0 });
+    expect(unplaced.map((u) => u.what)).toEqual(['1 event of kind "hologram"']);
 
     const [send, , prune] = runs;
     expect(send.steps.map((s) => s.kind)).toEqual(["call", "return", "note"]);
@@ -59,6 +59,39 @@ describe("a made-up chat app", () => {
     expect(prune.scheduledBy?.derived?.rule).toBe("scheduled-by-structure");
     expect(prune.writes[0].derived?.rule).toBe("write-by-commit-time");
     expect(prune.tone).toBe("warn");
+  });
+
+  test("the page's feed plays from data: its call, its secret, its storage", () => {
+    const [send, list] = world.recording.runs;
+    expect(send.caller).toBe("page:p1");
+    // The response carried a secret that is the presence row; nothing is derived.
+    expect(send.carriesOut).toEqual([
+      {
+        table: "table:presence.rooms",
+        row: "r1",
+        secret: "s1",
+        label: "ticket s1",
+      },
+    ]);
+    expect(send.after.map((i) => i.text)).toEqual([
+      "localStorage ticket: stores ticket s1",
+      "query messages:list: not linked to one run (2 runs fit)",
+    ]);
+    // A call the recorder could not link stays unlinked, with its candidates.
+    expect(list.caller).toBe("caller:Websocket");
+    const unlinked = send.after.find((i) => i.kind === "call");
+    expect(unlinked?.candidates).toEqual(["run-2"]);
+    expect(world.recording.runs[0].before.map((i) => i.kind)).toEqual([
+      "page",
+      "input",
+    ]);
+    const end = world.timeline.duration;
+    expect(
+      world
+        .stateAt(end)
+        .holdings.get("page:p1")
+        ?.map((c) => c.label),
+    ).toEqual(["ticket s1"]);
   });
 
   test("the state of the world follows the timeline", () => {

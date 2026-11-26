@@ -6,7 +6,7 @@
 import { describe, expect, test } from "vitest";
 import { loadProject, PROJECTS } from "../project.ts";
 
-const world = loadProject(PROJECTS["convex-auth"]);
+const world = loadProject(PROJECTS["convex-auth"], "cli");
 const REFRESH = "table:auth.refreshTokens";
 
 describe("the map of Convex Auth", () => {
@@ -115,7 +115,7 @@ describe("the recording", () => {
     expect(runs[3].carriesIn[0].row).toBe(runs[2].carriesOut[0].row);
     for (const r of runs)
       for (const c of [...r.carriesIn, ...r.carriesOut])
-        expect(c.derived.note).toBeTruthy();
+        expect(c.derived?.note).toBeTruthy();
   });
 
   test("the refresh tokens of the session go through their states, then away", () => {

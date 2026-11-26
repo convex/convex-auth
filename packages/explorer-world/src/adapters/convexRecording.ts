@@ -27,6 +27,7 @@ import type {
   Write,
 } from "../model/recording.ts";
 import { fill, type Presentation } from "../presentation.ts";
+import { PAGE_KINDS, readPageFeed } from "./convexPage.ts";
 
 interface RunEvent {
   kind: "run";
@@ -247,7 +248,8 @@ export function recordingFromTimeline(
         writeEvents.push(e as unknown as WriteEvent);
         break;
       default:
-        count(e.kind, false);
+        // The browser feed is read below; anything else is counted, not played.
+        if (!PAGE_KINDS.has(e.kind)) count(e.kind, false);
     }
   }
   for (const [kind, n] of Object.entries(counts)) {
@@ -397,6 +399,8 @@ export function recordingFromTimeline(
       writes: writesByRun.get(r.id) ?? [],
       carriesIn: [],
       carriesOut: [],
+      before: [],
+      after: [],
       facts: [
         ["execution id", r.id],
         ["request id", r.requestId],
@@ -448,8 +452,48 @@ export function recordingFromTimeline(
     }
   });
 
-  // Rows that travel with requests and responses.
-  for (const rule of presentation.cargo ?? []) {
+  // The browser feed: the page becomes the caller of the runs it called,
+  // carries the secrets its messages held, and its own doings play between runs.
+  const page = readPageFeed(
+    events as never,
+    presentation,
+    resolveTable,
+    new Set(runs.map((r) => r.id)),
+  );
+  for (const p of page.pages) observe(p);
+  for (const [kind, c] of Object.entries(page.counts)) {
+    counts[kind] = c;
+    if (c.played < c.seen)
+      unplaced.push({
+        what: `${c.seen - c.played} of ${c.seen} "${kind}" events`,
+        reason: page.unplayed[kind] ?? "Nothing in the world shows them.",
+      });
+  }
+  for (const run of runs) {
+    const call = page.calls.get(run.id);
+    if (call) {
+      run.caller = call.page;
+      run.carriesIn = call.cargoIn;
+      run.carriesOut = call.cargoOut;
+      run.facts.push([
+        "page call",
+        `${call.transport}, linked by ${call.link}`,
+      ]);
+    }
+    run.section = [...page.sections]
+      .reverse()
+      .find((s) => s.time <= run.startedAt)?.text;
+  }
+  for (const it of page.items) {
+    const owner = [...runs].reverse().find((r) => r.startedAt <= it.time);
+    if (owner) owner.after.push(it);
+    else runs[0]?.before.push(it);
+  }
+  const fromData = page.counts.secret?.seen > 0;
+
+  // Rows that travel with requests and responses, where the recording does
+  // not show them: derived by the presentation's rules.
+  for (const rule of fromData ? [] : (presentation.cargo ?? [])) {
     for (const run of runs) {
       if (run.scheduledBy) continue;
       const mine = run.writes.filter((w) => w.table === rule.table);

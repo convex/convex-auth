@@ -81,6 +81,8 @@ export interface Alert {
 export interface Chapter {
   run: Run;
   title: string;
+  /** The step of the scenario it belongs to, if a scenario drove a page. */
+  section?: string;
   start: number;
   end: number;
   commitAt: number;
@@ -105,6 +107,7 @@ export const PACE = {
   inside: 0.5,
   return: 1.0,
   note: 1.6,
+  page: 1.1,
   log: 2.6,
   commit: 1.6,
   response: 1.8,
@@ -144,17 +147,45 @@ export function buildTimeline(
     tl.rowChanges.push({ at: 0, run: "", write });
   }
 
+  /** What a page did outside the runs: beats at the page, and what it holds. */
+  const playItems = (run: Run, items: Run["before"], from: number) => {
+    let at = from;
+    for (const it of items) {
+      beat(
+        at,
+        at + PACE.page,
+        run.id,
+        `${name(it.part)} · ${it.text}`,
+        it.tone,
+        it.part,
+      );
+      if (it.hold)
+        tl.holdings.push({
+          at: at + PACE.page * 0.5,
+          holder: it.part,
+          cargo: it.hold.cargo,
+          op: it.hold.op,
+        });
+      at += PACE.page;
+    }
+    return at;
+  };
+
   let t = 0;
   for (const run of recording.runs) {
     const start = t;
     const root = run.function;
-    t += PACE.lead;
+    // A run that shows nothing inside (a query read again) passes quickly.
+    const quick = !run.steps.length && !run.writes.length;
+    const pace = quick ? 0.5 : 1;
+    t = playItems(run, run.before, t);
+    t += PACE.lead * pace;
     const scheduled = Boolean(run.scheduledBy);
     const verb = run.type.toLowerCase();
 
     // The request, from the caller.
     const reqStart = t;
-    t += scheduled ? PACE.schedule : PACE.request;
+    t += (scheduled ? PACE.schedule : PACE.request) * pace;
     move({
       run: run.id,
       kind: "request",
@@ -170,7 +201,9 @@ export function buildTimeline(
       tone: "normal",
       derived: run.carriesIn[0]?.derived,
     });
-    for (const c of run.carriesIn)
+    // Where the recording shows what the caller stores, its storage says what
+    // it holds; only derived cargo moves the holdings here.
+    for (const c of run.carriesIn.filter((x) => x.derived))
       tl.holdings.push({
         at: reqStart,
         holder: run.caller,
@@ -340,7 +373,7 @@ export function buildTimeline(
     // The response, back to the caller.
     if (!scheduled) {
       const resStart = t;
-      t += PACE.response;
+      t += PACE.response * pace;
       move({
         run: run.id,
         kind: "response",
@@ -356,7 +389,7 @@ export function buildTimeline(
         tone: run.tone,
         derived: run.carriesOut[0]?.derived,
       });
-      for (const c of run.carriesOut)
+      for (const c of run.carriesOut.filter((x) => x.derived))
         tl.holdings.push({ at: t, holder: run.caller, cargo: c, op: "gain" });
       beat(
         resStart,
@@ -370,14 +403,16 @@ export function buildTimeline(
       );
     }
 
+    t = playItems(run, run.after, t);
     tl.chapters.push({
       run,
       title: `${name(root)}${run.status !== "ok" ? ` · ${run.status}` : ""}`,
+      section: run.section,
       start,
       end: t,
       commitAt,
     });
-    t += PACE.gap;
+    t += PACE.gap * pace;
   }
 
   // A scheduled run's request leaves the run that scheduled it, at its commit.

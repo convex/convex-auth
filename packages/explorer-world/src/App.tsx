@@ -4,6 +4,7 @@ import { World } from "./scene/World.tsx";
 import { usePlayback } from "./store.ts";
 import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
+import { Problems, SceneBoundary } from "./ui/Problems.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
 
 const params = new URLSearchParams(location.search);
@@ -23,9 +24,21 @@ export function App() {
         }}
         camera={{ fov: 42, near: 0.5, far: 4000, position: [0, 200, 260] }}
         onPointerMissed={() => usePlayback.getState().select(null)}
+        fallback={
+          // Shown by the browser only where the canvas cannot be drawn.
+          <div className="problems panel no-webgl" role="alert">
+            <p>
+              This browser cannot draw WebGL, so the 3D world is not shown. The
+              panels still work.
+            </p>
+          </div>
+        }
       >
-        <World effects={!params.has("noeffects")} />
+        <SceneBoundary>
+          <World effects={!params.has("noeffects")} />
+        </SceneBoundary>
       </Canvas>
+      <Problems />
       <Chapters />
       <Caption />
       <CameraHud />

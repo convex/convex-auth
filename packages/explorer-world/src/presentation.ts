@@ -82,6 +82,8 @@ export interface TableLook {
  */
 export interface CargoRule {
   table: string;
+  /** For a recording of a page: the type of secret the rule names (`jwt`, `opaque`). */
+  secretType?: string;
   /** A noun for one row as cargo, e.g. "refresh token". */
   noun: string;
   shape: "key" | "coin" | "card";
@@ -122,6 +124,8 @@ export interface Presentation {
   steps?: Record<string, StepLook>;
   /** Per caller as the recording names it: a label and a one-line summary. */
   callers?: Record<string, { label?: string; summary?: string }>;
+  /** The part a recorded page runs in, e.g. the region of the browser. */
+  client?: string;
   /** The id of the part the recording ran in (the app being replayed). */
   focus?: string;
   /** The name of the layout strategy (see `src/layout/index.ts`); "islands" by default. */

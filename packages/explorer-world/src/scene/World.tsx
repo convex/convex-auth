@@ -1,5 +1,6 @@
 import { useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
+import { frames } from "../problems.ts";
 import { usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
@@ -11,9 +12,10 @@ import { Parts } from "./Parts.tsx";
 import { Rows } from "./Rows.tsx";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
-/** Advances the playback time while playing. */
+/** Advances the playback time while playing, and counts the frames drawn. */
 function Clock() {
   useFrame((_, delta) => {
+    frames.count++;
     const s = usePlayback.getState();
     if (!s.playing) return;
     const next = s.time + Math.min(delta, 0.1) * s.speed;

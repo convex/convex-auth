@@ -28,14 +28,21 @@
       "zone": "platform",
       "color": "#b48cff"
     },
-    "component": { "shape": "island", "noun": "component", "zone": "platform" },
+    "component": {
+      "shape": "island",
+      "noun": "component",
+      "zone": "platform"
+    },
     "thirdParty": {
       "shape": "beacon",
       "noun": "third party",
       "plural": "third parties",
       "color": "#ff9f6b"
     },
-    "table": { "shape": "vault", "noun": "table" },
+    "table": {
+      "shape": "vault",
+      "noun": "table"
+    },
     "function": {
       "shape": "pillar",
       "noun": "function",
@@ -63,16 +70,31 @@
       "shape": "post",
       "noun": "environment variable",
       "color": "#9fb6ff"
+    },
+    "page": {
+      "shape": "gate",
+      "noun": "page",
+      "color": "#9fd0ff",
+      "placeIn": "{region}",
+      "size": 1.6
     }
   },
   "links": {
-    "calls": { "verb": "calls", "inverse": "is called by", "color": "#d6b8ff" },
+    "calls": {
+      "verb": "calls",
+      "inverse": "is called by",
+      "color": "#d6b8ff"
+    },
     "schedules": {
       "verb": "schedules",
       "inverse": "is scheduled by",
       "color": "#c3b5ff"
     },
-    "reads": { "verb": "reads", "inverse": "is read by", "color": "#5ad1ff" },
+    "reads": {
+      "verb": "reads",
+      "inverse": "is read by",
+      "color": "#5ad1ff"
+    },
     "writes": {
       "verb": "writes",
       "inverse": "is written by",

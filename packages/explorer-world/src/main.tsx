@@ -6,7 +6,8 @@ import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
-import { usePlayback } from "./store.ts";
+import { checkFonts, frames, watchFirstFrame } from "./problems.ts";
+import { usePlayback, world } from "./store.ts";
 import { configureTextBuilder } from "troika-three-text";
 
 // The page itself requests the fonts of 3D text. A request from troika's
@@ -23,6 +24,12 @@ if (params.has("free")) usePlayback.getState().setDirector(false);
 const selected = params.get("select");
 if (selected) usePlayback.getState().select({ type: "part", id: selected });
 (window as unknown as { explorer: typeof usePlayback }).explorer = usePlayback;
+(window as unknown as { explorerFrames: typeof frames }).explorerFrames =
+  frames;
+(window as unknown as { explorerWorld: typeof world }).explorerWorld = world;
+
+void checkFonts();
+watchFirstFrame();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

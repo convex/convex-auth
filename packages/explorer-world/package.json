@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build --base ./",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:load-failures": "node scripts/checkLoadFailures.mjs"
   },
   "dependencies": {
     "@convex-dev/explorer-structure": "workspace:*",

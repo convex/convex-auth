@@ -391,7 +391,14 @@ function body(
         title: held?.label ?? s.row,
         content: (
           <>
-            <Derived d={held?.derived} />
+            {held?.derived ? (
+              <Derived d={held.derived} />
+            ) : (
+              <p>
+                From the recording: the page stored this secret ({held?.secret}
+                ); its value never appears.
+              </p>
+            )}
             <Section title="The row">
               <button
                 className="link"
@@ -460,6 +467,11 @@ function body(
                 <span style={{ color: TONE_COLORS.error }}> {r.error}</span>
               )}
             </p>
+            {r.section && (
+              <Section title="Scenario step">
+                <span>{r.section}</span>
+              </Section>
+            )}
             <Section title="Function, caller">
               <PartLink id={r.function} />
               <PartLink id={r.caller} />
@@ -516,6 +528,32 @@ function body(
                 {r.carriesOut.map((x) => (
                   <div key={`out${x.row}`}>
                     response carries {x.label} <Derived d={x.derived} />
+                  </div>
+                ))}
+              </Section>
+            )}
+            {r.before.length + r.after.length > 0 && (
+              <Section
+                title={`The page, around this run (${r.before.length + r.after.length})`}
+              >
+                {[...r.before, ...r.after].map((it, i) => (
+                  <div
+                    key={i}
+                    className="dep small"
+                    style={{
+                      color:
+                        it.tone !== "normal" ? TONE_COLORS[it.tone] : undefined,
+                    }}
+                  >
+                    <span className="dim">{it.kind}</span> {it.text}
+                    {it.candidates && it.candidates.length > 0 && (
+                      <div>
+                        one of these runs, the data does not say which:
+                        {it.candidates.map((c) => (
+                          <RunLink key={c} run={c} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </Section>
