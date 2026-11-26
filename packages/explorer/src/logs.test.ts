@@ -92,7 +92,7 @@ describe("eventsFromLogEntry", () => {
           runId: "e",
           level: "INFO",
           componentPath: "",
-          udfPath: null,
+          udfPath: "actions:slow",
           message: "halfway",
           isTruncated: false,
         },

@@ -92,6 +92,7 @@ export function eventsFromLogEntry(
       runId,
       `${runId}#${firstLine + index}`,
       componentPath,
+      entry.identifier,
       entry.timestamp * 1000,
     ),
   );
@@ -128,6 +129,7 @@ function eventFromLogLine(
   runId: string,
   id: string,
   entryComponentPath: string,
+  entryIdentifier: string,
   fallbackTime: number,
 ): LogEvent | StepEvent {
   const messages = Array.isArray(line.messages)
@@ -151,7 +153,7 @@ function eventFromLogLine(
       typeof line.componentPath === "string"
         ? line.componentPath
         : entryComponentPath,
-    udfPath: typeof line.udfPath === "string" ? line.udfPath : null,
+    udfPath: typeof line.udfPath === "string" ? line.udfPath : entryIdentifier,
     message: scrubText(messages.join(" ")),
     isTruncated: line.isTruncated === true,
   };

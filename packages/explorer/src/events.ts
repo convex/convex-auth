@@ -80,8 +80,12 @@ export type LogEvent = {
   level: string;
   /** The component that logged the line, "" for the app. */
   componentPath: string;
-  /** The module and function that logged the line, e.g. "public.js:refresh". */
-  udfPath: string | null;
+  /**
+   * The module and function that logged the line, e.g. "public.js:refresh"
+   * for a line of a component function. A line of the function that the
+   * entry is for has none in the logs; it gets the entry's identifier.
+   */
+  udfPath: string;
   /** The arguments of the `console` call, joined by spaces, secrets scrubbed. */
   message: string;
   /** Whether Convex cut the line short. */
