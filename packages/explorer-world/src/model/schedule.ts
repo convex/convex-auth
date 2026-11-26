@@ -65,8 +65,10 @@ export interface Beat {
   run: string;
   text: string;
   tone: Tone;
-  /** The part the beat is about, for the camera to follow. */
+  /** The part the beat is about. */
   focus?: Anchor;
+  /** Every part the beat touches, for the camera to frame. */
+  frame: Anchor[];
 }
 
 export interface Alert {
@@ -140,7 +142,8 @@ export function buildTimeline(
     text: string,
     tone: Tone = "normal",
     focus?: Anchor,
-  ) => tl.beats.push({ start, end, run, text, tone, focus });
+    frame: Anchor[] = focus ? [focus] : [],
+  ) => tl.beats.push({ start, end, run, text, tone, focus, frame });
 
   // The rows the recording started with.
   for (const write of recording.snapshot) {
@@ -219,6 +222,7 @@ export function buildTimeline(
         : `${name(run.caller)} calls ${name(root)}`,
       "normal",
       root,
+      [run.caller, root],
     );
 
     const rootStart = t;
@@ -246,6 +250,7 @@ export function buildTimeline(
             `calls ${name(s.target)}`,
             "normal",
             s.target,
+            [caller, s.target],
           );
           open.push({ target: s.target, arrived: t + PACE.call });
           t += PACE.call + PACE.inside;
@@ -284,6 +289,7 @@ export function buildTimeline(
             `${name(s.target)} returns`,
             s.tone,
             back,
+            [s.target, back],
           );
           t += PACE.return;
           break;
@@ -359,6 +365,7 @@ export function buildTimeline(
         `commit · ${run.writes.length} write${run.writes.length === 1 ? "" : "s"} to ${tables.map(name).join(", ")}`,
         "normal",
         tables.length === 1 ? tables[0] : root,
+        [root, ...tables],
       );
       t += PACE.commit;
     }
@@ -400,6 +407,7 @@ export function buildTimeline(
           : `${name(run.caller)} receives ${run.status}${run.error ? ` · ${run.error}` : ""}`,
         run.tone,
         run.caller,
+        [root, run.caller],
       );
     }
 

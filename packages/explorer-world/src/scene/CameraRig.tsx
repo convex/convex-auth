@@ -53,6 +53,11 @@ const overview = {
 
 const KEYS = new Set<string>();
 
+/** Seconds of playback during which Follow keeps the overview. */
+const START_AFTER = 2.5;
+/** The direction Follow looks from: in front and above. */
+const VIEW = new Vector3(-0.18, 0.66, 0.73).normalize();
+
 /**
  * The free camera: orbit, pan and dolly with the pointer, fly with WASD
  * (Q and E for down and up). In director mode it follows the action until
@@ -152,23 +157,31 @@ export function CameraRig() {
       usePlayback.getState().setDirector(false);
 
     if (!director) return;
-    // Director: frame the subject of the current beat.
-    const state = world.stateAt(usePlayback.getState().time);
-    const focus = state.beat?.focus ?? null;
-    const key = `${state.chapterIndex}:${focus}`;
+    // Director: frame every part the current beat touches. The world is shown
+    // whole from above first; the director starts after the first moments.
+    const { time } = usePlayback.getState();
+    if (time < START_AFTER) {
+      if (lastFocus.current !== null && lastFocus.current !== "overview") {
+        const { position: p, target: q } = overview;
+        void c.setLookAt(p.x, p.y, p.z, q.x, q.y, q.z, true);
+      }
+      lastFocus.current = "overview";
+      return;
+    }
+    const state = world.stateAt(time);
+    const frame = state.beat?.frame ?? [];
+    const key = `${state.chapterIndex}:${frame.join(",")}`;
     if (key === lastFocus.current) return;
     lastFocus.current = key;
-    const target = focus ? anchorPosition(focus) : overview.target.clone();
-    // Look at the subject from the front and above, near enough to read it.
-    void c.setLookAt(
-      target.x - 8,
-      target.y + 26,
-      target.z + 34,
-      target.x,
-      target.y,
-      target.z,
-      true,
-    );
+    if (!frame.length) return;
+    const points = frame.map((id) => anchorPosition(id));
+    const target = points
+      .reduce((sum, p) => sum.add(p), new Vector3())
+      .multiplyScalar(1 / points.length);
+    const spread = Math.max(...points.map((p) => p.distanceTo(target)));
+    const distance = Math.min(320, Math.max(24, spread * 2.3 + 16));
+    const at = VIEW.clone().multiplyScalar(distance).add(target);
+    void c.setLookAt(at.x, at.y, at.z, target.x, target.y, target.z, true);
   });
 
   return (

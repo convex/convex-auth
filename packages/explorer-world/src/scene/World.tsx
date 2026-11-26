@@ -14,8 +14,10 @@ import { Holdings, Travellers } from "./Travellers.tsx";
 
 /** Advances the playback time while playing, and counts the frames drawn. */
 function Clock() {
-  useFrame((_, delta) => {
+  useFrame(({ camera }, delta) => {
     frames.count++;
+    // For scripted checks: where the camera is.
+    (globalThis as { explorerCamera?: unknown }).explorerCamera = camera;
     const s = usePlayback.getState();
     if (!s.playing) return;
     const next = s.time + Math.min(delta, 0.1) * s.speed;

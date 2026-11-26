@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PerspectiveCamera, Vector3, type Group } from "three";
 import { FOOTPRINT } from "../layout/islands.ts";
 import type { IslandPlacement } from "../layout/types.ts";
-import { usePlayback, world } from "../store.ts";
+import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
 import { KeepSize, Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
@@ -38,6 +38,8 @@ interface Entry {
   priority: number;
   /** Hidden when the camera is nearer than this (an island's own name). */
   hideNear?: number;
+  /** Whether it relates to the selection or the current beat; else it fades with distance. */
+  important?: () => boolean;
 }
 
 const registry = new Map<string, Entry>();
@@ -58,7 +60,7 @@ const ISLAND_GROW = { distance: 40, max: 2.2 };
 const PART_GROW = { distance: 22, max: 2.6 };
 
 function islandLabelSize(i: IslandPlacement) {
-  return i.depth ? 0.6 + i.radius * 0.04 : 0.9 + i.radius * 0.05;
+  return i.depth ? 0.5 + i.radius * 0.03 : 0.7 + i.radius * 0.04;
 }
 
 function IslandLabel({ island }: { island: IslandPlacement }) {
@@ -74,6 +76,14 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
     priority:
       50 + (island.id === focus ? 40 : 0) + island.radius - island.depth * 4,
     hideNear: island.radius * 1.3 + 8,
+    important: () => {
+      const h = highlightOf(usePlayback.getState().selected);
+      if (h.covered.has(island.id) || h.linked.has(island.id)) return true;
+      const frame = currentState().beat?.frame ?? [];
+      return frame.some(
+        (id) => id === island.id || placementOf(id)?.island === island.id,
+      );
+    },
   });
   const [x, y, z] = island.position;
   return (
@@ -93,11 +103,11 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
             {text}
           </Label>
           <Label
-            position={[0, -size * 0.85, 0]}
-            fontSize={size * 0.42}
-            color="#aeb9d6"
-            letterSpacing={0.18}
-            outlineWidth={size * 0.03}
+            position={[0, -size * 0.72, 0]}
+            fontSize={size * 0.26}
+            color="#7f8bab"
+            letterSpacing={0.16}
+            outlineWidth={size * 0.02}
             outlineColor="#03050a"
           >
             {sub}
@@ -132,7 +142,11 @@ function Declutter() {
         projected.z > 1 ||
         Math.abs(projected.x) > 1.2 ||
         Math.abs(projected.y) > 1.2 ||
-        (e.hideNear !== undefined && d < e.hideNear)
+        (e.hideNear !== undefined && d < e.hideNear) ||
+        // From inside the map, what is far and unrelated fades.
+        (e.important &&
+          d > Math.max(90, camera.position.y * 2.4) &&
+          !e.important())
       ) {
         e.group.visible = false;
         continue;
@@ -152,7 +166,7 @@ function Declutter() {
         cx - w,
         cy - px * 0.6,
         cx + w,
-        cy + px * (0.6 + (e.lines - 1) * 1.1),
+        cy + px * (0.6 + (e.lines - 1) * 0.6),
       ];
       const overlaps = shown.some(
         (r) =>

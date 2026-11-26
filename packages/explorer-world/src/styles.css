@@ -1,6 +1,6 @@
 :root {
   --bg: #04060c;
-  --panel: rgba(10, 14, 28, 0.72);
+  --panel: rgba(8, 11, 22, 0.9);
   --line: rgba(160, 180, 255, 0.14);
   --text: #e6ebff;
   --dim: #8590b0;
@@ -133,12 +133,17 @@ button {
 /* Caption, top center. */
 .caption {
   position: absolute;
-  top: 22px;
+  top: 74px;
   left: 50%;
   transform: translateX(-50%);
   text-align: center;
   pointer-events: none;
-  max-width: min(760px, calc(100vw - 680px));
+  /* Clear of the run list on the left and the inspector on the right. */
+  max-width: min(720px, calc(100vw - 2 * 390px));
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
   animation: rise 0.35s ease-out;
 }
 .caption .run {
@@ -204,13 +209,10 @@ button {
   background: var(--text);
   color: var(--bg);
 }
-.camera .keys {
-  display: none;
-}
-.camera:hover .keys {
-  display: inline;
-  padding: 0 8px;
+.chapters .keys {
+  margin: 6px 0 0;
   font-size: 11px;
+  line-height: 1.5;
   color: var(--dim);
 }
 
@@ -533,7 +535,7 @@ button {
 
 /* What failed to load or draw. */
 .problems {
-  top: 110px;
+  top: 150px;
   left: 50%;
   transform: translateX(-50%);
   max-width: 560px;
@@ -557,7 +559,7 @@ button {
   color: var(--dim);
 }
 .chapters ol {
-  max-height: calc(100vh - 330px);
+  max-height: calc(100vh - 440px);
   overflow: auto;
 }
 .recordings {

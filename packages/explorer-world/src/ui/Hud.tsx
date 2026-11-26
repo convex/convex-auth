@@ -96,6 +96,10 @@ export function Chapters() {
         speed; real durations at right. {world.graph.parts.length} parts and{" "}
         {world.graph.links.length} dependencies on the map.
       </p>
+      <p className="keys">
+        drag orbit · right-drag pan · scroll zoom · WASD fly · Q/E down/up ·
+        click inspect · O overview · F follow · R L U overlays · space play
+      </p>
     </nav>
   );
 }
@@ -156,10 +160,6 @@ export function CameraHud() {
         >
           Unresolved
         </button>
-        <span className="keys">
-          drag orbit · right-drag pan · scroll zoom · WASD fly · Q/E down/up ·
-          click inspect
-        </span>
       </div>
       <div className="tip" ref={tip} />
     </>

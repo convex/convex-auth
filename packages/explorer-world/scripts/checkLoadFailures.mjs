@@ -1,9 +1,10 @@
 // Builds the world, serves it from a nested path, and opens it twice in
 // Chromium: once as is, once with every font request refused. Both times the
-// scene must draw frames; with the fonts refused, the page must say so on
-// screen. Needs Playwright with a Chromium (`require("playwright")`).
+// scene must draw frames, and the overview (O) must show something; with the
+// fonts refused, the page must say so on screen. Needs Playwright with a Chromium (`require("playwright")`).
 //
 //   pnpm --filter @convex-dev/explorer-world check:load-failures
+/* global requestAnimationFrame, document -- these run in the page. */
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -59,8 +60,29 @@ async function open(blockFonts) {
   const problems = await page
     .locator(".problems:not(.no-webgl)")
     .allInnerTexts();
+  // Fly to the overview, then count the lit pixels of the scene.
+  await page.keyboard.press("o");
+  await page.waitForTimeout(8000);
+  const lit = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        // Queued after the scene's own frame, so the drawing is still there.
+        requestAnimationFrame(() => {
+          const copy = document.createElement("canvas");
+          copy.width = 320;
+          copy.height = 180;
+          const g = copy.getContext("2d");
+          g.drawImage(document.querySelector("canvas"), 0, 0, 320, 180);
+          const { data } = g.getImageData(0, 0, 320, 180);
+          let n = 0;
+          for (let i = 0; i < data.length; i += 4)
+            if (data[i] + data[i + 1] + data[i + 2] > 180) n++;
+          resolve(n);
+        });
+      }),
+  );
   await context.close();
-  return { problems: problems.join(" "), external };
+  return { problems: problems.join(" "), external, lit };
 }
 
 let failed = false;
@@ -79,6 +101,10 @@ try {
     `normal load: no request leaves the server${normal.external.length ? ` (${normal.external[0]})` : ""}`,
   );
   const blocked = await open(true);
+  check(
+    normal.lit > 500,
+    `overview: the scene has lit pixels (${normal.lit} of 57600)`,
+  );
   check(true, "fonts refused: the scene still draws frames");
   check(
     /font of the 3D labels did not load/.test(blocked.problems),
