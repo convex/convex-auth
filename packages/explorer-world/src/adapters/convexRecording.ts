@@ -585,14 +585,17 @@ function nearestRun(
 }
 
 /**
- * The app the recording ran in: the presentation's `focus`, or else the app
- * whose functions the app's runs name most often.
+ * The app the recording ran in: the one its `recording` event names, else
+ * the presentation's `focus`, else the app whose functions the app's runs
+ * name most often.
  */
 function focusApp(
   events: Event[],
   index: GraphIndex,
   presentation: Presentation,
 ): string | null {
+  const named = events.find((e) => e.kind === "recording")?.app;
+  if (typeof named === "string" && index.part.has(`app:${named}`)) return named;
   const focus = presentation.focus;
   if (focus?.startsWith("app:")) return focus.slice(4);
   const scores = new Map<string, number>();
