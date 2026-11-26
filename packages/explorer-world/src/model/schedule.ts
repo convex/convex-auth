@@ -202,7 +202,7 @@ export function buildTimeline(
             start: t,
             end: t + PACE.call,
             label: `${s.callKind ?? "call"} · ${name(s.target)}`,
-            detail: `${name(caller)} calls ${name(s.target)}${s.callKind ? ` (a ${s.callKind})` : ""}. It runs in the same transaction as its caller.`,
+            detail: `${name(caller)} calls ${name(s.target)}${s.callKind ? ` (a ${s.callKind})` : ""}.${run.type === "Mutation" ? " Inside a mutation, it runs in the same transaction." : ""}`,
             cargo: [],
             tone: "normal",
           });
