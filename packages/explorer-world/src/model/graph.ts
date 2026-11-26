@@ -68,6 +68,17 @@ export interface Graph {
   parts: Part[];
   links: Link[];
   unresolved: Unresolved[];
+  /** What the data says about each kind of part and link, when it says it. */
+  kinds?: {
+    parts: Record<
+      string,
+      { label: string; description?: string; layer?: string }
+    >;
+    links: Record<
+      string,
+      { label: string; description?: string; layer?: string }
+    >;
+  };
 }
 
 /** Lookups over a graph, built once. */

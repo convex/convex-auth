@@ -98,14 +98,24 @@ export interface RecordingResult {
 
 const sequence = (id: string) => Number(id.split("#").pop() ?? 0);
 
+/** Maps the names of a recording to part ids, as `joinRecording` of the structure package does. */
+export interface Join {
+  run(run: { componentPath: string | null; identifier: string }): string | null;
+  callTarget(target: string): string | null;
+  table(write: { component: string | null; table: string }): string | null;
+}
+
 /**
  * Builds the recording. `graph` is the structure; the result's `observed`
- * parts must be added to it (see `withObserved`).
+ * parts must be added to it (see `withObserved`). `join` makes the structure
+ * package's join for the app the recording ran in; where it finds nothing,
+ * the rules at the top of this module apply.
  */
 export function recordingFromTimeline(
   events: Event[],
   graph: Graph,
   presentation: Presentation,
+  join?: (app: string) => Join | null,
 ): RecordingResult {
   const index = indexGraph(graph);
   const observed = new Map<string, Part>();
@@ -120,6 +130,12 @@ export function recordingFromTimeline(
 
   const app = focusApp(events, index, presentation);
   const appPart = app ? `app:${app}` : null;
+  let joined: Join | null = null;
+  try {
+    joined = app && join ? join(app) : null;
+  } catch {
+    joined = null;
+  }
 
   const observe = (part: Part) => {
     if (!has(part.id)) observed.set(part.id, part);
@@ -133,6 +149,8 @@ export function recordingFromTimeline(
 
   /** A function of a component or the app, from `module:fn` or `module.js:fn`. */
   const resolveFunction = (componentPath: string, identifier: string) => {
+    const found = joined?.run({ componentPath, identifier });
+    if (found) return found;
     const [rawModule, name] = identifier.split(":");
     const module = rawModule.replace(/\.js$/, "");
     const id = fnId(componentPath, module, name ?? "default");
@@ -153,6 +171,8 @@ export function recordingFromTimeline(
 
   /** A call target `component/path/module/fn`. */
   const resolveTarget = (target: string) => {
+    const found = joined?.callTarget(target);
+    if (found) return found;
     const segs = target.split("/");
     for (let i = segs.length - 2; i >= 1; i--) {
       const id = fnId(
@@ -169,6 +189,8 @@ export function recordingFromTimeline(
   };
 
   const resolveTable = (component: string, table: string) => {
+    const found = joined?.table({ component, table });
+    if (found) return found;
     const id = component
       ? `table:${component}.${table}`
       : `table:app:${app ?? "?"}.${table}`;

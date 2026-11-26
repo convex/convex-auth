@@ -15,6 +15,11 @@ import {
 export interface StructureInput {
   version: number;
   project: string;
+  /** Version 3: the layer, label and description of each kind it uses. */
+  kinds?: {
+    parts?: Record<string, KindLabel>;
+    dependencies?: Record<string, KindLabel>;
+  };
   parts: ({
     id: string;
     kind: string;
@@ -39,7 +44,13 @@ export interface StructureInput {
   }[];
 }
 
-export const SUPPORTED_STRUCTURE_VERSIONS = [2];
+export interface KindLabel {
+  layer?: string;
+  label: string;
+  description?: string;
+}
+
+export const SUPPORTED_STRUCTURE_VERSIONS = [2, 3];
 
 const OWN = new Set(["id", "kind", "name", "parent", "source", "fields"]);
 
@@ -117,5 +128,14 @@ export function graphFromStructure(
     code: u.code,
     reason: u.reason,
   }));
-  return { project: input.project, parts, links, unresolved };
+  return {
+    project: input.project,
+    parts,
+    links,
+    unresolved,
+    kinds: {
+      parts: input.kinds?.parts ?? {},
+      links: input.kinds?.dependencies ?? {},
+    },
+  };
 }

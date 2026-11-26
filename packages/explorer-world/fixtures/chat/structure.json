@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "project": "chat",
   "parts": [
     {
@@ -15,7 +15,10 @@
       "id": "app:chat",
       "name": "chat",
       "parent": "region:app",
-      "source": { "file": "convex/convex.config.ts", "line": 4 },
+      "source": {
+        "file": "convex/convex.config.ts",
+        "line": 4
+      },
       "path": "convex"
     },
     {
@@ -23,7 +26,10 @@
       "id": "component:presence",
       "name": "presence",
       "parent": null,
-      "source": { "file": "presence/convex.config.ts", "line": 3 },
+      "source": {
+        "file": "presence/convex.config.ts",
+        "line": 3
+      },
       "componentName": "presence",
       "package": null
     },
@@ -32,10 +38,21 @@
       "id": "table:app:chat.messages",
       "name": "messages",
       "parent": "app:chat",
-      "source": { "file": "convex/schema.ts", "line": 5 },
+      "source": {
+        "file": "convex/schema.ts",
+        "line": 5
+      },
       "fields": [
-        { "name": "author", "type": "string", "optional": false },
-        { "name": "body", "type": "string", "optional": false }
+        {
+          "name": "author",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "optional": false
+        }
       ],
       "indexes": []
     },
@@ -44,19 +61,38 @@
       "id": "table:presence.rooms",
       "name": "rooms",
       "parent": "component:presence",
-      "source": { "file": "presence/schema.ts", "line": 4 },
+      "source": {
+        "file": "presence/schema.ts",
+        "line": 4
+      },
       "fields": [
-        { "name": "user", "type": "string", "optional": false },
-        { "name": "status", "type": "string", "optional": false }
+        {
+          "name": "user",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "optional": false
+        }
       ],
-      "indexes": [{ "name": "by_user", "fields": ["user"] }]
+      "indexes": [
+        {
+          "name": "by_user",
+          "fields": ["user"]
+        }
+      ]
     },
     {
       "kind": "function",
       "id": "fn:app:chat:messages.send",
       "name": "send",
       "parent": "app:chat",
-      "source": { "file": "convex/messages.ts", "line": 6 },
+      "source": {
+        "file": "convex/messages.ts",
+        "line": 6
+      },
       "module": "messages",
       "functionType": "mutation",
       "visibility": "public"
@@ -66,7 +102,10 @@
       "id": "fn:app:chat:messages.list",
       "name": "list",
       "parent": "app:chat",
-      "source": { "file": "convex/messages.ts", "line": 18 },
+      "source": {
+        "file": "convex/messages.ts",
+        "line": 18
+      },
       "module": "messages",
       "functionType": "query",
       "visibility": "public"
@@ -76,7 +115,10 @@
       "id": "fn:app:chat:messages.prune",
       "name": "prune",
       "parent": "app:chat",
-      "source": { "file": "convex/messages.ts", "line": 25 },
+      "source": {
+        "file": "convex/messages.ts",
+        "line": 25
+      },
       "module": "messages",
       "functionType": "mutation",
       "visibility": "internal"
@@ -86,7 +128,10 @@
       "id": "fn:presence:public.heartbeat",
       "name": "heartbeat",
       "parent": "component:presence",
-      "source": { "file": "presence/public.ts", "line": 8 },
+      "source": {
+        "file": "presence/public.ts",
+        "line": 8
+      },
       "module": "public",
       "functionType": "mutation",
       "visibility": "public"
@@ -96,7 +141,10 @@
       "id": "env:app:chat.ROOM_LIMIT",
       "name": "ROOM_LIMIT",
       "parent": "app:chat",
-      "source": { "file": "convex/convex.config.ts", "line": 6 },
+      "source": {
+        "file": "convex/convex.config.ts",
+        "line": 6
+      },
       "type": "string",
       "optional": true
     }
@@ -106,64 +154,112 @@
       "kind": "mounts",
       "from": "app:chat",
       "to": "component:presence",
-      "evidence": [{ "file": "convex/convex.config.ts", "line": 5 }]
+      "evidence": [
+        {
+          "file": "convex/convex.config.ts",
+          "line": 5
+        }
+      ],
+      "via": ["presence"]
     },
     {
       "kind": "calls",
       "from": "fn:app:chat:messages.send",
       "to": "fn:presence:public.heartbeat",
-      "evidence": [{ "file": "convex/messages.ts", "line": 11 }],
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 11
+        }
+      ],
       "via": ["runMutation"]
     },
     {
       "kind": "writes",
       "from": "fn:app:chat:messages.send",
       "to": "table:app:chat.messages",
-      "evidence": [{ "file": "convex/messages.ts", "line": 10 }],
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 10
+        }
+      ],
       "via": ["insert"]
     },
     {
       "kind": "schedules",
       "from": "fn:app:chat:messages.send",
       "to": "fn:app:chat:messages.prune",
-      "evidence": [{ "file": "convex/messages.ts", "line": 13 }]
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 13
+        }
+      ]
     },
     {
       "kind": "reads",
       "from": "fn:app:chat:messages.list",
       "to": "table:app:chat.messages",
-      "evidence": [{ "file": "convex/messages.ts", "line": 20 }],
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 20
+        }
+      ],
       "via": ["query"]
     },
     {
       "kind": "writes",
       "from": "fn:app:chat:messages.prune",
       "to": "table:app:chat.messages",
-      "evidence": [{ "file": "convex/messages.ts", "line": 28 }],
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 28
+        }
+      ],
       "via": ["delete"]
     },
     {
       "kind": "writes",
       "from": "fn:presence:public.heartbeat",
       "to": "table:presence.rooms",
-      "evidence": [{ "file": "presence/public.ts", "line": 12 }],
+      "evidence": [
+        {
+          "file": "presence/public.ts",
+          "line": 12
+        }
+      ],
       "via": ["insert", "patch"]
     },
     {
       "kind": "readsEnv",
       "from": "fn:app:chat:messages.send",
       "to": "env:app:chat.ROOM_LIMIT",
-      "evidence": [{ "file": "convex/messages.ts", "line": 7 }]
+      "evidence": [
+        {
+          "file": "convex/messages.ts",
+          "line": 7
+        }
+      ]
     }
   ],
   "unresolved": [
     {
       "kind": "call",
       "from": ["fn:app:chat:messages.send"],
-      "location": { "file": "convex/messages.ts", "line": 14 },
+      "location": {
+        "file": "convex/messages.ts",
+        "line": 14
+      },
       "code": "ctx.runMutation(hook, args)",
       "reason": "The callee is a parameter"
     }
   ],
-  "counts": { "parts": {}, "dependencies": {}, "unresolved": {} }
+  "counts": {
+    "parts": {},
+    "dependencies": {},
+    "unresolved": {}
+  }
 }

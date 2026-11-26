@@ -4,6 +4,7 @@
  * timeline, and its presentation. Nothing else is needed: a new directory is
  * found on its own (`?project=<name>` picks it, the first one otherwise).
  */
+import { joinRecording } from "@convex-dev/explorer-structure";
 import {
   graphFromStructure,
   type StructureInput,
@@ -32,18 +33,38 @@ export function resolvePresentation(own: Presentation): Presentation {
 }
 
 export function loadProject(source: ProjectSource): World {
-  const presentation = resolvePresentation(source.presentation);
-  const structure = graphFromStructure(source.structure, presentation);
+  const own = resolvePresentation(source.presentation);
+  const structure = graphFromStructure(source.structure, own);
+  const presentation = withKindLabels(own, structure.kinds?.parts ?? {});
   const { recording, observed } = recordingFromTimeline(
     parseNdjson(source.timeline),
     structure,
     presentation,
+    (app) =>
+      joinRecording(
+        source.structure as Parameters<typeof joinRecording>[0],
+        app,
+      ),
   );
   return createWorld(
     withObserved(structure, observed),
     recording,
     presentation,
   );
+}
+
+/**
+ * A kind of part the presentation does not describe still gets the noun the
+ * data gives it, drawn as a marker.
+ */
+function withKindLabels(
+  p: Presentation,
+  labels: Record<string, { label: string }>,
+): Presentation {
+  const kinds = { ...p.kinds };
+  for (const [kind, { label }] of Object.entries(labels))
+    kinds[kind] ??= { shape: "marker", noun: label.toLowerCase() };
+  return { ...p, kinds };
 }
 
 const byDirectory = (found: Record<string, { source: ProjectSource }>) =>
