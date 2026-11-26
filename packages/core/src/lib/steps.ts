@@ -20,6 +20,11 @@
  * token hash, no email address, and no username. It holds the name of the
  * step, the names of functions and components, user ids, and result codes.
  *
+ * The line format is not specific to Convex Auth, so that any Convex library
+ * can write the same lines: the prefix `[explorer:step] `, then JSON with the
+ * version of the format (`v`), the library that wrote the report (`source`),
+ * and the name of the step (`step`).
+ *
  * @module
  */
 import { getFunctionAddress } from "convex/server";
@@ -28,7 +33,10 @@ import { getFunctionAddress } from "convex/server";
 export const STEP_REPORTS_ENV = "CONVEX_AUTH_REPORT_STEPS";
 
 /** The start of each log line that is a step report. JSON follows it. */
-export const STEP_REPORT_PREFIX = "[convex-auth:step] ";
+export const STEP_REPORT_PREFIX = "[explorer:step] ";
+
+/** The library that writes the reports, in the `source` field of each report. */
+export const STEP_REPORT_SOURCE = "convex-auth";
 
 /** The version of the report format, in the `v` field of each report. */
 export const STEP_REPORT_VERSION = 1;
@@ -53,7 +61,12 @@ export function stepReportsEnabled(): boolean {
 export function reportStep(step: string, detail: StepDetail = {}): void {
   console.log(
     STEP_REPORT_PREFIX +
-      JSON.stringify({ v: STEP_REPORT_VERSION, step, ...detail }),
+      JSON.stringify({
+        v: STEP_REPORT_VERSION,
+        source: STEP_REPORT_SOURCE,
+        step,
+        ...detail,
+      }),
   );
 }
 

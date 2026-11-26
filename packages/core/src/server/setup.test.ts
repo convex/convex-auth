@@ -474,8 +474,8 @@ describe("step reports", () => {
     target: `auth/public/${fn}`,
   });
   const call = (kind: "query" | "mutation", fn: string) => [
-    { v: 1, step: "call", kind, ...core(fn) },
-    { v: 1, step: "return", ...core(fn) },
+    { v: 1, source: "convex-auth", step: "call", kind, ...core(fn) },
+    { v: 1, source: "convex-auth", step: "return", ...core(fn) },
   ];
 
   function reportingSetup() {
@@ -495,6 +495,7 @@ describe("step reports", () => {
     expect(reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "method.start",
         method: "testMethod",
         authenticated: false,
@@ -502,13 +503,19 @@ describe("step reports", () => {
       ...call("mutation", "_internal_dangerous_signUp"),
       {
         v: 1,
+        source: "convex-auth",
         step: "session.issued",
         via: "signUp",
         method: "testMethod",
         authenticatedBy: "authTest",
         userId: "alice",
       },
-      { v: 1, step: "method.result", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.result",
+        method: "testMethod",
+      },
     ]);
   });
 
@@ -521,6 +528,7 @@ describe("step reports", () => {
     expect(reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "method.start",
         method: "testMethod",
         authenticated: false,
@@ -528,13 +536,19 @@ describe("step reports", () => {
       ...call("mutation", "_internal_dangerous_signIn"),
       {
         v: 1,
+        source: "convex-auth",
         step: "session.issued",
         via: "signIn",
         method: "testMethod",
         authenticatedBy: "authTest",
         userId: "alice",
       },
-      { v: 1, step: "method.result", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.result",
+        method: "testMethod",
+      },
     ]);
   });
 
@@ -551,13 +565,25 @@ describe("step reports", () => {
     expect(reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "method.start",
         method: "testMethod",
         authenticated: false,
       },
       ...call("mutation", "_internal_dangerous_signUpWithoutSession"),
-      { v: 1, step: "user.created", method: "testMethod", userId: "alice" },
-      { v: 1, step: "method.result", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "user.created",
+        method: "testMethod",
+        userId: "alice",
+      },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.result",
+        method: "testMethod",
+      },
     ]);
   });
 
@@ -569,7 +595,7 @@ describe("step reports", () => {
     );
     expect(reports).toEqual([
       ...call("mutation", "refresh"),
-      { v: 1, step: "refresh.result", kind: "rotated" },
+      { v: 1, source: "convex-auth", step: "refresh.result", kind: "rotated" },
     ]);
   });
 
@@ -580,7 +606,12 @@ describe("step reports", () => {
     );
     expect(reports).toEqual([
       ...call("mutation", "refresh"),
-      { v: 1, step: "refresh.result", kind: "noSession" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "refresh.result",
+        kind: "noSession",
+      },
     ]);
   });
 
@@ -592,7 +623,7 @@ describe("step reports", () => {
     );
     expect(reports).toEqual([
       ...call("mutation", "signOut"),
-      { v: 1, step: "signOut.done" },
+      { v: 1, source: "convex-auth", step: "signOut.done" },
     ]);
   });
 
@@ -606,6 +637,7 @@ describe("step reports", () => {
       ...call("query", "getSession"),
       {
         v: 1,
+        source: "convex-auth",
         step: "isAuthenticated.result",
         tokenAccepted: true,
         sessionLive: true,
@@ -618,6 +650,7 @@ describe("step reports", () => {
       ...call("query", "getSession"),
       {
         v: 1,
+        source: "convex-auth",
         step: "isAuthenticated.result",
         tokenAccepted: true,
         sessionLive: false,
@@ -628,6 +661,7 @@ describe("step reports", () => {
     expect(anonymous.reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "isAuthenticated.result",
         tokenAccepted: false,
         sessionLive: false,
@@ -645,12 +679,29 @@ describe("step reports", () => {
         .mutation(revokeOtherSessionsRef, {}),
     );
     expect(reports).toEqual([
-      { v: 1, step: "method.start", method: "testMethod", authenticated: true },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.start",
+        method: "testMethod",
+        authenticated: true,
+      },
       ...call("query", "getSession"),
       ...call("query", "listSessions"),
       ...call("mutation", "revokeSessions"),
-      { v: 1, step: "sessions.revoked", scope: "others", count: 1 },
-      { v: 1, step: "method.result", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "sessions.revoked",
+        scope: "others",
+        count: 1,
+      },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.result",
+        method: "testMethod",
+      },
     ]);
   });
 
@@ -664,14 +715,26 @@ describe("step reports", () => {
     expect(reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "method.start",
         method: "testMethod",
         authenticated: false,
       },
       ...call("query", "listSessions"),
       ...call("mutation", "revokeSessions"),
-      { v: 1, step: "sessions.revoked", scope: "all", count: 2 },
-      { v: 1, step: "method.result", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "sessions.revoked",
+        scope: "all",
+        count: 2,
+      },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.result",
+        method: "testMethod",
+      },
     ]);
   });
 
@@ -694,13 +757,25 @@ describe("step reports", () => {
     expect(reports).toEqual([
       {
         v: 1,
+        source: "convex-auth",
         step: "method.start",
         method: "testMethod",
         authenticated: false,
       },
-      { v: 1, step: "call", kind: "query", ...core("getSession") },
-      { v: 1, step: "throw", ...core("getSession") },
-      { v: 1, step: "method.throw", method: "testMethod" },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "call",
+        kind: "query",
+        ...core("getSession"),
+      },
+      { v: 1, source: "convex-auth", step: "throw", ...core("getSession") },
+      {
+        v: 1,
+        source: "convex-auth",
+        step: "method.throw",
+        method: "testMethod",
+      },
     ]);
   });
 
