@@ -5,7 +5,7 @@ import type { Derivation, Doc } from "../model/recording.ts";
 import { linkLook, nounOf } from "../presentation.ts";
 import { colorOf, nounOfPart, partOf, placementOf } from "../scene/look.ts";
 import { DELETED_COLOR, TONE_COLORS } from "../scene/palette.ts";
-import { usePlayback, world, type Selection } from "../store.ts";
+import { currentState, usePlayback, world, type Selection } from "../store.ts";
 
 const { timeline, presentation } = world;
 const labelOf = (id: string) => partOf(id)?.label ?? id;
@@ -571,10 +571,11 @@ function body(
 /** What the selected thing is and its state at the current time. */
 export function Inspector() {
   const selected = usePlayback((s) => s.selected);
-  const time = usePlayback((s) => s.time);
+  // The inspector shows the state at the current time.
+  usePlayback((s) => s.time);
   const { select, flyTo } = usePlayback.getState();
   if (!selected) return null;
-  const state = world.stateAt(time);
+  const state = currentState();
   const b = body(selected, state);
   return (
     <aside

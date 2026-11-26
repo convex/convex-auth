@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { usePlayback, world } from "../store.ts";
+import { currentState, usePlayback, world } from "../store.ts";
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const { timeline } = world;
@@ -36,7 +36,7 @@ export function Timeline() {
     };
   });
 
-  const current = world.stateAt(time).chapterIndex;
+  const current = currentState().chapterIndex;
 
   return (
     <div className="timeline panel">

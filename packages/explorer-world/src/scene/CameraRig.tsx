@@ -2,7 +2,7 @@ import { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
-import { usePlayback, world, type Selection } from "../store.ts";
+import { currentState, usePlayback, world, type Selection } from "../store.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
@@ -168,7 +168,7 @@ export function CameraRig() {
       lastFocus.current = "overview";
       return;
     }
-    const state = world.stateAt(time);
+    const state = currentState();
     const frame = state.beat?.frame ?? [];
     const key = `${state.chapterIndex}:${frame.join(",")}`;
     if (key === lastFocus.current) return;

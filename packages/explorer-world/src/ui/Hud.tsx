@@ -1,13 +1,24 @@
 import { useEffect, useRef } from "react";
 import { PROJECTS } from "../project.ts";
-import { hover, projectName, usePlayback, world } from "../store.ts";
+import {
+  currentState,
+  hover,
+  projectName,
+  usePlayback,
+  world,
+} from "../store.ts";
 
 const { timeline } = world;
 
 /** What is happening now: the function run and its current step. */
 export function Caption() {
-  const time = usePlayback((s) => s.time);
-  const state = world.stateAt(time);
+  // Re-renders when the beat changes, not on every frame.
+  usePlayback((s) => {
+    void s.time;
+    const st = currentState();
+    return `${st.chapterIndex}:${st.beat?.start ?? ""}`;
+  });
+  const state = currentState();
   const chapter = state.chapter;
   if (!chapter) {
     return (
@@ -41,8 +52,11 @@ export function Caption() {
 const recordings = Object.keys(PROJECTS[projectName]?.timelines ?? {});
 
 export function Chapters() {
-  const time = usePlayback((s) => s.time);
-  const current = world.stateAt(time).chapterIndex;
+  // Re-renders when the current run changes, not on every frame.
+  const current = usePlayback((s) => {
+    void s.time;
+    return currentState().chapterIndex;
+  });
   const { setTime } = usePlayback.getState();
   return (
     <nav className="chapters panel">
