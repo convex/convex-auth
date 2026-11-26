@@ -1,7 +1,11 @@
 /**
- * The types of `structure.json`: every part of Convex Auth and every
- * dependency between parts, as the generator in `generate/` reads them from
- * the source. See the README for the id scheme.
+ * The types of a structure model: every part of a Convex project and every
+ * dependency between parts, as the generator reads them from the source.
+ *
+ * These are the generic types, for any Convex app or component. A project
+ * adds its own parts and dependency kinds through the type parameters of
+ * {@link StructureModel}; Convex Auth's are in `convex-auth/model.ts`. See the
+ * README for the id scheme.
  *
  * @module
  */
@@ -11,15 +15,6 @@ export type SourceLocation = {
   file: string;
   line: number;
 };
-
-/** Where a region runs. */
-export type RegionKind =
-  /** The browser: the React hooks and the browser modules. */
-  | "browser"
-  /** The server of a Next.js app (the SSR code of the core). */
-  | "ssr"
-  /** The app's own Convex backend: the app's functions and the sign-in methods. */
-  | "app";
 
 export type FunctionType = "query" | "mutation" | "action" | "httpAction";
 
@@ -37,18 +32,33 @@ export type TableIndex = {
   fields: string[];
 };
 
-type PartBase = {
+/** What every part has. A project's own parts extend it. */
+export type PartBase = {
   /** Stable across runs: built from names, never from line numbers. */
   id: string;
   name: string;
-  /** The id of the enclosing part, `null` for a top-level region. */
+  /** The id of the enclosing part, `null` at the top. */
   parent: string | null;
   /** Where the part is defined. `null` only for a part with no source here. */
   source: SourceLocation | null;
 };
 
-export type Part =
-  | (PartBase & { kind: "region"; region: RegionKind })
+/** The parts of any Convex project. */
+export type ConvexPart =
+  | (PartBase & {
+      /**
+       * Where code runs. The generic layer makes `region:app`, the Convex
+       * backend of the apps; a project adds its own (a browser, an SSR server).
+       */
+      kind: "region";
+      region: string;
+    })
+  | (PartBase & {
+      /** A Convex app: a `convex/` directory with `defineApp`. */
+      kind: "app";
+      /** The directory of its `convex.config.ts`, from the repository root. */
+      path: string;
+    })
   | (PartBase & {
       kind: "component";
       /** The name its `defineComponent` gives it, e.g. `authPassword`. */
@@ -83,88 +93,51 @@ export type Part =
       kind: "envVar";
       type: string;
       optional: boolean;
-    })
-  | (PartBase & {
-      kind: "method";
-      /** The directory under `methods/`, e.g. `username-password`. */
-      directory: string;
-      /** The package entry point of its server code, if it has one. */
-      entryPoint: string | null;
-    })
-  | (PartBase & {
-      /** A `setup…` function: the app calls it to get its auth functions. */
-      kind: "setupFunction";
-    })
-  | (PartBase & {
-      /** An app function that a `setup…` function returns. */
-      kind: "methodFunction";
-      functionType: FunctionType;
-      visibility: Visibility;
-    })
-  | (PartBase & { kind: "hook"; runsIn: "browser" | "ssr" })
-  | (PartBase & {
-      /** A module of the browser or SSR code of the core or of a method. */
-      kind: "module";
-      /** The path under `packages/core/src`. */
-      module: string;
-      runsIn: "browser" | "ssr";
-    })
-  | (PartBase & {
-      kind: "exampleApp";
-      /** The directory under `examples/`. */
-      directory: string;
     });
 
-export type PartKind = Part["kind"];
-
-export type DependencyKind =
+/** The dependency kinds of any Convex project. */
+export type ConvexDependencyKind =
   /** A function calls a function through `ctx.runQuery` / `runMutation` / `runAction`. */
   | "calls"
-  /** A component mounts a child component (`component.use`). */
-  | "usesComponent"
+  /** A function schedules a function (`ctx.scheduler.runAfter` / `runAt`). */
+  | "schedules"
   /** A function reads a table (`ctx.db.get` / `query`). */
   | "reads"
   /** A function writes a table (`ctx.db.insert` / `patch` / `replace` / `delete`). */
   | "writes"
-  /** A function schedules a function (`ctx.scheduler.runAfter` / `runAt`). */
-  | "schedules"
-  /** Client code calls an app function (`useQuery`, `signInApi.mutation`, …). */
-  | "clientCalls"
-  /** An HTTP route is served by a handler. */
-  | "routesTo"
-  /** Code fetches a third-party host. */
-  | "fetches"
-  /** Browser code runs a WebAuthn ceremony against the passkey authenticator. */
-  | "webauthn"
+  /** A component mounts a child component (`component.use`). */
+  | "usesComponent"
+  /** An app mounts a component (`app.use`). */
+  | "mounts"
   /** A function calls a child component through its client library (`new RateLimiter(components.rateLimiter)`, `ping(ctx, components.batchWorker)`). */
   | "callsChildComponent"
   /** A function names another function without calling it (passes it on, makes a handle). */
   | "referencesFunction"
   /** A function reads an environment variable of its component or app. */
   | "readsEnv"
-  /** An example app mounts a component (`app.use`). */
-  | "mounts"
-  /** An example app sets up a sign-in method. */
-  | "usesMethod"
-  /** An app function is the function that a sign-in method's `setup…` returns. */
-  | "definedBy"
-  /** A browser or SSR module imports another one. */
-  | "imports";
+  /** An HTTP route is served by a handler. */
+  | "routesTo"
+  /** Code fetches a third-party host. */
+  | "fetches"
+  /** Code calls a library that talks to a third party (a WebAuthn ceremony, an SDK). */
+  | "callsThirdParty"
+  /** Client code calls an app function (`useQuery`, `client.mutation`, …). */
+  | "clientCalls";
 
-export type Dependency = {
-  kind: DependencyKind;
+export type Dependency<Kind extends string = ConvexDependencyKind> = {
+  kind: Kind;
   from: string;
   to: string;
   /** Every place in the source that shows the dependency. */
   evidence: SourceLocation[];
-  /** For `calls`: the `ctx` method. For `reads` / `writes`: the `ctx.db` methods. For `callsChildComponent`: the client function. */
+  /** For `calls`: the `ctx` method. For `reads` / `writes`: the `ctx.db` methods. For `callsChildComponent` and `callsThirdParty`: the library function. For `fetches`: the host. */
   via?: string[];
   /**
-   * The example app the dependency was resolved in, when it holds only there:
-   * a reference the library receives as an argument, such as the function
+   * The app the dependency was resolved in, when it holds only there: a
+   * reference that library code receives as an argument, such as the function
    * reference of a hook, resolves only where an app passes one.
    */
-  example?: string;
+  app?: string;
 };
 
 export type UnresolvedKind =
@@ -184,15 +157,26 @@ export type Unresolved = {
   reason: string;
 };
 
-export type StructureModel = {
+/**
+ * A structure model. `ExtraPart` and `ExtraDependencyKind` are the parts and
+ * the dependency kinds a project's own layer adds to the generic ones.
+ */
+export type StructureModel<
+  ExtraPart extends PartBase & { kind: string } = never,
+  ExtraDependencyKind extends string = never,
+> = {
   /** Bumped on a breaking change to these types. */
-  version: 1;
-  parts: Part[];
-  dependencies: Dependency[];
+  version: 2;
+  /** The project layer that produced the model, e.g. `convex-auth`. */
+  project: string;
+  parts: (ConvexPart | ExtraPart)[];
+  dependencies: Dependency<ConvexDependencyKind | ExtraDependencyKind>[];
   unresolved: Unresolved[];
   counts: {
-    parts: Partial<Record<PartKind, number>>;
-    dependencies: Partial<Record<DependencyKind, number>>;
+    parts: Partial<Record<(ConvexPart | ExtraPart)["kind"], number>>;
+    dependencies: Partial<
+      Record<ConvexDependencyKind | ExtraDependencyKind, number>
+    >;
     unresolved: Partial<Record<UnresolvedKind, number>>;
   };
 };

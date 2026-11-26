@@ -7,8 +7,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { format } from "prettier";
-import { buildModel } from "./extract.ts";
-import { repoRoot } from "./program.ts";
+import { buildConvexAuthModel, repoRoot } from "./convex-auth/layer.ts";
 
 const outFile = join(
   repoRoot,
@@ -16,7 +15,7 @@ const outFile = join(
   "explorer-structure",
   "structure.json",
 );
-const model = buildModel();
+const model = buildConvexAuthModel();
 // Written as Prettier writes it, so `pnpm format:check` and `--check` agree.
 const text = await format(JSON.stringify(model), { parser: "json" });
 

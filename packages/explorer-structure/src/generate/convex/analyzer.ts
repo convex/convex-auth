@@ -14,17 +14,16 @@ import { dirname } from "node:path";
 import ts from "typescript";
 import type {
   Dependency,
-  DependencyKind,
   SourceLocation,
   Unresolved,
   UnresolvedKind,
-} from "../model.ts";
+} from "../../model.ts";
 import { stablePath } from "./program.ts";
 
 /** Who owns the code of a walk: the `_generated` directory its refs belong to. */
 export type Owner =
   | { kind: "component"; name: string; dir: string }
-  | { kind: "app"; example: string; dir: string };
+  | { kind: "app"; name: string; dir: string };
 
 /** A lexical environment: the arguments bound to the parameters of a call. */
 export type Env = {
@@ -53,8 +52,11 @@ export type Unit = {
   /** The part the walk records dependencies from. */
   from: string;
   owner: Owner | null;
-  /** The example app a walk runs in, when it starts from one. */
-  example: string | undefined;
+  /**
+   * The app a walk starts from, when it does: the walk carries that app's
+   * arguments through the library code it calls.
+   */
+  app: string | undefined;
   /** Client code records the function references it calls; server code its `ctx` calls. */
   mode: "server" | "client";
   /** A walk that only looks for routes and records no dependencies. */
@@ -111,9 +113,9 @@ export type Resolvers = {
   envVar(owner: Owner, name: string): string | null;
   /** The third party serving a host. */
   thirdParty(host: string): string | null;
-  /** The part id of the passkey authenticator. */
-  passkeyAuthenticator: string;
-  /** A hook or module function whose walk records under its own part. */
+  /** The third party a library file talks to, when one is configured. */
+  thirdPartyOfLibraryFile(fileName: string): string | null;
+  /** A function whose walk records under its own part (a hook, say), or null. */
   partOfFunction(node: ts.Node): string | null;
   /** Called for each `router.route({...})` a walk finds. */
   onRoute(route: {
@@ -129,7 +131,7 @@ export class Analyzer {
   readonly checker: ts.TypeChecker;
   readonly rootEnv: Env = { id: 0, bindings: new Map(), parent: null };
   private nextEnvId = 1;
-  private readonly dependencies = new Map<string, Dependency>();
+  private readonly dependencies = new Map<string, Dependency<string>>();
   private readonly unresolvedCandidates = new Map<string, Unresolved>();
   private readonly resolvedSites = new Set<string>();
   private readonly objectPropertiesByName = new Map<
@@ -138,7 +140,10 @@ export class Analyzer {
   >();
   resolvers!: Resolvers;
 
-  constructor(readonly program: ts.Program) {
+  constructor(
+    readonly program: ts.Program,
+    readonly root: string,
+  ) {
     this.checker = program.getTypeChecker();
   }
 
@@ -147,22 +152,22 @@ export class Analyzer {
   location(node: ts.Node): SourceLocation {
     const file = node.getSourceFile();
     const { line } = file.getLineAndCharacterOfPosition(node.getStart(file));
-    return { file: stablePath(file.fileName), line: line + 1 };
+    return { file: stablePath(this.root, file.fileName), line: line + 1 };
   }
 
   addDependency(
-    kind: DependencyKind,
+    kind: string,
     from: string,
     to: string,
     evidence: SourceLocation[],
-    extra: { via?: string; example?: string } = {},
+    extra: { via?: string; app?: string } = {},
   ): void {
-    const key = [kind, from, to, extra.example ?? ""].join("|");
+    const key = [kind, from, to, extra.app ?? ""].join("|");
     let dependency = this.dependencies.get(key);
     if (dependency === undefined) {
       dependency = { kind, from, to, evidence: [] };
-      if (extra.example !== undefined) {
-        dependency.example = extra.example;
+      if (extra.app !== undefined) {
+        dependency.app = extra.app;
       }
       this.dependencies.set(key, dependency);
     }
@@ -185,10 +190,10 @@ export class Analyzer {
 
   private emit(
     unit: Unit,
-    kind: DependencyKind,
+    kind: string,
     to: string,
     evidence: SourceLocation[],
-    extra: { via?: string; example?: string } = {},
+    extra: { via?: string; app?: string } = {},
   ): void {
     if (!unit.silent) {
       this.addDependency(kind, unit.from, to, evidence, extra);
@@ -235,7 +240,7 @@ export class Analyzer {
     }
   }
 
-  results(): { dependencies: Dependency[]; unresolved: Unresolved[] } {
+  results(): { dependencies: Dependency<string>[]; unresolved: Unresolved[] } {
     const unresolved = [...this.unresolvedCandidates.entries()]
       .filter(
         ([key]) => !this.resolvedSites.has(key.slice(0, key.indexOf("|"))),
@@ -1068,12 +1073,12 @@ export class Analyzer {
     depth: number,
   ): void {
     const node = fn.node as FunctionLike;
-    const key = `${unit.from}|${unit.example ?? ""}|${node.getSourceFile().fileName}:${node.pos}|${env.id}`;
+    const key = `${unit.from}|${unit.app ?? ""}|${node.getSourceFile().fileName}:${node.pos}|${env.id}`;
     if (this.walked.has(key) || depth > MAX_DEPTH) {
       return;
     }
     // A function walked more than a few times in one unit adds nothing new.
-    const shallowKey = `${unit.from}|${unit.example ?? ""}|${node.getSourceFile().fileName}:${node.pos}`;
+    const shallowKey = `${unit.from}|${unit.app ?? ""}|${node.getSourceFile().fileName}:${node.pos}`;
     const count = this.walkCounts.get(shallowKey) ?? 0;
     if (count >= 12) {
       return;
@@ -1140,7 +1145,7 @@ export class Analyzer {
         const id = this.resolvers.envVar(unit.owner, access.name.text);
         if (id !== null) {
           this.emit(unit, "readsEnv", id, [this.location(access)], {
-            example: unit.example,
+            app: unit.app,
           });
         }
       }
@@ -1157,7 +1162,7 @@ export class Analyzer {
       const target = this.resolvers.functionFromRef(value);
       if (target !== null) {
         this.emit(unit, "referencesFunction", target, [this.location(access)], {
-          example: unit.example,
+          app: unit.app,
         });
       }
     }
@@ -1339,21 +1344,19 @@ export class Analyzer {
       this.symbolAt(
         ts.isPropertyAccessExpression(callee) ? callee.name : callee,
       )?.declarations ?? [];
-    if (
-      declarations.some((d) =>
-        /\/@simplewebauthn\/browser\//.test(d.getSourceFile().fileName),
-      )
-    ) {
-      this.emit(
-        unit,
-        "webauthn",
-        this.resolvers.passkeyAuthenticator,
-        [this.location(call)],
-        {
-          via: name ?? undefined,
-          example: unit.example,
-        },
+    // A call into a library that talks to a third party (a WebAuthn
+    // ceremony, an SDK).
+    for (const declaration of declarations) {
+      const thirdParty = this.resolvers.thirdPartyOfLibraryFile(
+        declaration.getSourceFile().fileName,
       );
+      if (thirdParty !== null) {
+        this.emit(unit, "callsThirdParty", thirdParty, [this.location(call)], {
+          via: name ?? undefined,
+          app: unit.app,
+        });
+        break;
+      }
     }
     // router.route({ path, method, handler })
     if (
@@ -1457,7 +1460,7 @@ export class Analyzer {
     for (const target of targets) {
       this.emit(unit, kind, target, [this.location(call)], {
         via,
-        example: unit.example,
+        app: unit.app,
       });
     }
   }
@@ -1475,8 +1478,8 @@ export class Analyzer {
     );
     if (refs.length === 0) {
       // A library hook walked on its own: its references arrive as arguments
-      // and resolve only in the walks of the example apps.
-      if (unit.example !== undefined) {
+      // and resolve only in the walks that start from an app.
+      if (unit.app !== undefined) {
         this.addUnresolved(
           unit,
           "clientCall",
@@ -1494,7 +1497,7 @@ export class Analyzer {
         continue;
       }
       this.emit(unit, "clientCalls", target, [this.location(call)], {
-        example: unit.example,
+        app: unit.app,
       });
     }
     if (all) {
@@ -1565,7 +1568,7 @@ export class Analyzer {
       this.resolved(call);
       this.emit(unit, access, id, [this.location(call)], {
         via: op,
-        example: unit.example,
+        app: unit.app,
       });
     }
   }
@@ -1597,7 +1600,7 @@ export class Analyzer {
       }
       this.emit(unit, "fetches", target, [this.location(call)], {
         via: host,
-        example: unit.example,
+        app: unit.app,
       });
     }
     if (all) {
@@ -1670,7 +1673,7 @@ export class Analyzer {
               [this.location(call)],
               {
                 via,
-                example: unit.example,
+                app: unit.app,
               },
             );
           }

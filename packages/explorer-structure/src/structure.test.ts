@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 import { structure } from "./index.ts";
-import type { Dependency, DependencyKind, Part } from "./model.ts";
+import type { ConvexAuthStructure } from "./convex-auth/model.ts";
+
+type Part = ConvexAuthStructure["parts"][number];
+type Dependency = ConvexAuthStructure["dependencies"][number];
+type DependencyKind = Dependency["kind"];
 
 const parts = new Map(structure.parts.map((part) => [part.id, part]));
 
@@ -27,7 +31,7 @@ function targets(kind: DependencyKind, from: string): string[] {
   return [
     ...new Set(
       dependencies({ kind, from })
-        .filter((d) => d.example === undefined)
+        .filter((d) => d.app === undefined)
         .map((d) => d.to),
     ),
   ].sort();
@@ -171,7 +175,7 @@ describe("sign-in methods", () => {
       from: "hook:methods/username-password/react.useSignInWithUsernamePassword",
       to: "fn:app:react-username-password:auth.signInWithUsernamePassword",
     });
-    expect(calls.map((d) => d.example)).toEqual(["react-username-password"]);
+    expect(calls.map((d) => d.app)).toEqual(["react-username-password"]);
   });
 });
 
@@ -211,7 +215,7 @@ describe("OAuth", () => {
 
 describe("example apps", () => {
   test("react-username-password mounts auth, authPassword, and authUsername", () => {
-    expect(targets("mounts", "example:react-username-password")).toEqual([
+    expect(targets("mounts", "app:react-username-password")).toEqual([
       "component:auth",
       "component:authPassword",
       "component:authUsername",
@@ -219,11 +223,34 @@ describe("example apps", () => {
   });
 
   test("react-email-password mounts Resend, which reaches Resend's API", () => {
-    expect(targets("mounts", "example:react-email-password")).toContain(
+    expect(targets("mounts", "app:react-email-password")).toContain(
       "component:resend",
     );
     expect(targets("fetches", "component:resend")).toEqual([
       "thirdParty:resend",
     ]);
+  });
+});
+
+describe("the layers", () => {
+  // The generic layer reads any Convex project; only the Convex Auth layer
+  // may know this repository.
+  const generic = import.meta.glob<string>("./generate/convex/*.ts", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
+
+  test("the generic layer knows nothing of Convex Auth", () => {
+    expect(Object.keys(generic).length).toBeGreaterThan(0);
+    for (const [file, text] of Object.entries(generic)) {
+      expect(text, file).not.toMatch(
+        /convex-auth|@convex-dev\/auth|examples\/|packages\/core/,
+      );
+    }
+  });
+
+  test("the model names the layer that produced it", () => {
+    expect(structure.project).toBe("convex-auth");
   });
 });

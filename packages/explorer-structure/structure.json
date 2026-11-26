@@ -1,6 +1,117 @@
 {
-  "version": 1,
+  "version": 2,
+  "project": "convex-auth",
   "parts": [
+    {
+      "kind": "app",
+      "id": "app:nextjs",
+      "name": "nextjs",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/nextjs/convex/convex.config.ts",
+        "line": 8
+      },
+      "path": "examples/nextjs/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-apple",
+      "name": "react-apple",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-apple/convex/convex.config.ts",
+        "line": 6
+      },
+      "path": "examples/react-apple/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-discord",
+      "name": "react-discord",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-discord/convex/convex.config.ts",
+        "line": 6
+      },
+      "path": "examples/react-discord/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-email-magic-link",
+      "name": "react-email-magic-link",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-email-magic-link/convex/convex.config.ts",
+        "line": 7
+      },
+      "path": "examples/react-email-magic-link/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-email-password",
+      "name": "react-email-password",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-email-password/convex/convex.config.ts",
+        "line": 8
+      },
+      "path": "examples/react-email-password/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-github",
+      "name": "react-github",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-github/convex/convex.config.ts",
+        "line": 6
+      },
+      "path": "examples/react-github/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-google",
+      "name": "react-google",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-google/convex/convex.config.ts",
+        "line": 6
+      },
+      "path": "examples/react-google/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-username-passkey",
+      "name": "react-username-passkey",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-username-passkey/convex/convex.config.ts",
+        "line": 7
+      },
+      "path": "examples/react-username-passkey/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-username-passkey-basic",
+      "name": "react-username-passkey-basic",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
+        "line": 7
+      },
+      "path": "examples/react-username-passkey-basic/convex"
+    },
+    {
+      "kind": "app",
+      "id": "app:react-username-password",
+      "name": "react-username-password",
+      "parent": "region:app",
+      "source": {
+        "file": "examples/react-username-password/convex/convex.config.ts",
+        "line": 6
+      },
+      "path": "examples/react-username-password/convex"
+    },
     {
       "kind": "component",
       "id": "component:auth",
@@ -206,7 +317,7 @@
       "kind": "envVar",
       "id": "env:app:nextjs.AUTH_GITHUB_CLIENT_ID",
       "name": "AUTH_GITHUB_CLIENT_ID",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": {
         "file": "examples/nextjs/convex/convex.config.ts",
         "line": 10
@@ -218,7 +329,7 @@
       "kind": "envVar",
       "id": "env:app:nextjs.AUTH_GITHUB_CLIENT_SECRET",
       "name": "AUTH_GITHUB_CLIENT_SECRET",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": {
         "file": "examples/nextjs/convex/convex.config.ts",
         "line": 11
@@ -230,7 +341,7 @@
       "kind": "envVar",
       "id": "env:app:react-apple.AUTH_APPLE_CLIENT_ID",
       "name": "AUTH_APPLE_CLIENT_ID",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": {
         "file": "examples/react-apple/convex/convex.config.ts",
         "line": 8
@@ -242,7 +353,7 @@
       "kind": "envVar",
       "id": "env:app:react-apple.AUTH_APPLE_KEY_ID",
       "name": "AUTH_APPLE_KEY_ID",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": {
         "file": "examples/react-apple/convex/convex.config.ts",
         "line": 10
@@ -254,7 +365,7 @@
       "kind": "envVar",
       "id": "env:app:react-apple.AUTH_APPLE_PRIVATE_KEY",
       "name": "AUTH_APPLE_PRIVATE_KEY",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": {
         "file": "examples/react-apple/convex/convex.config.ts",
         "line": 11
@@ -266,7 +377,7 @@
       "kind": "envVar",
       "id": "env:app:react-apple.AUTH_APPLE_TEAM_ID",
       "name": "AUTH_APPLE_TEAM_ID",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": {
         "file": "examples/react-apple/convex/convex.config.ts",
         "line": 9
@@ -278,7 +389,7 @@
       "kind": "envVar",
       "id": "env:app:react-apple.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": {
         "file": "examples/react-apple/convex/convex.config.ts",
         "line": 13
@@ -290,7 +401,7 @@
       "kind": "envVar",
       "id": "env:app:react-discord.AUTH_DISCORD_CLIENT_ID",
       "name": "AUTH_DISCORD_CLIENT_ID",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/convex.config.ts",
         "line": 8
@@ -302,7 +413,7 @@
       "kind": "envVar",
       "id": "env:app:react-discord.AUTH_DISCORD_CLIENT_SECRET",
       "name": "AUTH_DISCORD_CLIENT_SECRET",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/convex.config.ts",
         "line": 9
@@ -314,7 +425,7 @@
       "kind": "envVar",
       "id": "env:app:react-discord.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/convex.config.ts",
         "line": 11
@@ -326,7 +437,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-magic-link.RESEND_API_KEY",
       "name": "RESEND_API_KEY",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/convex.config.ts",
         "line": 9
@@ -338,7 +449,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-magic-link.SENDER_EMAIL",
       "name": "SENDER_EMAIL",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/convex.config.ts",
         "line": 10
@@ -350,7 +461,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-magic-link.SENDER_NAME",
       "name": "SENDER_NAME",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/convex.config.ts",
         "line": 12
@@ -362,7 +473,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-magic-link.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/convex.config.ts",
         "line": 13
@@ -374,7 +485,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-password.RESEND_API_KEY",
       "name": "RESEND_API_KEY",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/convex.config.ts",
         "line": 10
@@ -386,7 +497,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-password.SENDER_EMAIL",
       "name": "SENDER_EMAIL",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/convex.config.ts",
         "line": 11
@@ -398,7 +509,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-password.SENDER_NAME",
       "name": "SENDER_NAME",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/convex.config.ts",
         "line": 13
@@ -410,7 +521,7 @@
       "kind": "envVar",
       "id": "env:app:react-email-password.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/convex.config.ts",
         "line": 14
@@ -422,7 +533,7 @@
       "kind": "envVar",
       "id": "env:app:react-github.AUTH_GITHUB_CLIENT_ID",
       "name": "AUTH_GITHUB_CLIENT_ID",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": {
         "file": "examples/react-github/convex/convex.config.ts",
         "line": 8
@@ -434,7 +545,7 @@
       "kind": "envVar",
       "id": "env:app:react-github.AUTH_GITHUB_CLIENT_SECRET",
       "name": "AUTH_GITHUB_CLIENT_SECRET",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": {
         "file": "examples/react-github/convex/convex.config.ts",
         "line": 9
@@ -446,7 +557,7 @@
       "kind": "envVar",
       "id": "env:app:react-github.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": {
         "file": "examples/react-github/convex/convex.config.ts",
         "line": 11
@@ -458,7 +569,7 @@
       "kind": "envVar",
       "id": "env:app:react-google.AUTH_GOOGLE_CLIENT_ID",
       "name": "AUTH_GOOGLE_CLIENT_ID",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": {
         "file": "examples/react-google/convex/convex.config.ts",
         "line": 8
@@ -470,7 +581,7 @@
       "kind": "envVar",
       "id": "env:app:react-google.AUTH_GOOGLE_CLIENT_SECRET",
       "name": "AUTH_GOOGLE_CLIENT_SECRET",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": {
         "file": "examples/react-google/convex/convex.config.ts",
         "line": 9
@@ -482,7 +593,7 @@
       "kind": "envVar",
       "id": "env:app:react-google.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": {
         "file": "examples/react-google/convex/convex.config.ts",
         "line": 11
@@ -494,7 +605,7 @@
       "kind": "envVar",
       "id": "env:app:react-username-passkey-basic.RP_ID",
       "name": "RP_ID",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
         "line": 11
@@ -506,7 +617,7 @@
       "kind": "envVar",
       "id": "env:app:react-username-passkey-basic.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
         "line": 10
@@ -518,7 +629,7 @@
       "kind": "envVar",
       "id": "env:app:react-username-passkey.RP_ID",
       "name": "RP_ID",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/convex.config.ts",
         "line": 11
@@ -530,7 +641,7 @@
       "kind": "envVar",
       "id": "env:app:react-username-passkey.SITE_URL",
       "name": "SITE_URL",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/convex.config.ts",
         "line": 10
@@ -683,120 +794,10 @@
       "optional": false
     },
     {
-      "kind": "exampleApp",
-      "id": "example:nextjs",
-      "name": "nextjs",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/nextjs/convex/convex.config.ts",
-        "line": 8
-      },
-      "directory": "nextjs"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-apple",
-      "name": "react-apple",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-apple/convex/convex.config.ts",
-        "line": 6
-      },
-      "directory": "react-apple"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-discord",
-      "name": "react-discord",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-discord/convex/convex.config.ts",
-        "line": 6
-      },
-      "directory": "react-discord"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-email-magic-link",
-      "name": "react-email-magic-link",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-email-magic-link/convex/convex.config.ts",
-        "line": 7
-      },
-      "directory": "react-email-magic-link"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-email-password",
-      "name": "react-email-password",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-email-password/convex/convex.config.ts",
-        "line": 8
-      },
-      "directory": "react-email-password"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-github",
-      "name": "react-github",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-github/convex/convex.config.ts",
-        "line": 6
-      },
-      "directory": "react-github"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-google",
-      "name": "react-google",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-google/convex/convex.config.ts",
-        "line": 6
-      },
-      "directory": "react-google"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-username-passkey",
-      "name": "react-username-passkey",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-username-passkey/convex/convex.config.ts",
-        "line": 7
-      },
-      "directory": "react-username-passkey"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-username-passkey-basic",
-      "name": "react-username-passkey-basic",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-username-passkey-basic/convex/convex.config.ts",
-        "line": 7
-      },
-      "directory": "react-username-passkey-basic"
-    },
-    {
-      "kind": "exampleApp",
-      "id": "example:react-username-password",
-      "name": "react-username-password",
-      "parent": "region:app",
-      "source": {
-        "file": "examples/react-username-password/convex/convex.config.ts",
-        "line": 6
-      },
-      "directory": "react-username-password"
-    },
-    {
       "kind": "function",
       "id": "fn:app:nextjs:auth.completeSignInWithGithub",
       "name": "completeSignInWithGithub",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 28 },
       "module": "auth",
       "functionType": "mutation",
@@ -806,7 +807,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 15 },
       "module": "auth",
       "functionType": "query",
@@ -816,7 +817,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 15 },
       "module": "auth",
       "functionType": "mutation",
@@ -826,7 +827,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.signInWithUsernamePassword",
       "name": "signInWithUsernamePassword",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 19 },
       "module": "auth",
       "functionType": "mutation",
@@ -836,7 +837,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.signOut",
       "name": "signOut",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 15 },
       "module": "auth",
       "functionType": "mutation",
@@ -846,7 +847,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.signUpWithUsernamePassword",
       "name": "signUpWithUsernamePassword",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 19 },
       "module": "auth",
       "functionType": "mutation",
@@ -856,7 +857,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:auth.startSignInWithGithub",
       "name": "startSignInWithGithub",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/auth.ts", "line": 28 },
       "module": "auth",
       "functionType": "mutation",
@@ -866,7 +867,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:users.createUser",
       "name": "createUser",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/users.ts", "line": 33 },
       "module": "users",
       "functionType": "mutation",
@@ -876,7 +877,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:users.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/users.ts", "line": 63 },
       "module": "users",
       "functionType": "query",
@@ -886,7 +887,7 @@
       "kind": "function",
       "id": "fn:app:nextjs:users.onSignIn",
       "name": "onSignIn",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/users.ts", "line": 48 },
       "module": "users",
       "functionType": "mutation",
@@ -896,7 +897,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:auth.completeSignInWithApple",
       "name": "completeSignInWithApple",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -906,7 +907,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "query",
@@ -916,7 +917,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -926,7 +927,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -936,7 +937,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:auth.startSignInWithApple",
       "name": "startSignInWithApple",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -946,7 +947,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:users.createUser",
       "name": "createUser",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/users.ts", "line": 13 },
       "module": "users",
       "functionType": "mutation",
@@ -956,7 +957,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:users.getCurrentUser",
       "name": "getCurrentUser",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/users.ts", "line": 59 },
       "module": "users",
       "functionType": "query",
@@ -966,7 +967,7 @@
       "kind": "function",
       "id": "fn:app:react-apple:users.onSignIn",
       "name": "onSignIn",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/users.ts", "line": 37 },
       "module": "users",
       "functionType": "mutation",
@@ -976,7 +977,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:auth.completeSignInWithDiscord",
       "name": "completeSignInWithDiscord",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": { "file": "examples/react-discord/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -986,7 +987,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": { "file": "examples/react-discord/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "query",
@@ -996,7 +997,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": { "file": "examples/react-discord/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1006,7 +1007,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": { "file": "examples/react-discord/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1016,7 +1017,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:auth.startSignInWithDiscord",
       "name": "startSignInWithDiscord",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": { "file": "examples/react-discord/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -1026,7 +1027,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:users.createUser",
       "name": "createUser",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/users.ts",
         "line": 10
@@ -1039,7 +1040,7 @@
       "kind": "function",
       "id": "fn:app:react-discord:users.getCurrentUser",
       "name": "getCurrentUser",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/users.ts",
         "line": 23
@@ -1052,7 +1053,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/auth.ts",
         "line": 11
@@ -1065,7 +1066,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/auth.ts",
         "line": 11
@@ -1078,7 +1079,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:auth.sendEmailMagicLink",
       "name": "sendEmailMagicLink",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/auth.ts",
         "line": 13
@@ -1091,7 +1092,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:auth.signInWithEmailMagicLink",
       "name": "signInWithEmailMagicLink",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/auth.ts",
         "line": 13
@@ -1104,7 +1105,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/auth.ts",
         "line": 11
@@ -1117,7 +1118,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:currentUser.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/currentUser.ts",
         "line": 12
@@ -1130,7 +1131,7 @@
       "kind": "function",
       "id": "fn:app:react-email-magic-link:users.createUser",
       "name": "createUser",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/users.ts",
         "line": 4
@@ -1143,7 +1144,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.changePassword",
       "name": "changePassword",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 17
@@ -1156,7 +1157,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.checkPasswordRecovery",
       "name": "checkPasswordRecovery",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 21
@@ -1169,7 +1170,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.completeChangeEmail",
       "name": "completeChangeEmail",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 19
@@ -1182,7 +1183,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.completePasswordRecovery",
       "name": "completePasswordRecovery",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 22
@@ -1195,7 +1196,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.completeSignUpWithEmailPassword",
       "name": "completeSignUpWithEmailPassword",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 15
@@ -1208,7 +1209,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 11
@@ -1221,7 +1222,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 11
@@ -1234,7 +1235,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.signInWithEmailPassword",
       "name": "signInWithEmailPassword",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 16
@@ -1247,7 +1248,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 11
@@ -1260,7 +1261,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.signUpWithEmailPassword",
       "name": "signUpWithEmailPassword",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 14
@@ -1273,7 +1274,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.startChangeEmail",
       "name": "startChangeEmail",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 18
@@ -1286,7 +1287,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:auth.startPasswordRecovery",
       "name": "startPasswordRecovery",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/auth.ts",
         "line": 20
@@ -1299,7 +1300,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:currentUser.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/currentUser.ts",
         "line": 12
@@ -1312,7 +1313,7 @@
       "kind": "function",
       "id": "fn:app:react-email-password:users.createUser",
       "name": "createUser",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/users.ts",
         "line": 4
@@ -1325,7 +1326,7 @@
       "kind": "function",
       "id": "fn:app:react-github:auth.completeSignInWithGithub",
       "name": "completeSignInWithGithub",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -1335,7 +1336,7 @@
       "kind": "function",
       "id": "fn:app:react-github:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "query",
@@ -1345,7 +1346,7 @@
       "kind": "function",
       "id": "fn:app:react-github:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1355,7 +1356,7 @@
       "kind": "function",
       "id": "fn:app:react-github:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1365,7 +1366,7 @@
       "kind": "function",
       "id": "fn:app:react-github:auth.startSignInWithGithub",
       "name": "startSignInWithGithub",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -1375,7 +1376,7 @@
       "kind": "function",
       "id": "fn:app:react-github:users.createUser",
       "name": "createUser",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/users.ts", "line": 10 },
       "module": "users",
       "functionType": "mutation",
@@ -1385,7 +1386,7 @@
       "kind": "function",
       "id": "fn:app:react-github:users.getCurrentUser",
       "name": "getCurrentUser",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/users.ts", "line": 23 },
       "module": "users",
       "functionType": "query",
@@ -1395,7 +1396,7 @@
       "kind": "function",
       "id": "fn:app:react-google:auth.completeSignInWithGoogle",
       "name": "completeSignInWithGoogle",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -1405,7 +1406,7 @@
       "kind": "function",
       "id": "fn:app:react-google:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "query",
@@ -1415,7 +1416,7 @@
       "kind": "function",
       "id": "fn:app:react-google:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1425,7 +1426,7 @@
       "kind": "function",
       "id": "fn:app:react-google:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/auth.ts", "line": 11 },
       "module": "auth",
       "functionType": "mutation",
@@ -1435,7 +1436,7 @@
       "kind": "function",
       "id": "fn:app:react-google:auth.startSignInWithGoogle",
       "name": "startSignInWithGoogle",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/auth.ts", "line": 13 },
       "module": "auth",
       "functionType": "mutation",
@@ -1445,7 +1446,7 @@
       "kind": "function",
       "id": "fn:app:react-google:users.createUser",
       "name": "createUser",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/users.ts", "line": 10 },
       "module": "users",
       "functionType": "mutation",
@@ -1455,7 +1456,7 @@
       "kind": "function",
       "id": "fn:app:react-google:users.getCurrentUser",
       "name": "getCurrentUser",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/users.ts", "line": 23 },
       "module": "users",
       "functionType": "query",
@@ -1465,7 +1466,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.finishSignInWithUsernamePasskey",
       "name": "finishSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 20
@@ -1478,7 +1479,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.finishSignUpWithUsernamePasskey",
       "name": "finishSignUpWithUsernamePasskey",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 19
@@ -1491,7 +1492,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 14
@@ -1504,7 +1505,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 14
@@ -1517,7 +1518,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 14
@@ -1530,7 +1531,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.startAutofillSignInWithUsernamePasskey",
       "name": "startAutofillSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 18
@@ -1543,7 +1544,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:auth.startSignInWithUsernamePasskey",
       "name": "startSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/auth.ts",
         "line": 17
@@ -1556,7 +1557,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:currentUser.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/currentUser.ts",
         "line": 10
@@ -1569,7 +1570,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey-basic:users.createUser",
       "name": "createUser",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/users.ts",
         "line": 8
@@ -1582,7 +1583,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.finishAddPasskey",
       "name": "finishAddPasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 27
@@ -1595,7 +1596,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.finishRemovePasskey",
       "name": "finishRemovePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 30
@@ -1608,7 +1609,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.finishSignInWithUsernamePasskey",
       "name": "finishSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 20
@@ -1621,7 +1622,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.finishSignUpWithUsernamePasskey",
       "name": "finishSignUpWithUsernamePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 19
@@ -1634,7 +1635,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 14
@@ -1647,7 +1648,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.listPasskeys",
       "name": "listPasskeys",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 22
@@ -1660,7 +1661,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 14
@@ -1673,7 +1674,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.renamePasskey",
       "name": "renamePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 23
@@ -1686,7 +1687,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 14
@@ -1699,7 +1700,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.startAddPasskey",
       "name": "startAddPasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 25
@@ -1712,7 +1713,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.startAutofillSignInWithUsernamePasskey",
       "name": "startAutofillSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 18
@@ -1725,7 +1726,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.startRemovePasskey",
       "name": "startRemovePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 29
@@ -1738,7 +1739,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.startSignInWithUsernamePasskey",
       "name": "startSignInWithUsernamePasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 17
@@ -1751,7 +1752,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:auth.verifyAddPasskey",
       "name": "verifyAddPasskey",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/auth.ts",
         "line": 26
@@ -1764,7 +1765,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:currentUser.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/currentUser.ts",
         "line": 10
@@ -1777,7 +1778,7 @@
       "kind": "function",
       "id": "fn:app:react-username-passkey:users.createUser",
       "name": "createUser",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/users.ts",
         "line": 8
@@ -1790,7 +1791,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.changePassword",
       "name": "changePassword",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 11
@@ -1803,7 +1804,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.isAuthenticated",
       "name": "isAuthenticated",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 6
@@ -1816,7 +1817,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.refreshSession",
       "name": "refreshSession",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 6
@@ -1829,7 +1830,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.signInWithUsernamePassword",
       "name": "signInWithUsernamePassword",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 10
@@ -1842,7 +1843,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.signOut",
       "name": "signOut",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 6
@@ -1855,7 +1856,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:auth.signUpWithUsernamePassword",
       "name": "signUpWithUsernamePassword",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/auth.ts",
         "line": 9
@@ -1868,7 +1869,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:currentUser.loggedInUser",
       "name": "loggedInUser",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/currentUser.ts",
         "line": 5
@@ -1881,7 +1882,7 @@
       "kind": "function",
       "id": "fn:app:react-username-password:users.createUser",
       "name": "createUser",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/users.ts",
         "line": 8
@@ -5232,7 +5233,7 @@
       "kind": "table",
       "id": "table:app:nextjs.users",
       "name": "users",
-      "parent": "example:nextjs",
+      "parent": "app:nextjs",
       "source": { "file": "examples/nextjs/convex/schema.ts", "line": 6 },
       "fields": [
         { "name": "lastSignedInAt", "type": "number", "optional": true },
@@ -5244,7 +5245,7 @@
       "kind": "table",
       "id": "table:app:react-apple.users",
       "name": "users",
-      "parent": "example:react-apple",
+      "parent": "app:react-apple",
       "source": { "file": "examples/react-apple/convex/schema.ts", "line": 5 },
       "fields": [
         { "name": "name", "type": "string", "optional": true },
@@ -5256,7 +5257,7 @@
       "kind": "table",
       "id": "table:app:react-discord.users",
       "name": "users",
-      "parent": "example:react-discord",
+      "parent": "app:react-discord",
       "source": {
         "file": "examples/react-discord/convex/schema.ts",
         "line": 4
@@ -5268,7 +5269,7 @@
       "kind": "table",
       "id": "table:app:react-email-magic-link.users",
       "name": "users",
-      "parent": "example:react-email-magic-link",
+      "parent": "app:react-email-magic-link",
       "source": {
         "file": "examples/react-email-magic-link/convex/schema.ts",
         "line": 4
@@ -5280,7 +5281,7 @@
       "kind": "table",
       "id": "table:app:react-email-password.users",
       "name": "users",
-      "parent": "example:react-email-password",
+      "parent": "app:react-email-password",
       "source": {
         "file": "examples/react-email-password/convex/schema.ts",
         "line": 4
@@ -5292,7 +5293,7 @@
       "kind": "table",
       "id": "table:app:react-github.users",
       "name": "users",
-      "parent": "example:react-github",
+      "parent": "app:react-github",
       "source": { "file": "examples/react-github/convex/schema.ts", "line": 4 },
       "fields": [],
       "indexes": []
@@ -5301,7 +5302,7 @@
       "kind": "table",
       "id": "table:app:react-google.users",
       "name": "users",
-      "parent": "example:react-google",
+      "parent": "app:react-google",
       "source": { "file": "examples/react-google/convex/schema.ts", "line": 4 },
       "fields": [],
       "indexes": []
@@ -5310,7 +5311,7 @@
       "kind": "table",
       "id": "table:app:react-username-passkey-basic.users",
       "name": "users",
-      "parent": "example:react-username-passkey-basic",
+      "parent": "app:react-username-passkey-basic",
       "source": {
         "file": "examples/react-username-passkey-basic/convex/schema.ts",
         "line": 4
@@ -5322,7 +5323,7 @@
       "kind": "table",
       "id": "table:app:react-username-passkey.users",
       "name": "users",
-      "parent": "example:react-username-passkey",
+      "parent": "app:react-username-passkey",
       "source": {
         "file": "examples/react-username-passkey/convex/schema.ts",
         "line": 4
@@ -5334,7 +5335,7 @@
       "kind": "table",
       "id": "table:app:react-username-password.users",
       "name": "users",
-      "parent": "example:react-username-password",
+      "parent": "app:react-username-password",
       "source": {
         "file": "examples/react-username-password/convex/schema.ts",
         "line": 4
@@ -5932,7 +5933,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -5942,7 +5943,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -5952,7 +5953,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 160 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -5962,7 +5963,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 156 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -5972,7 +5973,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 158 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -5982,7 +5983,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -5992,7 +5993,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6002,7 +6003,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6015,7 +6016,7 @@
           "line": 245
         }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6028,7 +6029,7 @@
           "line": 234
         }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -6038,7 +6039,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6048,7 +6049,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6061,7 +6062,7 @@
           "line": 198
         }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6074,7 +6075,7 @@
           "line": 166
         }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -6087,7 +6088,7 @@
           "line": 182
         }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6097,7 +6098,7 @@
       "evidence": [
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 121 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runMutation"]
     },
     {
@@ -6107,7 +6108,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -6115,7 +6116,7 @@
       "from": "fn:app:nextjs:users.loggedInUser",
       "to": "fn:authUsername:public.getUsername",
       "evidence": [{ "file": "examples/nextjs/convex/users.ts", "line": 76 }],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["runQuery"]
     },
     {
@@ -6125,7 +6126,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6135,7 +6136,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6145,7 +6146,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/apple/server.ts", "line": 184 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6155,7 +6156,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/apple/server.ts", "line": 180 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6165,7 +6166,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/apple/server.ts", "line": 182 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runQuery"]
     },
     {
@@ -6175,7 +6176,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runQuery"]
     },
     {
@@ -6185,7 +6186,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6195,7 +6196,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6205,7 +6206,7 @@
       "evidence": [
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 121 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runMutation"]
     },
     {
@@ -6215,7 +6216,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["runQuery"]
     },
     {
@@ -6225,7 +6226,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6235,7 +6236,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6245,7 +6246,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/discord/server.ts", "line": 192 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6255,7 +6256,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/discord/server.ts", "line": 188 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6265,7 +6266,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/discord/server.ts", "line": 190 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runQuery"]
     },
     {
@@ -6275,7 +6276,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runQuery"]
     },
     {
@@ -6285,7 +6286,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6295,7 +6296,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6305,7 +6306,7 @@
       "evidence": [
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 121 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runMutation"]
     },
     {
@@ -6315,7 +6316,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["runQuery"]
     },
     {
@@ -6325,7 +6326,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runQuery"]
     },
     {
@@ -6335,7 +6336,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6348,7 +6349,7 @@
           "line": 214
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6358,7 +6359,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6368,7 +6369,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 447 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6381,7 +6382,7 @@
           "line": 278
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6394,7 +6395,7 @@
           "line": 300
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6407,7 +6408,7 @@
           "line": 259
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runQuery"]
     },
     {
@@ -6417,7 +6418,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runMutation"]
     },
     {
@@ -6427,7 +6428,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runQuery"]
     },
     {
@@ -6440,7 +6441,7 @@
           "line": 26
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["runQuery"]
     },
     {
@@ -6451,7 +6452,7 @@
         { "file": "packages/core/src/server/setup.ts", "line": 468 },
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6461,7 +6462,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 475 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6471,7 +6472,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 366 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6484,7 +6485,7 @@
           "line": 633
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6497,7 +6498,7 @@
           "line": 615
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6510,7 +6511,7 @@
           "line": 593
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6523,7 +6524,7 @@
           "line": 370
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6536,7 +6537,7 @@
           "line": 817
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6546,7 +6547,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6559,7 +6560,7 @@
           "line": 723
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6572,7 +6573,7 @@
           "line": 370
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6582,7 +6583,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6592,7 +6593,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 488 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6602,7 +6603,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 366 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6615,7 +6616,7 @@
           "line": 869
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6628,7 +6629,7 @@
           "line": 935
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6641,7 +6642,7 @@
           "line": 900
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6654,7 +6655,7 @@
           "line": 370
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6664,7 +6665,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6677,7 +6678,7 @@
           "line": 495
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6687,7 +6688,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6697,7 +6698,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6707,7 +6708,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6720,7 +6721,7 @@
           "line": 525
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6733,7 +6734,7 @@
           "line": 540
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6743,7 +6744,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6753,7 +6754,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 447 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6766,7 +6767,7 @@
           "line": 458
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6779,7 +6780,7 @@
           "line": 421
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6792,7 +6793,7 @@
           "line": 440
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6802,7 +6803,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6815,7 +6816,7 @@
           "line": 686
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6828,7 +6829,7 @@
           "line": 678
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6841,7 +6842,7 @@
           "line": 776
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6854,7 +6855,7 @@
           "line": 768
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runMutation"]
     },
     {
@@ -6864,7 +6865,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6877,7 +6878,7 @@
           "line": 26
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["runQuery"]
     },
     {
@@ -6887,7 +6888,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6897,7 +6898,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6907,7 +6908,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 160 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6917,7 +6918,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 156 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6927,7 +6928,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/server.ts", "line": 158 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runQuery"]
     },
     {
@@ -6937,7 +6938,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runQuery"]
     },
     {
@@ -6947,7 +6948,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6957,7 +6958,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6967,7 +6968,7 @@
       "evidence": [
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 121 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runMutation"]
     },
     {
@@ -6977,7 +6978,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["runQuery"]
     },
     {
@@ -6987,7 +6988,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -6997,7 +6998,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7007,7 +7008,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/google/server.ts", "line": 155 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7017,7 +7018,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/google/server.ts", "line": 151 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7027,7 +7028,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/google/server.ts", "line": 153 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runQuery"]
     },
     {
@@ -7037,7 +7038,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runQuery"]
     },
     {
@@ -7047,7 +7048,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7057,7 +7058,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7067,7 +7068,7 @@
       "evidence": [
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 121 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runMutation"]
     },
     {
@@ -7077,7 +7078,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["runQuery"]
     },
     {
@@ -7087,7 +7088,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7100,7 +7101,7 @@
           "line": 454
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7113,7 +7114,7 @@
           "line": 471
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7123,7 +7124,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7136,7 +7137,7 @@
           "line": 413
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7149,7 +7150,7 @@
           "line": 367
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7162,7 +7163,7 @@
           "line": 350
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7175,7 +7176,7 @@
           "line": 396
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7185,7 +7186,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7195,7 +7196,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7205,7 +7206,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7218,7 +7219,7 @@
           "line": 305
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7231,7 +7232,7 @@
           "line": 257
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7244,7 +7245,7 @@
           "line": 272
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runMutation"]
     },
     {
@@ -7257,7 +7258,7 @@
           "line": 247
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7267,7 +7268,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7280,7 +7281,7 @@
           "line": 21
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["runQuery"]
     },
     {
@@ -7290,7 +7291,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7303,7 +7304,7 @@
           "line": 250
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7316,7 +7317,7 @@
           "line": 242
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7326,7 +7327,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7339,7 +7340,7 @@
           "line": 149
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7352,7 +7353,7 @@
           "line": 193
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7362,7 +7363,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7375,7 +7376,7 @@
           "line": 454
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7388,7 +7389,7 @@
           "line": 471
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7398,7 +7399,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7411,7 +7412,7 @@
           "line": 413
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7424,7 +7425,7 @@
           "line": 367
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7437,7 +7438,7 @@
           "line": 350
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7450,7 +7451,7 @@
           "line": 396
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7460,7 +7461,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7470,7 +7471,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7483,7 +7484,7 @@
           "line": 39
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7493,7 +7494,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7503,7 +7504,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7516,7 +7517,7 @@
           "line": 43
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7526,7 +7527,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7536,7 +7537,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7549,7 +7550,7 @@
           "line": 133
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7562,7 +7563,7 @@
           "line": 124
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7575,7 +7576,7 @@
           "line": 305
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7585,7 +7586,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7598,7 +7599,7 @@
           "line": 113
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7611,7 +7612,7 @@
           "line": 99
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7624,7 +7625,7 @@
           "line": 257
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7637,7 +7638,7 @@
           "line": 272
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7650,7 +7651,7 @@
           "line": 247
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7660,7 +7661,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7673,7 +7674,7 @@
           "line": 167
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7686,7 +7687,7 @@
           "line": 195
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runMutation"]
     },
     {
@@ -7699,7 +7700,7 @@
           "line": 199
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7709,7 +7710,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7722,7 +7723,7 @@
           "line": 21
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["runQuery"]
     },
     {
@@ -7733,7 +7734,7 @@
         { "file": "packages/core/src/server/setup.ts", "line": 468 },
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7743,7 +7744,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 475 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7753,7 +7754,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 366 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7766,7 +7767,7 @@
           "line": 320
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7779,7 +7780,7 @@
           "line": 297
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7789,7 +7790,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7799,7 +7800,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 265 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7809,7 +7810,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 421 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7822,7 +7823,7 @@
           "line": 245
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7835,7 +7836,7 @@
           "line": 234
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7845,7 +7846,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 284 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7855,7 +7856,7 @@
       "evidence": [
         { "file": "packages/core/src/server/setup.ts", "line": 392 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7868,7 +7869,7 @@
           "line": 198
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7881,7 +7882,7 @@
           "line": 166
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7894,7 +7895,7 @@
           "line": 182
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runMutation"]
     },
     {
@@ -7904,7 +7905,7 @@
       "evidence": [
         { "file": "packages/core/src/server/userId.ts", "line": 72 }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -7917,7 +7918,7 @@
           "line": 16
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["runQuery"]
     },
     {
@@ -9531,8 +9532,166 @@
       "via": ["limit"]
     },
     {
+      "kind": "callsThirdParty",
+      "from": "app:react-username-passkey",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey",
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "app:react-username-passkey-basic",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey-basic",
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey",
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey-basic",
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/management/react.useAddPasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/management/react.useAddPasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey",
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/management/react.useRemovePasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "via": ["startAuthentication"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "hook:methods/username-passkey/management/react.useRemovePasskeyImpl",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "app": "react-username-passkey",
+      "via": ["startAuthentication"]
+    },
+    {
+      "kind": "callsThirdParty",
+      "from": "module:methods/username-passkey/client",
+      "to": "thirdParty:passkeyAuthenticator",
+      "evidence": [
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 123
+        },
+        {
+          "file": "packages/core/src/methods/username-passkey/client.ts",
+          "line": 156
+        }
+      ],
+      "via": ["startAuthentication", "startRegistration"]
+    },
+    {
       "kind": "clientCalls",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:auth.signInWithUsernamePassword",
       "evidence": [
         {
@@ -9540,11 +9699,11 @@
           "line": 239
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:auth.signUpWithUsernamePassword",
       "evidence": [
         {
@@ -9552,142 +9711,142 @@
           "line": 239
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:auth.startSignInWithGithub",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 359 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:users.loggedInUser",
       "evidence": [{ "file": "examples/nextjs/app/page.tsx", "line": 10 }],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.startSignInWithApple",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 359 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:users.getCurrentUser",
       "evidence": [{ "file": "examples/react-apple/src/App.tsx", "line": 82 }],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.startSignInWithDiscord",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 359 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:users.getCurrentUser",
       "evidence": [
         { "file": "examples/react-discord/src/App.tsx", "line": 89 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:currentUser.loggedInUser",
       "evidence": [
         {
@@ -9695,11 +9854,11 @@
           "line": 6
         }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.changePassword",
       "evidence": [
         {
@@ -9707,11 +9866,11 @@
           "line": 10
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.completePasswordRecovery",
       "evidence": [
         {
@@ -9719,29 +9878,29 @@
           "line": 774
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.signInWithEmailPassword",
       "evidence": [
         {
@@ -9749,20 +9908,20 @@
           "line": 432
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:currentUser.loggedInUser",
       "evidence": [
         {
@@ -9770,97 +9929,97 @@
           "line": 8
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.startSignInWithGithub",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 359 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:users.getCurrentUser",
       "evidence": [{ "file": "examples/react-github/src/App.tsx", "line": 85 }],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.startSignInWithGoogle",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 359 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:users.getCurrentUser",
       "evidence": [{ "file": "examples/react-google/src/App.tsx", "line": 85 }],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.finishAddPasskey",
       "evidence": [
         {
@@ -9868,11 +10027,11 @@
           "line": 124
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.finishRemovePasskey",
       "evidence": [
         {
@@ -9880,11 +10039,11 @@
           "line": 152
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.finishSignInWithUsernamePasskey",
       "evidence": [
         {
@@ -9892,11 +10051,11 @@
           "line": 163
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.finishSignUpWithUsernamePasskey",
       "evidence": [
         {
@@ -9904,20 +10063,20 @@
           "line": 145
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.listPasskeys",
       "evidence": [
         {
@@ -9925,20 +10084,20 @@
           "line": 13
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.renamePasskey",
       "evidence": [
         {
@@ -9946,20 +10105,20 @@
           "line": 100
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.startAddPasskey",
       "evidence": [
         {
@@ -9967,11 +10126,11 @@
           "line": 106
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.startRemovePasskey",
       "evidence": [
         {
@@ -9979,11 +10138,11 @@
           "line": 144
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.startSignInWithUsernamePasskey",
       "evidence": [
         {
@@ -9991,11 +10150,11 @@
           "line": 133
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.verifyAddPasskey",
       "evidence": [
         {
@@ -10003,11 +10162,11 @@
           "line": 114
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:currentUser.loggedInUser",
       "evidence": [
         {
@@ -10015,11 +10174,11 @@
           "line": 7
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.finishSignInWithUsernamePasskey",
       "evidence": [
         {
@@ -10027,11 +10186,11 @@
           "line": 163
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.finishSignUpWithUsernamePasskey",
       "evidence": [
         {
@@ -10039,38 +10198,38 @@
           "line": 145
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.startSignInWithUsernamePasskey",
       "evidence": [
         {
@@ -10078,11 +10237,11 @@
           "line": 133
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:currentUser.loggedInUser",
       "evidence": [
         {
@@ -10090,11 +10249,11 @@
           "line": 6
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.changePassword",
       "evidence": [
         {
@@ -10102,29 +10261,29 @@
           "line": 9
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/react/client.tsx", "line": 138 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.refreshSession",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 145 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signInWithUsernamePassword",
       "evidence": [
         {
@@ -10132,20 +10291,20 @@
           "line": 239
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signOut",
       "evidence": [
         { "file": "packages/core/src/react/index.tsx", "line": 147 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signUpWithUsernamePassword",
       "evidence": [
         {
@@ -10153,11 +10312,11 @@
           "line": 239
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:currentUser.loggedInUser",
       "evidence": [
         {
@@ -10169,7 +10328,7 @@
           "line": 7
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
@@ -10181,7 +10340,7 @@
           "line": 129
         }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
@@ -10193,7 +10352,7 @@
           "line": 209
         }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "clientCalls",
@@ -10205,7 +10364,7 @@
           "line": 878
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10217,7 +10376,7 @@
           "line": 774
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10229,7 +10388,7 @@
           "line": 586
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10241,7 +10400,7 @@
           "line": 432
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10253,7 +10412,7 @@
           "line": 523
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10265,7 +10424,7 @@
           "line": 834
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10277,7 +10436,7 @@
           "line": 628
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "clientCalls",
@@ -10289,7 +10448,7 @@
           "line": 163
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
@@ -10301,7 +10460,7 @@
           "line": 145
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
@@ -10313,7 +10472,7 @@
           "line": 133
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "clientCalls",
@@ -10325,7 +10484,7 @@
           "line": 163
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10337,7 +10496,7 @@
           "line": 145
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10349,7 +10508,7 @@
           "line": 133
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10361,7 +10520,7 @@
           "line": 124
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10373,7 +10532,7 @@
           "line": 106
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10385,7 +10544,7 @@
           "line": 114
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10397,7 +10556,7 @@
           "line": 152
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10409,7 +10568,7 @@
           "line": 144
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "clientCalls",
@@ -10421,7 +10580,7 @@
           "line": 239
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
@@ -10433,7 +10592,7 @@
           "line": 239
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "clientCalls",
@@ -10445,7 +10604,7 @@
           "line": 239
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "clientCalls",
@@ -10457,7 +10616,7 @@
           "line": 239
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "definedBy",
@@ -12203,7 +12362,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "component:auth",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 15 }
@@ -12211,7 +12370,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "component:authGithub",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 22 }
@@ -12219,7 +12378,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "component:authPassword",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 16 }
@@ -12227,7 +12386,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "component:authUsername",
       "evidence": [
         { "file": "examples/nextjs/convex/convex.config.ts", "line": 17 }
@@ -12235,7 +12394,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-apple/convex/convex.config.ts", "line": 17 }
@@ -12243,7 +12402,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "component:authApple",
       "evidence": [
         { "file": "examples/react-apple/convex/convex.config.ts", "line": 34 }
@@ -12251,7 +12410,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-discord/convex/convex.config.ts", "line": 15 }
@@ -12259,7 +12418,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "component:authDiscord",
       "evidence": [
         { "file": "examples/react-discord/convex/convex.config.ts", "line": 24 }
@@ -12267,7 +12426,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "component:auth",
       "evidence": [
         {
@@ -12278,7 +12437,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "component:authEmail",
       "evidence": [
         {
@@ -12289,7 +12448,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "component:resend",
       "evidence": [
         {
@@ -12300,7 +12459,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "component:auth",
       "evidence": [
         {
@@ -12311,7 +12470,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "component:authEmail",
       "evidence": [
         {
@@ -12322,7 +12481,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "component:authPassword",
       "evidence": [
         {
@@ -12333,7 +12492,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "component:resend",
       "evidence": [
         {
@@ -12344,7 +12503,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-github/convex/convex.config.ts", "line": 15 }
@@ -12352,7 +12511,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "component:authGithub",
       "evidence": [
         { "file": "examples/react-github/convex/convex.config.ts", "line": 24 }
@@ -12360,7 +12519,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "component:auth",
       "evidence": [
         { "file": "examples/react-google/convex/convex.config.ts", "line": 15 }
@@ -12368,7 +12527,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "component:authGoogle",
       "evidence": [
         { "file": "examples/react-google/convex/convex.config.ts", "line": 24 }
@@ -12376,7 +12535,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "component:auth",
       "evidence": [
         {
@@ -12387,7 +12546,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "component:authPasskey",
       "evidence": [
         {
@@ -12398,7 +12557,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "component:authUsername",
       "evidence": [
         {
@@ -12409,7 +12568,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "component:auth",
       "evidence": [
         {
@@ -12420,7 +12579,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "component:authPasskey",
       "evidence": [
         {
@@ -12431,7 +12590,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "component:authUsername",
       "evidence": [
         {
@@ -12442,7 +12601,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "component:auth",
       "evidence": [
         {
@@ -12453,7 +12612,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "component:authPassword",
       "evidence": [
         {
@@ -12464,7 +12623,7 @@
     },
     {
       "kind": "mounts",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "component:authUsername",
       "evidence": [
         {
@@ -12478,7 +12637,7 @@
       "from": "fn:app:nextjs:users.loggedInUser",
       "to": "table:app:nextjs.users",
       "evidence": [{ "file": "examples/nextjs/convex/users.ts", "line": 70 }],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["get"]
     },
     {
@@ -12488,7 +12647,7 @@
       "evidence": [
         { "file": "examples/react-apple/convex/users.ts", "line": 66 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["get"]
     },
     {
@@ -12498,7 +12657,7 @@
       "evidence": [
         { "file": "examples/react-apple/convex/users.ts", "line": 51 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["get"]
     },
     {
@@ -12508,7 +12667,7 @@
       "evidence": [
         { "file": "examples/react-discord/convex/users.ts", "line": 30 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["get"]
     },
     {
@@ -12521,7 +12680,7 @@
           "line": 21
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["get"]
     },
     {
@@ -12534,7 +12693,7 @@
           "line": 21
         }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["get"]
     },
     {
@@ -12544,7 +12703,7 @@
       "evidence": [
         { "file": "examples/react-github/convex/users.ts", "line": 30 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["get"]
     },
     {
@@ -12554,7 +12713,7 @@
       "evidence": [
         { "file": "examples/react-google/convex/users.ts", "line": 30 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["get"]
     },
     {
@@ -12567,7 +12726,7 @@
           "line": 17
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["get"]
     },
     {
@@ -12580,7 +12739,7 @@
           "line": 17
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["get"]
     },
     {
@@ -12593,7 +12752,7 @@
           "line": 12
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["get"]
     },
     {
@@ -13868,253 +14027,253 @@
     },
     {
       "kind": "referencesFunction",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:auth.completeSignInWithGithub",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 367 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "fn:app:nextjs:auth.isAuthenticated",
       "evidence": [
         { "file": "packages/core/src/ssr/nextjs/index.tsx", "line": 237 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.completeSignInWithApple",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 367 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-apple/src/main.tsx", "line": 23 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.refreshSession",
       "evidence": [{ "file": "examples/react-apple/src/main.tsx", "line": 21 }],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.signOut",
       "evidence": [{ "file": "examples/react-apple/src/main.tsx", "line": 22 }],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.completeSignInWithDiscord",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 367 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-discord/src/main.tsx", "line": 23 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-discord/src/main.tsx", "line": 21 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.signOut",
       "evidence": [
         { "file": "examples/react-discord/src/main.tsx", "line": 22 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-email-magic-link/src/main.tsx", "line": 18 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-email-magic-link/src/main.tsx", "line": 16 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.signOut",
       "evidence": [
         { "file": "examples/react-email-magic-link/src/main.tsx", "line": 17 }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-email-password/src/main.tsx", "line": 18 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-email-password/src/main.tsx", "line": 16 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.signOut",
       "evidence": [
         { "file": "examples/react-email-password/src/main.tsx", "line": 17 }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.completeSignInWithGithub",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 367 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-github/src/main.tsx", "line": 23 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-github/src/main.tsx", "line": 21 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "fn:app:react-github:auth.signOut",
       "evidence": [
         { "file": "examples/react-github/src/main.tsx", "line": 22 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.completeSignInWithGoogle",
       "evidence": [
         { "file": "packages/core/src/methods/oauth/client.ts", "line": 367 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-google/src/main.tsx", "line": 23 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-google/src/main.tsx", "line": 21 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "fn:app:react-google:auth.signOut",
       "evidence": [
         { "file": "examples/react-google/src/main.tsx", "line": 22 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-username-passkey/src/main.tsx", "line": 18 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-username-passkey/src/main.tsx", "line": 16 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.signOut",
       "evidence": [
         { "file": "examples/react-username-passkey/src/main.tsx", "line": 17 }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.isAuthenticated",
       "evidence": [
         {
@@ -14123,11 +14282,11 @@
         },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.refreshSession",
       "evidence": [
         {
@@ -14135,11 +14294,11 @@
           "line": 16
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.signOut",
       "evidence": [
         {
@@ -14147,35 +14306,35 @@
           "line": 17
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-username-password/src/main.tsx", "line": 18 },
         { "file": "packages/core/src/react/index.tsx", "line": 167 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.refreshSession",
       "evidence": [
         { "file": "examples/react-username-password/src/main.tsx", "line": 16 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "referencesFunction",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signOut",
       "evidence": [
         { "file": "examples/react-username-password/src/main.tsx", "line": 17 }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "referencesFunction",
@@ -14186,7 +14345,7 @@
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 120 },
         { "file": "packages/core/src/methods/github/server.ts", "line": 144 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14197,7 +14356,7 @@
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 120 },
         { "file": "packages/core/src/methods/apple/server.ts", "line": 164 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
@@ -14208,7 +14367,7 @@
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 120 },
         { "file": "packages/core/src/methods/discord/server.ts", "line": 176 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
@@ -14220,7 +14379,7 @@
           "line": 177
         }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "referencesFunction",
@@ -14232,7 +14391,7 @@
           "line": 354
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14244,7 +14403,7 @@
           "line": 354
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14256,7 +14415,7 @@
           "line": 354
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14267,7 +14426,7 @@
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 120 },
         { "file": "packages/core/src/methods/github/server.ts", "line": 144 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
@@ -14278,7 +14437,7 @@
         { "file": "packages/core/src/lib/oauth/authorize.ts", "line": 120 },
         { "file": "packages/core/src/methods/google/server.ts", "line": 139 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
@@ -14417,7 +14576,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/apple/react.ts", "line": 47 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
@@ -14426,7 +14585,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/apple/react.ts", "line": 46 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
@@ -14435,7 +14594,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/discord/react.ts", "line": 47 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
@@ -14444,7 +14603,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/discord/react.ts", "line": 46 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
@@ -14456,7 +14615,7 @@
           "line": 183
         }
       ],
-      "example": "react-email-magic-link"
+      "app": "react-email-magic-link"
     },
     {
       "kind": "referencesFunction",
@@ -14468,7 +14627,7 @@
           "line": 877
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14480,7 +14639,7 @@
           "line": 727
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14492,7 +14651,7 @@
           "line": 574
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14504,7 +14663,7 @@
           "line": 419
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14516,7 +14675,7 @@
           "line": 519
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14528,7 +14687,7 @@
           "line": 833
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14540,7 +14699,7 @@
           "line": 627
         }
       ],
-      "example": "react-email-password"
+      "app": "react-email-password"
     },
     {
       "kind": "referencesFunction",
@@ -14549,7 +14708,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/react.ts", "line": 47 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14558,7 +14717,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/react.ts", "line": 46 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14567,7 +14726,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/react.ts", "line": 47 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
@@ -14576,7 +14735,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/github/react.ts", "line": 46 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
@@ -14585,7 +14744,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/google/react.ts", "line": 47 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
@@ -14594,7 +14753,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/google/react.ts", "line": 46 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
@@ -14603,7 +14762,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 144 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14612,7 +14771,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 143 }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14621,7 +14780,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 144 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
@@ -14630,7 +14789,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 143 }
       ],
-      "example": "react-apple"
+      "app": "react-apple"
     },
     {
       "kind": "referencesFunction",
@@ -14639,7 +14798,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 144 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
@@ -14648,7 +14807,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 143 }
       ],
-      "example": "react-discord"
+      "app": "react-discord"
     },
     {
       "kind": "referencesFunction",
@@ -14657,7 +14816,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 144 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
@@ -14666,7 +14825,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 143 }
       ],
-      "example": "react-github"
+      "app": "react-github"
     },
     {
       "kind": "referencesFunction",
@@ -14675,7 +14834,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 144 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
@@ -14684,7 +14843,7 @@
       "evidence": [
         { "file": "packages/core/src/methods/oauth/react.ts", "line": 143 }
       ],
-      "example": "react-google"
+      "app": "react-google"
     },
     {
       "kind": "referencesFunction",
@@ -14696,7 +14855,7 @@
           "line": 68
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
@@ -14708,7 +14867,7 @@
           "line": 71
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
@@ -14720,7 +14879,7 @@
           "line": 65
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
@@ -14732,7 +14891,7 @@
           "line": 62
         }
       ],
-      "example": "react-username-passkey-basic"
+      "app": "react-username-passkey-basic"
     },
     {
       "kind": "referencesFunction",
@@ -14744,7 +14903,7 @@
           "line": 68
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14756,7 +14915,7 @@
           "line": 71
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14768,7 +14927,7 @@
           "line": 65
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14780,7 +14939,7 @@
           "line": 62
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14792,7 +14951,7 @@
           "line": 63
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14804,7 +14963,7 @@
           "line": 57
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14816,7 +14975,7 @@
           "line": 60
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14828,7 +14987,7 @@
           "line": 110
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14840,7 +14999,7 @@
           "line": 107
         }
       ],
-      "example": "react-username-passkey"
+      "app": "react-username-passkey"
     },
     {
       "kind": "referencesFunction",
@@ -14852,7 +15011,7 @@
           "line": 149
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14864,7 +15023,7 @@
           "line": 149
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "referencesFunction",
@@ -14876,7 +15035,7 @@
           "line": 199
         }
       ],
-      "example": "nextjs"
+      "app": "nextjs"
     },
     {
       "kind": "referencesFunction",
@@ -14888,7 +15047,7 @@
           "line": 199
         }
       ],
-      "example": "react-username-password"
+      "app": "react-username-password"
     },
     {
       "kind": "routesTo",
@@ -15038,25 +15197,25 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "method:github",
       "evidence": [{ "file": "examples/nextjs/convex/auth.ts", "line": 28 }]
     },
     {
       "kind": "usesMethod",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "method:username-password",
       "evidence": [{ "file": "examples/nextjs/convex/auth.ts", "line": 20 }]
     },
     {
       "kind": "usesMethod",
-      "from": "example:nextjs",
+      "from": "app:nextjs",
       "to": "setup:core.setupConvexAuth",
       "evidence": [{ "file": "examples/nextjs/convex/auth.ts", "line": 14 }]
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "method:apple",
       "evidence": [
         { "file": "examples/react-apple/convex/auth.ts", "line": 13 }
@@ -15064,7 +15223,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-apple",
+      "from": "app:react-apple",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-apple/convex/auth.ts", "line": 10 }
@@ -15072,7 +15231,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "method:discord",
       "evidence": [
         { "file": "examples/react-discord/convex/auth.ts", "line": 14 }
@@ -15080,7 +15239,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-discord",
+      "from": "app:react-discord",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-discord/convex/auth.ts", "line": 10 }
@@ -15088,7 +15247,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "method:email-magic-link",
       "evidence": [
         { "file": "examples/react-email-magic-link/convex/auth.ts", "line": 14 }
@@ -15096,7 +15255,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-email-magic-link",
+      "from": "app:react-email-magic-link",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-email-magic-link/convex/auth.ts", "line": 10 }
@@ -15104,7 +15263,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "method:email-password",
       "evidence": [
         { "file": "examples/react-email-password/convex/auth.ts", "line": 23 }
@@ -15112,7 +15271,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-email-password",
+      "from": "app:react-email-password",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-email-password/convex/auth.ts", "line": 10 }
@@ -15120,7 +15279,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "method:github",
       "evidence": [
         { "file": "examples/react-github/convex/auth.ts", "line": 13 }
@@ -15128,7 +15287,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-github",
+      "from": "app:react-github",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-github/convex/auth.ts", "line": 10 }
@@ -15136,7 +15295,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "method:google",
       "evidence": [
         { "file": "examples/react-google/convex/auth.ts", "line": 13 }
@@ -15144,7 +15303,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-google",
+      "from": "app:react-google",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-google/convex/auth.ts", "line": 10 }
@@ -15152,7 +15311,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "method:username-passkey",
       "evidence": [
         { "file": "examples/react-username-passkey/convex/auth.ts", "line": 31 }
@@ -15160,7 +15319,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-passkey",
+      "from": "app:react-username-passkey",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-username-passkey/convex/auth.ts", "line": 13 }
@@ -15168,7 +15327,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "method:username-passkey",
       "evidence": [
         {
@@ -15179,7 +15338,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-passkey-basic",
+      "from": "app:react-username-passkey-basic",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         {
@@ -15190,7 +15349,7 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "method:username-password",
       "evidence": [
         {
@@ -15201,176 +15360,18 @@
     },
     {
       "kind": "usesMethod",
-      "from": "example:react-username-password",
+      "from": "app:react-username-password",
       "to": "setup:core.setupConvexAuth",
       "evidence": [
         { "file": "examples/react-username-password/convex/auth.ts", "line": 5 }
       ]
     },
     {
-      "kind": "webauthn",
-      "from": "example:react-username-passkey",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey",
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "example:react-username-passkey-basic",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey-basic",
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey",
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey-basic",
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/management/react.useAddPasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/management/react.useAddPasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey",
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/management/react.useRemovePasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "via": ["startAuthentication"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "hook:methods/username-passkey/management/react.useRemovePasskeyImpl",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "example": "react-username-passkey",
-      "via": ["startAuthentication"]
-    },
-    {
-      "kind": "webauthn",
-      "from": "module:methods/username-passkey/client",
-      "to": "thirdParty:passkeyAuthenticator",
-      "evidence": [
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 123
-        },
-        {
-          "file": "packages/core/src/methods/username-passkey/client.ts",
-          "line": 156
-        }
-      ],
-      "via": ["startAuthentication", "startRegistration"]
-    },
-    {
       "kind": "writes",
       "from": "fn:app:nextjs:users.createUser",
       "to": "table:app:nextjs.users",
       "evidence": [{ "file": "examples/nextjs/convex/users.ts", "line": 37 }],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["insert"]
     },
     {
@@ -15378,7 +15379,7 @@
       "from": "fn:app:nextjs:users.onSignIn",
       "to": "table:app:nextjs.users",
       "evidence": [{ "file": "examples/nextjs/convex/users.ts", "line": 52 }],
-      "example": "nextjs",
+      "app": "nextjs",
       "via": ["patch"]
     },
     {
@@ -15388,7 +15389,7 @@
       "evidence": [
         { "file": "examples/react-apple/convex/users.ts", "line": 22 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["insert"]
     },
     {
@@ -15398,7 +15399,7 @@
       "evidence": [
         { "file": "examples/react-apple/convex/users.ts", "line": 53 }
       ],
-      "example": "react-apple",
+      "app": "react-apple",
       "via": ["patch"]
     },
     {
@@ -15408,7 +15409,7 @@
       "evidence": [
         { "file": "examples/react-discord/convex/users.ts", "line": 19 }
       ],
-      "example": "react-discord",
+      "app": "react-discord",
       "via": ["insert"]
     },
     {
@@ -15421,7 +15422,7 @@
           "line": 13
         }
       ],
-      "example": "react-email-magic-link",
+      "app": "react-email-magic-link",
       "via": ["insert"]
     },
     {
@@ -15431,7 +15432,7 @@
       "evidence": [
         { "file": "examples/react-email-password/convex/users.ts", "line": 13 }
       ],
-      "example": "react-email-password",
+      "app": "react-email-password",
       "via": ["insert"]
     },
     {
@@ -15441,7 +15442,7 @@
       "evidence": [
         { "file": "examples/react-github/convex/users.ts", "line": 19 }
       ],
-      "example": "react-github",
+      "app": "react-github",
       "via": ["insert"]
     },
     {
@@ -15451,7 +15452,7 @@
       "evidence": [
         { "file": "examples/react-google/convex/users.ts", "line": 19 }
       ],
-      "example": "react-google",
+      "app": "react-google",
       "via": ["insert"]
     },
     {
@@ -15464,7 +15465,7 @@
           "line": 17
         }
       ],
-      "example": "react-username-passkey-basic",
+      "app": "react-username-passkey-basic",
       "via": ["insert"]
     },
     {
@@ -15477,7 +15478,7 @@
           "line": 17
         }
       ],
-      "example": "react-username-passkey",
+      "app": "react-username-passkey",
       "via": ["insert"]
     },
     {
@@ -15490,7 +15491,7 @@
           "line": 17
         }
       ],
-      "example": "react-username-password",
+      "app": "react-username-password",
       "via": ["insert"]
     },
     {
@@ -16483,35 +16484,35 @@
       "location": { "file": "examples/nextjs/app/Dashboard.tsx", "line": 13 },
       "code": "usePreloadedQuery(preloaded)",
       "reason": "The function reference is not one the analysis can trace",
-      "from": ["example:nextjs"]
+      "from": ["app:nextjs"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/nextjs/app/Dashboard.tsx", "line": 33 },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:nextjs"]
+      "from": ["app:nextjs"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/nextjs/proxy.ts", "line": 13 },
       "code": "isAuthenticated()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:nextjs"]
+      "from": ["app:nextjs"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/react-apple/src/App.tsx", "line": 91 },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-apple"]
+      "from": ["app:react-apple"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/react-discord/src/App.tsx", "line": 94 },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-discord"]
+      "from": ["app:react-discord"]
     },
     {
       "kind": "call",
@@ -16521,7 +16522,7 @@
       },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-email-magic-link"]
+      "from": ["app:react-email-magic-link"]
     },
     {
       "kind": "call",
@@ -16531,21 +16532,21 @@
       },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-email-password"]
+      "from": ["app:react-email-password"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/react-github/src/App.tsx", "line": 90 },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-github"]
+      "from": ["app:react-github"]
     },
     {
       "kind": "call",
       "location": { "file": "examples/react-google/src/App.tsx", "line": 90 },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-google"]
+      "from": ["app:react-google"]
     },
     {
       "kind": "call",
@@ -16555,7 +16556,7 @@
       },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-passkey-basic"]
+      "from": ["app:react-username-passkey-basic"]
     },
     {
       "kind": "call",
@@ -16565,7 +16566,7 @@
       },
       "code": "onError(null)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-passkey"]
+      "from": ["app:react-username-passkey"]
     },
     {
       "kind": "call",
@@ -16575,7 +16576,7 @@
       },
       "code": "onError(errorMessage(result.userError))",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-passkey"]
+      "from": ["app:react-username-passkey"]
     },
     {
       "kind": "call",
@@ -16585,7 +16586,7 @@
       },
       "code": "onError(\"Something went wrong. Please try again.\")",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-passkey"]
+      "from": ["app:react-username-passkey"]
     },
     {
       "kind": "call",
@@ -16595,7 +16596,7 @@
       },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-passkey"]
+      "from": ["app:react-username-passkey"]
     },
     {
       "kind": "call",
@@ -16605,7 +16606,7 @@
       },
       "code": "signOut()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": ["example:react-username-password"]
+      "from": ["app:react-username-password"]
     },
     {
       "kind": "call",
@@ -16616,11 +16617,11 @@
       "code": "listener()",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-github",
-        "example:react-google",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-github",
+        "app:react-google",
         "module:browser/keyedStore",
         "module:methods/oauth/client",
         "module:methods/oauth/react"
@@ -16645,15 +16646,15 @@
       "code": "callback()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "module:browser/sessionManager",
         "module:react/client",
         "module:react/index",
@@ -16669,15 +16670,15 @@
       "code": "this.#signOutInternal()",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "module:browser/sessionManager",
         "module:react/client",
         "module:react/index",
@@ -16693,15 +16694,15 @@
       "code": "this.#refresh()",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "module:browser/sessionManager",
         "module:react/client",
         "module:react/index",
@@ -16717,16 +16718,16 @@
       "code": "listener()",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "module:browser/sessionManager",
         "module:methods/oauth/client",
         "module:methods/oauth/react",
@@ -16744,16 +16745,16 @@
       "code": "this.storage.getItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "hook:methods/email-magic-link/react.useSignInWithEmailMagicLink",
         "hook:methods/email-password/react.useCompleteChangeEmail",
         "hook:methods/email-password/react.useCompletePasswordRecovery",
@@ -16778,16 +16779,16 @@
       "code": "this.storage.setItem(this.key(key), value)",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "hook:methods/email-magic-link/react.useSendEmailMagicLink",
         "hook:methods/email-password/react.useSignUpWithEmailPassword",
         "hook:methods/email-password/react.useStartChangeEmail",
@@ -16812,16 +16813,16 @@
       "code": "this.storage.removeItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password",
         "hook:methods/email-magic-link/react.useSignInWithEmailMagicLink",
         "hook:methods/email-password/react.useCompleteChangeEmail",
         "hook:methods/email-password/react.useCompletePasswordRecovery",
@@ -16939,7 +16940,7 @@
       "code": "setSession(result.tokens)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:react-email-password",
+        "app:react-email-password",
         "hook:methods/email-password/react.useSignInWithEmailPassword",
         "module:methods/email-password/react"
       ]
@@ -16989,7 +16990,7 @@
       "code": "setSession(result.tokens)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:react-email-password",
+        "app:react-email-password",
         "hook:methods/email-password/react.useCompletePasswordRecovery",
         "module:methods/email-password/react"
       ]
@@ -17003,11 +17004,11 @@
       "code": "signInApi.mutation(completeSignIn, { code, state: pending.state })",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-github",
-        "example:react-google",
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-github",
+        "app:react-google",
         "module:methods/oauth/client",
         "module:methods/oauth/react"
       ]
@@ -17021,11 +17022,11 @@
       "code": "signInApi.mutation(completeSignIn, { code, state: pending.state })",
       "reason": "The function reference is not one the analysis can trace",
       "from": [
-        "example:nextjs",
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-github",
-        "example:react-google"
+        "app:nextjs",
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-github",
+        "app:react-google"
       ]
     },
     {
@@ -17127,8 +17128,8 @@
       "code": "setSession(result.tokens)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
         "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
         "module:methods/username-passkey/flows",
         "module:methods/username-passkey/hooks"
@@ -17143,8 +17144,8 @@
       "code": "setSession(result.tokens)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
         "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl",
         "module:methods/username-passkey/flows",
         "module:methods/username-passkey/hooks"
@@ -17207,8 +17208,8 @@
       "code": "setSession(result.tokens)",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
       "from": [
-        "example:nextjs",
-        "example:react-username-password",
+        "app:nextjs",
+        "app:react-username-password",
         "hook:methods/username-password/react.useSignInWithUsernamePassword",
         "hook:methods/username-password/react.useSignUpWithUsernamePassword",
         "module:methods/username-password/react"
@@ -17220,15 +17221,15 @@
       "code": "client.mutation(fn, args)",
       "reason": "The function reference is not one the analysis can trace",
       "from": [
-        "example:react-apple",
-        "example:react-discord",
-        "example:react-email-magic-link",
-        "example:react-email-password",
-        "example:react-github",
-        "example:react-google",
-        "example:react-username-passkey",
-        "example:react-username-passkey-basic",
-        "example:react-username-password"
+        "app:react-apple",
+        "app:react-discord",
+        "app:react-email-magic-link",
+        "app:react-email-password",
+        "app:react-github",
+        "app:react-google",
+        "app:react-username-passkey",
+        "app:react-username-passkey-basic",
+        "app:react-username-password"
       ]
     },
     {
@@ -17275,9 +17276,9 @@
   ],
   "counts": {
     "parts": {
+      "app": 10,
       "component": 17,
       "envVar": 40,
-      "exampleApp": 10,
       "function": 224,
       "hook": 32,
       "httpRoute": 6,
@@ -17292,6 +17293,7 @@
     "dependencies": {
       "calls": 301,
       "callsChildComponent": 17,
+      "callsThirdParty": 10,
       "clientCalls": 87,
       "definedBy": 71,
       "fetches": 5,
@@ -17304,7 +17306,6 @@
       "schedules": 6,
       "usesComponent": 4,
       "usesMethod": 21,
-      "webauthn": 10,
       "writes": 102
     },
     "unresolved": {
