@@ -29,8 +29,9 @@ check:jsdoc`). It is not an example to copy.
 - `packages/passkey-test-authenticator` — a software WebAuthn authenticator
   for the passkey tests of this repository (private).
 - `packages/explorer` — records the function logs, the step reports, and the
-  data changes of a running deployment into a timeline that a viewer plays
-  back (private). `pnpm --filter @convex-dev/explorer record <app directory>`.
+  data changes of the deployment of any Convex app into a timeline that a
+  viewer plays back (private). Local by default, cloud with `--cloud`; the
+  Convex Auth specifics are in `src/projects/convexAuth.ts`.
 - `examples/` — example apps, each an in-repo Convex backend run from its own
   directory:
   - `react-username-password` wires up the core, password, and username components

@@ -6,6 +6,7 @@
  */
 import type { WriteEvent } from "./events.ts";
 import { nanosOf, nanosToMs, parseJsonLossless } from "./json.ts";
+import { GENERIC_PROJECT, type ProjectConfig } from "./project.ts";
 import { redactDocument } from "./redact.ts";
 
 /** The `status` of a page. */
@@ -37,7 +38,10 @@ export type SyncPage = {
  * Takes the text, not parsed JSON, because `JSON.parse` would round the
  * nanosecond commit times.
  */
-export function parseSyncPage(text: string): SyncPage {
+export function parseSyncPage(
+  text: string,
+  project: ProjectConfig = GENERIC_PROJECT,
+): SyncPage {
   const page = parseJsonLossless(text) as Record<string, unknown>;
   const status = parseStatus(page.status);
   const pagination = page.pagination as Record<string, unknown> | undefined;
@@ -51,7 +55,7 @@ export function parseSyncPage(text: string): SyncPage {
       })
     : [];
   const writes = Array.isArray(page.values)
-    ? page.values.map(writeFromValue)
+    ? page.values.map((value) => writeFromValue(value, project))
     : [];
   return {
     status,
@@ -78,7 +82,7 @@ function parseStatus(value: unknown): SyncStatus {
   );
 }
 
-function writeFromValue(entry: unknown): WriteEvent {
+function writeFromValue(entry: unknown, project: ProjectConfig): WriteEvent {
   const { component, table, ts, deleted, value } = entry as Record<
     string,
     unknown
@@ -100,7 +104,7 @@ function writeFromValue(entry: unknown): WriteEvent {
     table,
     documentId,
     deleted: isDelete,
-    value: isDelete ? null : redactDocument(table, document),
+    value: isDelete ? null : redactDocument(table, document, project),
     runId: null,
     snapshot: false,
   };
@@ -127,13 +131,15 @@ export class SyncReader {
   /** Whether the last page said that the sync caught up. */
   upToDate = false;
 
+  constructor(private readonly project: ProjectConfig = GENERIC_PROJECT) {}
+
   /**
    * Reads one page. Returns the revisions that are ready, in the order of the
    * pages, and whether the page started a new sync of a table that already
    * had revisions: a truncate after the snapshot, or a new `syncId`.
    */
   read(text: string): { writes: WriteEvent[]; reset: boolean } {
-    const page = parseSyncPage(text);
+    const page = parseSyncPage(text, this.project);
     let reset = false;
     if (this.syncId !== null && page.syncId !== this.syncId) {
       reset = true;

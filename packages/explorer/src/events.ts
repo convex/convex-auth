@@ -28,6 +28,8 @@ export type RecordingEvent = {
   time: number;
   /** The URL of the deployment. */
   deploymentUrl: string;
+  /** The name of the project config, e.g. "generic" or "convex-auth". */
+  project: string;
 };
 
 /**
@@ -47,7 +49,7 @@ export type RunEvent = {
   udfType: string;
   /** The path of the component of the function, "" for the app. */
   componentPath: string;
-  /** The function within its component, e.g. "auth:signInWithUsernamePassword". */
+  /** The function within its component, e.g. "messages:send". */
   identifier: string;
   /** Who called the function, e.g. "HttpApi", "Websocket", "Scheduler". */
   caller: string;
@@ -93,8 +95,9 @@ export type LogEvent = {
 };
 
 /**
- * One step report of the library (see `packages/core/src/lib/steps.ts`): a
- * log line `[convex-auth:step] {"v":1,"step":...}`.
+ * One step report: a log line `[explorer:step] {"v":1,"source":...,"step":...}`
+ * that a library writes to show the steps inside a function, such as its
+ * calls into components, which the logs do not show.
  */
 export type StepEvent = {
   kind: "step";
@@ -104,10 +107,11 @@ export type StepEvent = {
   runId: string;
   /** The version of the report format, or null if the report has none. */
   v: number | null;
+  /** The library that wrote the report, e.g. "convex-auth", or null. */
+  source: string | null;
   /**
-   * The name of the step, e.g. "method.start", "call", "return",
-   * "session.issued". New steps can appear; a viewer shows unknown ones
-   * as they are.
+   * The name of the step, e.g. "call" or "return". Each source has its own
+   * steps; a viewer shows the ones it does not know as they are.
    */
   step: string;
   /** The other fields of the report. */

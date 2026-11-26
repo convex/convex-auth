@@ -8,7 +8,28 @@ export {
   type EntryEvents,
   type LogEntry,
 } from "./logs.ts";
-export { redactDocument, scrubText, SAFE_FIELDS } from "./redact.ts";
+export { redactDocument, scrubText } from "./redact.ts";
+export {
+  GENERIC_PROJECT,
+  keptFields,
+  type FieldsByTable,
+  type ProjectConfig,
+} from "./project.ts";
+export { convexAuthProject } from "./projects/convexAuth.ts";
+export { PROJECTS } from "./projects/index.ts";
+export {
+  firstEntries,
+  LogPoller,
+  type FetchLogPage,
+  type LogPage,
+} from "./logPoller.ts";
+export {
+  resolveTarget,
+  TargetError,
+  type ResolvedTarget,
+  type Target,
+  type TargetInput,
+} from "./config.ts";
 export {
   parseSyncPage,
   SyncReader,

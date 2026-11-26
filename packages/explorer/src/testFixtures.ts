@@ -3,7 +3,8 @@
  * `examples/react-username-password` with step reports on: a sign-up, a
  * sign-in, two refreshes, a refresh with a spent token (reuse detection), a
  * sign-out, and a sign-in with a wrong password. The recorder started after
- * an earlier run, thus the data sync begins with a snapshot of 17 documents.
+ * earlier runs, thus the data sync begins with a snapshot of 52 documents,
+ * the last of them on a page whose status is already `stale`.
  *
  * Sanitised: each refresh token hash and password hash is a fake.
  */

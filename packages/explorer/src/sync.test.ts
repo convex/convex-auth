@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
 import type { WriteEvent } from "./events.ts";
+import { convexAuthProject } from "./projects/convexAuth.ts";
 import { parseSyncPage, SyncReader } from "./sync.ts";
 import { syncPages } from "./testFixtures.ts";
 
 function readAll(pages: readonly string[]): WriteEvent[] {
-  const reader = new SyncReader();
+  const reader = new SyncReader(convexAuthProject);
   return pages.flatMap((page) => reader.read(page).writes);
 }
 
@@ -46,11 +47,11 @@ describe("parseSyncPage", () => {
 describe("SyncReader", () => {
   test("marks the snapshot, and only the snapshot", () => {
     const writes = readAll(syncPages);
-    expect(writes.filter((write) => write.snapshot)).toHaveLength(17);
+    expect(writes.filter((write) => write.snapshot)).toHaveLength(52);
     const live = writes.filter((write) => !write.snapshot);
     expect(live.length).toBeGreaterThan(0);
     // The snapshot comes first in the pages.
-    expect(writes.findIndex((write) => !write.snapshot)).toBe(17);
+    expect(writes.findIndex((write) => !write.snapshot)).toBe(52);
   });
 
   test("holds the values back until it knows the snapshot time", () => {

@@ -6,12 +6,13 @@ import type {
   WriteEvent,
 } from "./events.ts";
 import { eventsFromLogEntry } from "./logs.ts";
+import { convexAuthProject } from "./projects/convexAuth.ts";
 import { SyncReader } from "./sync.ts";
 import { logEntries, syncPages } from "./testFixtures.ts";
 import { mergeTimeline, runForCommit, TimelineBuilder } from "./timeline.ts";
 
 function fixtureEvents(): TimelineEvent[] {
-  const reader = new SyncReader();
+  const reader = new SyncReader(convexAuthProject);
   const writes = syncPages.flatMap((page) => reader.read(page).writes);
   const logs = logEntries.flatMap((entry) => {
     const { run, lines } = eventsFromLogEntry(entry);

@@ -1,18 +1,23 @@
 import { describe, expect, test } from "vitest";
 import { REDACTED } from "./events.ts";
+import { convexAuthProject } from "./projects/convexAuth.ts";
 import { redactDocument, scrubText } from "./redact.ts";
 
 describe("redactDocument", () => {
   test("replaces the hash of a refresh token, keeps its ids and state", () => {
     expect(
-      redactDocument("refreshTokens", {
-        _id: "j97bgasf0v4bydaj9s7hq156vx8jyhxn",
-        _creationTime: 1795730172885.2495,
-        hash: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000001",
-        sessionId: "jd7csg27mkg08chjt3arcrpry98jyxw4",
-        state: "spent",
-        retiredAt: 1795730174486,
-      }),
+      redactDocument(
+        "refreshTokens",
+        {
+          _id: "j97bgasf0v4bydaj9s7hq156vx8jyhxn",
+          _creationTime: 1795730172885.2495,
+          hash: "ffffffffffffffffffffffffffffffffffffffffffffffffffffffff00000001",
+          sessionId: "jd7csg27mkg08chjt3arcrpry98jyxw4",
+          state: "spent",
+          retiredAt: 1795730174486,
+        },
+        convexAuthProject,
+      ),
     ).toEqual({
       _id: "j97bgasf0v4bydaj9s7hq156vx8jyhxn",
       _creationTime: 1795730172885.2495,
@@ -61,14 +66,35 @@ describe("redactDocument", () => {
     });
   });
 
-  test("a secret name wins over the list of safe fields", () => {
+  test("without a project config, keeps no string of a known table", () => {
     expect(
-      redactDocument("challenges", {
-        email: "a@example.com",
-        emailCodeHash: "abc",
-        browserSecretHash: "def",
-        expiresAt: 5,
+      redactDocument("refreshTokens", { state: "issued", hash: "abc" }),
+    ).toEqual({ state: REDACTED, hash: REDACTED });
+  });
+
+  test("keeps personal data only when the project says so", () => {
+    const user = { username: "dave", usernameNormalized: "dave" };
+    expect(redactDocument("usernames", user, convexAuthProject)).toEqual(user);
+    expect(
+      redactDocument("usernames", user, {
+        ...convexAuthProject,
+        keepPersonalData: false,
       }),
+    ).toEqual({ username: REDACTED, usernameNormalized: REDACTED });
+  });
+
+  test("a secret name wins over the fields that the project keeps", () => {
+    expect(
+      redactDocument(
+        "challenges",
+        {
+          email: "a@example.com",
+          emailCodeHash: "abc",
+          browserSecretHash: "def",
+          expiresAt: 5,
+        },
+        convexAuthProject,
+      ),
     ).toEqual({
       email: "a@example.com",
       emailCodeHash: REDACTED,

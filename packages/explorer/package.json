@@ -1,7 +1,7 @@
 {
   "name": "@convex-dev/explorer",
   "version": "0.0.0",
-  "description": "Records the function logs and the data changes of a Convex Auth app into a timeline that a viewer plays back",
+  "description": "Records the function logs and the data changes of a Convex app into a timeline that a viewer plays back",
   "private": true,
   "type": "module",
   "sideEffects": false,
@@ -12,6 +12,7 @@
     }
   },
   "scripts": {
+    "check:first-run": "tsx scripts/checkFirstRun.ts",
     "record": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit"
   },

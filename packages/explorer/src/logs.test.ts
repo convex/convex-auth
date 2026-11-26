@@ -36,6 +36,7 @@ describe("eventsFromLogEntry", () => {
       time: (logEntries[0].logLines[0] as { timestamp: number }).timestamp,
       runId: run!.id,
       v: 1,
+      source: "convex-auth",
       step: "method.start",
       detail: { method: "usernamePassword", authenticated: false },
     });
@@ -113,21 +114,46 @@ describe("eventsFromLogEntry", () => {
   });
 });
 
+test("reads a log line given as a string", () => {
+  const { lines } = eventsFromLogEntry({
+    ...logEntries[0],
+    logLines: [
+      "[WARN] 'careful'",
+      `[LOG] '[explorer:step] {"v":1,"source":"s","step":"x"}'`,
+    ],
+  });
+  expect(
+    lines.map((line) => [
+      line.kind,
+      line.kind === "log" ? line.level : line.step,
+    ]),
+  ).toEqual([
+    ["log", "WARN"],
+    ["step", "x"],
+  ]);
+});
+
 describe("parseStepReport", () => {
-  test("keeps a step that it does not know, and its fields", () => {
+  test("keeps a source and a step that it does not know, and its fields", () => {
     expect(
       parseStepReport(
-        '[convex-auth:step] {"v":1,"step":"totp.checked","ok":true}',
+        '[explorer:step] {"v":1,"source":"my-lib","step":"cache.hit","ok":true}',
       ),
-    ).toEqual({ v: 1, step: "totp.checked", detail: { ok: true } });
+    ).toEqual({
+      v: 1,
+      source: "my-lib",
+      step: "cache.hit",
+      detail: { ok: true },
+    });
   });
 
   test("accepts a newer or a missing version", () => {
     expect(
-      parseStepReport('[convex-auth:step] {"v":7,"step":"call","extra":[1]}'),
-    ).toEqual({ v: 7, step: "call", detail: { extra: [1] } });
-    expect(parseStepReport('[convex-auth:step] {"step":"call"}')).toEqual({
+      parseStepReport('[explorer:step] {"v":7,"step":"call","extra":[1]}'),
+    ).toEqual({ v: 7, source: null, step: "call", detail: { extra: [1] } });
+    expect(parseStepReport('[explorer:step] {"step":"call"}')).toEqual({
       v: null,
+      source: null,
       step: "call",
       detail: {},
     });
@@ -135,8 +161,11 @@ describe("parseStepReport", () => {
 
   test("returns null for a line that is not a report", () => {
     expect(parseStepReport("hello")).toBeNull();
-    expect(parseStepReport("[convex-auth:step] {not json")).toBeNull();
-    expect(parseStepReport('[convex-auth:step] {"v":1}')).toBeNull();
-    expect(parseStepReport("[convex-auth:step] [1]")).toBeNull();
+    expect(parseStepReport("[explorer:step] {not json")).toBeNull();
+    expect(parseStepReport('[explorer:step] {"v":1}')).toBeNull();
+    expect(parseStepReport("[explorer:step] [1]")).toBeNull();
+    expect(
+      parseStepReport('[convex-auth:step] {"v":1,"step":"call"}'),
+    ).toBeNull();
   });
 });

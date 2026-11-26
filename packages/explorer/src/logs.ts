@@ -7,10 +7,11 @@ import type { LogEvent, RunEvent, StepEvent } from "./events.ts";
 import { scrubText, scrubValue } from "./redact.ts";
 
 /**
- * The start of a step report, as `packages/core/src/lib/steps.ts` writes it
- * (`STEP_REPORT_PREFIX`). The package does not export it.
+ * The start of a log line that is a step report. JSON follows it:
+ * `{"v":1,"source":"<library>","step":"<name>",...}`. Any library can write
+ * these lines; see the README.
  */
-export const STEP_REPORT_PREFIX = "[convex-auth:step] ";
+export const STEP_REPORT_PREFIX = "[explorer:step] ";
 
 /**
  * An entry of `npx convex logs --jsonl`. The fields that the recorder reads;
@@ -88,7 +89,7 @@ export function eventsFromLogEntry(
   const componentPath = entry.componentPath ?? "";
   const lines = entry.logLines.map((line, index) =>
     eventFromLogLine(
-      line as LogLine,
+      toLogLine(line),
       runId,
       `${runId}#${firstLine + index}`,
       componentPath,
@@ -122,6 +123,21 @@ export function eventsFromLogEntry(
     identityType: entry.identityType ?? null,
   };
   return { run, lines };
+}
+
+/**
+ * A line of `logLines` as an object. Older clients of the log stream get each
+ * line as a string, `[LEVEL] <messages>`; the recorder asks for objects, and
+ * reads a string line too.
+ */
+function toLogLine(line: unknown): LogLine {
+  if (typeof line !== "string") {
+    return (line ?? {}) as LogLine;
+  }
+  const match = /^\[(LOG|INFO|WARN|ERROR|DEBUG)\] ([\s\S]*)$/.exec(line);
+  return match === null
+    ? { messages: [line] }
+    : { level: match[1], messages: [match[2]] };
 }
 
 function eventFromLogLine(
@@ -170,13 +186,13 @@ function unquote(message: string): string {
  * The fields of a step report, from the text of a log line, or null if the
  * line is not one.
  *
- * Accepts any version: `v` is null when it is missing or not a number, and a
- * report with fields that this recorder does not know keeps them in
- * `detail`.
+ * Accepts any version and any source: `v` and `source` are null when they
+ * are missing or not of the right type, and a report with fields that this
+ * recorder does not know keeps them in `detail`.
  */
 export function parseStepReport(
   message: string,
-): Pick<StepEvent, "v" | "step" | "detail"> | null {
+): Pick<StepEvent, "v" | "source" | "step" | "detail"> | null {
   if (!message.startsWith(STEP_REPORT_PREFIX)) {
     return null;
   }
@@ -189,12 +205,13 @@ export function parseStepReport(
   if (typeof report !== "object" || report === null || Array.isArray(report)) {
     return null;
   }
-  const { v, step, ...detail } = report as Record<string, unknown>;
+  const { v, source, step, ...detail } = report as Record<string, unknown>;
   if (typeof step !== "string") {
     return null;
   }
   return {
     v: typeof v === "number" ? v : null,
+    source: typeof source === "string" ? scrubText(source) : null,
     step,
     detail: scrubValue(detail) as Record<string, unknown>,
   };

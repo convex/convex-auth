@@ -6,11 +6,12 @@
  *
  * 1. A field whose name ends in `Id` and whose value looks like a Convex id
  *    is kept.
- * 2. A field whose name looks like a secret (`hash`, `passwordHashPHC`,
+ * 2. A field whose name looks like a secret (`hash`, `passwordHash`,
  *    `secret`, `token`, `code`, `challenge`, `publicKey`, ...) is replaced by
  *    {@link REDACTED}, whatever its table.
  * 3. `_id` and `_creationTime` are kept.
- * 4. A field that {@link SAFE_FIELDS} lists for the table is kept.
+ * 4. A field that the project config keeps for the table is kept: see
+ *    {@link ProjectConfig}.
  * 5. Otherwise a boolean, a number, or null is kept; an object or an array is
  *    checked field by field; a string, or anything else, is replaced.
  *
@@ -23,41 +24,10 @@
  * @module
  */
 import { REDACTED } from "./events.ts";
+import { GENERIC_PROJECT, keptFields, type ProjectConfig } from "./project.ts";
 
 const SECRET_NAME =
   /hash|secret|token|passw|phc|salt|verifier|challenge|credential|publickey|privatekey|apikey|signature|code|nonce|encrypted|cookie|otp|handle/i;
-
-/**
- * The string fields of the tables of the Convex Auth components that hold no
- * secret, by table name. Each name is safe in every table of that name.
- */
-export const SAFE_FIELDS: Record<string, readonly string[]> = {
-  // core
-  sessions: ["component"],
-  refreshTokens: ["state"],
-  // username
-  usernames: ["username", "usernameNormalized"],
-  // email
-  verifiedEmails: ["email", "normalizedEmail"],
-  challenges: ["email", "purpose", "kind"],
-  // passkey
-  passkeys: ["name", "transports"],
-  // totp
-  totpSecrets: ["status"],
-  // OAuth providers
-  accounts: ["providerName", "providerAccountId"],
-  authorizationRequests: [
-    "providerName",
-    "redirectTo",
-    "callbackUrl",
-    "tokenEndpoint",
-    "userInfoEndpoints",
-    "issuers",
-  ],
-  tickets: ["providerName"],
-  // the rate limiter of the password component
-  rateLimits: ["name", "key"],
-};
 
 // Convex ids: 31 to 37 characters of lowercase base32.
 const CONVEX_ID = /^[0-9a-z]{31,37}$/;
@@ -73,8 +43,9 @@ function isConvexIdField(name: string, value: unknown): boolean {
 export function redactDocument(
   table: string,
   document: Record<string, unknown>,
+  project: ProjectConfig = GENERIC_PROJECT,
 ): Record<string, unknown> {
-  return redactObject(document, new Set(SAFE_FIELDS[table] ?? []));
+  return redactObject(document, keptFields(project, table));
 }
 
 function redactObject(

@@ -88,3 +88,89 @@ export function keyMismatchWarning(key: string, url: string): string | null {
     ? null
     : `CONVEX_DEPLOY_KEY is for the deployment "${name}", but the URL is ${url}.`;
 }
+
+/**
+ * Where the recorder reads from. A local deployment is the default; a cloud
+ * deployment is the alternative. Both differ only in where the URL and the
+ * key come from.
+ */
+export type Target = "local" | "cloud";
+
+/** What {@link resolveTarget} reads. */
+export type TargetInput = {
+  target: Target;
+  /** The variables of the app's `.env` and `.env.local`. */
+  appVariables: Record<string, string>;
+  /** The environment of the recorder. */
+  env: Record<string, string | undefined>;
+  /** The `--url` flag. */
+  url: string | undefined;
+  /**
+   * The `adminKey` of `<app>/.convex/local/default/config.json`, which
+   * `npx convex dev` writes for a local deployment, or null.
+   */
+  localAdminKey: string | null;
+};
+
+/** The deployment to record, and the key to read it with. */
+export type ResolvedTarget = { target: Target; url: string; key: string };
+
+/** A deployment that the recorder cannot find, with what to do about it. */
+export class TargetError extends Error {}
+
+/**
+ * The URL and the key of the deployment to record.
+ *
+ * - `local`: the URL is `--url`, `CONVEX_SELF_HOSTED_URL`, or the URL in the
+ *   app's `.env.local`; the key is `CONVEX_SELF_HOSTED_ADMIN_KEY`, or the
+ *   admin key that `npx convex dev` keeps for a local deployment.
+ * - `cloud`: the URL is `--url` or the URL in the app's `.env.local`; the key
+ *   is `CONVEX_DEPLOY_KEY`.
+ */
+export function resolveTarget(input: TargetInput): ResolvedTarget {
+  const { target, appVariables, env } = input;
+  const appUrl = deploymentUrlOf(appVariables);
+  if (target === "cloud") {
+    const key = env.CONVEX_DEPLOY_KEY;
+    if (key === undefined || key === "") {
+      throw new TargetError(
+        "Set CONVEX_DEPLOY_KEY to a deploy key of the deployment (dashboard: Settings, then Deploy Keys). On cloud, the data sync API needs a Pro plan.",
+      );
+    }
+    const url = input.url ?? appUrl;
+    if (url === null) {
+      throw new TargetError(
+        "Found no deployment URL in the app's .env.local. Pass --url.",
+      );
+    }
+    return { target, url: trimUrl(url), key };
+  }
+  const selfHostedKey = env.CONVEX_SELF_HOSTED_ADMIN_KEY;
+  const selfHostedUrl = env.CONVEX_SELF_HOSTED_URL;
+  if (
+    selfHostedKey === undefined &&
+    appVariables.CONVEX_DEPLOYMENT !== undefined &&
+    !isLocalDeployment(appVariables.CONVEX_DEPLOYMENT)
+  ) {
+    throw new TargetError(
+      `The app's deployment is on cloud (CONVEX_DEPLOYMENT=${appVariables.CONVEX_DEPLOYMENT}). Pass --cloud and set CONVEX_DEPLOY_KEY, or run the app on a local deployment.`,
+    );
+  }
+  const key = selfHostedKey ?? input.localAdminKey;
+  if (key === null || key === "") {
+    throw new TargetError(
+      "Found no admin key of a local deployment. Run `npx convex dev` in the app once, or set CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY.",
+    );
+  }
+  const url = input.url ?? selfHostedUrl ?? appUrl;
+  if (url === null) {
+    throw new TargetError(
+      "Found no deployment URL in the app's .env.local. Run `npx convex dev` in the app once, or pass --url.",
+    );
+  }
+  return { target, url: trimUrl(url), key };
+}
+
+function trimUrl(url: string): string {
+  return url.replace(/\/+$/, "");
+}
