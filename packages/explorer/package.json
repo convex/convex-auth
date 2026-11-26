@@ -1,0 +1,25 @@
+{
+  "name": "@convex-dev/explorer",
+  "version": "0.0.0",
+  "description": "Records the function logs and the data changes of a Convex Auth app into a timeline that a viewer plays back",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "record": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^24.12.4",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
+  }
+}
