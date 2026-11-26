@@ -154,22 +154,18 @@ async function reportedCall<Result>(
  * its return value.
  */
 export function withCallReports<Ctx extends CallingCtx>(ctx: Ctx): Ctx {
+  const calls = ctx as unknown as Record<
+    "runQuery" | "runMutation",
+    (...all: unknown[]) => Promise<unknown>
+  >;
   const runQuery = (reference: unknown, ...args: unknown[]) =>
-    reportedCall("query", reference, () =>
-      (ctx.runQuery as (...all: unknown[]) => Promise<unknown>)(
-        reference,
-        ...args,
-      ),
-    );
+    reportedCall("query", reference, () => calls.runQuery(reference, ...args));
   if (ctx.runMutation === undefined) {
     return { ...ctx, runQuery } as Ctx;
   }
   const runMutation = (reference: unknown, ...args: unknown[]) =>
     reportedCall("mutation", reference, () =>
-      (ctx.runMutation as (...all: unknown[]) => Promise<unknown>)(
-        reference,
-        ...args,
-      ),
+      calls.runMutation(reference, ...args),
     );
   return { ...ctx, runQuery, runMutation } as Ctx;
 }

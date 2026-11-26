@@ -16,9 +16,10 @@ import {
   makeFunctionReference,
 } from "convex/server";
 import { v } from "convex/values";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { ComponentApi } from "../component/_generated/component.ts";
-import type { CreateUserFn, TokenBundle } from "../lib/types.ts";
+import type { CreateUserFn, RefreshResult, TokenBundle } from "../lib/types.ts";
+import { STEP_REPORT_PREFIX, STEP_REPORTS_ENV } from "../lib/steps.ts";
 import { registerCore, sessionIdentity } from "../testing/core.ts";
 import { setupConvexAuth } from "./setup.ts";
 
@@ -100,6 +101,25 @@ const revokeAllSessions = authMutation({
     await ctx.convexAuth.revokeAllSessions(userId),
 });
 
+const signUpWithoutSession = authMutation({
+  args: { accountId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, { accountId }) =>
+    await ctx.convexAuth.signUpWithoutSession({ profile: { id: accountId } }),
+});
+
+// Calls the core with an argument its validator rejects, thus the call throws.
+const failInCore = authMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    await ctx.runQuery(components.auth.public.getSession, {
+      sessionId: 1 as unknown as string,
+    });
+    return null;
+  },
+});
+
 // The same app redeployed with a lower inactivity timeout: the same component
 // and method name, so it sees the sessions the default-timeout core minted.
 const SHORT_INACTIVITY_TIMEOUT_SECONDS = 60 * 60;
@@ -141,6 +161,9 @@ const testApp = {
   // The core's own registered functions, exercised as an app would export them.
   isAuthenticated: core.isAuthenticated,
   signOut: core.signOut,
+  refreshSession: core.refreshSession,
+  failInCore,
+  signUpWithoutSession,
   signInShortTtl,
   revokeOtherSessionsShortTtl,
 };
@@ -417,5 +440,343 @@ describe("setupConvexAuth", () => {
         sessionMaxLifetimeSeconds: 60 * 60,
       }),
     ).toThrow(/at most the session max lifetime/i);
+  });
+});
+
+const refreshSessionRef = makeFunctionReference<
+  "mutation",
+  { refreshToken: string },
+  RefreshResult
+>("testApp:refreshSession");
+
+describe("step reports", () => {
+  /**
+   * Runs `run` with `console.log` spied on, and returns the step reports it
+   * wrote, parsed, and the other lines it logged.
+   */
+  async function capture(run: () => Promise<unknown>) {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      await run();
+      const lines = log.mock.calls.map((args) => args.join(" "));
+      return {
+        lines,
+        reports: lines
+          .filter((line) => line.startsWith(STEP_REPORT_PREFIX))
+          .map((line) => JSON.parse(line.slice(STEP_REPORT_PREFIX.length))),
+      };
+    } finally {
+      log.mockRestore();
+    }
+  }
+
+  const core = (fn: string) => ({
+    target: `auth/public/${fn}`,
+  });
+  const call = (kind: "query" | "mutation", fn: string) => [
+    { v: 1, step: "call", kind, ...core(fn) },
+    { v: 1, step: "return", ...core(fn) },
+  ];
+
+  function reportingSetup() {
+    vi.stubEnv(STEP_REPORTS_ENV, "true");
+    return setup();
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("a sign-up reports the method, the call into the core, and the session", async () => {
+    const t = reportingSetup();
+    const { reports } = await capture(() =>
+      t.mutation(signUpRef, { accountId: "alice" }),
+    );
+    expect(reports).toEqual([
+      {
+        v: 1,
+        step: "method.start",
+        method: "testMethod",
+        authenticated: false,
+      },
+      ...call("mutation", "_internal_dangerous_signUp"),
+      {
+        v: 1,
+        step: "session.issued",
+        via: "signUp",
+        method: "testMethod",
+        authenticatedBy: "authTest",
+        userId: "alice",
+      },
+      { v: 1, step: "method.result", method: "testMethod" },
+    ]);
+  });
+
+  test("a sign-in reports the method, the call into the core, and the session", async () => {
+    const t = reportingSetup();
+    await t.mutation(signUpRef, { accountId: "alice" });
+    const { reports } = await capture(() =>
+      t.mutation(signInRef, { accountId: "alice" }),
+    );
+    expect(reports).toEqual([
+      {
+        v: 1,
+        step: "method.start",
+        method: "testMethod",
+        authenticated: false,
+      },
+      ...call("mutation", "_internal_dangerous_signIn"),
+      {
+        v: 1,
+        step: "session.issued",
+        via: "signIn",
+        method: "testMethod",
+        authenticatedBy: "authTest",
+        userId: "alice",
+      },
+      { v: 1, step: "method.result", method: "testMethod" },
+    ]);
+  });
+
+  test("a sign-up without a session reports the user", async () => {
+    const t = reportingSetup();
+    const { reports } = await capture(() =>
+      t.mutation(
+        makeFunctionReference<"mutation", { accountId: string }>(
+          "testApp:signUpWithoutSession",
+        ),
+        { accountId: "alice" },
+      ),
+    );
+    expect(reports).toEqual([
+      {
+        v: 1,
+        step: "method.start",
+        method: "testMethod",
+        authenticated: false,
+      },
+      ...call("mutation", "_internal_dangerous_signUpWithoutSession"),
+      { v: 1, step: "user.created", method: "testMethod", userId: "alice" },
+      { v: 1, step: "method.result", method: "testMethod" },
+    ]);
+  });
+
+  test("a refresh that rotates reports `rotated`", async () => {
+    const t = reportingSetup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    const { reports } = await capture(() =>
+      t.mutation(refreshSessionRef, { refreshToken: bundle.refreshToken }),
+    );
+    expect(reports).toEqual([
+      ...call("mutation", "refresh"),
+      { v: 1, step: "refresh.result", kind: "rotated" },
+    ]);
+  });
+
+  test("a refresh with an unknown token reports `noSession`", async () => {
+    const t = reportingSetup();
+    const { reports } = await capture(() =>
+      t.mutation(refreshSessionRef, { refreshToken: "not-a-token" }),
+    );
+    expect(reports).toEqual([
+      ...call("mutation", "refresh"),
+      { v: 1, step: "refresh.result", kind: "noSession" },
+    ]);
+  });
+
+  test("a sign-out reports the call into the core and the sign-out", async () => {
+    const t = reportingSetup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    const { reports } = await capture(() =>
+      t.mutation(signOutRef, { refreshToken: bundle.refreshToken }),
+    );
+    expect(reports).toEqual([
+      ...call("mutation", "signOut"),
+      { v: 1, step: "signOut.done" },
+    ]);
+  });
+
+  test("isAuthenticated reports whether the token passed and the session lives", async () => {
+    const t = reportingSetup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    const caller = t.withIdentity(sessionIdentity(bundle));
+
+    const live = await capture(() => caller.query(isAuthenticatedRef, {}));
+    expect(live.reports).toEqual([
+      ...call("query", "getSession"),
+      {
+        v: 1,
+        step: "isAuthenticated.result",
+        tokenAccepted: true,
+        sessionLive: true,
+      },
+    ]);
+
+    await t.mutation(signOutRef, { refreshToken: bundle.refreshToken });
+    const revoked = await capture(() => caller.query(isAuthenticatedRef, {}));
+    expect(revoked.reports).toEqual([
+      ...call("query", "getSession"),
+      {
+        v: 1,
+        step: "isAuthenticated.result",
+        tokenAccepted: true,
+        sessionLive: false,
+      },
+    ]);
+
+    const anonymous = await capture(() => t.query(isAuthenticatedRef, {}));
+    expect(anonymous.reports).toEqual([
+      {
+        v: 1,
+        step: "isAuthenticated.result",
+        tokenAccepted: false,
+        sessionLive: false,
+      },
+    ]);
+  });
+
+  test("revokeOtherSessions reports each call and the count", async () => {
+    const t = reportingSetup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    await t.mutation(signInRef, { accountId: "alice" });
+    const { reports } = await capture(() =>
+      t
+        .withIdentity(sessionIdentity(bundle))
+        .mutation(revokeOtherSessionsRef, {}),
+    );
+    expect(reports).toEqual([
+      { v: 1, step: "method.start", method: "testMethod", authenticated: true },
+      ...call("query", "getSession"),
+      ...call("query", "listSessions"),
+      ...call("mutation", "revokeSessions"),
+      { v: 1, step: "sessions.revoked", scope: "others", count: 1 },
+      { v: 1, step: "method.result", method: "testMethod" },
+    ]);
+  });
+
+  test("revokeAllSessions reports each call and the count", async () => {
+    const t = reportingSetup();
+    const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+    await t.mutation(signInRef, { accountId: "alice" });
+    const { reports } = await capture(() =>
+      t.mutation(revokeAllSessionsRef, { userId: bundle.userId }),
+    );
+    expect(reports).toEqual([
+      {
+        v: 1,
+        step: "method.start",
+        method: "testMethod",
+        authenticated: false,
+      },
+      ...call("query", "listSessions"),
+      ...call("mutation", "revokeSessions"),
+      { v: 1, step: "sessions.revoked", scope: "all", count: 2 },
+      { v: 1, step: "method.result", method: "testMethod" },
+    ]);
+  });
+
+  test("a call that throws reports the throw, and the error reaches the caller", async () => {
+    const t = reportingSetup();
+    const failInCoreRef = makeFunctionReference<
+      "mutation",
+      Record<string, never>,
+      null
+    >("testApp:failInCore");
+    let error: unknown;
+    const { reports } = await capture(async () => {
+      try {
+        await t.mutation(failInCoreRef, {});
+      } catch (e) {
+        error = e;
+      }
+    });
+    expect(error).toBeInstanceOf(Error);
+    expect(reports).toEqual([
+      {
+        v: 1,
+        step: "method.start",
+        method: "testMethod",
+        authenticated: false,
+      },
+      { v: 1, step: "call", kind: "query", ...core("getSession") },
+      { v: 1, step: "throw", ...core("getSession") },
+      { v: 1, step: "method.throw", method: "testMethod" },
+    ]);
+  });
+
+  test("no report holds a token or an argument", async () => {
+    const t = reportingSetup();
+    const secrets: string[] = [];
+    const { lines } = await capture(async () => {
+      const bundle = await t.mutation(signUpRef, {
+        accountId: "account-argument",
+      });
+      secrets.push(bundle.accessToken, bundle.refreshToken);
+      const refreshed = await t.mutation(refreshSessionRef, {
+        refreshToken: bundle.refreshToken,
+      });
+      if (refreshed.kind !== "rotated") {
+        throw new Error("The refresh did not rotate.");
+      }
+      secrets.push(refreshed.tokens.accessToken, refreshed.tokens.refreshToken);
+      await t.mutation(refreshSessionRef, {
+        refreshToken: refreshed.tokens.refreshToken,
+      });
+      // The superseded token: its reuse revokes the session.
+      await t.mutation(refreshSessionRef, {
+        refreshToken: bundle.refreshToken,
+      });
+      await t.mutation(signOutRef, {
+        refreshToken: refreshed.tokens.refreshToken,
+      });
+      await t.mutation(refreshSessionRef, {
+        refreshToken: "refresh-token-argument",
+      });
+    });
+    const reports = lines.filter((line) => line.startsWith(STEP_REPORT_PREFIX));
+    expect(reports.length).toBeGreaterThan(0);
+    for (const line of reports) {
+      for (const secret of secrets) {
+        expect(line).not.toContain(secret);
+      }
+      // The user id is the account id in this fixture, thus only the reports
+      // of a session or a user may hold it.
+      if (!/"step":"(session\.issued|user\.created)"/.test(line)) {
+        expect(line).not.toContain("account-argument");
+      }
+      expect(line).not.toContain("refresh-token-argument");
+      expect(line).not.toMatch(/eyJ/); // The start of a JWT.
+    }
+  });
+
+  test("nothing is reported, and the results are the same, when the variable is unset", async () => {
+    vi.stubEnv(STEP_REPORTS_ENV, undefined);
+    const t = setup();
+    const { lines } = await capture(async () => {
+      const bundle = await t.mutation(signUpRef, { accountId: "alice" });
+      expect(bundle.userId).toBe("alice");
+      await t.mutation(signInRef, { accountId: "alice" });
+      const caller = t.withIdentity(sessionIdentity(bundle));
+      expect(await caller.query(isAuthenticatedRef, {})).toBe(true);
+      const refreshed = await t.mutation(refreshSessionRef, {
+        refreshToken: bundle.refreshToken,
+      });
+      expect(refreshed.kind).toBe("rotated");
+      expect(await caller.mutation(revokeOtherSessionsRef, {})).toBe(1);
+      await t.mutation(signOutRef, { refreshToken: bundle.refreshToken });
+      expect(
+        await t.mutation(refreshSessionRef, { refreshToken: "not-a-token" }),
+      ).toEqual({ kind: "noSession" });
+    });
+    expect(lines).toEqual([]);
+  });
+
+  test("a value other than `true` leaves the reports off", async () => {
+    vi.stubEnv(STEP_REPORTS_ENV, "1");
+    const t = setup();
+    const { lines } = await capture(() =>
+      t.mutation(signUpRef, { accountId: "alice" }),
+    );
+    expect(lines).toEqual([]);
   });
 });
