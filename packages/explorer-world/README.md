@@ -11,7 +11,10 @@ pnpm --filter @convex-dev/explorer-world build   # static app in dist/, relative
 ```
 
 `?project=<name>` picks a project (the first under `projects/` by default):
-`convex-auth`, or `chat`, a made-up app under `fixtures/`.
+`convex-auth`, or `chat`, a made-up app under `fixtures/`. `?recording=<name>`
+picks one of its recordings; Convex Auth has `page` (a browser driven through
+the `react-username-password` scenario) and `cli` (`npx convex run` calls,
+including the reuse of a spent refresh token).
 
 ## What you see
 
@@ -36,6 +39,13 @@ pnpm --filter @convex-dev/explorer-world build   # static app in dist/, relative
   its evidence (file and line), and lists the unresolved dependencies; these
   rise from the part as dashed red stubs. Selecting an island draws one arc per
   related island.
+- **The page plays too**, when the recording has one: it stands in the
+  browser region and calls the runs its calls link to; the tokens its
+  requests and responses carry are followed by their secret labels to the
+  rows they are; it holds what its storage holds; its inputs, navigations and
+  the steps of the scenario play between runs, and the run list is grouped
+  by scenario step. A call the recorder could not link to one run stays
+  unlinked, with the runs it may be.
 - **The recording plays**: a request leaves its caller, calls travel between
   functions, the commit sends its writes to their tables, rows rise in, change
   state and dissolve, a warning shows over the function that logged it, and the
@@ -83,9 +93,10 @@ Data flows one way: **project data → adapters → model → layout → scene**
 - `src/adapters/`: the only modules that read the formats of the other
   packages. `convexStructure.ts` maps a structure model to the graph;
   `convexRecording.ts` maps a recorder timeline to the recording and joins
-  every name to a part. It reads the event kinds it knows and counts the
-  others (`recording.events`, `recording.unplaced`); add a case there to play a
-  new kind.
+  every name to a part, through the structure package's `joinRecording` first.
+  `convexPage.ts` reads the browser feed. They read the event kinds they know
+  and count the others (`recording.events`, `recording.unplaced`, shown with a
+  reason); add a case there to play a new kind.
 - `src/model/`: the graph (`graph.ts`: parts, links, unresolved), the
   recording (`recording.ts`: runs, steps, writes, cargo, each derived fact with
   its `Derivation`), the schedule at human speed (`schedule.ts`) and the state
@@ -101,6 +112,16 @@ Data flows one way: **project data → adapters → model → layout → scene**
   each layer of links is one line batch, so the draw calls do not grow with the
   size of the system; part labels mount only for the islands near the camera.
 
+### When something fails
+
+Nothing that loads can blank the world without saying so. A font of the 3D
+labels that does not load, a scene that throws, a browser without WebGL, or a
+scene that draws no frame in 30 s shows a notice (`src/problems.ts`); the
+panels keep working. `pnpm --filter @convex-dev/explorer-world
+check:load-failures` builds the world, serves it from a nested path, and
+checks in Chromium that it draws with and without its fonts, says so when
+they are refused, and requests nothing from elsewhere.
+
 ### What the world derives
 
 The recording does not state everything the world shows. Each fact it works
@@ -111,11 +132,11 @@ and a sentence:
   the run that ended nearest its commit time.
 - `scheduled-by-structure`: a run the scheduler started goes to the latest
   earlier run that reached a function the structure map shows scheduling it.
-- `cargo-out-inserted`, `cargo-in-updated`: the recording holds neither
-  arguments nor return values. Where the presentation says a table's rows
-  travel, a response carries the rows its run inserted, and a request carries
-  the rows whose state its run moved away from a value (a refresh token it
-  redeemed).
+- `cargo-out-inserted`, `cargo-in-updated`: only for a recording without a
+  page, which holds neither arguments nor return values. Where the
+  presentation says a table's rows travel, a response carries the rows its run
+  inserted, and a request carries the rows whose state its run moved away from
+  a value (a refresh token it redeemed). With a page, tokens come from data.
 
 A part the recording shows and the map lacks (a caller, a table of a component
 from npm) is added and marked **observed**.
@@ -125,6 +146,9 @@ from npm) is added and marked **observed**.
 - `src/test/convexAuth.test.ts`: the whole map is placed and drawable; the real
   recording plays every event; runs and calls map to parts; derived facts are
   marked; rows go through their states.
+- `src/test/convexAuthPage.test.ts`: the page's recording: every event of the
+  kinds read plays; each refresh presents the token the last response gave;
+  the page holds what its storage holds; unlinked calls stay unlinked.
 - `src/test/fixture.test.ts`: the made-up chat app (`fixtures/chat`) loads,
   lays out and plays with no code of its own, including derived facts and an
   event kind the world does not know.
@@ -144,4 +168,8 @@ then run `npx convex dev` in the background with the same variable; `npx
 convex env set CONVEX_AUTH_REPORT_STEPS true`; from the root, `pnpm --filter
 @convex-dev/explorer record examples/react-username-password --project
 convex-auth --out <file>`; drive the app with `npx convex run`; stop the
-recorder with Ctrl-C and copy the file to `projects/convex-auth/recording.ndjson`.
+recorder with Ctrl-C and copy the file to
+`projects/convex-auth/recording-cli.ndjson`. For the page's recording, serve
+the example with `npx vite --port 5173` and record with `--page
+http://localhost:5173 --scenario react-username-password` into
+`recording-page.ndjson`.
