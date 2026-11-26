@@ -1,0 +1,33 @@
+{
+  "name": "explorer-world",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.2",
+    "@react-three/postprocessing": "3.2.2",
+    "postprocessing": "6.39.5",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "0.186.1",
+    "zustand": "5.0.16"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  }
+}

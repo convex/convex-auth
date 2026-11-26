@@ -1,0 +1,374 @@
+{
+  "format": "explorer-world/run@provisional",
+  "note": "Hand-written stand-in for a run that packages/explorer will record. The order of the steps and the writes of each function run follow a real run on a real backend; ids, hashes and times are illustrative. Only src/model/adapter.ts reads this file.",
+  "slice": "username-password",
+  "executions": [
+    {
+      "id": "x1",
+      "title": "Sign up",
+      "function": "app:auth:signUpWithUsernamePassword",
+      "caller": "browser",
+      "startedAt": 1764194400120,
+      "endedAt": 1764194400388,
+      "args": { "username": "ada", "password": "‹redacted›" },
+      "steps": [
+        { "step": "method.start", "method": "usernamePassword" },
+        { "step": "call", "target": "authUsername:public:getUserIdByUsername" },
+        {
+          "step": "return",
+          "target": "authUsername:public:getUserIdByUsername",
+          "value": "null — the username is free"
+        },
+        { "step": "call", "target": "auth:public:_internal_dangerous_signUp" },
+        {
+          "step": "return",
+          "target": "auth:public:_internal_dangerous_signUp",
+          "value": "user j97a…, session s1"
+        },
+        { "step": "session.issued", "session": "s1" },
+        { "step": "call", "target": "authUsername:public:setUsername" },
+        { "step": "return", "target": "authUsername:public:setUsername" },
+        {
+          "step": "call",
+          "target": "authPassword:public:_internal_dangerous_setPassword"
+        },
+        {
+          "step": "return",
+          "target": "authPassword:public:_internal_dangerous_setPassword"
+        },
+        { "step": "method.result", "status": "complete" }
+      ],
+      "writes": [
+        {
+          "table": "app:users",
+          "op": "insert",
+          "id": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+          "doc": {}
+        },
+        {
+          "table": "auth:createdUserIds",
+          "op": "insert",
+          "id": "kd71x0w8yq2h5b3n6c9m4r1t7v2e8sa4",
+          "doc": { "userId": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1" }
+        },
+        {
+          "table": "auth:ttlConfig",
+          "op": "insert",
+          "id": "kh4c2v9n7m1x5b8q3w6e0r4t2y7u9pi6",
+          "doc": {
+            "refreshInactivityTimeoutSeconds": 2592000,
+            "sessionMaxLifetimeSeconds": 7776000
+          }
+        },
+        {
+          "table": "auth:sessions",
+          "op": "insert",
+          "id": "s1",
+          "label": "session 1",
+          "doc": {
+            "userId": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+            "component": "authPassword"
+          }
+        },
+        {
+          "table": "auth:refreshTokens",
+          "op": "insert",
+          "id": "r0",
+          "label": "R0",
+          "doc": {
+            "hash": "sha256:3e1f…a07c",
+            "sessionId": "s1",
+            "state": "issued"
+          }
+        },
+        {
+          "table": "authUsername:usernames",
+          "op": "insert",
+          "id": "m52q8w1e4r7t0y3u6i9o2p5a8s1d4fg7",
+          "doc": {
+            "userId": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+            "username": "ada",
+            "usernameNormalized": "ada"
+          }
+        },
+        {
+          "table": "authPassword:passwords",
+          "op": "insert",
+          "id": "n38z5x2c9v6b3n0m7q4w1e8r5t2y9uh3",
+          "doc": {
+            "userId": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+            "passwordHashPHC": "$argon2id$v=19$m=19456,t=2,p=1$…"
+          }
+        }
+      ],
+      "returned": {
+        "status": "complete",
+        "tokens": [
+          { "kind": "access", "label": "access₀", "session": "s1" },
+          { "kind": "refresh", "label": "R0", "row": "r0" }
+        ]
+      }
+    },
+    {
+      "id": "x2",
+      "title": "Sign in",
+      "function": "app:auth:signInWithUsernamePassword",
+      "caller": "browser",
+      "startedAt": 1764194412040,
+      "endedAt": 1764194412297,
+      "args": { "username": "ada", "password": "‹redacted›" },
+      "steps": [
+        { "step": "method.start", "method": "usernamePassword" },
+        { "step": "call", "target": "authUsername:public:getUserIdByUsername" },
+        {
+          "step": "return",
+          "target": "authUsername:public:getUserIdByUsername",
+          "value": "user j97a…"
+        },
+        { "step": "call", "target": "authPassword:public:verifyPassword" },
+        {
+          "step": "return",
+          "target": "authPassword:public:verifyPassword",
+          "value": "valid"
+        },
+        { "step": "call", "target": "auth:public:_internal_dangerous_signIn" },
+        {
+          "step": "return",
+          "target": "auth:public:_internal_dangerous_signIn",
+          "value": "session s2"
+        },
+        { "step": "session.issued", "session": "s2" },
+        { "step": "method.result", "status": "complete" }
+      ],
+      "writes": [
+        {
+          "table": "auth:sessions",
+          "op": "insert",
+          "id": "s2",
+          "label": "session 2",
+          "doc": {
+            "userId": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+            "component": "authPassword"
+          }
+        },
+        {
+          "table": "auth:refreshTokens",
+          "op": "insert",
+          "id": "ra",
+          "label": "A",
+          "doc": {
+            "hash": "sha256:91bd…4e2a",
+            "sessionId": "s2",
+            "state": "issued"
+          }
+        },
+        {
+          "table": "authPassword/rateLimiter:rateLimits",
+          "op": "insert",
+          "id": "q6w3e0r7t4y1u8i5o2p9a6s3d0f7gj2",
+          "doc": {
+            "name": "verifyPassword",
+            "key": "j97a3kq0m2xv8c6w5n1t4r7p9s0d3fz1",
+            "value": 9,
+            "ts": 1764194412210
+          }
+        }
+      ],
+      "returned": {
+        "status": "complete",
+        "tokens": [
+          { "kind": "access", "label": "access₁", "session": "s2" },
+          { "kind": "refresh", "label": "A", "row": "ra" }
+        ]
+      }
+    },
+    {
+      "id": "x3",
+      "title": "Refresh with A",
+      "function": "app:auth:refreshSession",
+      "caller": "browser",
+      "presents": { "kind": "refresh", "label": "A", "row": "ra" },
+      "startedAt": 1764194420500,
+      "endedAt": 1764194420571,
+      "args": { "refreshToken": "‹A›" },
+      "steps": [
+        { "step": "call", "target": "auth:public:refresh" },
+        {
+          "step": "return",
+          "target": "auth:public:refresh",
+          "value": "rotated"
+        },
+        { "step": "refresh.result", "status": "rotated" }
+      ],
+      "writes": [
+        {
+          "table": "auth:refreshTokens",
+          "op": "patch",
+          "id": "ra",
+          "doc": { "state": "redeemed" }
+        },
+        {
+          "table": "auth:refreshTokens",
+          "op": "insert",
+          "id": "rb",
+          "label": "B",
+          "doc": {
+            "hash": "sha256:c45a…19f0",
+            "sessionId": "s2",
+            "state": "issued"
+          }
+        }
+      ],
+      "returned": {
+        "status": "rotated",
+        "tokens": [
+          { "kind": "access", "label": "access₂", "session": "s2" },
+          { "kind": "refresh", "label": "B", "row": "rb" }
+        ]
+      }
+    },
+    {
+      "id": "x4",
+      "title": "Refresh with B",
+      "function": "app:auth:refreshSession",
+      "caller": "browser",
+      "presents": { "kind": "refresh", "label": "B", "row": "rb" },
+      "startedAt": 1764194428830,
+      "endedAt": 1764194428894,
+      "args": { "refreshToken": "‹B›" },
+      "steps": [
+        { "step": "call", "target": "auth:public:refresh" },
+        {
+          "step": "return",
+          "target": "auth:public:refresh",
+          "value": "rotated"
+        },
+        { "step": "refresh.result", "status": "rotated" }
+      ],
+      "writes": [
+        {
+          "table": "auth:refreshTokens",
+          "op": "patch",
+          "id": "rb",
+          "doc": { "state": "redeemed" }
+        },
+        {
+          "table": "auth:refreshTokens",
+          "op": "patch",
+          "id": "ra",
+          "doc": { "state": "spent", "retiredAt": 1764194428880 }
+        },
+        {
+          "table": "auth:refreshTokens",
+          "op": "insert",
+          "id": "rc",
+          "label": "C",
+          "doc": {
+            "hash": "sha256:7d08…b3e5",
+            "sessionId": "s2",
+            "state": "issued"
+          }
+        }
+      ],
+      "returned": {
+        "status": "rotated",
+        "tokens": [
+          { "kind": "access", "label": "access₃", "session": "s2" },
+          { "kind": "refresh", "label": "C", "row": "rc" }
+        ]
+      }
+    },
+    {
+      "id": "x5",
+      "title": "Reuse of spent token A",
+      "function": "app:auth:refreshSession",
+      "caller": "elsewhere",
+      "presents": { "kind": "refresh", "label": "A", "row": "ra" },
+      "startedAt": 1764194436210,
+      "endedAt": 1764194436262,
+      "args": { "refreshToken": "‹A›" },
+      "steps": [
+        { "step": "call", "target": "auth:public:refresh" },
+        {
+          "step": "log",
+          "level": "warn",
+          "region": "auth",
+          "message": "A spent refresh token was presented: the holders of session 2 have diverged. Revoking the session."
+        },
+        {
+          "step": "return",
+          "target": "auth:public:refresh",
+          "value": "no session"
+        },
+        { "step": "refresh.result", "status": "noSession" }
+      ],
+      "writes": [{ "table": "auth:sessions", "op": "delete", "id": "s2" }],
+      "schedules": [
+        {
+          "function": "auth:sessions:deleteSessionTokens",
+          "args": { "sessionId": "s2" }
+        }
+      ],
+      "returned": { "status": "noSession", "tokens": [] }
+    },
+    {
+      "id": "x6",
+      "title": "Scheduled cleanup",
+      "function": "auth:sessions:deleteSessionTokens",
+      "caller": "platform",
+      "scheduled": true,
+      "startedAt": 1764194436290,
+      "endedAt": 1764194436311,
+      "args": { "sessionId": "s2" },
+      "steps": [],
+      "writes": [
+        { "table": "auth:refreshTokens", "op": "delete", "id": "ra" },
+        { "table": "auth:refreshTokens", "op": "delete", "id": "rb" },
+        { "table": "auth:refreshTokens", "op": "delete", "id": "rc" }
+      ],
+      "returned": null
+    },
+    {
+      "id": "x7",
+      "title": "Sign in, wrong password",
+      "function": "app:auth:signInWithUsernamePassword",
+      "caller": "browser",
+      "startedAt": 1764194444600,
+      "endedAt": 1764194444839,
+      "args": { "username": "ada", "password": "‹redacted, wrong›" },
+      "steps": [
+        { "step": "method.start", "method": "usernamePassword" },
+        { "step": "call", "target": "authUsername:public:getUserIdByUsername" },
+        {
+          "step": "return",
+          "target": "authUsername:public:getUserIdByUsername",
+          "value": "user j97a…"
+        },
+        { "step": "call", "target": "authPassword:public:verifyPassword" },
+        {
+          "step": "return",
+          "target": "authPassword:public:verifyPassword",
+          "value": "INVALID_CREDENTIALS"
+        },
+        {
+          "step": "method.result",
+          "status": "error",
+          "userError": "INVALID_CREDENTIALS"
+        }
+      ],
+      "writes": [
+        {
+          "table": "authPassword/rateLimiter:rateLimits",
+          "op": "patch",
+          "id": "q6w3e0r7t4y1u8i5o2p9a6s3d0f7gj2",
+          "doc": { "value": 8, "ts": 1764194444780 }
+        }
+      ],
+      "returned": {
+        "status": "error",
+        "userError": "INVALID_CREDENTIALS",
+        "tokens": []
+      }
+    }
+  ]
+}

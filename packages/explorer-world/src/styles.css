@@ -1,0 +1,465 @@
+:root {
+  --bg: #04060c;
+  --panel: rgba(10, 14, 28, 0.72);
+  --line: rgba(160, 180, 255, 0.14);
+  --text: #e6ebff;
+  --dim: #8590b0;
+  --accent: #cfe6ff;
+  --warn: #ffb020;
+  --error: #ff3b5c;
+  --live: #47e6ff;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root,
+.app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.canvas {
+  position: absolute !important;
+  inset: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.92em;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.panel {
+  position: absolute;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+/* Chapters, top left. */
+.chapters {
+  top: 18px;
+  left: 18px;
+  width: 268px;
+  padding: 16px 14px 12px;
+}
+.chapters h1 {
+  margin: 0 4px 12px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.chapters h1 span {
+  color: var(--dim);
+  font-weight: 500;
+}
+.chapters ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.chapters li button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--dim);
+  text-align: left;
+}
+.chapters li button:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.chapters li.past button {
+  color: #b6bfdb;
+}
+.chapters li.current button {
+  color: var(--text);
+  background: rgba(120, 150, 255, 0.1);
+}
+.n {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+}
+.chapters li.current .n {
+  background: var(--text);
+  color: var(--bg);
+}
+.chapters .ms {
+  margin-left: auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+.chapters .note {
+  margin: 10px 6px 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--dim);
+}
+
+/* Caption, top center. */
+.caption {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  max-width: min(760px, calc(100vw - 680px));
+  animation: rise 0.35s ease-out;
+}
+.caption .run {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b6bfdb;
+}
+.caption .run .mono {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+.caption .n {
+  background: var(--text);
+  color: var(--bg);
+  border: 0;
+}
+.caption .step {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+}
+.caption.tone-warn .step {
+  color: var(--warn);
+}
+.caption.tone-error .step {
+  color: var(--error);
+}
+@keyframes rise {
+  from {
+    opacity: 0.2;
+    transform: translate(-50%, 6px);
+  }
+}
+
+/* Camera, top right. */
+.camera {
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+}
+.camera button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+}
+.camera button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.camera button.on {
+  background: var(--text);
+  color: var(--bg);
+}
+.camera .keys {
+  display: none;
+}
+.camera:hover .keys {
+  display: inline;
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(4, 6, 12, 0.85);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+}
+
+/* Inspector, right. */
+.inspector {
+  top: 72px;
+  right: 18px;
+  bottom: 128px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 2px solid var(--accent);
+}
+.inspector header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+.inspector .kind {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.inspector h2 {
+  margin: 6px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  word-break: break-word;
+  padding-right: 90px;
+}
+.inspector .actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+.inspector .actions button {
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+}
+.inspector .content {
+  padding: 4px 18px 18px;
+  overflow: auto;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.inspector section {
+  margin-top: 14px;
+}
+.inspector h3 {
+  margin: 0 0 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
+}
+.link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.inspector p .link {
+  display: inline;
+  width: auto;
+  margin: 0;
+  padding: 0 2px;
+  color: var(--accent);
+}
+.live {
+  color: var(--live);
+}
+.pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #04070e;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fields {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+.fields div {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 10px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.fields dt {
+  color: var(--dim);
+}
+.fields dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* Timeline, bottom. */
+.timeline {
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  padding: 10px 16px 14px;
+}
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.icon:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.icon.play {
+  background: var(--text);
+  color: var(--bg);
+  width: 40px;
+  height: 40px;
+}
+.clock {
+  margin-left: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+}
+.speeds {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+}
+.speeds button {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--dim);
+}
+.speeds button.on {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+.bar {
+  position: relative;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  touch-action: none;
+}
+.chapter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+  background: rgba(130, 160, 255, 0.12);
+  border: 1px solid rgba(130, 160, 255, 0.2);
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--dim);
+  padding: 9px 8px;
+  white-space: nowrap;
+}
+.chapter span {
+  position: relative;
+}
+.chapter.current {
+  background: rgba(130, 160, 255, 0.24);
+  color: var(--text);
+}
+.chapter.warn {
+  background: rgba(255, 176, 32, 0.16);
+  border-color: rgba(255, 176, 32, 0.35);
+}
+.chapter.error {
+  background: rgba(255, 59, 92, 0.14);
+  border-color: rgba(255, 59, 92, 0.35);
+}
+.chapter .commit {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.45);
+  border-radius: 1px;
+}
+.head {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+}
+.head::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+}
