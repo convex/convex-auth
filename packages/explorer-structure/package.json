@@ -1,0 +1,27 @@
+{
+  "name": "@convex-dev/explorer-structure",
+  "version": "0.0.0",
+  "description": "The structure model of Convex Auth: every part of the system and every dependency between parts, generated from the source",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./structure.json": "./structure.json"
+  },
+  "scripts": {
+    "generate": "tsx src/generate/main.ts",
+    "check": "tsx src/generate/main.ts --check",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "@types/node": "^24.12.4",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.0"
+  }
+}
