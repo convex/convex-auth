@@ -20,6 +20,12 @@ import {
 import { getAuthUserId } from "./userId.ts";
 import { resolveTtlConfig } from "../lib/ttl.ts";
 import { componentPathOf } from "../lib/componentPath.ts";
+import {
+  outcomeOf,
+  reportStep,
+  stepReportsEnabled,
+  withCallReports,
+} from "../lib/steps.ts";
 
 /**
  * A type for a factory that returns a `RegisteredMutation` with a handler that
@@ -255,10 +261,18 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     args: { refreshToken: v.string() },
     returns: vRefreshResult,
     handler: async (ctx, args): Promise<RefreshResult> => {
-      return await ctx.runMutation(component.public.refresh, {
-        refreshToken: args.refreshToken,
-        ...ttl,
-      });
+      const reporting = stepReportsEnabled();
+      const result = await (reporting ? withCallReports(ctx) : ctx).runMutation(
+        component.public.refresh,
+        {
+          refreshToken: args.refreshToken,
+          ...ttl,
+        },
+      );
+      if (reporting) {
+        reportStep("refresh.result", outcomeOf(result));
+      }
+      return result;
     },
   });
 
@@ -266,9 +280,16 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     args: { refreshToken: v.string() },
     returns: v.null(),
     handler: async (ctx, args) => {
-      await ctx.runMutation(component.public.signOut, {
-        refreshToken: args.refreshToken,
-      });
+      const reporting = stepReportsEnabled();
+      await (reporting ? withCallReports(ctx) : ctx).runMutation(
+        component.public.signOut,
+        {
+          refreshToken: args.refreshToken,
+        },
+      );
+      if (reporting) {
+        reportStep("signOut.done");
+      }
       return null;
     },
   });
@@ -281,7 +302,16 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
     args: {},
     returns: v.boolean(),
     handler: async (ctx): Promise<boolean> => {
-      return (await getAuthUserId(ctx, component)) !== null;
+      if (!stepReportsEnabled()) {
+        return (await getAuthUserId(ctx, component)) !== null;
+      }
+      // Convex checked the token before this handler ran, thus an identity
+      // means that the token passed the check.
+      const tokenAccepted = (await ctx.auth.getUserIdentity()) !== null;
+      const sessionLive =
+        (await getAuthUserId(withCallReports(ctx), component)) !== null;
+      reportStep("isAuthenticated.result", { tokenAccepted, sessionLive });
+      return sessionLive;
     },
   });
 
@@ -348,49 +378,73 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
       ).length;
     };
 
-    // The helpers close over the live ctx.
-    const makeHelpers = (ctx: GenericMutationCtx<GenericDataModel>) => ({
+    // The helpers close over the live ctx. With `reporting`, each one writes
+    // a step report (see `lib/steps.ts`) once the core has done its part.
+    const makeHelpers = (
+      ctx: GenericMutationCtx<GenericDataModel>,
+      reporting: boolean,
+    ) => ({
       completeSignUp: async (args: {
         profile: Profile;
         authenticatedBy: object;
       }): Promise<TokenBundle> => {
-        return await ctx.runMutation(
+        const authenticatedBy = componentPathOf(args.authenticatedBy);
+        const tokens = await ctx.runMutation(
           component.public._internal_dangerous_signUp,
           {
             claims: {
               method: name,
               profile: args.profile,
             },
-            componentPath: componentPathOf(args.authenticatedBy),
+            componentPath: authenticatedBy,
             createUserHandle: await createFunctionHandle(createUser),
             onSignInHandle: await onSignInHandle(),
             ...ttl,
           },
         );
+        if (reporting) {
+          reportStep("session.issued", {
+            via: "signUp",
+            method: name,
+            authenticatedBy,
+            userId: tokens.userId,
+          });
+        }
+        return tokens;
       },
       completeSignIn: async (args: {
         userId: string;
         profile: Profile;
         authenticatedBy: object;
       }): Promise<TokenBundle> => {
-        return await ctx.runMutation(
+        const authenticatedBy = componentPathOf(args.authenticatedBy);
+        const tokens = await ctx.runMutation(
           component.public._internal_dangerous_signIn,
           {
             claims: {
               method: name,
               profile: args.profile,
             },
-            componentPath: componentPathOf(args.authenticatedBy),
+            componentPath: authenticatedBy,
             userId: args.userId,
             onSignInHandle: await onSignInHandle(),
             ...ttl,
           },
         );
+        if (reporting) {
+          reportStep("session.issued", {
+            via: "signIn",
+            method: name,
+            authenticatedBy,
+            userId: tokens.userId,
+          });
+        }
+        return tokens;
       },
       signUpWithoutSession: async (args: {
         profile: Profile;
       }): Promise<{ userId: string }> => {
-        return await ctx.runMutation(
+        const created = await ctx.runMutation(
           component.public._internal_dangerous_signUpWithoutSession,
           {
             claims: {
@@ -400,6 +454,10 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
             createUserHandle: await createFunctionHandle(createUser),
           },
         );
+        if (reporting) {
+          reportStep("user.created", { method: name, userId: created.userId });
+        }
+        return created;
       },
       revokeOtherSessions: async (): Promise<number> => {
         const identity = await ctx.auth.getUserIdentity();
@@ -417,28 +475,70 @@ export function setupConvexAuth<UsersTable extends string = "users">(options: {
         const sessions = await ctx.runQuery(component.public.listSessions, {
           userId: session.userId,
         });
-        return await revokeListedSessions(
+        const count = await revokeListedSessions(
           ctx,
           sessions.filter(({ sessionId }) => sessionId !== currentSessionId),
         );
+        if (reporting) {
+          reportStep("sessions.revoked", { scope: "others", count });
+        }
+        return count;
       },
       revokeAllSessions: async (userId: string): Promise<number> => {
         const sessions = await ctx.runQuery(component.public.listSessions, {
           userId,
         });
-        return await revokeListedSessions(ctx, sessions);
+        const count = await revokeListedSessions(ctx, sessions);
+        if (reporting) {
+          reportStep("sessions.revoked", { scope: "all", count });
+        }
+        return count;
       },
     });
+
+    /**
+     * Run the handler of a method with step reports: a `method.start` step, a
+     * `call` step for each function the handler calls, and a `method.result`
+     * step with the outcome.
+     */
+    const runWithStepReports = async <Result>(
+      ctx: GenericMutationCtx<GenericDataModel>,
+      run: (ctx: GenericMutationCtx<GenericDataModel>) => Result,
+    ): Promise<Awaited<Result>> => {
+      // Convex checked the caller's token before the handler ran, thus an
+      // identity means that the caller gave a token that passed the check.
+      const authenticated = (await ctx.auth.getUserIdentity()) !== null;
+      reportStep("method.start", { method: name, authenticated });
+      let result: Awaited<Result>;
+      try {
+        result = await run(withCallReports(ctx));
+      } catch (error) {
+        reportStep("method.throw", { method: name });
+        throw error;
+      }
+      reportStep("method.result", { method: name, ...outcomeOf(result) });
+      return result;
+    };
 
     const authMutation: AuthMutationBuilder<Profile> = (fn) =>
       mutationGeneric({
         args: fn.args as PropertyValidators,
         returns: fn.returns,
-        handler: (ctx, args) =>
-          fn.handler(
-            { ...ctx, convexAuth: makeHelpers(ctx) },
-            args as Parameters<typeof fn.handler>[1],
-          ),
+        handler: (ctx, args) => {
+          const handlerArgs = args as Parameters<typeof fn.handler>[1];
+          if (!stepReportsEnabled()) {
+            return fn.handler(
+              { ...ctx, convexAuth: makeHelpers(ctx, false) },
+              handlerArgs,
+            );
+          }
+          return runWithStepReports(ctx, (reportingCtx) =>
+            fn.handler(
+              { ...reportingCtx, convexAuth: makeHelpers(reportingCtx, true) },
+              handlerArgs,
+            ),
+          ) as ReturnType<typeof fn.handler>;
+        },
       });
 
     return { authMutation };
