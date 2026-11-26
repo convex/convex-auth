@@ -1,0 +1,111 @@
+/**
+ * What happened: the function runs of a recording, in neutral terms. An
+ * adapter builds it from a recorder's timeline and resolves every name to a
+ * part of the graph. Anything the data does not say outright but the adapter
+ * works out carries a `Derivation` that says how.
+ */
+
+export type Doc = Record<string, unknown>;
+
+export type Tone = "normal" | "warn" | "error";
+
+/** How a fact the recording does not state was worked out. */
+export interface Derivation {
+  /** The name of the rule, e.g. `write-by-commit-time`. */
+  rule: string;
+  /** One sentence for the inspector. */
+  note: string;
+}
+
+export type Step =
+  | {
+      kind: "call";
+      /** The part called. */
+      target: string;
+      /** The kind of call, as the report says (query, mutation, …). */
+      callKind?: string;
+    }
+  | { kind: "return"; target: string; tone: Tone }
+  | {
+      /** A step report the world has no picture for: shown as it is. */
+      kind: "note";
+      name: string;
+      text: string;
+      tone: Tone;
+      detail: Doc;
+    }
+  | {
+      kind: "log";
+      level: string;
+      /** The part that logged it. */
+      part: string;
+      message: string;
+      tone: Tone;
+    };
+
+export interface Write {
+  /** The table part. */
+  table: string;
+  row: string;
+  op: "insert" | "update" | "delete";
+  /** The document after the write; empty for a delete. */
+  doc: Doc;
+  /** The fields that changed, for an update. */
+  changed: string[];
+  /** When the write committed, in ms. */
+  time: number;
+  /** Set when the recording does not say which run wrote it. */
+  derived?: Derivation;
+}
+
+/** A row a request or a response carries, such as a token it stores. */
+export interface Cargo {
+  table: string;
+  row: string;
+  label: string;
+  derived: Derivation;
+}
+
+export interface Run {
+  id: string;
+  /** The function part that ran. */
+  function: string;
+  /** The place the run came from: a caller such as an HTTP client or the scheduler. */
+  caller: string;
+  /** Real start and end, in ms. */
+  startedAt: number;
+  endedAt: number;
+  /** The kind of function, as the recording says. */
+  type: string;
+  ok: boolean;
+  error: string | null;
+  /** A one-word outcome, from the run or its last step report. */
+  status: string;
+  tone: Tone;
+  steps: Step[];
+  writes: Write[];
+  /** The run that scheduled this one, if any. */
+  scheduledBy?: { run: string; derived?: Derivation };
+  /** Rows the request carries in, and the response carries out. */
+  carriesIn: Cargo[];
+  carriesOut: Cargo[];
+  /** The facts of the run as recorded, for the inspector. */
+  facts: [name: string, value: string][];
+}
+
+/** Something in the recording the world has no place for. */
+export interface Unplaced {
+  what: string;
+  reason: string;
+}
+
+export interface Recording {
+  /** When the recording started, in ms. */
+  startedAt: number;
+  runs: Run[];
+  /** Rows that existed when the recording started. */
+  snapshot: Write[];
+  unplaced: Unplaced[];
+  /** How many events of each kind the recording had, and how many were played. */
+  events: Record<string, { seen: number; played: number }>;
+}

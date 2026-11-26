@@ -5,6 +5,9 @@
  */
 export const BACKGROUND = "#04060c";
 
+/** The floor of the platform: the deployment the islands run on. */
+export const PLATFORM_COLOR = "#8a7dff";
+
 /** A row being deleted, whatever its table. */
 export const DELETED_COLOR = "#ff3b5c";
 
@@ -19,6 +22,6 @@ export const MOVEMENT_COLORS: Record<string, string> = {
   response: "#c6ffdf",
   call: "#d6b8ff",
   return: "#b8f5ea",
-  sign: "#ffd36b",
   schedule: "#c3b5ff",
+  write: "#ffb454",
 };

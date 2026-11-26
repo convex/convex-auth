@@ -3,66 +3,53 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import { usePlayback, world, type Selection } from "../store.ts";
-import { anchorPosition, type Layout } from "./layout.ts";
+import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
-export function selectionFocus(
-  layout: Layout,
-  s: Selection,
-): { target: Vector3; distance: number } {
+export function selectionFocus(s: Selection): {
+  target: Vector3;
+  distance: number;
+} {
+  const at = (id: string) => {
+    const p = placementOf(id);
+    return p ? new Vector3(...p.position) : new Vector3();
+  };
   switch (s.type) {
-    case "region": {
-      if (!layout.islands.has(s.id))
-        return { target: layout.platform.center.clone(), distance: 95 };
-      const island = layout.islands.get(s.id);
+    case "part": {
+      const p = placementOf(s.id);
+      if (p?.shape === "island")
+        return {
+          target: at(s.id).setY(p.position[1] + 1),
+          distance: Math.max(16, p.radius * 2.6),
+        };
       return {
-        target: island
-          ? island.center.clone().setY(island.center.y + 1)
-          : new Vector3(),
-        distance: (island?.radius ?? 8) * 3.2,
+        target: anchorPosition(s.id).setY(anchorPosition(s.id).y - 1.2),
+        distance: 14,
       };
     }
-    case "function":
-      return {
-        target: anchorPosition(layout, s.id).setY(
-          anchorPosition(layout, s.id).y - 1.4,
-        ),
-        distance: 13,
-      };
-    case "table": {
-      const t = layout.tables.get(s.id);
-      return {
-        target: t ? t.position.clone() : new Vector3(),
-        distance: t?.featured ? 15 : 11,
-      };
-    }
-    case "row": {
-      const t = layout.tables.get(s.table);
-      return {
-        target: t ? t.position.clone().setY(t.position.y + 0.5) : new Vector3(),
-        distance: 7.5,
-      };
-    }
-    case "place":
-      return { target: anchorPosition(layout, s.id), distance: 18 };
-    case "token": {
-      const island = layout.islands.get(s.holder);
-      return {
-        target: island
-          ? island.center.clone().setY(island.center.y + 4.4)
-          : new Vector3(),
-        distance: 12,
-      };
-    }
+    case "row":
+      return { target: at(s.table).setY(at(s.table).y + 0.6), distance: 7 };
+    case "cargo":
+      return { target: anchorPosition(s.holder), distance: 12 };
     case "movement": {
       const m = world.timeline.movements.find((x) => x.id === s.id);
+      return { target: m ? anchorPosition(m.to) : new Vector3(), distance: 24 };
+    }
+    case "run": {
+      const r = world.recording.runs.find((x) => x.id === s.id);
       return {
-        target: m ? anchorPosition(layout, m.to) : new Vector3(),
-        distance: 22,
+        target: r ? anchorPosition(r.function) : new Vector3(),
+        distance: 40,
       };
     }
   }
 }
+
+const vec = (v: [number, number, number]) => new Vector3(...v);
+const overview = {
+  position: vec(world.layout.overview.position),
+  target: vec(world.layout.overview.target),
+};
 
 const KEYS = new Set<string>();
 
@@ -71,7 +58,7 @@ const KEYS = new Set<string>();
  * (Q and E for down and up). In director mode it follows the action until
  * the viewer takes over.
  */
-export function CameraRig({ layout }: { layout: Layout }) {
+export function CameraRig() {
   const controls = useRef<CameraControls>(null);
   const director = usePlayback((s) => s.director);
   const flight = usePlayback((s) => s.flight);
@@ -80,7 +67,7 @@ export function CameraRig({ layout }: { layout: Layout }) {
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
-    const { position, target } = layout.overview;
+    const { position, target } = overview;
     void c.setLookAt(
       position.x,
       position.y,
@@ -90,7 +77,7 @@ export function CameraRig({ layout }: { layout: Layout }) {
       target.z,
       false,
     );
-  }, [layout]);
+  }, []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -111,7 +98,7 @@ export function CameraRig({ layout }: { layout: Layout }) {
     const c = controls.current;
     if (!c || !flight) return;
     if (flight.target === "overview") {
-      const { position, target } = layout.overview;
+      const { position, target } = overview;
       void c.setLookAt(
         position.x,
         position.y,
@@ -123,7 +110,7 @@ export function CameraRig({ layout }: { layout: Layout }) {
       );
       return;
     }
-    const { target, distance } = selectionFocus(layout, flight.target);
+    const { target, distance } = selectionFocus(flight.target);
     const from = new Vector3();
     c.getPosition(from);
     const offset = from.sub(target).normalize();
@@ -139,13 +126,13 @@ export function CameraRig({ layout }: { layout: Layout }) {
       target.z,
       true,
     );
-  }, [flight, layout]);
+  }, [flight]);
 
   useFrame((_, delta) => {
     const c = controls.current;
     if (!c) return;
     // Fly with the keyboard.
-    const speed = (KEYS.has("shift") ? 60 : 24) * delta;
+    const speed = (KEYS.has("shift") ? 120 : 36) * delta;
     const moves: [string, () => unknown][] = [
       ["w", () => c.forward(speed, false)],
       ["s", () => c.forward(-speed, false)],
@@ -171,16 +158,12 @@ export function CameraRig({ layout }: { layout: Layout }) {
     const key = `${state.chapterIndex}:${focus}`;
     if (key === lastFocus.current) return;
     lastFocus.current = key;
-    const target = focus
-      ? anchorPosition(layout, focus)
-      : layout.overview.target.clone();
-    const overview = layout.overview.target;
-    // Look between the subject and the middle of the world, from the front.
-    target.lerp(overview, 0.35);
+    const target = focus ? anchorPosition(focus) : overview.target.clone();
+    // Look at the subject from the front and above, near enough to read it.
     void c.setLookAt(
-      target.x - 14,
-      target.y + 30,
-      target.z + 42,
+      target.x - 8,
+      target.y + 26,
+      target.z + 34,
       target.x,
       target.y,
       target.z,
@@ -195,7 +178,10 @@ export function CameraRig({ layout }: { layout: Layout }) {
       smoothTime={0.6}
       draggingSmoothTime={0.15}
       minDistance={3}
-      maxDistance={220}
+      maxDistance={Math.max(
+        300,
+        overview.position.distanceTo(overview.target) * 2,
+      )}
       maxPolarAngle={Math.PI * 0.49}
       dollyToCursor
       onStart={() => {

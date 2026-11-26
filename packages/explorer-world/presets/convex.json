@@ -1,0 +1,141 @@
+{
+  "title": "Convex project",
+  "palette": [
+    "#3fe0d0",
+    "#7ee081",
+    "#ffb454",
+    "#6aa8ff",
+    "#b48cff",
+    "#ff7a45",
+    "#5ad1ff",
+    "#e6d36b",
+    "#ff6fa8",
+    "#9be36b",
+    "#c79bff",
+    "#4fd8a8"
+  ],
+  "kinds": {
+    "region": {
+      "shape": "island",
+      "noun": "region",
+      "zone": "platform",
+      "color": "#8a7dff",
+      "size": 1.2
+    },
+    "app": {
+      "shape": "island",
+      "noun": "app",
+      "zone": "platform",
+      "color": "#b48cff"
+    },
+    "component": { "shape": "island", "noun": "component", "zone": "platform" },
+    "thirdParty": {
+      "shape": "beacon",
+      "noun": "third party",
+      "plural": "third parties",
+      "color": "#ff9f6b"
+    },
+    "table": { "shape": "vault", "noun": "table" },
+    "function": {
+      "shape": "pillar",
+      "noun": "function",
+      "profileBy": "functionType",
+      "profiles": {
+        "query": "round",
+        "mutation": "hex",
+        "action": "square",
+        "httpAction": "tri"
+      }
+    },
+    "httpRoute": {
+      "shape": "gate",
+      "noun": "HTTP route",
+      "label": "{method} {path}",
+      "color": "#ffd36b"
+    },
+    "caller": {
+      "shape": "gate",
+      "noun": "caller",
+      "color": "#9fd0ff",
+      "size": 1.4
+    },
+    "envVar": {
+      "shape": "post",
+      "noun": "environment variable",
+      "color": "#9fb6ff"
+    }
+  },
+  "links": {
+    "calls": { "verb": "calls", "inverse": "is called by", "color": "#d6b8ff" },
+    "schedules": {
+      "verb": "schedules",
+      "inverse": "is scheduled by",
+      "color": "#c3b5ff"
+    },
+    "reads": { "verb": "reads", "inverse": "is read by", "color": "#5ad1ff" },
+    "writes": {
+      "verb": "writes",
+      "inverse": "is written by",
+      "color": "#ffb454"
+    },
+    "usesComponent": {
+      "verb": "uses the child component",
+      "inverse": "is a child component of",
+      "color": "#8a7dff"
+    },
+    "mounts": {
+      "verb": "mounts",
+      "inverse": "is mounted by",
+      "color": "#8a7dff"
+    },
+    "callsChildComponent": {
+      "verb": "calls the child component",
+      "inverse": "is called through its library by",
+      "color": "#ff7a45"
+    },
+    "referencesFunction": {
+      "verb": "references",
+      "inverse": "is referenced by",
+      "color": "#8d9bbf"
+    },
+    "readsEnv": {
+      "verb": "reads the variable",
+      "inverse": "is read by",
+      "color": "#9fb6ff"
+    },
+    "routesTo": {
+      "verb": "routes to",
+      "inverse": "is routed from",
+      "color": "#ffd36b"
+    },
+    "fetches": {
+      "verb": "fetches",
+      "inverse": "is fetched by",
+      "color": "#ff9f6b"
+    },
+    "callsThirdParty": {
+      "verb": "calls the third party",
+      "inverse": "is called by",
+      "color": "#ff9f6b"
+    },
+    "clientCalls": {
+      "verb": "calls from the client",
+      "inverse": "is called from the client by",
+      "color": "#6aa8ff"
+    }
+  },
+  "callers": {
+    "HttpApi": {
+      "label": "HTTP API",
+      "summary": "A client calling the deployment over HTTP, such as `npx convex run`."
+    },
+    "Websocket": {
+      "label": "WebSocket",
+      "summary": "A client connected over the sync WebSocket."
+    },
+    "Scheduler": {
+      "label": "Scheduler",
+      "summary": "Runs the functions that a committed mutation scheduled."
+    }
+  }
+}

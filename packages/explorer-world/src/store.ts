@@ -1,19 +1,32 @@
 import { create } from "zustand";
-import { createWorld } from "./model/world.ts";
-import { project } from "./project.ts";
 import { nextStop, previousStop } from "./model/playback.ts";
+import { loadProject, PROJECTS } from "./project.ts";
 
-export const world = createWorld(project.structure, project.recording);
-export const config = project.config;
+const params = new URLSearchParams(location.search);
+const chosen = params.get("project");
+const name =
+  chosen && PROJECTS[chosen] ? chosen : (Object.keys(PROJECTS)[0] ?? "");
+
+/** The world of the project in the URL (`?project=`), or the first one. */
+export const world = loadProject(PROJECTS[name]);
+export const projectName = name;
 
 export type Selection =
-  | { type: "region"; id: string }
-  | { type: "function"; id: string }
-  | { type: "table"; id: string }
+  | { type: "part"; id: string }
   | { type: "row"; table: string; id: string }
   | { type: "movement"; id: string }
-  | { type: "place"; id: string }
-  | { type: "token"; holder: string; label: string };
+  | { type: "run"; id: string }
+  | { type: "cargo"; holder: string; table: string; row: string };
+
+/** What is drawn over the world besides the selection. */
+export interface Overlays {
+  /** Every dependency, as a thin line. */
+  links: boolean;
+  /** The relations between top-level islands. */
+  relations: boolean;
+  /** Every unresolved dependency, as a stub. */
+  unresolved: boolean;
+}
 
 interface PlaybackStore {
   time: number;
@@ -24,6 +37,7 @@ interface PlaybackStore {
   director: boolean;
   /** Bumped to ask the camera to fly somewhere. */
   flight: { target: "overview" | Selection; seq: number } | null;
+  overlays: Overlays;
   setTime: (t: number) => void;
   play: () => void;
   pause: () => void;
@@ -33,6 +47,7 @@ interface PlaybackStore {
   select: (selection: Selection | null) => void;
   setDirector: (on: boolean) => void;
   flyTo: (target: "overview" | Selection) => void;
+  toggleOverlay: (name: keyof Overlays) => void;
 }
 
 const clamp = (t: number) => Math.min(Math.max(t, 0), world.timeline.duration);
@@ -44,6 +59,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   selected: null,
   director: true,
   flight: null,
+  overlays: { links: false, relations: true, unresolved: false },
   setTime: (t) => set({ time: clamp(t) }),
   play: () => {
     if (get().time >= world.timeline.duration) set({ time: 0 });
@@ -67,6 +83,8 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
       director: false,
       flight: { target, seq: (s.flight?.seq ?? 0) + 1 },
     })),
+  toggleOverlay: (name) =>
+    set((s) => ({ overlays: { ...s.overlays, [name]: !s.overlays[name] } })),
 }));
 
 let cached: { time: number; state: ReturnType<typeof world.stateAt> } | null =

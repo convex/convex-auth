@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { config, hover, usePlayback, world } from "../store.ts";
+import { hover, usePlayback, world } from "../store.ts";
 
 const { timeline } = world;
 
@@ -16,8 +16,7 @@ export function Caption() {
     );
   }
   // A beat of the previous run does not caption the next one.
-  const beat =
-    state.beat?.execution === chapter.execution.id ? state.beat : null;
+  const beat = state.beat?.run === chapter.run.id ? state.beat : null;
   return (
     <div
       className={`caption tone-${beat?.tone ?? "normal"}`}
@@ -25,13 +24,11 @@ export function Caption() {
     >
       <div className="run">
         <span className="n">{state.chapterIndex + 1}</span>
-        {chapter.execution.title}
+        {chapter.title}
         <span className="dim mono">
           {" "}
-          ·{" "}
-          {world.structure.functions.find(
-            (f) => f.id === chapter.execution.function,
-          )?.name ?? chapter.execution.function}
+          · {chapter.run.facts.find(([k]) => k === "function")?.[1]} ·{" "}
+          {(chapter.run.endedAt - chapter.run.startedAt).toFixed(1)} ms real
         </span>
       </div>
       <div className="step">{beat?.text ?? "…"}</div>
@@ -47,28 +44,36 @@ export function Chapters() {
   return (
     <nav className="chapters panel">
       <h1>
-        {config.title}
-        {config.subtitle && <span> · {config.subtitle}</span>}
+        {world.presentation.title}
+        {world.presentation.subtitle && (
+          <span> · {world.presentation.subtitle}</span>
+        )}
       </h1>
       <ol>
         {timeline.chapters.map((c, i) => (
           <li
-            key={c.execution.id}
+            key={c.run.id}
             className={i === current ? "current" : i < current ? "past" : ""}
           >
-            <button onClick={() => setTime(c.start)}>
+            <button
+              onClick={() => {
+                setTime(c.start);
+                usePlayback.getState().select({ type: "run", id: c.run.id });
+              }}
+            >
               <span className="n">{i + 1}</span>
-              {c.execution.title}
+              <span className={`tone-${c.run.tone}`}>{c.title}</span>
               <span className="ms">
-                {c.execution.endedAt - c.execution.startedAt} ms
+                {Math.round(c.run.endedAt - c.run.startedAt)} ms
               </span>
             </button>
           </li>
         ))}
       </ol>
       <p className="note">
-        Replay of a recorded run, slowed to human speed. Real durations at
-        right.
+        A recording of {world.recording.runs.length} runs, slowed to human
+        speed; real durations at right. {world.graph.parts.length} parts and{" "}
+        {world.graph.links.length} dependencies on the map.
       </p>
     </nav>
   );
@@ -77,7 +82,8 @@ export function Chapters() {
 /** Camera controls and the name of what is under the pointer. */
 export function CameraHud() {
   const director = usePlayback((s) => s.director);
-  const { setDirector, flyTo } = usePlayback.getState();
+  const overlays = usePlayback((s) => s.overlays);
+  const { setDirector, flyTo, toggleOverlay } = usePlayback.getState();
   const tip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const move = (e: PointerEvent) => {
@@ -107,6 +113,28 @@ export function CameraHud() {
         >
           Follow
         </button>
+        <span className="sep" />
+        <button
+          className={overlays.relations ? "on" : ""}
+          onClick={() => toggleOverlay("relations")}
+          title="Arcs between related islands (R)"
+        >
+          Relations
+        </button>
+        <button
+          className={overlays.links ? "on" : ""}
+          onClick={() => toggleOverlay("links")}
+          title={`Every dependency: ${world.graph.links.length} (L)`}
+        >
+          All links
+        </button>
+        <button
+          className={overlays.unresolved ? "on" : ""}
+          onClick={() => toggleOverlay("unresolved")}
+          title={`Every unresolved dependency: ${world.graph.unresolved.length} (U)`}
+        >
+          Unresolved
+        </button>
         <span className="keys">
           drag orbit · right-drag pan · scroll zoom · WASD fly · Q/E down/up ·
           click inspect
@@ -129,6 +157,9 @@ export function useShortcuts() {
       else if (e.key === "ArrowLeft") s.step(-1);
       else if (e.key === "o" || e.key === "O") s.flyTo("overview");
       else if (e.key === "f" || e.key === "F") s.setDirector(!s.director);
+      else if (e.key === "r" || e.key === "R") s.toggleOverlay("relations");
+      else if (e.key === "l" || e.key === "L") s.toggleOverlay("links");
+      else if (e.key === "u" || e.key === "U") s.toggleOverlay("unresolved");
       else if (e.key === "Escape") s.select(null);
     };
     window.addEventListener("keydown", down);

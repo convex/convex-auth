@@ -1,0 +1,123 @@
+{
+  "extends": "convex",
+  "title": "Convex Auth",
+  "subtitle": "username + password, recorded",
+  "focus": "app:react-username-password",
+  "kinds": {
+    "method": {
+      "shape": "island",
+      "noun": "sign-in method",
+      "zone": "platform",
+      "color": "#ffd36b",
+      "size": 0.8
+    },
+    "setupFunction": {
+      "shape": "obelisk",
+      "noun": "setup function",
+      "color": "#ffd36b"
+    },
+    "methodFunction": {
+      "shape": "pillar",
+      "noun": "method function",
+      "color": "#ffd36b",
+      "profileBy": "functionType",
+      "profiles": { "query": "round", "mutation": "hex", "action": "square" }
+    },
+    "module": {
+      "shape": "shard",
+      "noun": "client module",
+      "placeIn": "region:{runsIn}",
+      "color": "#6aa8ff"
+    },
+    "hook": {
+      "shape": "shard",
+      "noun": "hook",
+      "placeIn": "region:{runsIn}",
+      "color": "#9fd0ff",
+      "size": 0.7
+    }
+  },
+  "links": {
+    "usesMethod": {
+      "verb": "sets up",
+      "inverse": "is set up by",
+      "color": "#ffd36b"
+    },
+    "definedBy": {
+      "verb": "is defined by",
+      "inverse": "defines",
+      "color": "#ffe9a6"
+    },
+    "imports": {
+      "verb": "imports",
+      "inverse": "is imported by",
+      "color": "#6aa8ff"
+    }
+  },
+  "parts": {
+    "region:browser": {
+      "zone": "client",
+      "color": "#6aa8ff",
+      "summary": "Code that runs in the user's browser: the session client, the storage of tokens, and the React hooks of each sign-in method."
+    },
+    "region:ssr": {
+      "zone": "client",
+      "color": "#5ad1ff",
+      "summary": "Code that runs on the server that renders the pages (Next.js): cookies, the sign-in proxy, and the JWT check."
+    },
+    "region:app": {
+      "summary": "The Convex backends of the example apps. Each app mounts the components it uses and wires up its sign-in methods."
+    },
+    "component:auth": {
+      "color": "#3fe0d0",
+      "summary": "The core: sessions, refresh tokens and the JWTs it signs. It knows no sign-in method."
+    },
+    "component:authPassword": {
+      "color": "#ffb454",
+      "summary": "Stores password hashes by user id and verifies them, rate-limited."
+    },
+    "component:authUsername": {
+      "color": "#7ee081",
+      "summary": "Stores usernames by user id."
+    },
+    "component:authPassword/rateLimiter": { "color": "#ff7a45" }
+  },
+  "tables": {
+    "table:auth.refreshTokens": {
+      "stateField": "state",
+      "states": {
+        "issued": { "color": "#47e6ff" },
+        "redeemed": { "color": "#ffc24a" },
+        "spent": { "color": "#8f3a55", "retired": true }
+      },
+      "caption": "session {sessionId}"
+    },
+    "table:authUsername.usernames": { "title": "{username}" }
+  },
+  "cargo": [
+    {
+      "table": "table:auth.refreshTokens",
+      "noun": "refresh token",
+      "shape": "key",
+      "color": "#47e6ff",
+      "out": "inserted",
+      "in": { "field": "state", "from": "issued" }
+    }
+  ],
+  "steps": {
+    "method.start": { "text": "the {method} method starts" },
+    "session.issued": {
+      "text": "a session is issued ({via}, by {authenticatedBy})"
+    },
+    "method.result": {
+      "text": "the {method} method ends: {status} {error}",
+      "statusField": "status",
+      "toneBy": { "field": "status", "tones": { "error": "error" } }
+    },
+    "refresh.result": {
+      "text": "refresh: {kind}",
+      "statusField": "kind",
+      "toneBy": { "field": "kind", "tones": { "noSession": "warn" } }
+    }
+  }
+}

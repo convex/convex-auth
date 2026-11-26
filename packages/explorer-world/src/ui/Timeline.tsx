@@ -104,15 +104,15 @@ export function Timeline() {
       >
         {timeline.chapters.map((c, i) => (
           <div
-            key={c.execution.id}
-            className={`chapter ${i === current ? "current" : ""} ${c.execution.status === "error" ? "error" : c.execution.status === "noSession" ? "warn" : ""}`}
+            key={c.run.id}
+            className={`chapter ${i === current ? "current" : ""} ${c.run.tone === "normal" ? "" : c.run.tone}`}
             style={{
               left: `${(c.start / timeline.duration) * 100}%`,
               width: `${((c.end - c.start) / timeline.duration) * 100}%`,
             }}
-            title={c.execution.title}
+            title={c.title}
           >
-            <span>{c.execution.title}</span>
+            <span>{c.title}</span>
             <i
               className="commit"
               style={{

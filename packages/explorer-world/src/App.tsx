@@ -21,7 +21,7 @@ export function App() {
           toneMapping: ACESFilmicToneMapping,
           preserveDrawingBuffer: params.has("capture"),
         }}
-        camera={{ fov: 42, near: 0.5, far: 600, position: [-16, 54, 80] }}
+        camera={{ fov: 42, near: 0.5, far: 4000, position: [0, 200, 260] }}
         onPointerMissed={() => usePlayback.getState().select(null)}
       >
         <World effects={!params.has("noeffects")} />

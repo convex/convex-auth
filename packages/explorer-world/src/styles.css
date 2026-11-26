@@ -463,3 +463,70 @@ button {
   border-radius: 50%;
   background: #fff;
 }
+
+/* The inspector's dependencies, evidence and derived facts. */
+.inspector details {
+  margin: 2px 0 6px;
+}
+.inspector summary {
+  cursor: pointer;
+  padding: 2px 0;
+}
+.swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  margin-right: 7px;
+}
+.dep {
+  padding: 3px 0 5px 12px;
+  border-left: 1px solid var(--line);
+  margin: 2px 0 4px;
+}
+.evidence {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+.small {
+  font-size: 11.5px;
+}
+.src {
+  font-size: 12px;
+  word-break: break-all;
+}
+.derived,
+.observed {
+  font-size: 12px;
+  color: #d9d2ff;
+  margin: 4px 0;
+}
+.camera .sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--line);
+  margin: 0 4px;
+}
+.chapters .tone-warn {
+  color: var(--warn, #ffb020);
+}
+.chapters .tone-error {
+  color: #ff6b86;
+}
+
+/* A caption in the scene that keeps its size on screen. */
+.tag {
+  font:
+    600 12px/1.35 Inter,
+    sans-serif;
+  white-space: nowrap;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(4, 6, 12, 0.72);
+  border: 1px solid rgba(160, 180, 255, 0.18);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}

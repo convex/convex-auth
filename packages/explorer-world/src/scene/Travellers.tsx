@@ -9,23 +9,26 @@ import {
   type Group,
   type Mesh,
 } from "three";
+import type { Cargo } from "../model/recording.ts";
 import type { Movement } from "../model/schedule.ts";
-import type { TokenRef } from "../model/types.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
-import { anchorPosition, type Layout } from "./layout.ts";
-import { Lod } from "./Lod.tsx";
-import { tokenLookOf } from "./look.ts";
+import { Tag } from "./Tag.tsx";
+import { anchorPosition } from "./look.ts";
 import { MOVEMENT_COLORS, TONE_COLORS } from "./palette.ts";
 
+/** How cargo of a table is drawn, from the presentation. */
+function cargoLook(table: string): {
+  shape: "key" | "coin" | "card";
+  color: string;
+} {
+  const rule = world.presentation.cargo?.find((c) => c.table === table);
+  return rule ?? { shape: "card", color: "#cfe6ff" };
+}
+
 /** The path of a movement: one arc, or two through the place it passes. */
-export function movementPath(
-  layout: Layout,
-  m: Movement,
-): (t: number) => Vector3 {
-  const points = [m.from, ...(m.via ? [m.via] : []), m.to].map((a) =>
-    anchorPosition(layout, a),
-  );
+export function movementPath(m: Movement): (t: number) => Vector3 {
+  const points = [m.from, m.to].map((a) => anchorPosition(a));
   const curves: QuadraticBezierCurve3[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const a = points[i];
@@ -53,7 +56,7 @@ const ease = (t: number) =>
   t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
 /** Every movement in flight now. */
-export function Travellers({ layout }: { layout: Layout }) {
+export function Travellers() {
   const ids = usePlayback((s) => {
     void s.time;
     return currentState()
@@ -72,25 +75,16 @@ export function Travellers({ layout }: { layout: Layout }) {
   return (
     <>
       {movements.map((m) => (
-        <TravellerMesh key={m.id} movement={m} layout={layout} />
+        <TravellerMesh key={m.id} movement={m} />
       ))}
     </>
   );
 }
 
-function TravellerMesh({
-  movement,
-  layout,
-}: {
-  movement: Movement;
-  layout: Layout;
-}) {
+function TravellerMesh({ movement }: { movement: Movement }) {
   const group = useRef<Group>(null);
   const head = useRef<Mesh>(null);
-  const path = useMemo(
-    () => movementPath(layout, movement),
-    [layout, movement],
-  );
+  const path = useMemo(() => movementPath(movement), [movement]);
   const select = usePlayback((s) => s.select);
   const selected = usePlayback(
     (s) => s.selected?.type === "movement" && s.selected.id === movement.id,
@@ -151,29 +145,22 @@ function TravellerMesh({
         <mesh visible={false}>
           <sphereGeometry args={[1.4, 8, 8]} />
         </mesh>
-        {movement.tokens.map((token, i) => (
+        {movement.cargo.map((cargo, i) => (
           <group
-            key={token.label}
-            position={[(i - (movement.tokens.length - 1) / 2) * 2, 1.5, 0]}
+            key={cargo.row}
+            position={[(i - (movement.cargo.length - 1) / 2) * 2, 1.5, 0]}
           >
-            <TokenMesh token={token} scale={1.5} labelled={false} />
+            <CargoMesh cargo={cargo} scale={1.5} labelled={false} />
           </group>
         ))}
-        <Lod far={150}>
-          <Label
-            billboard
-            position={[0, movement.tokens.length ? 3.4 : 1.3, 0]}
-            fontSize={0.62}
-            keepSize={[30, 2]}
-            color="#f4f7ff"
-            outlineWidth={0.03}
-            outlineColor="#03050a"
-          >
-            {movement.tokens.length
-              ? `${movement.label}  ·  ${movement.tokens.map((k) => k.label).join(" + ")}`
-              : movement.label}
-          </Label>
-        </Lod>
+        <Tag
+          position={[0, movement.cargo.length ? 3.2 : 1.4, 0]}
+          color={`#${color.getHexString()}`}
+        >
+          {movement.cargo.length
+            ? `${movement.label} · ${movement.cargo.map((k) => k.label).join(" + ")}${movement.derived ? " (derived)" : ""}`
+            : movement.label}
+        </Tag>
       </group>
     </>
   );
@@ -245,14 +232,14 @@ function Streak({
   );
 }
 
-/** A token: a coin or a key, in the color its project gives its kind. */
-export function TokenMesh({
-  token,
+/** A row as cargo: a coin, a key or a card, as the presentation draws its table. */
+export function CargoMesh({
+  cargo,
   tint,
   scale = 1,
   labelled = true,
 }: {
-  token: TokenRef;
+  cargo: Cargo;
   tint?: string;
   scale?: number;
   labelled?: boolean;
@@ -261,12 +248,22 @@ export function TokenMesh({
   useFrame((_, delta) => {
     if (spin.current) spin.current.rotation.y += delta * 1.6;
   });
-  const look = tokenLookOf(token.kind);
+  const look = cargoLook(cargo.table);
   const color = tint ?? look.color;
   return (
     <group scale={scale}>
       <group ref={spin}>
-        {look.shape === "coin" ? (
+        {look.shape === "card" ? (
+          <mesh>
+            <boxGeometry args={[0.9, 0.12, 0.6]} />
+            <meshStandardMaterial
+              color={color}
+              emissive={color}
+              emissiveIntensity={1.8}
+              toneMapped={false}
+            />
+          </mesh>
+        ) : look.shape === "coin" ? (
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.5, 0.5, 0.14, 6]} />
             <meshStandardMaterial
@@ -311,9 +308,57 @@ export function TokenMesh({
           outlineWidth={0.035}
           outlineColor="#03050a"
         >
-          {token.label}
+          {cargo.label}
         </Label>
       )}
     </group>
+  );
+}
+
+/** The cargo each caller holds now, hovering over it. */
+export function Holdings() {
+  const signature = usePlayback((s) => {
+    void s.time;
+    return [...currentState().holdings]
+      .map(([holder, list]) => `${holder}:${list.map((c) => c.row).join(",")}`)
+      .join("|");
+  });
+  const select = usePlayback((s) => s.select);
+  const held = useMemo(() => {
+    void signature;
+    return [...currentState().holdings];
+  }, [signature]);
+  return (
+    <>
+      {held.flatMap(([holder, list]) => {
+        const at = anchorPosition(holder);
+        return list.map((cargo, i) => (
+          <group
+            key={`${holder}/${cargo.row}`}
+            position={[
+              at.x + (i - (list.length - 1) / 2) * 2.2,
+              at.y + 2.2,
+              at.z,
+            ]}
+            onClick={(e) => {
+              e.stopPropagation();
+              select({
+                type: "cargo",
+                holder,
+                table: cargo.table,
+                row: cargo.row,
+              });
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              hover.label = `${cargo.label} (derived)`;
+            }}
+            onPointerOut={() => (hover.label = "")}
+          >
+            <CargoMesh cargo={cargo} scale={1.3} />
+          </group>
+        ));
+      })}
+    </>
   );
 }

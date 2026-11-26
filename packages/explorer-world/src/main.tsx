@@ -13,10 +13,15 @@ import { configureTextBuilder } from "troika-three-text";
 // worker can be refused where the page's own is not, and then no text loads.
 configureTextBuilder({ useWorker: false });
 
-// A hook for scripted screenshots: `?t=42&paused` opens the run at 42 s.
+// Hooks for scripted screenshots: `?t=42&paused` opens the run at 42 s.
 const params = new URLSearchParams(location.search);
 if (params.has("t")) usePlayback.getState().setTime(Number(params.get("t")));
 if (params.has("paused")) usePlayback.getState().pause();
+// `?free` starts with the camera at the overview, not following the action.
+if (params.has("free")) usePlayback.getState().setDirector(false);
+// `?select=<part id>` opens with a part selected.
+const selected = params.get("select");
+if (selected) usePlayback.getState().select({ type: "part", id: selected });
 (window as unknown as { explorer: typeof usePlayback }).explorer = usePlayback;
 
 createRoot(document.getElementById("root")!).render(

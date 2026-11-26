@@ -4,6 +4,6 @@
     "resolveJsonModule": true,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*", "projects/**/*", "vite.config.ts"],
+  "include": ["src/**/*", "projects/**/*", "fixtures/**/*", "vite.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

@@ -1,0 +1,5 @@
+{
+  "extends": "convex",
+  "title": "Chat",
+  "subtitle": "a made-up app for the tests"
+}

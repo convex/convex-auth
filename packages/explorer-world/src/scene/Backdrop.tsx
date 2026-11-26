@@ -2,18 +2,17 @@ import { Environment, Lightformer, Sparkles, Stars } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
-import { usePlayback } from "../store.ts";
-import { Label } from "./Label.tsx";
-import type { Layout } from "./layout.ts";
-import { platformRegion, regionColorOf } from "./look.ts";
-import { BACKGROUND } from "./palette.ts";
+import { usePlayback, world } from "../store.ts";
+import { BACKGROUND, PLATFORM_COLOR } from "./palette.ts";
+
+const span = world.layout.platform.radius;
 
 /** The space the world floats in, and the floor of the platform. */
-export function Backdrop({ layout }: { layout: Layout }) {
+export function Backdrop() {
   return (
     <>
       <color attach="background" args={[BACKGROUND]} />
-      <fog attach="fog" args={[BACKGROUND, 90, 230]} />
+      <fog attach="fog" args={[BACKGROUND, span * 2.2, span * 6]} />
       <hemisphereLight args={["#6b7fff", "#05070d", 0.35]} />
       <directionalLight
         position={[-30, 60, 40]}
@@ -26,7 +25,7 @@ export function Backdrop({ layout }: { layout: Layout }) {
         color="#7a5cff"
       />
       <Stars
-        radius={260}
+        radius={Math.max(260, span * 4)}
         depth={80}
         count={4000}
         factor={5}
@@ -36,7 +35,7 @@ export function Backdrop({ layout }: { layout: Layout }) {
       />
       <Sparkles
         count={160}
-        scale={[140, 30, 110]}
+        scale={[span * 2.4, 40, span * 2]}
         position={[0, 10, -8]}
         size={2.2}
         speed={0.15}
@@ -77,7 +76,7 @@ export function Backdrop({ layout }: { layout: Layout }) {
           scale={[30, 4, 1]}
         />
       </Environment>
-      <PlatformFloor layout={layout} />
+      <PlatformFloor />
     </>
   );
 }
@@ -123,12 +122,9 @@ const wallFragment = /* glsl */ `
   }
 `;
 
-function PlatformFloor({ layout }: { layout: Layout }) {
-  const { center, radius } = layout.platform;
-  const color = useMemo(
-    () => new Color(regionColorOf(platformRegion?.id ?? "")),
-    [],
-  );
+function PlatformFloor() {
+  const { center, radius } = world.layout.platform;
+  const color = useMemo(() => new Color(PLATFORM_COLOR), []);
   const floor = useRef<ShaderMaterial>(null);
   const wall = useRef<ShaderMaterial>(null);
   const select = usePlayback((s) => s.select);
@@ -150,10 +146,10 @@ function PlatformFloor({ layout }: { layout: Layout }) {
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={(e) => {
           e.stopPropagation();
-          if (platformRegion) select({ type: "region", id: platformRegion.id });
+          select(null);
         }}
       >
-        <circleGeometry args={[radius, 128]} />
+        <circleGeometry args={[radius, 160]} />
         <shaderMaterial
           ref={floor}
           vertexShader={floorVertex}
@@ -163,9 +159,9 @@ function PlatformFloor({ layout }: { layout: Layout }) {
           depthWrite={false}
         />
       </mesh>
-      {/* The trust boundary of the deployment: a faint wall of light. */}
-      <mesh position={[0, 4, 0]} raycast={() => null}>
-        <cylinderGeometry args={[radius, radius, 8, 160, 1, true]} />
+      {/* The edge of the deployment: a faint wall of light. */}
+      <mesh position={[0, 6, 0]} raycast={() => null}>
+        <cylinderGeometry args={[radius, radius, 12, 200, 1, true]} />
         <shaderMaterial
           ref={wall}
           vertexShader={wallVertex}
@@ -177,16 +173,6 @@ function PlatformFloor({ layout }: { layout: Layout }) {
           blending={AdditiveBlending}
         />
       </mesh>
-      <Label
-        position={[radius * 0.42, 0.08, radius * 0.78]}
-        rotation={[-Math.PI / 2, 0, 0.18]}
-        fontSize={2.6}
-        letterSpacing={0.35}
-        color={regionColorOf(platformRegion?.id ?? "")}
-        weight="bold"
-      >
-        {(platformRegion?.label ?? "").toUpperCase()}
-      </Label>
     </group>
   );
 }

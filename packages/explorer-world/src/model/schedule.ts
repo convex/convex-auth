@@ -1,45 +1,46 @@
 /**
- * Lays the recording out on a timeline at human speed.
+ * Lays a recording out on a timeline at human speed.
  *
  * A recorded run takes milliseconds; a person needs seconds to follow it. The
  * schedule keeps the order of the recording and its causality (a call returns
- * before the next one starts, writes commit at the end of their function run)
- * and gives each step a duration a person can watch.
+ * before the next one starts, writes commit at the end of their run) and gives
+ * each step a duration a person can watch. The real durations stay on the
+ * runs, and the UI shows them.
  */
+import type { GraphIndex } from "./graph.ts";
 import type {
+  Cargo,
+  Derivation,
   Doc,
-  Execution,
   Recording,
-  Step,
-  Structure,
-  TokenRef,
+  Run,
   Tone,
-} from "./types.ts";
+  Write,
+} from "./recording.ts";
 
-export type { Tone } from "./types.ts";
+export type { Tone } from "./recording.ts";
 
-/** A region id, a function id, a table id, or a place id. */
+/** A part id: where a traveller leaves from or arrives at. */
 export type Anchor = string;
 
 export interface Movement {
   id: string;
-  execution: string;
-  kind: "request" | "response" | "call" | "return" | "sign" | "schedule";
+  run: string;
+  kind: "request" | "response" | "call" | "return" | "schedule" | "write";
   from: Anchor;
   to: Anchor;
-  /** A place the movement passes through on its way. */
-  via?: Anchor;
   start: number;
   end: number;
   label: string;
   detail: string;
-  tokens: TokenRef[];
+  cargo: Cargo[];
   tone: Tone;
+  derived?: Derivation;
 }
 
 export interface Activation {
   node: string;
-  execution: string;
+  run: string;
   start: number;
   end: number;
   tone: Tone;
@@ -47,42 +48,39 @@ export interface Activation {
 
 export interface RowChange {
   at: number;
-  execution: string;
-  table: string;
-  row: string;
-  op: "insert" | "patch" | "delete";
-  label?: string;
-  doc: Doc;
+  run: string;
+  write: Write;
 }
 
 export interface HoldingChange {
   at: number;
   holder: string;
-  token: TokenRef;
+  cargo: Cargo;
   op: "gain" | "drop";
 }
 
 export interface Beat {
   start: number;
   end: number;
-  execution: string;
+  run: string;
   text: string;
   tone: Tone;
-  /** The node the beat is about, for the camera to follow. */
+  /** The part the beat is about, for the camera to follow. */
   focus?: Anchor;
 }
 
 export interface Alert {
   start: number;
   end: number;
-  execution: string;
-  region: string;
-  level: "info" | "warn" | "error";
+  run: string;
+  part: string;
+  level: string;
   text: string;
 }
 
 export interface Chapter {
-  execution: Execution;
+  run: Run;
+  title: string;
   start: number;
   end: number;
   commitAt: number;
@@ -103,30 +101,19 @@ export interface Timeline {
 export const PACE = {
   lead: 0.8,
   request: 1.8,
-  start: 0.9,
   call: 1.2,
   inside: 0.5,
   return: 1.0,
-  sign: 0.7,
+  note: 1.6,
   log: 2.6,
-  result: 0.8,
   commit: 1.6,
   response: 1.8,
   schedule: 1.2,
   gap: 1.4,
 };
 
-function nameOf(structure: Structure, id: string): string {
-  return (
-    structure.functions.find((f) => f.id === id)?.label ??
-    structure.places.find((p) => p.id === id)?.label ??
-    structure.regions.find((r) => r.id === id)?.label ??
-    id
-  );
-}
-
 export function buildTimeline(
-  structure: Structure,
+  index: GraphIndex,
   recording: Recording,
 ): Timeline {
   const tl: Timeline = {
@@ -139,318 +126,287 @@ export function buildTimeline(
     holdings: [],
     alerts: [],
   };
-  let t = 0;
+  const name = (id: string) => index.part.get(id)?.label ?? id;
   let movementCount = 0;
-  const name = (id: string) => nameOf(structure, id);
-  const scheduler = structure.places.find((p) => p.role === "scheduler");
-  // Who holds which token, to notice a caller presenting a copy.
-  const held = new Map<string, Set<string>>();
-  const hold = (
-    at: number,
-    holder: string,
-    token: TokenRef,
-    op: "gain" | "drop",
-  ) => {
-    tl.holdings.push({ at, holder, token, op });
-    const set = held.get(holder) ?? new Set<string>();
-    if (op === "gain") set.add(token.label);
-    else set.delete(token.label);
-    held.set(holder, set);
-  };
-
-  const move = (m: Omit<Movement, "id">) => {
+  const move = (m: Omit<Movement, "id">) =>
     tl.movements.push({ ...m, id: `m${++movementCount}` });
-  };
   const beat = (
     start: number,
     end: number,
-    execution: string,
+    run: string,
     text: string,
     tone: Tone = "normal",
     focus?: Anchor,
-  ) => tl.beats.push({ start, end, execution, text, tone, focus });
+  ) => tl.beats.push({ start, end, run, text, tone, focus });
 
-  for (const ex of recording.executions) {
+  // The rows the recording started with.
+  for (const write of recording.snapshot) {
+    tl.rowChanges.push({ at: 0, run: "", write });
+  }
+
+  let t = 0;
+  for (const run of recording.runs) {
     const start = t;
-    const root = ex.function;
-    const tone = ex.tone;
+    const root = run.function;
     t += PACE.lead;
+    const scheduled = Boolean(run.scheduledBy);
+    const verb = run.type.toLowerCase();
 
-    // A caller presenting a token it was never given holds a copy of it.
-    if (ex.presents && !held.get(ex.caller)?.has(ex.presents.label)) {
-      hold(start, ex.caller, ex.presents, "gain");
-    }
-    const entry = ex.entry
-      ? structure.places.find((p) => p.id === ex.entry)
-      : undefined;
-
-    // The request. From a client it passes the entry place, if there is one.
+    // The request, from the caller.
     const reqStart = t;
-    t += ex.scheduled ? PACE.schedule : PACE.request;
+    t += scheduled ? PACE.schedule : PACE.request;
     move({
-      execution: ex.id,
+      run: run.id,
       kind: "request",
-      from: ex.caller,
+      from: run.caller,
       to: root,
-      via: ex.entry,
       start: reqStart,
       end: t,
-      label: ex.scheduled ? "scheduled run" : `request · ${name(root)}`,
-      detail: ex.scheduled
-        ? `${name(ex.caller)} starts ${name(root)}.`
-        : `${name(ex.caller)} calls ${name(root)}.${entry ? ` The request passes the ${entry.label}: ${entry.summary}` : ""}`,
-      tokens: ex.presents ? [ex.presents] : [],
+      label: scheduled
+        ? `scheduled run · ${name(root)}`
+        : `request · ${name(root)}`,
+      detail: `${name(run.caller)} runs the ${verb} ${name(root)}.`,
+      cargo: run.carriesIn,
       tone: "normal",
+      derived: run.carriesIn[0]?.derived,
     });
+    for (const c of run.carriesIn)
+      tl.holdings.push({
+        at: reqStart,
+        holder: run.caller,
+        cargo: c,
+        op: "drop",
+      });
     beat(
       reqStart,
       t,
-      ex.id,
-      ex.scheduled
-        ? `${name(ex.caller)} runs ${name(root)}`
-        : ex.presents
-          ? `${name(ex.caller)} presents ${tokenNoun(structure, ex.presents)} ${ex.presents.label} to ${name(root)}`
-          : `${name(ex.caller)} calls ${name(root)}`,
+      run.id,
+      run.carriesIn.length
+        ? `${name(run.caller)} calls ${name(root)} with ${run.carriesIn.map((c) => c.label).join(", ")}`
+        : `${name(run.caller)} calls ${name(root)}`,
       "normal",
       root,
     );
 
     const rootStart = t;
-    // Calls in flight, innermost last.
     const open: { target: string; arrived: number }[] = [];
-    for (const s of ex.steps) {
-      t = scheduleStep(s, ex, t);
-    }
-
-    function scheduleStep(s: Step, ex: Execution, t: number): number {
+    for (const s of run.steps) {
       const caller = open.length ? open[open.length - 1].target : root;
       switch (s.kind) {
-        case "start":
-          beat(
-            t,
-            t + PACE.start,
-            ex.id,
-            s.label
-              ? `${name(root)} starts the ${s.label}`
-              : `${name(root)} starts`,
-            "normal",
-            root,
-          );
-          return t + PACE.start;
         case "call": {
           move({
-            execution: ex.id,
+            run: run.id,
             kind: "call",
             from: caller,
             to: s.target,
             start: t,
             end: t + PACE.call,
-            label: `call · ${name(s.target)}`,
-            detail: `${name(caller)} calls ${name(s.target)}. A component call runs in the same transaction as its caller.`,
-            tokens: [],
+            label: `${s.callKind ?? "call"} · ${name(s.target)}`,
+            detail: `${name(caller)} calls ${name(s.target)}${s.callKind ? ` (a ${s.callKind})` : ""}. It runs in the same transaction as its caller.`,
+            cargo: [],
             tone: "normal",
           });
           beat(
             t,
             t + PACE.call + PACE.inside,
-            ex.id,
+            run.id,
             `calls ${name(s.target)}`,
             "normal",
             s.target,
           );
           open.push({ target: s.target, arrived: t + PACE.call });
-          return t + PACE.call + PACE.inside;
+          t += PACE.call + PACE.inside;
+          break;
         }
         case "return": {
-          const call = open.pop();
+          // Close the matching call, and any left open inside it.
+          let call = open.pop();
+          while (call && call.target !== s.target && open.length)
+            call = open.pop();
           const back = open.length ? open[open.length - 1].target : root;
-          const rTone = s.tone;
-          if (call) {
+          if (call)
             tl.activations.push({
               node: call.target,
-              execution: ex.id,
+              run: run.id,
               start: call.arrived,
               end: t + 0.15,
-              tone: rTone,
+              tone: s.tone,
             });
-          }
           move({
-            execution: ex.id,
+            run: run.id,
             kind: "return",
             from: s.target,
             to: back,
             start: t,
             end: t + PACE.return,
-            label: `returns · ${s.value ?? "ok"}`,
-            detail: `${name(s.target)} returns${s.value ? `: ${s.value}` : ""}.`,
-            tokens: [],
-            tone: rTone,
+            label: `returns · ${name(s.target)}`,
+            detail: `${name(s.target)} returns to ${name(back)}. The recording does not hold the value.`,
+            cargo: [],
+            tone: s.tone,
           });
           beat(
             t,
             t + PACE.return,
-            ex.id,
-            `${name(s.target)} returns${s.value ? ` — ${s.value}` : ""}`,
-            rTone,
+            run.id,
+            `${name(s.target)} returns`,
+            s.tone,
             back,
           );
-          return t + PACE.return;
+          t += PACE.return;
+          break;
         }
-        case "issue": {
-          const half = PACE.sign;
-          const place = structure.places.find((p) => p.id === s.place);
-          const label = place?.label ?? s.place;
-          move({
-            execution: ex.id,
-            kind: "sign",
-            from: root,
-            to: s.place,
-            start: t,
-            end: t + half,
-            label: `to ${label}`,
-            detail:
-              `${name(root)} asks the ${label} for a token. ${place?.summary ?? ""}`.trim(),
-            tokens: [],
-            tone: "normal",
-          });
-          move({
-            execution: ex.id,
-            kind: "sign",
-            from: s.place,
-            to: root,
-            start: t + half,
-            end: t + 2 * half,
-            label: `issued · ${s.token?.label ?? "token"}`,
-            detail: s.token
-              ? `The ${label} issues ${tokenNoun(structure, s.token)} ${s.token.label}.`
-              : `The ${label} issues a token.`,
-            tokens: s.token ? [s.token] : [],
-            tone: "normal",
-          });
-          beat(t, t + 2 * half, ex.id, s.text, "normal", s.place);
-          return t + 2 * half;
+        case "note": {
+          beat(t, t + PACE.note, run.id, s.text, s.tone, caller);
+          t += PACE.note;
+          break;
         }
         case "log": {
           tl.alerts.push({
             start: t,
             end: t + PACE.log + PACE.return + PACE.commit + PACE.response,
-            execution: ex.id,
-            region: s.region,
+            run: run.id,
+            part: s.part,
             level: s.level,
             text: s.message,
           });
           beat(
             t,
             t + PACE.log,
-            ex.id,
-            `${s.level === "info" ? "log" : s.level} · ${s.message}`,
-            s.level === "info" ? "normal" : s.level,
-            s.region,
+            run.id,
+            `${s.level.toLowerCase()} · ${s.message}`,
+            s.tone,
+            s.part,
           );
-          return t + PACE.log;
-        }
-        case "result": {
-          const rTone = s.tone;
-          beat(
-            t,
-            t + PACE.result,
-            ex.id,
-            `result · ${s.status}${s.error ? ` (${s.error})` : ""}`,
-            rTone,
-            root,
-          );
-          return t + PACE.result;
+          t += PACE.log;
+          break;
         }
       }
     }
+    // Calls the reports left open close here.
+    for (const call of open.reverse())
+      tl.activations.push({
+        node: call.target,
+        run: run.id,
+        start: call.arrived,
+        end: t,
+        tone: "normal",
+      });
 
     // Commit: every write of the run lands at once.
     const commitAt = t;
-    for (const w of ex.writes) {
+    const tables = [...new Set(run.writes.map((w) => w.table))];
+    for (const w of run.writes)
       tl.rowChanges.push({
-        at: commitAt,
-        execution: ex.id,
-        table: w.table,
-        row: w.row,
-        op: w.op,
-        label: w.label,
-        doc: w.doc,
+        at: commitAt + PACE.commit * 0.6,
+        run: run.id,
+        write: w,
+      });
+    for (const table of tables) {
+      const n = run.writes.filter((w) => w.table === table);
+      const derived = n.find((w) => w.derived)?.derived;
+      move({
+        run: run.id,
+        kind: "write",
+        from: root,
+        to: table,
+        start: commitAt,
+        end: commitAt + PACE.commit * 0.6,
+        label: `${n.map((w) => w.op).join(", ")} · ${name(table)}`,
+        detail: `The commit writes ${n.length} row${n.length === 1 ? "" : "s"} of ${name(table)}.`,
+        cargo: [],
+        tone: n.some((w) => w.op === "delete") ? "warn" : "normal",
+        derived,
       });
     }
-    if (ex.writes.length) {
+    if (run.writes.length) {
       beat(
         t,
         t + PACE.commit,
-        ex.id,
-        `commit · ${ex.writes.length} write${ex.writes.length === 1 ? "" : "s"} land together`,
+        run.id,
+        `commit · ${run.writes.length} write${run.writes.length === 1 ? "" : "s"} to ${tables.map(name).join(", ")}`,
         "normal",
-        ex.writes.length === 1 ? ex.writes[0].table : undefined,
+        tables.length === 1 ? tables[0] : root,
       );
       t += PACE.commit;
     }
     tl.activations.push({
       node: root,
-      execution: ex.id,
+      run: run.id,
       start: rootStart,
       end: t,
-      tone,
+      tone: run.tone,
     });
 
-    // The response, carrying the new tokens to the client.
-    if (!ex.scheduled) {
+    // The response, back to the caller.
+    if (!scheduled) {
       const resStart = t;
       t += PACE.response;
       move({
-        execution: ex.id,
+        run: run.id,
         kind: "response",
         from: root,
-        to: ex.caller,
+        to: run.caller,
         start: resStart,
         end: t,
-        label: `response · ${ex.status ?? "ok"}`,
-        detail: ex.tokens.length
-          ? `The result goes back to the client with ${ex.tokens.map((k) => k.label).join(" and ")}.`
-          : `The result goes back to the client: ${ex.status}${ex.error ? ` (${ex.error})` : ""}.`,
-        tokens: ex.tokens,
-        tone,
+        label: `response · ${run.status}`,
+        detail: run.carriesOut.length
+          ? `The result goes back to ${name(run.caller)} with ${run.carriesOut.map((c) => c.label).join(", ")}.`
+          : `The result goes back to ${name(run.caller)}: ${run.status}${run.error ? ` (${run.error})` : ""}.`,
+        cargo: run.carriesOut,
+        tone: run.tone,
+        derived: run.carriesOut[0]?.derived,
       });
-      for (const token of ex.tokens) hold(t, ex.caller, token, "gain");
-      for (const token of ex.drops) hold(t, ex.caller, token, "drop");
+      for (const c of run.carriesOut)
+        tl.holdings.push({ at: t, holder: run.caller, cargo: c, op: "gain" });
       beat(
         resStart,
         t,
-        ex.id,
-        ex.tokens.length
-          ? `${name(ex.caller)} receives ${ex.tokens.map((k) => k.label).join(" + ")}`
-          : `${name(ex.caller)} receives ${ex.status}${ex.error ? ` · ${ex.error}` : ""}`,
-        tone,
-        ex.caller,
+        run.id,
+        run.carriesOut.length
+          ? `${name(run.caller)} receives ${run.status} with ${run.carriesOut.map((c) => c.label).join(", ")}`
+          : `${name(run.caller)} receives ${run.status}${run.error ? ` · ${run.error}` : ""}`,
+        run.tone,
+        run.caller,
       );
     }
 
-    for (const fn of scheduler ? ex.schedules : []) {
-      move({
-        execution: ex.id,
-        kind: "schedule",
-        from: root,
-        to: scheduler!.id,
-        start: commitAt,
-        end: commitAt + PACE.schedule,
-        label: `schedules · ${name(fn)}`,
-        detail: `The commit schedules ${name(fn)} to run right after.`,
-        tokens: [],
-        tone: "normal",
-      });
-    }
-
-    tl.chapters.push({ execution: ex, start, end: t, commitAt });
+    tl.chapters.push({
+      run,
+      title: `${name(root)}${run.status !== "ok" ? ` · ${run.status}` : ""}`,
+      start,
+      end: t,
+      commitAt,
+    });
     t += PACE.gap;
   }
+
+  // A scheduled run's request leaves the run that scheduled it, at its commit.
+  for (const c of tl.chapters) {
+    const by = c.run.scheduledBy;
+    if (!by) continue;
+    const parent = tl.chapters.find((p) => p.run.id === by.run);
+    if (!parent) continue;
+    move({
+      run: parent.run.id,
+      kind: "schedule",
+      from: parent.run.function,
+      to: c.run.caller,
+      start: parent.commitAt,
+      end: parent.commitAt + PACE.schedule,
+      label: `schedules · ${name(c.run.function)}`,
+      detail: `The commit schedules ${name(c.run.function)}; ${name(c.run.caller)} runs it next.`,
+      cargo: [],
+      tone: "normal",
+      derived: by.derived,
+    });
+  }
+
   tl.duration = t;
   tl.beats.sort((a, b) => a.start - b.start);
+  tl.rowChanges.sort((a, b) => a.at - b.at);
+  tl.movements.sort((a, b) => a.start - b.start);
   return tl;
 }
 
-function tokenNoun(structure: Structure, token: TokenRef): string {
-  return structure.tokens.find((k) => k.kind === token.kind)?.label ?? "token";
-}
+/** The fields of a write's document, for a row card. */
+export type { Doc };

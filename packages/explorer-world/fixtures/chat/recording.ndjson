@@ -1,0 +1,13 @@
+{"kind":"recording","v":1,"time":1000,"deploymentUrl":"http://127.0.0.1:3210","project":"generic"}
+{"kind":"write","id":"presence/rooms/r1@1","time":1000,"ts":"1000000000","component":"presence","table":"rooms","documentId":"r1","deleted":false,"value":{"_id":"r1","user":"ada","status":"away"},"runId":null,"snapshot":true}
+{"kind":"run","id":"run-1","time":2000,"endTime":2012,"udfType":"Mutation","componentPath":"","identifier":"messages:send","caller":"Websocket","requestId":"q1","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":2,"readCount":1,"identityType":"user"}
+{"kind":"step","id":"run-1#0","time":2001,"runId":"run-1","v":1,"source":"chat","step":"call","detail":{"kind":"mutation","target":"presence/public/heartbeat"}}
+{"kind":"step","id":"run-1#1","time":2004,"runId":"run-1","v":1,"source":"chat","step":"return","detail":{"target":"presence/public/heartbeat"}}
+{"kind":"step","id":"run-1#2","time":2005,"runId":"run-1","v":1,"source":"chat","step":"posted","detail":{"room":"lobby"}}
+{"kind":"write","id":"/messages/m1@2","time":2012,"ts":"2012000000","component":"","table":"messages","documentId":"m1","deleted":false,"value":{"_id":"m1","author":"ada","body":"hello"},"runId":"run-1","snapshot":false}
+{"kind":"write","id":"presence/rooms/r1@2","time":2012,"ts":"2012000001","component":"presence","table":"rooms","documentId":"r1","deleted":false,"value":{"_id":"r1","user":"ada","status":"here"},"runId":"run-1","snapshot":false}
+{"kind":"page","id":"p1","time":2013,"action":"click"}
+{"kind":"run","id":"run-2","time":2100,"endTime":2103,"udfType":"Query","componentPath":"","identifier":"messages:list","caller":"Websocket","requestId":"q2","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":0,"readCount":1,"identityType":"user"}
+{"kind":"run","id":"run-3","time":2200,"endTime":2209,"udfType":"Mutation","componentPath":"","identifier":"messages:prune","caller":"Scheduler","requestId":"q3","parentExecutionId":null,"ok":true,"error":null,"cachedResult":false,"writeCount":1,"readCount":1,"identityType":null}
+{"kind":"log","id":"run-3#0","time":2201,"runId":"run-3","level":"WARN","componentPath":"","udfPath":"","message":"pruning 1 message","isTruncated":false}
+{"kind":"write","id":"/messages/m1@3","time":2209,"ts":"2209000000","component":"","table":"messages","documentId":"m1","deleted":true,"value":null,"runId":null,"snapshot":false}

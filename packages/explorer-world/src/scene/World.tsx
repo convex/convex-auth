@@ -1,15 +1,15 @@
 import { useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
-import { useMemo } from "react";
-import { config, usePlayback, world } from "../store.ts";
+import { usePlayback, world } from "../store.ts";
+import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
 import { CameraRig } from "./CameraRig.tsx";
-import { FunctionNode } from "./FunctionNode.tsx";
-import { Island } from "./Island.tsx";
-import { createLayout } from "./layout.ts";
-import { AlertBanners, Clients, Links, Places } from "./Places.tsx";
-import { TableVault } from "./TableVault.tsx";
-import { Travellers } from "./Travellers.tsx";
+import { Islands } from "./Islands.tsx";
+import { Labels } from "./Labels.tsx";
+import { Links } from "./Links.tsx";
+import { Parts } from "./Parts.tsx";
+import { Rows } from "./Rows.tsx";
+import { Holdings, Travellers } from "./Travellers.tsx";
 
 /** Advances the playback time while playing. */
 function Clock() {
@@ -28,33 +28,19 @@ function Clock() {
 }
 
 export function World({ effects = true }: { effects?: boolean }) {
-  const layout = useMemo(() => createLayout(world.structure, config), []);
   return (
     <>
       <Clock />
-      <Backdrop layout={layout} />
-      <group>
-        {world.structure.regions.map((r) => {
-          const island = layout.islands.get(r.id);
-          return island ? (
-            <Island key={r.id} region={r} layout={island} />
-          ) : null;
-        })}
-        {world.structure.functions.map((f) => {
-          const l = layout.functions.get(f.id);
-          return l ? <FunctionNode key={f.id} fn={f} layout={l} /> : null;
-        })}
-        {world.structure.tables.map((t) => {
-          const l = layout.tables.get(t.id);
-          return l ? <TableVault key={t.id} table={t} layout={l} /> : null;
-        })}
-        <Places layout={layout} />
-        <Links layout={layout} />
-        <Clients layout={layout} />
-        <Travellers layout={layout} />
-        <AlertBanners layout={layout} />
-      </group>
-      <CameraRig layout={layout} />
+      <Backdrop />
+      <Islands />
+      <Parts />
+      <Rows />
+      <Links />
+      <Labels />
+      <Travellers />
+      <Holdings />
+      <Alerts />
+      <CameraRig />
       {effects && (
         <EffectComposer multisampling={4}>
           <Bloom

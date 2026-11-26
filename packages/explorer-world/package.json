@@ -1,15 +1,17 @@
 {
-  "name": "explorer-world",
+  "name": "@convex-dev/explorer-world",
   "version": "0.0.0",
+  "description": "A 3D world of a Convex project, laid out from its structure map, that plays a recording of it",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build --base ./",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@convex-dev/explorer-structure": "workspace:*",
     "@fontsource/inter": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
     "@react-three/drei": "10.7.9",

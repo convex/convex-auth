@@ -1,56 +1,59 @@
 import type { ReactNode } from "react";
+import type { Link, SourceRef } from "../model/graph.ts";
 import type { RowState, WorldState } from "../model/playback.ts";
-import type { Doc } from "../model/types.ts";
-import {
-  platformRegion,
-  regionColorOf,
-  stateColorOf,
-  tokenNounOf,
-} from "../scene/look.ts";
-import { DELETED_COLOR } from "../scene/palette.ts";
+import type { Derivation, Doc } from "../model/recording.ts";
+import { linkLook, nounOf } from "../presentation.ts";
+import { colorOf, nounOfPart, partOf, placementOf } from "../scene/look.ts";
+import { DELETED_COLOR, TONE_COLORS } from "../scene/palette.ts";
 import { usePlayback, world, type Selection } from "../store.ts";
 
-const { structure, timeline } = world;
-const regionOf = (id: string) => structure.regions.find((r) => r.id === id);
-const fnOf = (id: string) => structure.functions.find((f) => f.id === id);
-const tableOf = (id: string) => structure.tables.find((t) => t.id === id);
-const chapterOf = (execution: string) =>
-  timeline.chapters.find((c) => c.execution.id === execution);
-
-const placeOf = (id: string) => structure.places.find((p) => p.id === id);
+const { timeline, presentation } = world;
+const labelOf = (id: string) => partOf(id)?.label ?? id;
+const chapterOf = (run: string) =>
+  timeline.chapters.find((c) => c.run.id === run);
 
 function Fields({ doc }: { doc: Doc }) {
   const entries = Object.entries(doc);
-  if (!entries.length) return <div className="dim">{"{ } — no fields"}</div>;
+  if (!entries.length) return <div className="dim">{"{ } no fields"}</div>;
   return (
     <dl className="fields">
       {entries.map(([k, v]) => (
         <div key={k}>
           <dt>{k}</dt>
-          <dd>{String(v)}</dd>
+          <dd>{typeof v === "object" ? JSON.stringify(v) : String(v)}</dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function StatePill({ state }: { state?: string }) {
-  if (!state) return null;
+function Facts({ facts }: { facts: [string, string][] }) {
+  return <Fields doc={Object.fromEntries(facts)} />;
+}
+
+function Derived({ d }: { d?: Derivation }) {
+  if (!d) return null;
   return (
-    <span
-      className="pill"
-      style={{
-        background:
-          state === "deleted" ? DELETED_COLOR : (stateColorOf(state) ?? "#555"),
-      }}
-    >
-      {state}
-    </span>
+    <div className="derived">
+      <span className="pill" style={{ background: "#c3b5ff" }}>
+        derived
+      </span>{" "}
+      {d.note}
+    </div>
   );
 }
 
-function rowTitle(r: RowState) {
-  return r.label ?? `…${r.id.slice(-6)}`;
+function StatePill({ table, state }: { table: string; state?: string }) {
+  if (!state) return null;
+  const color =
+    state === "deleted"
+      ? DELETED_COLOR
+      : (presentation.tables?.[table]?.states?.[state]?.color ?? "#555");
+  return (
+    <span className="pill" style={{ background: color }}>
+      {state}
+    </span>
+  );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -62,310 +65,469 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Link({ to, children }: { to: Selection; children: ReactNode }) {
-  const { select, flyTo } = usePlayback.getState();
+function PartLink({ id }: { id: string }) {
+  const { select } = usePlayback.getState();
+  return (
+    <button className="link" onClick={() => select({ type: "part", id })}>
+      <span style={{ color: colorOf(id) }}>●</span> {labelOf(id)}{" "}
+      <span className="dim">· {nounOfPart(id)}</span>
+    </button>
+  );
+}
+
+function Where({ at }: { at: SourceRef | null }) {
+  if (!at) return <span className="dim">no source in this repository</span>;
+  return (
+    <span className="mono src">
+      {at.file}:{at.line}
+    </span>
+  );
+}
+
+function RunLink({ run }: { run: string }) {
+  const { setTime, select } = usePlayback.getState();
+  const c = chapterOf(run);
+  if (!c) return <span className="mono dim">{run}</span>;
   return (
     <button
       className="link"
-      onClick={() => select(to)}
-      onDoubleClick={() => {
-        select(to);
-        flyTo(to);
+      onClick={() => {
+        setTime(c.start);
+        select({ type: "run", id: run });
       }}
     >
-      {children}
+      {c.title}{" "}
+      <span className="dim">
+        · {Math.round(c.run.endedAt - c.run.startedAt)} ms real
+      </span>
     </button>
   );
+}
+
+/** A part's links, grouped by direction and kind, each with its evidence. */
+function Dependencies({ id, covered }: { id: string; covered: Set<string> }) {
+  const groups = new Map<string, { other: string; link: Link }[]>();
+  const seen = new Set<string>();
+  for (const member of covered) {
+    for (const [dir, list] of [
+      ["out", world.index.out.get(member) ?? []],
+      ["in", world.index.in.get(member) ?? []],
+    ] as const) {
+      for (const l of list) {
+        if (seen.has(`${dir}:${l.id}`)) continue;
+        seen.add(`${dir}:${l.id}`);
+        const other = dir === "out" ? l.to : l.from;
+        if (covered.has(other)) continue;
+        const look = linkLook(presentation, l.kind);
+        const key = `${dir === "out" ? look.verb : look.inverse}|${l.kind}`;
+        groups.set(key, [...(groups.get(key) ?? []), { other, link: l }]);
+      }
+    }
+  }
+  if (!groups.size) return <span className="dim">none</span>;
+  return (
+    <>
+      {[...groups].map(([key, items]) => {
+        const [phrase, kind] = key.split("|");
+        return (
+          <details key={key} open={items.length <= 6}>
+            <summary>
+              <span
+                className="swatch"
+                style={{ background: linkLook(presentation, kind).color }}
+              />
+              {phrase} <span className="dim">({items.length})</span>
+            </summary>
+            {items.map(({ other, link }) => (
+              <div key={link.id + other} className="dep">
+                <PartLink id={other} />
+                {covered.size > 1 && link.from !== id && link.to !== id && (
+                  <div className="dim small">
+                    via {labelOf(covered.has(link.from) ? link.from : link.to)}
+                  </div>
+                )}
+                {link.via && (
+                  <div className="dim small">how: {link.via.join(", ")}</div>
+                )}
+                {link.scope && (
+                  <div className="dim small">holds in: {link.scope}</div>
+                )}
+                <div className="evidence">
+                  {link.evidence.map((e, i) => (
+                    <div key={i}>
+                      <Where at={e} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </details>
+        );
+      })}
+    </>
+  );
+}
+
+function rowTitle(table: string, r: RowState) {
+  const t = presentation.tables?.[table]?.title;
+  if (t) {
+    const filled = t
+      .replace(/\{(\w+)\}/g, (_, k: string) => String(r.doc[k] ?? ""))
+      .trim();
+    if (filled) return filled;
+  }
+  return `…${r.id.slice(-6)}`;
+}
+
+function partBody(id: string, state: WorldState) {
+  const part = partOf(id);
+  const place = placementOf(id);
+  const { select } = usePlayback.getState();
+  if (!part)
+    return {
+      kind: "part",
+      title: id,
+      content: <p className="dim">Not in the map.</p>,
+    };
+  const island = world.layout.islands.find((i) => i.id === id);
+  const covered = new Set<string>([id]);
+  if (island) for (const m of island.members) covered.add(m);
+  const children = world.layout.islands.filter((i) => i.parentIsland === id);
+  const rows = state.tables.get(id) ?? [];
+  const runs = world.recording.runs.filter(
+    (r) =>
+      r.function === id ||
+      r.caller === id ||
+      r.steps.some(
+        (s) =>
+          (s.kind === "call" && s.target === id) ||
+          (s.kind === "log" && s.part === id),
+      ) ||
+      r.writes.some((w) => w.table === id),
+  );
+  const unresolved = [...covered].flatMap(
+    (c) => world.index.unresolvedFrom.get(c) ?? [],
+  );
+  const summary =
+    presentation.parts?.[id]?.summary ??
+    part.facts.find(([k]) => k === "summary")?.[1];
+  const byKind = new Map<string, number>();
+  for (const m of island?.members ?? []) {
+    const k = partOf(m)?.kind ?? "";
+    byKind.set(k, (byKind.get(k) ?? 0) + 1);
+  }
+  const active = state.active.get(id);
+  return {
+    kind: nounOfPart(id),
+    title: part.label,
+    color: place?.color,
+    content: (
+      <>
+        {summary && <p>{summary}</p>}
+        {part.observed && (
+          <p className="observed">
+            <span className="pill" style={{ background: TONE_COLORS.warn }}>
+              observed
+            </span>{" "}
+            {part.observed}
+          </p>
+        )}
+        <Section title="Source">
+          <Where at={part.source} />
+          <div className="mono dim small">{part.id}</div>
+        </Section>
+        {part.parent && (
+          <Section title="Inside">
+            <PartLink id={part.parent} />
+          </Section>
+        )}
+        {part.facts.filter(([k]) => k !== "summary").length > 0 && (
+          <Section title="Facts">
+            <Facts facts={part.facts.filter(([k]) => k !== "summary")} />
+          </Section>
+        )}
+        {part.fields && (
+          <Section title={`Fields (${part.fields.length})`}>
+            <dl className="fields">
+              {part.fields.map((f) => (
+                <div key={f.name}>
+                  <dt>
+                    {f.name}
+                    {f.optional ? "?" : ""}
+                  </dt>
+                  <dd>{f.type}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+        )}
+        {island && (
+          <Section title={`On this island (${island.members.length})`}>
+            {[...byKind].map(([k, n]) => (
+              <div key={k}>
+                {n} {nounOf(presentation, k, n)}
+              </div>
+            ))}
+            {children.map((c) => (
+              <PartLink key={c.id} id={c.id} />
+            ))}
+          </Section>
+        )}
+        {(rows.length > 0 || part.kind === "table") && (
+          <Section
+            title={`Rows now (${rows.filter((r) => r.deletedAt === undefined).length})`}
+          >
+            {rows.length === 0 && (
+              <span className="dim">none in the recording</span>
+            )}
+            {rows.map((r) => (
+              <button
+                key={r.id}
+                className="link"
+                onClick={() => select({ type: "row", table: id, id: r.id })}
+              >
+                <span className="mono">{rowTitle(id, r)}</span>{" "}
+                <StatePill
+                  table={id}
+                  state={r.deletedAt !== undefined ? "deleted" : r.state}
+                />
+              </button>
+            ))}
+          </Section>
+        )}
+        {active && (
+          <Section title="Now">
+            <span className="live">
+              running in {chapterOf(active.run)?.title}
+            </span>
+          </Section>
+        )}
+        {runs.length > 0 && (
+          <Section
+            title={`In the recording (${runs.length} run${runs.length === 1 ? "" : "s"})`}
+          >
+            {runs.map((r) => (
+              <RunLink key={r.id} run={r.id} />
+            ))}
+          </Section>
+        )}
+        <Section
+          title={
+            island ? "Dependencies of the island and its parts" : "Dependencies"
+          }
+        >
+          <Dependencies id={id} covered={covered} />
+        </Section>
+        {unresolved.length > 0 && (
+          <Section title={`Unresolved (${unresolved.length})`}>
+            {unresolved.map((u) => (
+              <div key={u.id} className="dep">
+                <div className="mono">{u.code}</div>
+                <div className="small">{u.reason}</div>
+                <div className="evidence">
+                  <Where at={u.location} />
+                </div>
+              </div>
+            ))}
+          </Section>
+        )}
+      </>
+    ),
+  };
 }
 
 function body(
   s: Selection,
   state: WorldState,
 ): { kind: string; title: string; color?: string; content: ReactNode } {
+  const { select } = usePlayback.getState();
   switch (s.type) {
-    case "region": {
-      const r = regionOf(s.id)!;
-      const fns = structure.functions.filter((f) => f.region === r.id);
-      const tables = structure.tables.filter((t) => t.region === r.id);
-      const children = structure.regions.filter((x) => x.parent === r.id);
-      const held = state.holdings.get(r.id) ?? [];
-      return {
-        kind: r.tag ?? r.kind,
-        title: r.label,
-        color: regionColorOf(r.id),
-        content: (
-          <>
-            {r.package && <p className="dim mono">{r.package}</p>}
-            <p>{r.summary}</p>
-            {held.length > 0 && (
-              <Section title="Holds now">
-                {held.map((k) => (
-                  <div key={k.label} className="mono">
-                    {k.kind} token · {k.label}
-                  </div>
-                ))}
-              </Section>
-            )}
-            {children.length > 0 && (
-              <Section title="Contains">
-                {children.map((c) => (
-                  <Link key={c.id} to={{ type: "region", id: c.id }}>
-                    {c.label}
-                  </Link>
-                ))}
-              </Section>
-            )}
-            {fns.length > 0 && (
-              <Section title="Functions">
-                {fns.map((f) => (
-                  <Link key={f.id} to={{ type: "function", id: f.id }}>
-                    <span className={state.active.has(f.id) ? "live" : ""}>
-                      {f.name}
-                    </span>
-                  </Link>
-                ))}
-              </Section>
-            )}
-            {tables.length > 0 && (
-              <Section title="Tables">
-                {tables.map((t) => (
-                  <Link key={t.id} to={{ type: "table", id: t.id }}>
-                    {t.name}{" "}
-                    <span className="dim">
-                      ·{" "}
-                      {
-                        (state.tables.get(t.id) ?? []).filter(
-                          (x) => x.deletedAt === undefined,
-                        ).length
-                      }{" "}
-                      rows
-                    </span>
-                  </Link>
-                ))}
-              </Section>
-            )}
-          </>
-        ),
-      };
-    }
-    case "function": {
-      const f = fnOf(s.id)!;
-      const active = state.active.get(f.id);
-      const runs = timeline.activations.filter((a) => a.node === f.id);
-      return {
-        kind: `${f.visibility} ${f.type}${f.scheduled ? " · scheduled" : ""}`,
-        title: f.name,
-        color: regionColorOf(f.region),
-        content: (
-          <>
-            <p className="dim">
-              in{" "}
-              <Link to={{ type: "region", id: f.region }}>
-                {regionOf(f.region)?.label}
-              </Link>
-            </p>
-            <p>{f.summary}</p>
-            <Section title="Now">
-              {active ? (
-                <span className="live">
-                  running · {chapterOf(active.execution)?.execution.title}
-                </span>
-              ) : (
-                <span className="dim">idle</span>
-              )}
-            </Section>
-            <Section title={`Runs in this recording · ${runs.length}`}>
-              {runs.length === 0 && <span className="dim">none</span>}
-              {runs.map((a, i) => (
-                <button
-                  key={i}
-                  className="link"
-                  onClick={() => usePlayback.getState().setTime(a.start)}
-                >
-                  {chapterOf(a.execution)?.execution.title}{" "}
-                  <span className="dim">· jump</span>
-                </button>
-              ))}
-            </Section>
-          </>
-        ),
-      };
-    }
-    case "table": {
-      const t = tableOf(s.id)!;
-      const rows = state.tables.get(t.id) ?? [];
-      return {
-        kind: "table",
-        title: t.name,
-        color: regionColorOf(t.region),
-        content: (
-          <>
-            <p className="dim">
-              in{" "}
-              <Link to={{ type: "region", id: t.region }}>
-                {regionOf(t.region)?.label}
-              </Link>
-            </p>
-            <p>{t.summary}</p>
-            <Section title="Fields">
-              <div className="mono dim">
-                {t.fields.length ? t.fields.join(", ") : "none"}
-              </div>
-            </Section>
-            <Section
-              title={`Rows now · ${rows.filter((r) => r.deletedAt === undefined).length}`}
-            >
-              {rows.length === 0 && <span className="dim">empty</span>}
-              {rows.map((r) => (
-                <Link key={r.id} to={{ type: "row", table: t.id, id: r.id }}>
-                  <span className="mono">{rowTitle(r)}</span>{" "}
-                  <StatePill
-                    state={r.deletedAt !== undefined ? "deleted" : r.state}
-                  />
-                </Link>
-              ))}
-            </Section>
-          </>
-        ),
-      };
-    }
+    case "part":
+      return partBody(s.id, state);
     case "row": {
-      const t = tableOf(s.table)!;
-      const r = (state.tables.get(t.id) ?? []).find((x) => x.id === s.id);
+      const row = state.tables.get(s.table)?.find((r) => r.id === s.id);
       return {
-        kind: `row of ${t.name}`,
-        title: r ? rowTitle(r) : s.id,
-        color: regionColorOf(t.region),
-        content: r ? (
+        kind: `row of ${labelOf(s.table)}`,
+        title: row ? rowTitle(s.table, row) : s.id,
+        color: colorOf(s.table),
+        content: row ? (
           <>
-            <p>
+            <Section title="Table">
+              <PartLink id={s.table} />
+            </Section>
+            <Section title="Now">
               <StatePill
-                state={r.deletedAt !== undefined ? "deleted" : r.state}
+                table={s.table}
+                state={row.deletedAt !== undefined ? "deleted" : row.state}
               />{" "}
-              <span className="mono dim">_id {r.id}</span>
-            </p>
-            <Section title="Document">
-              <Fields doc={r.doc} />
+              <span className="mono dim">_id {row.id}</span>
+            </Section>
+            <Section title="Fields">
+              <Fields doc={row.doc} />
             </Section>
             <Section title="History">
-              {r.history.map((h, i) => (
-                <button
-                  key={i}
-                  className="link"
-                  onClick={() => usePlayback.getState().setTime(h.at)}
-                >
-                  <span className="mono">{h.op}</span> ·{" "}
-                  {chapterOf(h.execution)?.execution.title}
-                  {"state" in h.doc ? ` → ${h.doc.state}` : ""}
-                </button>
+              {row.history.map((h, i) => (
+                <div key={i} className="dep">
+                  <span className="mono">{h.op}</span>{" "}
+                  {h.run ? (
+                    <RunLink run={h.run} />
+                  ) : (
+                    <span className="dim">at the start of the recording</span>
+                  )}
+                  {h.derived && <Derived d={{ rule: "", note: h.derived }} />}
+                </div>
               ))}
             </Section>
           </>
         ) : (
-          <p className="dim">
-            This row does not exist at this moment of the run. Scrub to when it
-            does, or pick it again from its table.
-          </p>
+          <p className="dim">This row does not exist at this moment.</p>
+        ),
+      };
+    }
+    case "cargo": {
+      const held = state.holdings.get(s.holder)?.find((c) => c.row === s.row);
+      return {
+        kind: "held by " + labelOf(s.holder),
+        title: held?.label ?? s.row,
+        content: (
+          <>
+            <Derived d={held?.derived} />
+            <Section title="The row">
+              <button
+                className="link"
+                onClick={() =>
+                  select({ type: "row", table: s.table, id: s.row })
+                }
+              >
+                <span className="mono">{s.row}</span>{" "}
+                <span className="dim">· {labelOf(s.table)}</span>
+              </button>
+            </Section>
+          </>
         ),
       };
     }
     case "movement": {
-      const m = timeline.movements.find((x) => x.id === s.id)!;
-      const live = state.travellers.find((x) => x.movement.id === m.id);
+      const m = timeline.movements.find((x) => x.id === s.id);
+      if (!m) return { kind: "movement", title: s.id, content: null };
+      const flying = m.start <= state.time && state.time < m.end;
       return {
         kind: m.kind,
         title: m.label,
         content: (
           <>
             <p>{m.detail}</p>
-            <Section title="Route">
-              <div className="mono">
-                {nameOf(m.from)} → {m.via ? `${nameOf(m.via)} → ` : ""}
-                {nameOf(m.to)}
-              </div>
+            <Derived d={m.derived} />
+            <Section title="From, to">
+              <PartLink id={m.from} />
+              <PartLink id={m.to} />
             </Section>
-            {m.tokens.length > 0 && (
+            {m.cargo.length > 0 && (
               <Section title="Carries">
-                {m.tokens.map((k) => (
-                  <div key={k.label} className="mono">
-                    {k.kind} token · {k.label}
+                {m.cargo.map((c) => (
+                  <div key={c.row}>
+                    {c.label} <Derived d={c.derived} />
                   </div>
                 ))}
               </Section>
             )}
-            <Section title="Now">
-              {live ? (
-                <span className="live">
-                  in flight · {Math.round(live.progress * 100)}%
-                </span>
+            <Section title="Run">
+              <RunLink run={m.run} />
+              {flying ? (
+                <span className="live">in flight now</span>
               ) : (
                 <span className="dim">not in flight at this moment</span>
               )}
             </Section>
-            <p className="dim">
-              Part of: {chapterOf(m.execution)?.execution.title}
-            </p>
           </>
         ),
       };
     }
-    case "place": {
-      const p = placeOf(s.id)!;
+    case "run": {
+      const c = chapterOf(s.id);
+      if (!c) return { kind: "run", title: s.id, content: null };
+      const r = c.run;
       return {
-        kind: regionOf(p.region)?.label ?? p.role,
-        title: p.label,
-        color: regionColorOf(platformRegion?.id ?? ""),
-        content: <p>{p.summary}</p>,
-      };
-    }
-    case "token": {
-      const held = (state.holdings.get(s.holder) ?? []).find(
-        (k) => k.label === s.label,
-      );
-      const kind = structure.tokens.find((k) => k.kind === held?.kind);
-      const table = held?.table ? tableOf(held.table) : undefined;
-      const row =
-        held?.table && held.row
-          ? (state.tables.get(held.table) ?? []).find((r) => r.id === held.row)
-          : undefined;
-      return {
-        kind: held ? tokenNounOf(held.kind) : "token",
-        title: s.label,
-        color: regionColorOf(s.holder),
+        kind: `${r.type.toLowerCase()} run`,
+        title: c.title,
+        color: colorOf(r.function),
         content: (
           <>
             <p>
-              Held by{" "}
-              <Link to={{ type: "region", id: s.holder }}>
-                {regionOf(s.holder)?.label}
-              </Link>
-              .
+              Real duration <b>{(r.endedAt - r.startedAt).toFixed(1)} ms</b>,
+              shown over {(c.end - c.start).toFixed(1)} s.
+              {r.error && (
+                <span style={{ color: TONE_COLORS.error }}> {r.error}</span>
+              )}
             </p>
-            {kind && <p>{kind.summary}</p>}
-            {table && row && (
-              <Section title={`Its row in ${table.name}`}>
-                <Link to={{ type: "row", table: table.id, id: row.id }}>
-                  <span className="mono">{rowTitle(row)}</span>{" "}
-                  <StatePill
-                    state={row.deletedAt !== undefined ? "deleted" : row.state}
-                  />
-                </Link>
+            <Section title="Function, caller">
+              <PartLink id={r.function} />
+              <PartLink id={r.caller} />
+            </Section>
+            {r.scheduledBy && (
+              <Section title="Scheduled by">
+                <RunLink run={r.scheduledBy.run} />
+                <Derived d={r.scheduledBy.derived} />
               </Section>
             )}
+            <Section title={`Steps (${r.steps.length})`}>
+              {r.steps.map((st, i) => (
+                <div
+                  key={i}
+                  className="mono small"
+                  style={{
+                    color:
+                      "tone" in st && st.tone !== "normal"
+                        ? TONE_COLORS[st.tone]
+                        : undefined,
+                  }}
+                >
+                  {st.kind === "call" &&
+                    `call ${st.callKind ?? ""} ${labelOf(st.target)}`}
+                  {st.kind === "return" && `return ${labelOf(st.target)}`}
+                  {st.kind === "note" && st.text}
+                  {st.kind === "log" && `${st.level} ${st.message}`}
+                </div>
+              ))}
+            </Section>
+            <Section title={`Writes (${r.writes.length})`}>
+              {r.writes.map((w, i) => (
+                <div key={i} className="dep">
+                  <button
+                    className="link"
+                    onClick={() =>
+                      select({ type: "row", table: w.table, id: w.row })
+                    }
+                  >
+                    <span className="mono">{w.op}</span> {labelOf(w.table)}{" "}
+                    <span className="mono dim">…{w.row.slice(-6)}</span>
+                  </button>
+                  <Derived d={w.derived} />
+                </div>
+              ))}
+            </Section>
+            {(r.carriesIn.length > 0 || r.carriesOut.length > 0) && (
+              <Section title="Cargo">
+                {r.carriesIn.map((x) => (
+                  <div key={`in${x.row}`}>
+                    request carries {x.label} <Derived d={x.derived} />
+                  </div>
+                ))}
+                {r.carriesOut.map((x) => (
+                  <div key={`out${x.row}`}>
+                    response carries {x.label} <Derived d={x.derived} />
+                  </div>
+                ))}
+              </Section>
+            )}
+            <Section title="As recorded">
+              <Facts facts={r.facts} />
+            </Section>
           </>
         ),
       };
     }
   }
-}
-
-function nameOf(anchor: string) {
-  return (
-    fnOf(anchor)?.name ??
-    regionOf(anchor)?.label ??
-    placeOf(anchor)?.label ??
-    anchor
-  );
 }
 
 /** What the selected thing is and its state at the current time. */

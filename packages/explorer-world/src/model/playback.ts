@@ -2,7 +2,7 @@
  * The state of the world at a time of the timeline. Pure: the same time always
  * gives the same world, so scrubbing backwards is as cheap as playing forward.
  */
-import type { Doc, TokenRef } from "./types.ts";
+import type { Cargo, Doc } from "./recording.ts";
 import type {
   Activation,
   Alert,
@@ -18,7 +18,6 @@ export const DELETE_FADE = 2.4;
 
 export interface RowState {
   id: string;
-  label?: string;
   doc: Doc;
   /** The value of the table's state field, if it has one. */
   state?: string;
@@ -29,7 +28,13 @@ export interface RowState {
   changedFields: string[];
   /** When the row was deleted; it is shown dissolving for DELETE_FADE. */
   deletedAt?: number;
-  history: { at: number; op: string; execution: string; doc: Doc }[];
+  history: {
+    at: number;
+    op: string;
+    run: string;
+    doc: Doc;
+    derived?: string;
+  }[];
 }
 
 export interface Traveller {
@@ -44,9 +49,9 @@ export interface WorldState {
   chapterIndex: number;
   beat: Beat | null;
   travellers: Traveller[];
-  active: Map<string, { execution: string; since: number; tone: Tone }>;
+  active: Map<string, { run: string; since: number; tone: Tone }>;
   tables: Map<string, RowState[]>;
-  holdings: Map<string, TokenRef[]>;
+  holdings: Map<string, Cargo[]>;
   alerts: Alert[];
 }
 
@@ -80,14 +85,11 @@ export function stateAt(
       progress: (time - m.start) / (m.end - m.start),
     }));
 
-  const active = new Map<
-    string,
-    { execution: string; since: number; tone: Tone }
-  >();
+  const active = new Map<string, { run: string; since: number; tone: Tone }>();
   for (const a of timeline.activations as Activation[]) {
     if (a.start <= time && time < a.end) {
       active.set(a.node, {
-        execution: a.execution,
+        run: a.run,
         since: a.start,
         tone: a.tone,
       });
@@ -99,45 +101,47 @@ export function stateAt(
   const slots = new Map<string, number>();
   for (const c of timeline.rowChanges) {
     if (c.at > time) break;
-    const key = `${c.table}/${c.row}`;
+    const w = c.write;
+    const key = `${w.table}/${w.row}`;
     const existing = rows.get(key);
-    const stateField = stateFields.get(c.table);
-    if (c.op === "insert" || !existing) {
-      const slot = slots.get(c.table) ?? 0;
-      slots.set(c.table, slot + 1);
+    const stateField = stateFields.get(w.table);
+    const entry = {
+      at: c.at,
+      op: w.op,
+      run: c.run,
+      doc: w.doc,
+      derived: w.derived?.note,
+    };
+    if (w.op === "insert" || !existing) {
+      const slot = slots.get(w.table) ?? 0;
+      slots.set(w.table, slot + 1);
       const row: RowState = {
-        id: c.row,
-        label: c.label,
-        doc: { ...c.doc },
+        id: w.row,
+        doc: { ...w.doc },
         slot,
         insertedAt: c.at,
         changedAt: c.at,
-        changedFields: Object.keys(c.doc),
-        history: [{ at: c.at, op: c.op, execution: c.execution, doc: c.doc }],
+        changedFields: Object.keys(w.doc),
+        history: [entry],
       };
-      if (stateField) row.state = String(c.doc[stateField] ?? "");
+      if (stateField) row.state = String(w.doc[stateField] ?? "");
       rows.set(key, row);
-      const list = tables.get(c.table) ?? [];
+      const list = tables.get(w.table) ?? [];
       list.push(row);
-      tables.set(c.table, list);
-      if (c.op === "delete") row.deletedAt = c.at;
+      tables.set(w.table, list);
+      if (w.op === "delete") row.deletedAt = c.at;
       continue;
     }
-    existing.history.push({
-      at: c.at,
-      op: c.op,
-      execution: c.execution,
-      doc: c.doc,
-    });
+    existing.history.push(entry);
     existing.changedAt = c.at;
-    if (c.op === "delete") {
+    if (w.op === "delete") {
       existing.deletedAt = c.at;
       existing.changedFields = [];
     } else {
-      existing.doc = { ...existing.doc, ...c.doc };
-      existing.changedFields = Object.keys(c.doc);
-      if (stateField && stateField in c.doc) {
-        existing.state = String(c.doc[stateField]);
+      existing.doc = { ...w.doc };
+      existing.changedFields = w.changed;
+      if (stateField && stateField in w.doc) {
+        existing.state = String(w.doc[stateField]);
       }
     }
   }
@@ -151,13 +155,13 @@ export function stateAt(
     );
   }
 
-  const holdings = new Map<string, TokenRef[]>();
+  const holdings = new Map<string, Cargo[]>();
   for (const h of timeline.holdings) {
     if (h.at > time) continue;
-    const held = (holdings.get(h.holder) ?? []).filter((k) =>
-      h.op === "gain" ? k.kind !== h.token.kind : k.label !== h.token.label,
+    const held = (holdings.get(h.holder) ?? []).filter(
+      (k) => !(k.table === h.cargo.table && k.row === h.cargo.row),
     );
-    if (h.op === "gain") held.push(h.token);
+    if (h.op === "gain") held.push(h.cargo);
     holdings.set(h.holder, held);
   }
 
