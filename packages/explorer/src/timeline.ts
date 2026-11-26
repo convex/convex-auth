@@ -4,7 +4,13 @@
  *
  * @module
  */
-import type { RunEvent, TimelineEvent, WriteEvent } from "./events.ts";
+import { linkCall, type LinkContext } from "./calls.ts";
+import type {
+  CallEvent,
+  RunEvent,
+  TimelineEvent,
+  WriteEvent,
+} from "./events.ts";
 
 /**
  * How far, in ms, a commit time may fall outside the window of a run and
@@ -73,14 +79,51 @@ export function attachWrites(
 }
 
 // At one time, a run comes before its lines, and the lines before the
-// writes, which commit at the end of the run.
+// writes, which commit at the end of the run. The events of the browser come
+// before the runs they cause, and a secret before the links that name it.
 const KIND_ORDER: Record<TimelineEvent["kind"], number> = {
   recording: 0,
-  run: 1,
-  step: 2,
-  log: 2,
-  write: 3,
+  scenario: 1,
+  page: 1,
+  input: 1,
+  http: 1,
+  socket: 1,
+  storage: 1,
+  cookie: 1,
+  console: 1,
+  call: 1,
+  secret: 2,
+  run: 3,
+  step: 4,
+  log: 4,
+  write: 5,
+  secretLink: 6,
 };
+
+/** Copies of the calls linked to the runs, each run to one call at most. */
+export function linkCalls(
+  calls: readonly CallEvent[],
+  context: Omit<LinkContext, "used"> & { used: Set<string> },
+): CallEvent[] {
+  return calls.map((call) => {
+    const linked = linkCall(call, context);
+    if (linked.runId !== null) {
+      context.used.add(linked.runId);
+    }
+    return linked;
+  });
+}
+
+function countLines(
+  events: readonly TimelineEvent[],
+  counts: Map<string, number>,
+) {
+  for (const event of events) {
+    if (event.kind === "log" || event.kind === "step") {
+      counts.set(event.runId, (counts.get(event.runId) ?? 0) + 1);
+    }
+  }
+}
 
 /** Events sorted by time, stable for events of the same time and kind. */
 export function sortEvents<Event extends TimelineEvent>(
@@ -102,11 +145,14 @@ function eventKey(event: TimelineEvent): string {
 }
 
 /**
- * One timeline from the events of both feeds: duplicates (same kind and id)
- * dropped, writes attached to runs, everything sorted by time.
+ * One timeline from the events of the feeds: duplicates (same kind and id)
+ * dropped, writes attached to runs, calls linked to runs, everything sorted
+ * by time. `skew` is the offset of the deployment's clock from the
+ * recorder's, in ms.
  */
 export function mergeTimeline(
   events: readonly TimelineEvent[],
+  skew = 0,
 ): TimelineEvent[] {
   const seen = new Set<string>();
   const unique: TimelineEvent[] = [];
@@ -122,9 +168,22 @@ export function mergeTimeline(
     unique.filter((event) => event.kind === "write"),
     runs,
   );
-  let next = 0;
+  const lineCounts = new Map<string, number>();
+  countLines(unique, lineCounts);
+  const calls = linkCalls(
+    unique.filter((event) => event.kind === "call"),
+    { runs, lineCounts, used: new Set(), skew },
+  );
+  let nextWrite = 0;
+  let nextCall = 0;
   return sortEvents(
-    unique.map((event) => (event.kind === "write" ? writes[next++] : event)),
+    unique.map((event) =>
+      event.kind === "write"
+        ? writes[nextWrite++]
+        : event.kind === "call"
+          ? calls[nextCall++]
+          : event,
+    ),
   );
 }
 
@@ -135,12 +194,21 @@ export function mergeTimeline(
  * The two feeds are not in step: a write can arrive before the log entry of
  * its run, or after. Thus the builder holds each event for `settleMs` after it
  * arrives, then releases it, in order, with writes attached to the runs known
- * by then. A write whose run arrives later than that stays unattached.
+ * by then. A write whose run arrives later than that stays unattached; so
+ * does a call of the page, which links to its run the same way.
  */
 export class TimelineBuilder {
   private pending: { event: TimelineEvent; arrival: number }[] = [];
   private runs: RunEvent[] = [];
   private seen = new Set<string>();
+  private lineCounts = new Map<string, number>();
+  private usedRuns = new Set<string>();
+
+  /**
+   * The offset of the deployment's clock from the recorder's, in ms, for
+   * linking calls. Set it as the browser feed learns it.
+   */
+  skew = 0;
 
   constructor(private readonly settleMs: number) {}
 
@@ -155,6 +223,7 @@ export class TimelineBuilder {
       if (event.kind === "run") {
         this.runs.push(event);
       }
+      countLines([event], this.lineCounts);
       this.pending.push({ event, arrival: now });
     }
   }
@@ -178,10 +247,24 @@ export class TimelineBuilder {
       readyEvents.filter((event) => event.kind === "write"),
       this.runs,
     );
-    let next = 0;
+    const calls = linkCalls(
+      readyEvents.filter((event) => event.kind === "call"),
+      {
+        runs: this.runs,
+        lineCounts: this.lineCounts,
+        used: this.usedRuns,
+        skew: this.skew,
+      },
+    );
+    let nextWrite = 0;
+    let nextCall = 0;
     return sortEvents(
       readyEvents.map((event) =>
-        event.kind === "write" ? writes[next++] : event,
+        event.kind === "write"
+          ? writes[nextWrite++]
+          : event.kind === "call"
+            ? calls[nextCall++]
+            : event,
       ),
     );
   }

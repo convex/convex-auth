@@ -41,6 +41,7 @@ export type SyncPage = {
 export function parseSyncPage(
   text: string,
   project: ProjectConfig = GENERIC_PROJECT,
+  observe?: ObserveDocument,
 ): SyncPage {
   const page = parseJsonLossless(text) as Record<string, unknown>;
   const status = parseStatus(page.status);
@@ -55,7 +56,7 @@ export function parseSyncPage(
       })
     : [];
   const writes = Array.isArray(page.values)
-    ? page.values.map((value) => writeFromValue(value, project))
+    ? page.values.map((value) => writeFromValue(value, project, observe))
     : [];
   return {
     status,
@@ -82,7 +83,25 @@ function parseStatus(value: unknown): SyncStatus {
   );
 }
 
-function writeFromValue(entry: unknown, project: ProjectConfig): WriteEvent {
+/**
+ * Sees each document of the data sync before redaction, with its component,
+ * table, id, and commit time in ms. Null `value` for a delete. It must not
+ * keep or write what it sees, except as the recorder's links (see
+ * `secrets.ts`).
+ */
+export type ObserveDocument = (
+  component: string,
+  table: string,
+  documentId: string,
+  value: Record<string, unknown> | null,
+  time: number,
+) => void;
+
+function writeFromValue(
+  entry: unknown,
+  project: ProjectConfig,
+  observe?: ObserveDocument,
+): WriteEvent {
   const { component, table, ts, deleted, value } = entry as Record<
     string,
     unknown
@@ -95,6 +114,13 @@ function writeFromValue(entry: unknown, project: ProjectConfig): WriteEvent {
   const documentId = String(document._id ?? "");
   const componentPath = typeof component === "string" ? component : "";
   const isDelete = deleted === true;
+  observe?.(
+    componentPath,
+    table,
+    documentId,
+    isDelete ? null : document,
+    nanosToMs(nanos),
+  );
   return {
     kind: "write",
     id: `${componentPath}/${table}/${documentId}@${nanos}`,
@@ -131,7 +157,10 @@ export class SyncReader {
   /** Whether the last page said that the sync caught up. */
   upToDate = false;
 
-  constructor(private readonly project: ProjectConfig = GENERIC_PROJECT) {}
+  constructor(
+    private readonly project: ProjectConfig = GENERIC_PROJECT,
+    private readonly observe?: ObserveDocument,
+  ) {}
 
   /**
    * Reads one page. Returns the revisions that are ready, in the order of the
@@ -139,7 +168,7 @@ export class SyncReader {
    * had revisions: a truncate after the snapshot, or a new `syncId`.
    */
   read(text: string): { writes: WriteEvent[]; reset: boolean } {
-    const page = parseSyncPage(text, this.project);
+    const page = parseSyncPage(text, this.project, this.observe);
     let reset = false;
     if (this.syncId !== null && page.syncId !== this.syncId) {
       reset = true;

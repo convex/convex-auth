@@ -12,24 +12,63 @@
  */
 
 /** One response of the log stream. */
-export type LogPage = { entries: unknown[]; newCursor: number };
+export type LogPage = {
+  entries: unknown[];
+  /** The timestamp of the last entry, in ms of the deployment's clock. */
+  newCursor: number;
+};
+
+/**
+ * One response of the log stream, with what the recorder knows of the
+ * deployment's clock when it arrived.
+ */
+export type TimedLogPage = LogPage & {
+  /**
+   * The `Date` header of the response, in ms: the deployment's clock,
+   * rounded down to the second. Null when the response has none.
+   */
+  date: number | null;
+  /** When the response arrived, in ms of the recorder's clock. */
+  receivedAt: number;
+};
 
 /** Fetches the page of the log stream after `cursor`. */
-export type FetchLogPage = (cursor: number) => Promise<LogPage>;
+export type FetchLogPage = (cursor: number) => Promise<TimedLogPage>;
+
+/**
+ * The time of the deployment's clock that matches `startedAt` of the
+ * recorder's clock, from the `Date` header of a response.
+ *
+ * The header is rounded down to the second and is written before the
+ * response travels, thus the result is at most the true time and at most
+ * about a second plus the latency earlier. An entry that finished after the
+ * start is never classed as earlier; one that finished up to about a second
+ * before the start can be classed as after it. Without the header, the
+ * recorder's clock stands in for the deployment's: right for a local
+ * deployment, off by the skew between the clocks for a cloud one.
+ */
+export function deploymentStart(
+  startedAt: number,
+  date: number | null,
+  receivedAt: number,
+): number {
+  return date === null ? startedAt : startedAt + (date - receivedAt);
+}
 
 /**
  * The entries of the first response that the recorder keeps: the ones that
- * finished at or after `startedAt` (ms), plus the last `history` of the ones
- * before. The log stream starts with the recent entries of the deployment.
+ * finished at or after `start` (ms, of the deployment's clock), plus the last
+ * `history` of the ones before. The log stream starts with the recent entries
+ * of the deployment.
  */
 export function firstEntries(
   entries: readonly unknown[],
-  startedAt: number,
+  start: number,
   history: number,
 ): unknown[] {
   const isNew = (entry: unknown) => {
     const timestamp = (entry as { timestamp?: unknown }).timestamp;
-    return typeof timestamp !== "number" || timestamp * 1000 >= startedAt;
+    return typeof timestamp !== "number" || timestamp * 1000 >= start;
   };
   const before = entries.filter((entry) => !isNew(entry));
   return [
@@ -48,6 +87,7 @@ export class LogPoller {
 
   constructor(
     private readonly fetchPage: FetchLogPage,
+    /** When the recorder started, in ms of the recorder's clock. */
     private readonly startedAt: number,
     private readonly history = 0,
   ) {}
@@ -58,7 +98,11 @@ export class LogPoller {
     this.cursor = page.newCursor;
     if (this.first) {
       this.first = false;
-      return firstEntries(page.entries, this.startedAt, this.history);
+      return firstEntries(
+        page.entries,
+        deploymentStart(this.startedAt, page.date, page.receivedAt),
+        this.history,
+      );
     }
     return page.entries;
   }

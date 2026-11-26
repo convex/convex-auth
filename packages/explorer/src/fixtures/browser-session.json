@@ -1,0 +1,1369 @@
+{
+  "inputs": [
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319628.484,
+      "direction": "sent",
+      "payload": "{\"connectionCount\":0,\"lastCloseReason\":\"InitialConnect\",\"clientTs\":1795733319864,\"type\":\"Connect\",\"sessionId\":\"c7bc9e03-ebb8-4737-a1ec-bf141ee6c742\"}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319628.659,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":0,\"newVersion\":1,\"modifications\":[]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319628.736,
+      "direction": "sent",
+      "payload": "{\"type\":\"Mutation\",\"requestId\":0,\"udfPath\":\"auth:signUpWithUsernamePassword\",\"args\":[{\"password\":\"fixture password 0123\",\"username\":\"fixture-19390\"}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319629.442,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":0,\"identity\":0,\"ts\":\"AAAAAAAAAAA=\"},\"endVersion\":{\"querySet\":1,\"identity\":0,\"ts\":\"uTC5E/C56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733319629154474}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319723.708,
+      "direction": "received",
+      "payload": "{\"type\":\"MutationResponse\",\"requestId\":0,\"success\":true,\"result\":{\"status\":\"complete\",\"tokens\":{\"accessToken\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoibUVoenB0Xzd1QXJ4TGtJRUhEYU5DdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-0\",\"refreshToken\":\"JgSqmtMX0Z9M9yiHBRPohYQlUUJ4ulw1k20FlSRiIMs\",\"refreshTokenExpiresAt\":1798325319630.0,\"userId\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\"}},\"ts\":\"4ZIoqfC56xg=\",\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.start\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"authenticated\\\":false}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"auth/public/_internal_dangerous_signUp\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/_internal_dangerous_signUp\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"session.issued\\\",\\\"via\\\":\\\"signUp\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"authenticatedBy\\\":\\\"authPassword\\\",\\\"userId\\\":\\\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"authUsername/public/setUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authUsername/public/setUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"authPassword/public/_internal_dangerous_setPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authPassword/public/_internal_dangerous_setPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.result\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"status\\\":\\\"complete\\\"}'\"]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319725.061,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":1,\"identity\":0,\"ts\":\"uTC5E/C56xg=\"},\"endVersion\":{\"querySet\":1,\"identity\":0,\"ts\":\"4ZIoqfC56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733319723437426}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319726.9219,
+      "direction": "sent",
+      "payload": "{\"type\":\"Authenticate\",\"baseVersion\":0,\"tokenType\":\"User\",\"value\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoibUVoenB0Xzd1QXJ4TGtJRUhEYU5DdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-0\"}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733319728,
+      "op": "set",
+      "key": "__convexAuthJWT_http1270013210",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoibUVoenB0Xzd1QXJ4TGtJRUhEYU5DdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-0",
+      "oldValue": null
+    },
+    {
+      "type": "storage",
+      "time": 1795733319729,
+      "op": "set",
+      "key": "__convexAuthRefreshToken_http1270013210",
+      "value": "JgSqmtMX0Z9M9yiHBRPohYQlUUJ4ulw1k20FlSRiIMs",
+      "oldValue": null
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319729.028,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":1,\"identity\":0,\"ts\":\"4ZIoqfC56xg=\"},\"endVersion\":{\"querySet\":1,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733319728532228}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319731.665,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":1,\"newVersion\":2,\"modifications\":[{\"type\":\"Add\",\"queryId\":0,\"udfPath\":\"auth:isAuthenticated\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319737.678,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":2,\"newVersion\":3,\"modifications\":[{\"type\":\"Add\",\"queryId\":1,\"udfPath\":\"currentUser:loggedInUser\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319737.873,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":3,\"newVersion\":4,\"modifications\":[{\"type\":\"Remove\",\"queryId\":1}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319738.166,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":4,\"newVersion\":5,\"modifications\":[{\"type\":\"Add\",\"queryId\":2,\"udfPath\":\"currentUser:loggedInUser\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "http",
+      "time": 1795733319734.0642,
+      "method": "OPTIONS",
+      "url": "http://127.0.0.1:3210/api/mutation",
+      "resourceType": "other",
+      "requestBody": null,
+      "status": 200,
+      "endTime": 1795733319735.857,
+      "failure": null,
+      "responseBody": null
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319741.506,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":1,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"endVersion\":{\"querySet\":2,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"modifications\":[{\"type\":\"QueryUpdated\",\"queryId\":0,\"value\":true,\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"isAuthenticated.result\\\",\\\"tokenAccepted\\\":true,\\\"sessionLive\\\":true}'\"],\"journal\":null}],\"clientClockSkew\":236,\"serverTs\":1795733319740688790}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319752.471,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":2,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"endVersion\":{\"querySet\":5,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"modifications\":[{\"type\":\"QueryRemoved\",\"queryId\":1},{\"type\":\"QueryUpdated\",\"queryId\":2,\"value\":{\"id\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\",\"username\":\"fixture-19390\"},\"logLines\":[],\"journal\":null}],\"clientClockSkew\":236,\"serverTs\":1795733319752175291}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319761.153,
+      "direction": "sent",
+      "payload": "{\"type\":\"Authenticate\",\"baseVersion\":1,\"tokenType\":\"User\",\"value\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiZm9BSVRRbnluRTUyRlNtRjBlejYxUSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-1\"}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733319765,
+      "op": "set",
+      "key": "__convexAuthJWT_http1270013210",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiZm9BSVRRbnluRTUyRlNtRjBlejYxUSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-1",
+      "oldValue": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoibUVoenB0Xzd1QXJ4TGtJRUhEYU5DdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-0"
+    },
+    {
+      "type": "http",
+      "time": 1795733319733.635,
+      "method": "POST",
+      "url": "http://127.0.0.1:3210/api/mutation",
+      "resourceType": "fetch",
+      "requestBody": "{\"path\":\"auth:refreshSession\",\"format\":\"convex_encoded_json\",\"args\":[{\"refreshToken\":\"JgSqmtMX0Z9M9yiHBRPohYQlUUJ4ulw1k20FlSRiIMs\"}]}",
+      "status": 200,
+      "endTime": 1795733319759.587,
+      "failure": null,
+      "responseBody": "{\"status\":\"success\",\"value\":{\"kind\":\"rotated\",\"tokens\":{\"accessToken\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdicHB6YXBqMTF6emZ0YTQ0emF5NWJhaDhqeXd6OCIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiZm9BSVRRbnluRTUyRlNtRjBlejYxUSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMTksImV4cCI6MTc5NTczMzM3OX0.fixture-signature-1\",\"refreshToken\":\"tm-EUCa-PmKVay7MPdKGvTtzIEzRCAaSkTmhkH5PkKM\",\"refreshTokenExpiresAt\":1798325319630.0044,\"userId\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\"}},\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"auth/public/refresh\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/refresh\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"refresh.result\\\",\\\"kind\\\":\\\"rotated\\\"}'\"]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733319764.313,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":5,\"identity\":1,\"ts\":\"4ZIoqfC56xg=\"},\"endVersion\":{\"querySet\":5,\"identity\":2,\"ts\":\"XzNRq/C56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733319762626706}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733319766,
+      "op": "set",
+      "key": "__convexAuthRefreshToken_http1270013210",
+      "value": "tm-EUCa-PmKVay7MPdKGvTtzIEzRCAaSkTmhkH5PkKM",
+      "oldValue": "JgSqmtMX0Z9M9yiHBRPohYQlUUJ4ulw1k20FlSRiIMs"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321354.9841,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":5,\"newVersion\":6,\"modifications\":[{\"type\":\"Remove\",\"queryId\":2}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321355.768,
+      "direction": "sent",
+      "payload": "{\"type\":\"Authenticate\",\"tokenType\":\"None\",\"baseVersion\":2}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321355.903,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":6,\"newVersion\":7,\"modifications\":[{\"type\":\"Remove\",\"queryId\":0}]}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733321363,
+      "op": "remove",
+      "key": "__convexAuthJWT_http1270013210",
+      "value": null,
+      "oldValue": null
+    },
+    {
+      "type": "http",
+      "time": 1795733321334.3452,
+      "method": "POST",
+      "url": "http://127.0.0.1:3210/api/mutation",
+      "resourceType": "fetch",
+      "requestBody": "{\"path\":\"auth:signOut\",\"format\":\"convex_encoded_json\",\"args\":[{\"refreshToken\":\"tm-EUCa-PmKVay7MPdKGvTtzIEzRCAaSkTmhkH5PkKM\"}]}",
+      "status": 200,
+      "endTime": 1795733321347.7952,
+      "failure": null,
+      "responseBody": "{\"status\":\"success\",\"value\":null,\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"auth/public/signOut\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/signOut\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"signOut.done\\\"}'\"]}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733321366,
+      "op": "remove",
+      "key": "__convexAuthRefreshToken_http1270013210",
+      "value": null,
+      "oldValue": null
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321367.3772,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":5,\"identity\":2,\"ts\":\"XzNRq/C56xg=\"},\"endVersion\":{\"querySet\":5,\"identity\":2,\"ts\":\"4FQACvG56xg=\"},\"modifications\":[{\"type\":\"QueryUpdated\",\"queryId\":0,\"value\":false,\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"isAuthenticated.result\\\",\\\"tokenAccepted\\\":true,\\\"sessionLive\\\":false}'\"],\"journal\":null},{\"type\":\"QueryUpdated\",\"queryId\":2,\"value\":null,\"logLines\":[],\"journal\":null}],\"clientClockSkew\":236,\"serverTs\":1795733321363708366}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321367.7302,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":5,\"identity\":2,\"ts\":\"4FQACvG56xg=\"},\"endVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"4FQACvG56xg=\"},\"modifications\":[{\"type\":\"QueryRemoved\",\"queryId\":0},{\"type\":\"QueryRemoved\",\"queryId\":2}],\"clientClockSkew\":236,\"serverTs\":1795733321363801872}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321415.0532,
+      "direction": "sent",
+      "payload": "{\"type\":\"Mutation\",\"requestId\":1,\"udfPath\":\"auth:signInWithUsernamePassword\",\"args\":[{\"password\":\"wrong password 0123\",\"username\":\"fixture-19390\"}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321503.3352,
+      "direction": "received",
+      "payload": "{\"type\":\"MutationResponse\",\"requestId\":1,\"success\":true,\"result\":{\"status\":\"error\",\"userError\":{\"error\":\"INVALID_CREDENTIALS\"}},\"ts\":\"K94DE/G56xg=\",\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.start\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"authenticated\\\":false}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"authPassword/public/verifyPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authPassword/public/verifyPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.result\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"status\\\":\\\"error\\\",\\\"error\\\":\\\"INVALID_CREDENTIALS\\\"}'\"]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321504.2732,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"4FQACvG56xg=\"},\"endVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"K94DE/G56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733321500272342}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321652.29,
+      "direction": "sent",
+      "payload": "{\"type\":\"Mutation\",\"requestId\":2,\"udfPath\":\"auth:signInWithUsernamePassword\",\"args\":[{\"password\":\"fixture password 0123\",\"username\":\"fixture-19390\"}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321735.1692,
+      "direction": "received",
+      "payload": "{\"type\":\"MutationResponse\",\"requestId\":2,\"success\":true,\"result\":{\"status\":\"complete\",\"tokens\":{\"accessToken\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiWXpHekVjTnAtRkpEVzh4QXFUNkNKdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-2\",\"refreshToken\":\"aCUmS3wVIVyBAWukwCYPTcPz469c3Ibuq1IIXzEaUdw\",\"refreshTokenExpiresAt\":1798325321653.0,\"userId\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\"}},\"ts\":\"rTLkIPG56xg=\",\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.start\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"authenticated\\\":false}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authUsername/public/getUserIdByUsername\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"authPassword/public/verifyPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"authPassword/public/verifyPassword\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"auth/public/_internal_dangerous_signIn\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/_internal_dangerous_signIn\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"session.issued\\\",\\\"via\\\":\\\"signIn\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"authenticatedBy\\\":\\\"authPassword\\\",\\\"userId\\\":\\\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"method.result\\\",\\\"method\\\":\\\"usernamePassword\\\",\\\"status\\\":\\\"complete\\\"}'\"]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321736.245,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"K94DE/G56xg=\"},\"endVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"rTLkIPG56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733321732723973}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321737.436,
+      "direction": "sent",
+      "payload": "{\"type\":\"Authenticate\",\"baseVersion\":3,\"tokenType\":\"User\",\"value\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiWXpHekVjTnAtRkpEVzh4QXFUNkNKdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-2\"}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733321738,
+      "op": "set",
+      "key": "__convexAuthJWT_http1270013210",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiWXpHekVjTnAtRkpEVzh4QXFUNkNKdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-2",
+      "oldValue": null
+    },
+    {
+      "type": "storage",
+      "time": 1795733321739,
+      "op": "set",
+      "key": "__convexAuthRefreshToken_http1270013210",
+      "value": "aCUmS3wVIVyBAWukwCYPTcPz469c3Ibuq1IIXzEaUdw",
+      "oldValue": null
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321738.9011,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":7,\"identity\":3,\"ts\":\"rTLkIPG56xg=\"},\"endVersion\":{\"querySet\":7,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733321738281737}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321741.5652,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":7,\"newVersion\":8,\"modifications\":[{\"type\":\"Add\",\"queryId\":3,\"udfPath\":\"auth:isAuthenticated\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321746.352,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":8,\"newVersion\":9,\"modifications\":[{\"type\":\"Add\",\"queryId\":4,\"udfPath\":\"currentUser:loggedInUser\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321746.544,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":9,\"newVersion\":10,\"modifications\":[{\"type\":\"Remove\",\"queryId\":4}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321746.627,
+      "direction": "sent",
+      "payload": "{\"type\":\"ModifyQuerySet\",\"baseVersion\":10,\"newVersion\":11,\"modifications\":[{\"type\":\"Add\",\"queryId\":5,\"udfPath\":\"currentUser:loggedInUser\",\"args\":[{}]}]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321753.639,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":7,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"endVersion\":{\"querySet\":8,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"modifications\":[{\"type\":\"QueryUpdated\",\"queryId\":3,\"value\":true,\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"query\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/getSession\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"isAuthenticated.result\\\",\\\"tokenAccepted\\\":true,\\\"sessionLive\\\":true}'\"],\"journal\":null}],\"clientClockSkew\":236,\"serverTs\":1795733321752111168}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321766.502,
+      "direction": "sent",
+      "payload": "{\"type\":\"Authenticate\",\"baseVersion\":4,\"tokenType\":\"User\",\"value\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiTDVzaWNCS0lNelQxREVxVU1zWUFUQSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-3\"}"
+    },
+    {
+      "type": "storage",
+      "time": 1795733321767,
+      "op": "set",
+      "key": "__convexAuthJWT_http1270013210",
+      "value": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiTDVzaWNCS0lNelQxREVxVU1zWUFUQSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-3",
+      "oldValue": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiWXpHekVjTnAtRkpEVzh4QXFUNkNKdyIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-2"
+    },
+    {
+      "type": "storage",
+      "time": 1795733321767,
+      "op": "set",
+      "key": "__convexAuthRefreshToken_http1270013210",
+      "value": "npRy9kKHQLUHG7r3gwu66pUfLZ_pMBeyga7JzWOu-Vw",
+      "oldValue": "aCUmS3wVIVyBAWukwCYPTcPz469c3Ibuq1IIXzEaUdw"
+    },
+    {
+      "type": "http",
+      "time": 1795733321742.961,
+      "method": "POST",
+      "url": "http://127.0.0.1:3210/api/mutation",
+      "resourceType": "fetch",
+      "requestBody": "{\"path\":\"auth:refreshSession\",\"format\":\"convex_encoded_json\",\"args\":[{\"refreshToken\":\"aCUmS3wVIVyBAWukwCYPTcPz469c3Ibuq1IIXzEaUdw\"}]}",
+      "status": 200,
+      "endTime": 1795733321763.848,
+      "failure": null,
+      "responseBody": "{\"status\":\"success\",\"value\":{\"kind\":\"rotated\",\"tokens\":{\"accessToken\":\"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZpeHR1cmUta2V5In0.eyJzdWIiOiJqZDdlaHptanpmZTd2OGNjZTAxMjkydG5keDhqeWZybiIsImF1ZCI6ImNvbnZleC1hdXRoIiwianRpIjoiTDVzaWNCS0lNelQxREVxVU1zWUFUQSIsImlzcyI6Imh0dHA6Ly8xMjcuMC4wLjE6MzIxMC9jb21wb25lbnRzL2F1dGgiLCJpYXQiOjE3OTU3MzMzMjEsImV4cCI6MTc5NTczMzM4MX0.fixture-signature-3\",\"refreshToken\":\"npRy9kKHQLUHG7r3gwu66pUfLZ_pMBeyga7JzWOu-Vw\",\"refreshTokenExpiresAt\":1798325321653.6187,\"userId\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\"}},\"logLines\":[\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"call\\\",\\\"kind\\\":\\\"mutation\\\",\\\"target\\\":\\\"auth/public/refresh\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"return\\\",\\\"target\\\":\\\"auth/public/refresh\\\"}'\",\"[LOG] '[explorer:step] {\\\"v\\\":1,\\\"source\\\":\\\"convex-auth\\\",\\\"step\\\":\\\"refresh.result\\\",\\\"kind\\\":\\\"rotated\\\"}'\"]}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321770.296,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":8,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"endVersion\":{\"querySet\":11,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"modifications\":[{\"type\":\"QueryRemoved\",\"queryId\":4},{\"type\":\"QueryUpdated\",\"queryId\":5,\"value\":{\"id\":\"j576hmkkt5n6h08pm6kegp4ryh8jyp8w\",\"username\":\"fixture-19390\"},\"logLines\":[],\"journal\":null}],\"clientClockSkew\":236,\"serverTs\":1795733321769943622}"
+    },
+    {
+      "type": "frame",
+      "socketId": "ws1",
+      "time": 1795733321772.544,
+      "direction": "received",
+      "payload": "{\"type\":\"Transition\",\"startVersion\":{\"querySet\":11,\"identity\":4,\"ts\":\"rTLkIPG56xg=\"},\"endVersion\":{\"querySet\":11,\"identity\":5,\"ts\":\"wTLAIvG56xg=\"},\"modifications\":[],\"clientClockSkew\":236,\"serverTs\":1795733321770208946}"
+    }
+  ],
+  "documents": [
+    {
+      "component": "auth",
+      "table": "refreshTokens",
+      "documentId": "j978ycwt6d2pangnsn52g6jad98jy495",
+      "value": {
+        "_creationTime": 1795733321653.619,
+        "_id": "j978ycwt6d2pangnsn52g6jad98jy495",
+        "hash": "16af2b821e8ff25bbb35b8283ce27e047f82f0f4404d8ffc538f2225852f9f7c",
+        "sessionId": "jd7ehzmjzfe7v8cce01292tndx8jyfrn",
+        "state": "redeemed"
+      }
+    },
+    {
+      "component": "auth",
+      "table": "refreshTokens",
+      "documentId": "j97fg2q66gpz9t1bx1qkwwkvk18jzjk7",
+      "value": {
+        "_creationTime": 1795733321745.1096,
+        "_id": "j97fg2q66gpz9t1bx1qkwwkvk18jzjk7",
+        "hash": "c29ebdb57fdeb9d98bbcd85011d8010f31bbfdfde145f73b52e2556d4622963b",
+        "sessionId": "jd7ehzmjzfe7v8cce01292tndx8jyfrn",
+        "state": "issued"
+      }
+    },
+    {
+      "component": "auth",
+      "table": "sessions",
+      "documentId": "jd7ehzmjzfe7v8cce01292tndx8jyfrn",
+      "value": {
+        "_creationTime": 1795733321653.6187,
+        "_id": "jd7ehzmjzfe7v8cce01292tndx8jyfrn",
+        "component": "authPassword",
+        "userId": "j576hmkkt5n6h08pm6kegp4ryh8jyp8w"
+      }
+    }
+  ],
+  "runs": [
+    {
+      "kind": "run",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "time": 1795733319630,
+      "endTime": 1795733319723.0488,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:signUpWithUsernamePassword",
+      "caller": "SyncWorker",
+      "requestId": "25fbb15722da3544",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 6,
+      "readCount": 2,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#0",
+      "time": 1795733319632,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.start",
+      "detail": {
+        "method": "usernamePassword",
+        "authenticated": false
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#1",
+      "time": 1795733319632,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#2",
+      "time": 1795733319641,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#3",
+      "time": 1795733319641,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "auth/public/_internal_dangerous_signUp"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#4",
+      "time": 1795733319650,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/_internal_dangerous_signUp"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#5",
+      "time": 1795733319650,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "session.issued",
+      "detail": {
+        "via": "signUp",
+        "method": "usernamePassword",
+        "authenticatedBy": "authPassword",
+        "userId": "j576hmkkt5n6h08pm6kegp4ryh8jyp8w"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#6",
+      "time": 1795733319650,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "authUsername/public/setUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#7",
+      "time": 1795733319659,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authUsername/public/setUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#8",
+      "time": 1795733319659,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "authPassword/public/_internal_dangerous_setPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#9",
+      "time": 1795733319717,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authPassword/public/_internal_dangerous_setPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "718e3a95-7373-41e4-aa1a-7d52282b8b79#10",
+      "time": 1795733319717,
+      "runId": "718e3a95-7373-41e4-aa1a-7d52282b8b79",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.result",
+      "detail": {
+        "method": "usernamePassword",
+        "status": "complete"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "5074bcb9-1107-4432-9b6b-2b5d4d436756",
+      "time": 1795733319732,
+      "endTime": 1795733319740.4353,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "auth:isAuthenticated",
+      "caller": "SyncWorker",
+      "requestId": "9624efe8e333f91d",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 1,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "1b6fc353-4173-4c3c-a150-e41f9221ae67",
+      "time": 1795733319732,
+      "endTime": 1795733319762.1,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "auth:isAuthenticated",
+      "caller": "SyncWorker",
+      "requestId": "427e2d822efa71c3",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": true,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "step",
+      "id": "5074bcb9-1107-4432-9b6b-2b5d4d436756#0",
+      "time": 1795733319735,
+      "runId": "5074bcb9-1107-4432-9b6b-2b5d4d436756",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "1b6fc353-4173-4c3c-a150-e41f9221ae67#0",
+      "time": 1795733319735,
+      "runId": "1b6fc353-4173-4c3c-a150-e41f9221ae67",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191",
+      "time": 1795733319736,
+      "endTime": 1795733319758.5986,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:refreshSession",
+      "caller": "HttpApi",
+      "requestId": "17ca48dfcc617a7a",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 2,
+      "readCount": 5,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "run",
+      "id": "a2ca0fd5-561e-4c97-9793-a511c19f3201",
+      "time": 1795733319740,
+      "endTime": 1795733319751.8667,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "currentUser:loggedInUser",
+      "caller": "SyncWorker",
+      "requestId": "703073a4e3949e8b",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 3,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "09a2ad6e-0cf9-42bf-aae0-cefcee645916",
+      "time": 1795733319740,
+      "endTime": 1795733319762.15,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "currentUser:loggedInUser",
+      "caller": "SyncWorker",
+      "requestId": "511de9704dfc4be7",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": true,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "step",
+      "id": "5074bcb9-1107-4432-9b6b-2b5d4d436756#1",
+      "time": 1795733319740,
+      "runId": "5074bcb9-1107-4432-9b6b-2b5d4d436756",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "5074bcb9-1107-4432-9b6b-2b5d4d436756#2",
+      "time": 1795733319740,
+      "runId": "5074bcb9-1107-4432-9b6b-2b5d4d436756",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "isAuthenticated.result",
+      "detail": {
+        "tokenAccepted": true,
+        "sessionLive": true
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191#0",
+      "time": 1795733319740,
+      "runId": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "auth/public/refresh"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "1b6fc353-4173-4c3c-a150-e41f9221ae67#1",
+      "time": 1795733319740,
+      "runId": "1b6fc353-4173-4c3c-a150-e41f9221ae67",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "1b6fc353-4173-4c3c-a150-e41f9221ae67#2",
+      "time": 1795733319740,
+      "runId": "1b6fc353-4173-4c3c-a150-e41f9221ae67",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "isAuthenticated.result",
+      "detail": {
+        "tokenAccepted": true,
+        "sessionLive": true
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191#1",
+      "time": 1795733319752,
+      "runId": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/refresh"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191#2",
+      "time": 1795733319752,
+      "runId": "fd2fd7b0-986e-403a-bdbb-2b2216a4a191",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "refresh.result",
+      "detail": {
+        "kind": "rotated"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "0bcf8d49-67bd-415e-a952-a9c0e3544abd",
+      "time": 1795733321335,
+      "endTime": 1795733321347.1902,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:signOut",
+      "caller": "HttpApi",
+      "requestId": "61e0890aca1f86ab",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 1,
+      "readCount": 3,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "0bcf8d49-67bd-415e-a952-a9c0e3544abd#0",
+      "time": 1795733321338,
+      "runId": "0bcf8d49-67bd-415e-a952-a9c0e3544abd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "auth/public/signOut"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "0bcf8d49-67bd-415e-a952-a9c0e3544abd#1",
+      "time": 1795733321342,
+      "runId": "0bcf8d49-67bd-415e-a952-a9c0e3544abd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/signOut"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "0bcf8d49-67bd-415e-a952-a9c0e3544abd#2",
+      "time": 1795733321342,
+      "runId": "0bcf8d49-67bd-415e-a952-a9c0e3544abd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "signOut.done",
+      "detail": {}
+    },
+    {
+      "kind": "run",
+      "id": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229",
+      "time": 1795733321347,
+      "endTime": 1795733321359.6714,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "auth:isAuthenticated",
+      "caller": "SyncWorker",
+      "requestId": "54b2cd641a0a5622",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "4c3e985e-8350-4ae1-a613-18b1e73579ac",
+      "time": 1795733321347,
+      "endTime": 1795733321361.211,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "currentUser:loggedInUser",
+      "caller": "SyncWorker",
+      "requestId": "e5bc74cb5349575b",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "step",
+      "id": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229#0",
+      "time": 1795733321349,
+      "runId": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "85bb0a4f-56e7-4685-b946-02f5918be152",
+      "time": 1795733321355,
+      "endTime": 1795733321370.119,
+      "udfType": "Mutation",
+      "componentPath": "auth",
+      "identifier": "sessions:deleteSessionTokens",
+      "caller": "Scheduler",
+      "requestId": "15c8bf239094ef63",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 2,
+      "readCount": 4,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229#1",
+      "time": 1795733321357,
+      "runId": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229#2",
+      "time": 1795733321357,
+      "runId": "7d5f25e1-4909-4946-b8b4-b5a71c9ff229",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "isAuthenticated.result",
+      "detail": {
+        "tokenAccepted": true,
+        "sessionLive": false
+      }
+    },
+    {
+      "kind": "run",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "time": 1795733321416,
+      "endTime": 1795733321498.594,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:signInWithUsernamePassword",
+      "caller": "SyncWorker",
+      "requestId": "55c508839aa13640",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 1,
+      "readCount": 2,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#0",
+      "time": 1795733321424,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.start",
+      "detail": {
+        "method": "usernamePassword",
+        "authenticated": false
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#1",
+      "time": 1795733321425,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#2",
+      "time": 1795733321431,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#3",
+      "time": 1795733321431,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "authPassword/public/verifyPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#4",
+      "time": 1795733321493,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authPassword/public/verifyPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "fcb097f4-68df-4170-8de8-651c2768db1e#5",
+      "time": 1795733321493,
+      "runId": "fcb097f4-68df-4170-8de8-651c2768db1e",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.result",
+      "detail": {
+        "method": "usernamePassword",
+        "status": "error",
+        "error": "INVALID_CREDENTIALS"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "time": 1795733321653,
+      "endTime": 1795733321732.0413,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:signInWithUsernamePassword",
+      "caller": "SyncWorker",
+      "requestId": "1d8a3b5b462e1573",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 3,
+      "readCount": 7,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#0",
+      "time": 1795733321657,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.start",
+      "detail": {
+        "method": "usernamePassword",
+        "authenticated": false
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#1",
+      "time": 1795733321657,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#2",
+      "time": 1795733321661,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authUsername/public/getUserIdByUsername"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#3",
+      "time": 1795733321661,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "authPassword/public/verifyPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#4",
+      "time": 1795733321720,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "authPassword/public/verifyPassword"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#5",
+      "time": 1795733321720,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "auth/public/_internal_dangerous_signIn"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#6",
+      "time": 1795733321726,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/_internal_dangerous_signIn"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#7",
+      "time": 1795733321726,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "session.issued",
+      "detail": {
+        "via": "signIn",
+        "method": "usernamePassword",
+        "authenticatedBy": "authPassword",
+        "userId": "j576hmkkt5n6h08pm6kegp4ryh8jyp8w"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98#8",
+      "time": 1795733321726,
+      "runId": "f0a4a070-1b2d-4bbe-ae44-9f28dd274a98",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "method.result",
+      "detail": {
+        "method": "usernamePassword",
+        "status": "complete"
+      }
+    },
+    {
+      "kind": "run",
+      "id": "9c3a4460-ac7f-4df7-8900-64c78cea597a",
+      "time": 1795733321742,
+      "endTime": 1795733321751.269,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "auth:isAuthenticated",
+      "caller": "SyncWorker",
+      "requestId": "4353652f828e0782",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 1,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "86f89478-fb9f-4542-b48a-b921e3caec9d",
+      "time": 1795733321742,
+      "endTime": 1795733321769.9482,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "auth:isAuthenticated",
+      "caller": "SyncWorker",
+      "requestId": "6a1b88fdc9569d21",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": true,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "2877ad75-8582-4666-8106-597316eaeddd",
+      "time": 1795733321745,
+      "endTime": 1795733321763.1416,
+      "udfType": "Mutation",
+      "componentPath": "",
+      "identifier": "auth:refreshSession",
+      "caller": "HttpApi",
+      "requestId": "de95f3a21878371b",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 2,
+      "readCount": 5,
+      "identityType": "unknown"
+    },
+    {
+      "kind": "step",
+      "id": "9c3a4460-ac7f-4df7-8900-64c78cea597a#0",
+      "time": 1795733321747,
+      "runId": "9c3a4460-ac7f-4df7-8900-64c78cea597a",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "2877ad75-8582-4666-8106-597316eaeddd#0",
+      "time": 1795733321747,
+      "runId": "2877ad75-8582-4666-8106-597316eaeddd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "mutation",
+        "target": "auth/public/refresh"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "86f89478-fb9f-4542-b48a-b921e3caec9d#0",
+      "time": 1795733321747,
+      "runId": "86f89478-fb9f-4542-b48a-b921e3caec9d",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "call",
+      "detail": {
+        "kind": "query",
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "9c3a4460-ac7f-4df7-8900-64c78cea597a#1",
+      "time": 1795733321750,
+      "runId": "9c3a4460-ac7f-4df7-8900-64c78cea597a",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "9c3a4460-ac7f-4df7-8900-64c78cea597a#2",
+      "time": 1795733321750,
+      "runId": "9c3a4460-ac7f-4df7-8900-64c78cea597a",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "isAuthenticated.result",
+      "detail": {
+        "tokenAccepted": true,
+        "sessionLive": true
+      }
+    },
+    {
+      "kind": "step",
+      "id": "86f89478-fb9f-4542-b48a-b921e3caec9d#1",
+      "time": 1795733321750,
+      "runId": "86f89478-fb9f-4542-b48a-b921e3caec9d",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/getSession"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "86f89478-fb9f-4542-b48a-b921e3caec9d#2",
+      "time": 1795733321750,
+      "runId": "86f89478-fb9f-4542-b48a-b921e3caec9d",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "isAuthenticated.result",
+      "detail": {
+        "tokenAccepted": true,
+        "sessionLive": true
+      }
+    },
+    {
+      "kind": "run",
+      "id": "9463b321-7653-40e9-9762-2a16d9afb7d5",
+      "time": 1795733321753,
+      "endTime": 1795733321769.1956,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "currentUser:loggedInUser",
+      "caller": "SyncWorker",
+      "requestId": "4dc04e9ef096af1a",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": false,
+      "writeCount": 0,
+      "readCount": 3,
+      "identityType": "user"
+    },
+    {
+      "kind": "run",
+      "id": "167185e2-185e-4c8f-853b-d63c85d058d1",
+      "time": 1795733321753,
+      "endTime": 1795733321770.0056,
+      "udfType": "Query",
+      "componentPath": "",
+      "identifier": "currentUser:loggedInUser",
+      "caller": "SyncWorker",
+      "requestId": "290cc671c5c541fa",
+      "parentExecutionId": null,
+      "ok": true,
+      "error": null,
+      "cachedResult": true,
+      "writeCount": 0,
+      "readCount": 0,
+      "identityType": "user"
+    },
+    {
+      "kind": "step",
+      "id": "2877ad75-8582-4666-8106-597316eaeddd#1",
+      "time": 1795733321757,
+      "runId": "2877ad75-8582-4666-8106-597316eaeddd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "return",
+      "detail": {
+        "target": "auth/public/refresh"
+      }
+    },
+    {
+      "kind": "step",
+      "id": "2877ad75-8582-4666-8106-597316eaeddd#2",
+      "time": 1795733321757,
+      "runId": "2877ad75-8582-4666-8106-597316eaeddd",
+      "v": 1,
+      "source": "convex-auth",
+      "step": "refresh.result",
+      "detail": {
+        "kind": "rotated"
+      }
+    }
+  ]
+}

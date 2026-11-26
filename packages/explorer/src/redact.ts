@@ -11,7 +11,8 @@
  *    {@link REDACTED}, whatever its table.
  * 3. `_id` and `_creationTime` are kept.
  * 4. A field that the project config keeps for the table is kept: see
- *    {@link ProjectConfig}.
+ *    {@link ProjectConfig}. A URL field keeps its origin and path: see
+ *    {@link redactUrl}.
  * 5. Otherwise a boolean, a number, or null is kept; an object or an array is
  *    checked field by field; a string, or anything else, is replaced.
  *
@@ -24,16 +25,23 @@
  * @module
  */
 import { REDACTED } from "./events.ts";
-import { GENERIC_PROJECT, keptFields, type ProjectConfig } from "./project.ts";
+import {
+  GENERIC_PROJECT,
+  keptFields,
+  urlFields,
+  type ProjectConfig,
+} from "./project.ts";
 
-const SECRET_NAME =
+/** A field name that holds a secret. */
+export const SECRET_NAME =
   /hash|secret|token|passw|phc|salt|verifier|challenge|credential|publickey|privatekey|apikey|signature|code|nonce|encrypted|cookie|otp|handle/i;
 
 // Convex ids: 31 to 37 characters of lowercase base32.
 const CONVEX_ID = /^[0-9a-z]{31,37}$/;
 const ID_NAME = /(^id|Id|_id)$/;
 
-function isConvexIdField(name: string, value: unknown): boolean {
+/** Whether `value` is a Convex id held in a field named like an id. */
+export function isConvexIdField(name: string, value: unknown): boolean {
   return (
     ID_NAME.test(name) && typeof value === "string" && CONVEX_ID.test(value)
   );
@@ -45,16 +53,23 @@ export function redactDocument(
   document: Record<string, unknown>,
   project: ProjectConfig = GENERIC_PROJECT,
 ): Record<string, unknown> {
-  return redactObject(document, keptFields(project, table));
+  return redactObject(
+    document,
+    keptFields(project, table),
+    urlFields(project, table),
+  );
 }
+
+const NONE: ReadonlySet<string> = new Set();
 
 function redactObject(
   object: Record<string, unknown>,
   safe: ReadonlySet<string>,
+  urls: ReadonlySet<string> = NONE,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(object)) {
-    out[name] = redactField(name, value, safe);
+    out[name] = redactField(name, value, safe, urls);
   }
   return out;
 }
@@ -63,6 +78,7 @@ function redactField(
   name: string,
   value: unknown,
   safe: ReadonlySet<string>,
+  urls: ReadonlySet<string>,
 ): unknown {
   if (isConvexIdField(name, value)) {
     return value;
@@ -73,7 +89,38 @@ function redactField(
   if (name === "_id" || name === "_creationTime" || safe.has(name)) {
     return value;
   }
+  if (urls.has(name) && typeof value === "string") {
+    return redactUrl(value);
+  }
   return redactValue(name, value);
+}
+
+/**
+ * A URL with the value of each query parameter and the fragment replaced:
+ * `https://app.example/after?next=[redacted]#[redacted]`. Query values and
+ * fragments carry what the app or a provider put there, such as an OAuth
+ * code or an email address. `replaceValue` can replace a value otherwise, for
+ * example by a label. A string that is not an absolute URL is replaced.
+ */
+export function redactUrl(
+  url: string,
+  replaceValue: (name: string, value: string) => string = () => REDACTED,
+): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return REDACTED;
+  }
+  const params = [...parsed.searchParams].map(
+    ([name, value]) =>
+      `${encodeURIComponent(name)}=${replaceValue(name, value)}`,
+  );
+  return (
+    `${parsed.origin}${parsed.pathname}` +
+    (params.length > 0 ? `?${params.join("&")}` : "") +
+    (parsed.hash.length > 1 ? `#${REDACTED}` : "")
+  );
 }
 
 function redactValue(name: string, value: unknown): unknown {
@@ -112,7 +159,8 @@ const SECRET_TEXT = [
 // names almost never do. Convex ids are lowercase, thus they stay.
 const RANDOM_RUN = /[A-Za-z0-9+/_-]{24,}={0,2}/g;
 
-function looksRandom(run: string): boolean {
+/** Whether a run of token characters mixes digits, lowercase, and uppercase. */
+export function looksRandom(run: string): boolean {
   return /[0-9]/.test(run) && /[a-z]/.test(run) && /[A-Z]/.test(run);
 }
 

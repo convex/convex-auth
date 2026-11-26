@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { REDACTED } from "./events.ts";
 import { convexAuthProject } from "./projects/convexAuth.ts";
-import { redactDocument, scrubText } from "./redact.ts";
+import { redactDocument, redactUrl, scrubText } from "./redact.ts";
 
 describe("redactDocument", () => {
   test("replaces the hash of a refresh token, keeps its ids and state", () => {
@@ -139,5 +139,61 @@ describe("scrubText", () => {
     const text =
       "authPassword/public/_internal_dangerous_setPassword j573smrb10w028aq9jwgh1c5hs8jznta Spent refresh token used: a later token was already redeemed.";
     expect(scrubText(text)).toBe(text);
+  });
+});
+
+describe("the convex-auth config", () => {
+  test("keeps the origin and the path of redirectTo, not its query", () => {
+    expect(
+      redactDocument(
+        "authorizationRequests",
+        {
+          _id: "k17bgasf0v4bydaj9s7hq156vx8jyhxn",
+          providerName: "google",
+          redirectTo:
+            "https://app.example/after?invite=alice%40example.com#top",
+          callbackUrl: "https://deployment.example/api/auth/callback/google",
+        },
+        convexAuthProject,
+      ),
+    ).toMatchObject({
+      redirectTo: `https://app.example/after?invite=${REDACTED}#${REDACTED}`,
+      callbackUrl: "https://deployment.example/api/auth/callback/google",
+    });
+  });
+
+  test("treats the account at the provider and the name of a passkey as personal", () => {
+    const account = {
+      providerName: "github",
+      providerAccountId: "12345",
+    };
+    const passkey = { name: "Alice's laptop", transports: ["internal"] };
+    expect(redactDocument("accounts", account, convexAuthProject)).toEqual(
+      account,
+    );
+    expect(redactDocument("passkeys", passkey, convexAuthProject)).toEqual(
+      passkey,
+    );
+    const dropped = { ...convexAuthProject, keepPersonalData: false };
+    expect(redactDocument("accounts", account, dropped)).toEqual({
+      providerName: "github",
+      providerAccountId: REDACTED,
+    });
+    expect(redactDocument("passkeys", passkey, dropped)).toEqual({
+      name: REDACTED,
+      transports: ["internal"],
+    });
+  });
+});
+
+describe("redactUrl", () => {
+  test("replaces query values and the fragment, and what is not a URL", () => {
+    expect(redactUrl("http://localhost:5173/login")).toBe(
+      "http://localhost:5173/login",
+    );
+    expect(redactUrl("https://a.example/cb?code=xyz&state=abc")).toBe(
+      `https://a.example/cb?code=${REDACTED}&state=${REDACTED}`,
+    );
+    expect(redactUrl("/relative?x=1")).toBe(REDACTED);
   });
 });

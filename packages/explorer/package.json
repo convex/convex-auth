@@ -1,7 +1,7 @@
 {
   "name": "@convex-dev/explorer",
   "version": "0.0.0",
-  "description": "Records the function logs and the data changes of a Convex app into a timeline that a viewer plays back",
+  "description": "Records the function logs, the data changes, and a browser on the page of a Convex app into a timeline that a viewer plays back",
   "private": true,
   "type": "module",
   "sideEffects": false,
@@ -12,6 +12,7 @@
     }
   },
   "scripts": {
+    "check:browser": "tsx scripts/checkBrowser.ts",
     "check:first-run": "tsx scripts/checkFirstRun.ts",
     "record": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit"
@@ -22,5 +23,8 @@
     "tsx": "^4.23.12",
     "typescript": "^6.0.3",
     "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
   }
 }
