@@ -1,10 +1,12 @@
 /**
  * Where everything sits in the world. Derived from the structure, so a new
- * function or table finds a place without editing this file; only the
- * islands themselves are placed by hand.
+ * function or table finds a place without editing this file. A project can
+ * place its islands and places by hand in its config; whatever it leaves out
+ * is placed automatically.
  */
 import { Vector3 } from "three";
-import { GATE, SCHEDULER, SIGNER, type Anchor } from "../model/schedule.ts";
+import type { ProjectConfig } from "../config.ts";
+import type { Anchor } from "../model/schedule.ts";
 import type { Structure } from "../model/types.ts";
 
 export interface IslandLayout {
@@ -31,39 +33,70 @@ export interface Layout {
   islands: Map<string, IslandLayout>;
   functions: Map<string, NodeLayout>;
   tables: Map<string, TableLayout>;
+  /** Where each place stands, on the floor. */
   places: Map<string, Vector3>;
+  /** The places requests pass through, rather than stop at. */
+  entries: Set<string>;
   platform: { center: Vector3; radius: number };
   overview: { position: Vector3; target: Vector3 };
 }
 
-const ISLANDS: Record<
-  string,
-  { center: [number, number, number]; radius: number }
-> = {
-  browser: { center: [-44, 2, 10], radius: 7 },
-  elsewhere: { center: [-50, 3, -20], radius: 4 },
-  app: { center: [-8, 0, 8], radius: 10 },
-  authUsername: { center: [-20, 4, -22], radius: 7.5 },
-  auth: { center: [6, 5, -26], radius: 13 },
-  authPassword: { center: [26, 4, -2], radius: 8 },
-  "authPassword/rateLimiter": { center: [38, 7, -18], radius: 4.5 },
-};
-
 export const FUNCTION_HEIGHT = 2.2;
 export const ROW = { width: 2.3, depth: 1.5, gap: 0.35 };
 
-export function createLayout(structure: Structure): Layout {
+export function createLayout(
+  structure: Structure,
+  config: ProjectConfig,
+): Layout {
   const islands = new Map<string, IslandLayout>();
-  for (const r of structure.regions) {
-    const spec = ISLANDS[r.id];
-    if (spec) {
-      islands.set(r.id, {
-        id: r.id,
-        center: new Vector3(...spec.center),
-        radius: spec.radius,
-      });
+  const drawn = structure.regions.filter((r) => r.kind !== "platform");
+  const services = drawn.filter((r) => r.kind === "service");
+  const clients = drawn.filter((r) => r.kind === "client");
+  for (const r of drawn) {
+    const spec = config.regions?.[r.id];
+    const contents =
+      structure.functions.filter((f) => f.region === r.id).length +
+      structure.tables.filter((t) => t.region === r.id).length;
+    const radius =
+      spec?.radius ?? (r.kind === "client" ? 6 : 4 + contents * 0.9);
+    let center: Vector3;
+    if (spec?.center) {
+      center = new Vector3(...spec.center);
+    } else if (r.kind === "client") {
+      // Clients wait outside, on the left.
+      center = new Vector3(
+        -60,
+        2,
+        clients.indexOf(r) * 18 - (clients.length - 1) * 9,
+      );
+    } else {
+      // Services stand in a ring.
+      const a =
+        (services.indexOf(r) / Math.max(1, services.length)) * Math.PI * 2;
+      const ring = 10 + services.length * 6;
+      center = new Vector3(Math.cos(a) * ring, 2, Math.sin(a) * ring);
     }
+    islands.set(r.id, { id: r.id, center, radius });
   }
+
+  // The platform's floor spans the services.
+  const placed = services.map((r) => islands.get(r.id)!);
+  const minX = Math.min(...placed.map((i) => i.center.x - i.radius));
+  const maxX = Math.max(...placed.map((i) => i.center.x + i.radius));
+  const minZ = Math.min(...placed.map((i) => i.center.z - i.radius));
+  const maxZ = Math.max(...placed.map((i) => i.center.z + i.radius));
+  const floor = new Vector3(
+    (minX + maxX) / 2,
+    Math.min(...placed.map((i) => i.center.y)) - 3,
+    (minZ + maxZ) / 2,
+  );
+  const floorRadius =
+    Math.max(
+      ...placed.map(
+        (i) =>
+          Math.hypot(i.center.x - floor.x, i.center.z - floor.z) + i.radius,
+      ),
+    ) + 3;
 
   const functions = new Map<string, NodeLayout>();
   const tables = new Map<string, TableLayout>();
@@ -124,23 +157,50 @@ export function createLayout(structure: Structure): Layout {
     });
   }
 
-  const app = islands.get("app")!.center;
-  const places = new Map<string, Vector3>([
-    [GATE, new Vector3(-29, 3.2, 9)],
-    [SIGNER, new Vector3(-24, 0, -1)],
-    [SCHEDULER, new Vector3(app.x + 17, 0, app.z - 12)],
-  ]);
+  const places = new Map<string, Vector3>();
+  structure.places.forEach((p, i) => {
+    const spec = config.places?.[p.id];
+    if (spec) places.set(p.id, new Vector3(...spec.position));
+    else if (p.role === "entry")
+      places.set(p.id, new Vector3(floor.x - floorRadius, 0, floor.z));
+    else
+      places.set(
+        p.id,
+        new Vector3(
+          floor.x - floorRadius * 0.6,
+          0,
+          floor.z + floorRadius * (0.3 + i * 0.15),
+        ),
+      );
+  });
 
+  const camera = config.camera;
   return {
     islands,
     functions,
     tables,
     places,
-    platform: { center: new Vector3(10, -3, -8), radius: 39 },
-    overview: {
-      position: new Vector3(-16, 54, 80),
-      target: new Vector3(-6, 0, -8),
-    },
+    entries: new Set(
+      structure.places.filter((p) => p.role === "entry").map((p) => p.id),
+    ),
+    platform: { center: floor, radius: floorRadius },
+    overview: camera
+      ? {
+          position: new Vector3(...camera.position),
+          target: new Vector3(...camera.target),
+        }
+      : {
+          position: floor
+            .clone()
+            .add(
+              new Vector3(
+                -0.3 * floorRadius,
+                1.3 * floorRadius,
+                1.9 * floorRadius,
+              ),
+            ),
+          target: floor.clone().setY(0),
+        },
   };
 }
 
@@ -155,7 +215,7 @@ export function anchorPosition(layout: Layout, anchor: Anchor): Vector3 {
   if (island) return island.center.clone().setY(island.center.y + 3.2);
   const place = layout.places.get(anchor);
   if (place) {
-    if (anchor === GATE) return place.clone();
+    if (layout.entries.has(anchor)) return place.clone().setY(place.y + 3.2);
     return place.clone().setY(place.y + 5);
   }
   return new Vector3();

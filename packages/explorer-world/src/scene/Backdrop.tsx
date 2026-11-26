@@ -5,9 +5,10 @@ import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
 import { usePlayback } from "../store.ts";
 import { Label } from "./Label.tsx";
 import type { Layout } from "./layout.ts";
-import { BACKGROUND, REGION_COLORS } from "./palette.ts";
+import { platformRegion, regionColorOf } from "./look.ts";
+import { BACKGROUND } from "./palette.ts";
 
-/** The space the world floats in, and the floor of the Convex platform. */
+/** The space the world floats in, and the floor of the platform. */
 export function Backdrop({ layout }: { layout: Layout }) {
   return (
     <>
@@ -124,7 +125,10 @@ const wallFragment = /* glsl */ `
 
 function PlatformFloor({ layout }: { layout: Layout }) {
   const { center, radius } = layout.platform;
-  const color = useMemo(() => new Color(REGION_COLORS.platform), []);
+  const color = useMemo(
+    () => new Color(regionColorOf(platformRegion?.id ?? "")),
+    [],
+  );
   const floor = useRef<ShaderMaterial>(null);
   const wall = useRef<ShaderMaterial>(null);
   const select = usePlayback((s) => s.select);
@@ -146,7 +150,7 @@ function PlatformFloor({ layout }: { layout: Layout }) {
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={(e) => {
           e.stopPropagation();
-          select({ type: "region", id: "platform" });
+          if (platformRegion) select({ type: "region", id: platformRegion.id });
         }}
       >
         <circleGeometry args={[radius, 128]} />
@@ -178,10 +182,10 @@ function PlatformFloor({ layout }: { layout: Layout }) {
         rotation={[-Math.PI / 2, 0, 0.18]}
         fontSize={2.6}
         letterSpacing={0.35}
-        color={REGION_COLORS.platform}
+        color={regionColorOf(platformRegion?.id ?? "")}
         weight="bold"
       >
-        CONVEX PLATFORM
+        {(platformRegion?.label ?? "").toUpperCase()}
       </Label>
     </group>
   );

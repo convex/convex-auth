@@ -15,7 +15,8 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
 import { anchorPosition, type Layout } from "./layout.ts";
 import { Lod } from "./Lod.tsx";
-import { MOVEMENT_COLORS, TONE_COLORS, TOKEN_COLORS } from "./palette.ts";
+import { tokenLookOf } from "./look.ts";
+import { MOVEMENT_COLORS, TONE_COLORS } from "./palette.ts";
 
 /** The path of a movement: one arc, or two through the place it passes. */
 export function movementPath(
@@ -244,7 +245,7 @@ function Streak({
   );
 }
 
-/** An access token is a gold coin (a signed JWT); a refresh token a cyan key. */
+/** A token: a coin or a key, in the color its project gives its kind. */
 export function TokenMesh({
   token,
   tint,
@@ -260,11 +261,12 @@ export function TokenMesh({
   useFrame((_, delta) => {
     if (spin.current) spin.current.rotation.y += delta * 1.6;
   });
-  const color = tint ?? TOKEN_COLORS[token.kind];
+  const look = tokenLookOf(token.kind);
+  const color = tint ?? look.color;
   return (
     <group scale={scale}>
       <group ref={spin}>
-        {token.kind === "access" ? (
+        {look.shape === "coin" ? (
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.5, 0.5, 0.14, 6]} />
             <meshStandardMaterial

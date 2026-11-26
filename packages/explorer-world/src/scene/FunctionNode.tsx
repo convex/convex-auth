@@ -6,7 +6,8 @@ import { currentState, hover, usePlayback } from "../store.ts";
 import { Label } from "./Label.tsx";
 import { FUNCTION_HEIGHT, type NodeLayout } from "./layout.ts";
 import { Lod } from "./Lod.tsx";
-import { REGION_COLORS, TONE_COLORS } from "./palette.ts";
+import { regionColorOf } from "./look.ts";
+import { TONE_COLORS } from "./palette.ts";
 
 /**
  * A function: a crystal pillar. A mutation is a hexagonal prism, a query a
@@ -19,10 +20,7 @@ export function FunctionNode({
   fn: FunctionDef;
   layout: NodeLayout;
 }) {
-  const base = useMemo(
-    () => new Color(REGION_COLORS[fn.region] ?? "#fff"),
-    [fn.region],
-  );
+  const base = useMemo(() => new Color(regionColorOf(fn.region)), [fn.region]);
   const core = useRef<MeshStandardMaterial>(null);
   const shell = useRef<MeshStandardMaterial>(null);
   const ring = useRef<Group>(null);
@@ -33,7 +31,7 @@ export function FunctionNode({
     (s) => s.selected?.type === "function" && s.selected.id === fn.id,
   );
   const isQuery = fn.type === "query";
-  const short = fn.name.replace(/^public\./, "").replace(/^auth:/, "");
+  const short = fn.short;
 
   useFrame((_, delta) => {
     const state = currentState();

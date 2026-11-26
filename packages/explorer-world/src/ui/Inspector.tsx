@@ -1,8 +1,13 @@
 import type { ReactNode } from "react";
 import type { RowState, WorldState } from "../model/playback.ts";
-import { GATE, SCHEDULER, SIGNER } from "../model/schedule.ts";
 import type { Doc } from "../model/types.ts";
-import { REGION_COLORS, STATE_COLORS } from "../scene/palette.ts";
+import {
+  platformRegion,
+  regionColorOf,
+  stateColorOf,
+  tokenNounOf,
+} from "../scene/look.ts";
+import { DELETED_COLOR } from "../scene/palette.ts";
 import { usePlayback, world, type Selection } from "../store.ts";
 
 const { structure, timeline } = world;
@@ -12,23 +17,7 @@ const tableOf = (id: string) => structure.tables.find((t) => t.id === id);
 const chapterOf = (execution: string) =>
   timeline.chapters.find((c) => c.execution.id === execution);
 
-const PLACES: Record<string, { title: string; summary: string }> = {
-  [GATE]: {
-    title: "Token check",
-    summary:
-      "Every request from a client enters the deployment here. The platform verifies the access token's signature and expiry before the app's function runs; the function then sees the caller's identity.",
-  },
-  [SIGNER]: {
-    title: "Deployment key",
-    summary:
-      "The platform signs each access token (a JWT) with the deployment's key when a session is issued or refreshed.",
-  },
-  [SCHEDULER]: {
-    title: "Scheduler",
-    summary:
-      "Runs functions that a committed mutation scheduled. Here: the cleanup of a revoked session's refresh tokens.",
-  },
-};
+const placeOf = (id: string) => structure.places.find((p) => p.id === id);
 
 function Fields({ doc }: { doc: Doc }) {
   const entries = Object.entries(doc);
@@ -50,7 +39,10 @@ function StatePill({ state }: { state?: string }) {
   return (
     <span
       className="pill"
-      style={{ background: STATE_COLORS[state] ?? "#555" }}
+      style={{
+        background:
+          state === "deleted" ? DELETED_COLOR : (stateColorOf(state) ?? "#555"),
+      }}
     >
       {state}
     </span>
@@ -98,14 +90,9 @@ function body(
       const children = structure.regions.filter((x) => x.parent === r.id);
       const held = state.holdings.get(r.id) ?? [];
       return {
-        kind:
-          r.kind === "component"
-            ? "component"
-            : r.kind === "client"
-              ? "client"
-              : r.kind,
+        kind: r.tag ?? r.kind,
         title: r.label,
-        color: REGION_COLORS[r.id],
+        color: regionColorOf(r.id),
         content: (
           <>
             {r.package && <p className="dim mono">{r.package}</p>}
@@ -168,7 +155,7 @@ function body(
       return {
         kind: `${f.visibility} ${f.type}${f.scheduled ? " · scheduled" : ""}`,
         title: f.name,
-        color: REGION_COLORS[f.region],
+        color: regionColorOf(f.region),
         content: (
           <>
             <p className="dim">
@@ -210,7 +197,7 @@ function body(
       return {
         kind: "table",
         title: t.name,
-        color: REGION_COLORS[t.region],
+        color: regionColorOf(t.region),
         content: (
           <>
             <p className="dim">
@@ -248,7 +235,7 @@ function body(
       return {
         kind: `row of ${t.name}`,
         title: r ? rowTitle(r) : s.id,
-        color: REGION_COLORS[t.region],
+        color: regionColorOf(t.region),
         content: r ? (
           <>
             <p>
@@ -323,11 +310,11 @@ function body(
       };
     }
     case "place": {
-      const p = PLACES[s.id];
+      const p = placeOf(s.id)!;
       return {
-        kind: "Convex platform",
-        title: p.title,
-        color: REGION_COLORS.platform,
+        kind: regionOf(p.region)?.label ?? p.role,
+        title: p.label,
+        color: regionColorOf(platformRegion?.id ?? ""),
         content: <p>{p.summary}</p>,
       };
     }
@@ -335,15 +322,16 @@ function body(
       const held = (state.holdings.get(s.holder) ?? []).find(
         (k) => k.label === s.label,
       );
-      const row = held?.row
-        ? (state.tables.get("auth:refreshTokens") ?? []).find(
-            (r) => r.id === held.row,
-          )
-        : undefined;
+      const kind = structure.tokens.find((k) => k.kind === held?.kind);
+      const table = held?.table ? tableOf(held.table) : undefined;
+      const row =
+        held?.table && held.row
+          ? (state.tables.get(held.table) ?? []).find((r) => r.id === held.row)
+          : undefined;
       return {
-        kind: held?.kind === "access" ? "access token" : "refresh token",
+        kind: held ? tokenNounOf(held.kind) : "token",
         title: s.label,
-        color: REGION_COLORS[s.holder],
+        color: regionColorOf(s.holder),
         content: (
           <>
             <p>
@@ -353,23 +341,10 @@ function body(
               </Link>
               .
             </p>
-            {held?.kind === "access" ? (
-              <p>
-                A JWT signed with the deployment's key. The platform checks it
-                on every request; it is short-lived and is renewed by a refresh.
-              </p>
-            ) : (
-              <p>
-                An opaque secret. The core stores only its SHA-256 hash, in the
-                row below. Presenting it rotates it; presenting it after its
-                successor was redeemed revokes the session.
-              </p>
-            )}
-            {row && (
-              <Section title="Its row in auth.refreshTokens">
-                <Link
-                  to={{ type: "row", table: "auth:refreshTokens", id: row.id }}
-                >
+            {kind && <p>{kind.summary}</p>}
+            {table && row && (
+              <Section title={`Its row in ${table.name}`}>
+                <Link to={{ type: "row", table: table.id, id: row.id }}>
                   <span className="mono">{rowTitle(row)}</span>{" "}
                   <StatePill
                     state={row.deletedAt !== undefined ? "deleted" : row.state}
@@ -388,7 +363,7 @@ function nameOf(anchor: string) {
   return (
     fnOf(anchor)?.name ??
     regionOf(anchor)?.label ??
-    PLACES[anchor]?.title ??
+    placeOf(anchor)?.label ??
     anchor
   );
 }

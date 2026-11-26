@@ -1,4 +1,3 @@
-import { loadRecording, loadStructure } from "./adapter.ts";
 import { stateAt, type WorldState } from "./playback.ts";
 import { buildTimeline, type Timeline } from "./schedule.ts";
 import type { Recording, Structure } from "./types.ts";
@@ -11,10 +10,7 @@ export interface World {
   stateAt: (t: number) => WorldState;
 }
 
-export function createWorld(
-  structure: Structure = loadStructure(),
-  recording: Recording = loadRecording(),
-): World {
+export function createWorld(structure: Structure, recording: Recording): World {
   const timeline = buildTimeline(structure, recording);
   const stateFields = new Map(
     structure.tables.flatMap((t) =>

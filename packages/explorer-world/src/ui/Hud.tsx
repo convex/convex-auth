@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { hover, usePlayback, world } from "../store.ts";
+import { config, hover, usePlayback, world } from "../store.ts";
 
 const { timeline } = world;
 
@@ -28,7 +28,10 @@ export function Caption() {
         {chapter.execution.title}
         <span className="dim mono">
           {" "}
-          · {chapter.execution.function.replace(/^app:/, "")}
+          ·{" "}
+          {world.structure.functions.find(
+            (f) => f.id === chapter.execution.function,
+          )?.name ?? chapter.execution.function}
         </span>
       </div>
       <div className="step">{beat?.text ?? "…"}</div>
@@ -44,7 +47,8 @@ export function Chapters() {
   return (
     <nav className="chapters panel">
       <h1>
-        Convex Auth <span>· username + password</span>
+        {config.title}
+        {config.subtitle && <span> · {config.subtitle}</span>}
       </h1>
       <ol>
         {timeline.chapters.map((c, i) => (

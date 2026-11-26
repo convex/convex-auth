@@ -45,19 +45,37 @@ URL parameters for scripted screenshots: `?t=42&paused` opens the run at 42 s,
 
 ## Code
 
-- `data/*.provisional.json`: the structure of the slice and the recorded run,
-  in provisional formats. `packages/explorer-structure` and
-  `packages/explorer` will produce the real ones.
-- `src/model/adapter.ts`: the only module that reads those files. It returns
-  the model of `src/model/types.ts`. Replace it when the real formats land.
-- `src/model/schedule.ts`: lays the recording out on a timeline at human speed,
+The world is meant to show any codebase. Its engine and renderer know nothing
+of Convex Auth; a project supplies everything specific to it.
+
+- `src/model/types.ts`: the model, in neutral terms: regions (client, platform
+  or service), places on the platform (entry, issuer, scheduler), functions,
+  tables with an optional state field, token kinds, and a recording of
+  function runs with their steps and writes.
+- `src/config.ts`: `ProjectConfig`, how a project looks (region colors and
+  positions, place positions, row-state colors, token shapes, camera, a row
+  caption). Every field but the title is optional; the layout places whatever
+  the config leaves out.
+- `src/model/schedule.ts`: lays a recording out on a timeline at human speed,
   keeping its order and its causality (writes commit at the end of their run).
 - `src/model/playback.ts`: the state of the world at a time, as a pure
-  function. Scrubbing back costs the same as playing forward. Tested in
-  `playback.test.ts`.
-- `src/scene/`: the three.js scene (React Three Fiber). `layout.ts` places
-  everything; only the islands are placed by hand.
-- `src/ui/`: the HTML overlay (timeline, caption, inspector).
+  function. Scrubbing back costs the same as playing forward.
+- `src/scene/`, `src/ui/`: the three.js scene (React Three Fiber) and the HTML
+  overlay. They read the model and the config, nothing else.
+- `src/project.ts`: the one line that picks the project.
+- `projects/convex-auth/`: this project. `structure.provisional.json` and
+  `run.provisional.json` hold the slice and its recorded run in provisional
+  formats; `adapter.ts`, the only module that reads them, maps them to the
+  model; `config.ts` is its look. `packages/explorer-structure` and
+  `packages/explorer` will produce the real formats; only `adapter.ts` changes
+  then.
+
+To show another codebase, add `projects/<name>/` with its data, an adapter and
+a config, and point `src/project.ts` at it. `src/model/generic.test.ts` plays a
+made-up shop through the engine and the layout with no config at all.
+
+Tests: `playback.test.ts` checks the Convex Auth run (time to world state);
+`generic.test.ts` checks that nothing assumes Convex Auth.
 
 Everything the app needs is bundled, fonts included. Text in the 3D scene goes
 through `glyphSafe` so that troika never fetches a fallback font.

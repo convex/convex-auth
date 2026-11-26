@@ -13,17 +13,13 @@ import type {
   Step,
   Structure,
   TokenRef,
+  Tone,
 } from "./types.ts";
 
-/** Fixed places of the platform that things travel to. */
-export const GATE = "platform:gate";
-export const SIGNER = "platform:signer";
-export const SCHEDULER = "platform:scheduler";
+export type { Tone } from "./types.ts";
 
-/** A region id, a function id, or one of the places above. */
+/** A region id, a function id, a table id, or a place id. */
 export type Anchor = string;
-
-export type Tone = "normal" | "warn" | "error";
 
 export interface Movement {
   id: string;
@@ -81,6 +77,7 @@ export interface Alert {
   end: number;
   execution: string;
   region: string;
+  level: "info" | "warn" | "error";
   text: string;
 }
 
@@ -119,13 +116,13 @@ export const PACE = {
   gap: 1.4,
 };
 
-function shortName(structure: Structure, id: string): string {
-  const fn = structure.functions.find((f) => f.id === id);
-  if (!fn) return id;
-  const region = structure.regions.find((r) => r.id === fn.region);
-  return region && region.kind === "component"
-    ? `${region.label}.${fn.name.replace(/^public\./, "")}`
-    : fn.name;
+function nameOf(structure: Structure, id: string): string {
+  return (
+    structure.functions.find((f) => f.id === id)?.label ??
+    structure.places.find((p) => p.id === id)?.label ??
+    structure.regions.find((r) => r.id === id)?.label ??
+    id
+  );
 }
 
 export function buildTimeline(
@@ -144,7 +141,22 @@ export function buildTimeline(
   };
   let t = 0;
   let movementCount = 0;
-  const name = (id: string) => shortName(structure, id);
+  const name = (id: string) => nameOf(structure, id);
+  const scheduler = structure.places.find((p) => p.role === "scheduler");
+  // Who holds which token, to notice a caller presenting a copy.
+  const held = new Map<string, Set<string>>();
+  const hold = (
+    at: number,
+    holder: string,
+    token: TokenRef,
+    op: "gain" | "drop",
+  ) => {
+    tl.holdings.push({ at, holder, token, op });
+    const set = held.get(holder) ?? new Set<string>();
+    if (op === "gain") set.add(token.label);
+    else set.delete(token.label);
+    held.set(holder, set);
+  };
 
   const move = (m: Omit<Movement, "id">) => {
     tl.movements.push({ ...m, id: `m${++movementCount}` });
@@ -161,39 +173,32 @@ export function buildTimeline(
   for (const ex of recording.executions) {
     const start = t;
     const root = ex.function;
-    const tone: Tone =
-      ex.status === "error"
-        ? "error"
-        : ex.status === "noSession"
-          ? "warn"
-          : "normal";
+    const tone = ex.tone;
     t += PACE.lead;
 
-    // A replayed token: the other holder shows up holding its copy.
-    if (ex.presents && ex.caller !== "browser") {
-      tl.holdings.push({
-        at: start,
-        holder: ex.caller,
-        token: ex.presents,
-        op: "gain",
-      });
+    // A caller presenting a token it was never given holds a copy of it.
+    if (ex.presents && !held.get(ex.caller)?.has(ex.presents.label)) {
+      hold(start, ex.caller, ex.presents, "gain");
     }
+    const entry = ex.entry
+      ? structure.places.find((p) => p.id === ex.entry)
+      : undefined;
 
-    // The request. From a client it passes the platform's token check.
+    // The request. From a client it passes the entry place, if there is one.
     const reqStart = t;
     t += ex.scheduled ? PACE.schedule : PACE.request;
     move({
       execution: ex.id,
       kind: "request",
-      from: ex.scheduled ? SCHEDULER : ex.caller,
+      from: ex.caller,
       to: root,
-      via: ex.scheduled ? undefined : GATE,
+      via: ex.entry,
       start: reqStart,
       end: t,
       label: ex.scheduled ? "scheduled run" : `request · ${name(root)}`,
       detail: ex.scheduled
-        ? `The scheduler starts ${name(root)}.`
-        : `The client calls ${name(root)}. The platform checks the caller's access token before the function runs.`,
+        ? `${name(ex.caller)} starts ${name(root)}.`
+        : `${name(ex.caller)} calls ${name(root)}.${entry ? ` The request passes the ${entry.label}: ${entry.summary}` : ""}`,
       tokens: ex.presents ? [ex.presents] : [],
       tone: "normal",
     });
@@ -202,10 +207,10 @@ export function buildTimeline(
       t,
       ex.id,
       ex.scheduled
-        ? `The scheduler runs ${name(root)}`
+        ? `${name(ex.caller)} runs ${name(root)}`
         : ex.presents
-          ? `${regionLabel(structure, ex.caller)} presents refresh token ${ex.presents.label} to ${name(root)}`
-          : `${regionLabel(structure, ex.caller)} calls ${name(root)}`,
+          ? `${name(ex.caller)} presents ${tokenNoun(structure, ex.presents)} ${ex.presents.label} to ${name(root)}`
+          : `${name(ex.caller)} calls ${name(root)}`,
       "normal",
       root,
     );
@@ -225,7 +230,9 @@ export function buildTimeline(
             t,
             t + PACE.start,
             ex.id,
-            `${name(root)} starts the ${methodLabel(ex)} method`,
+            s.label
+              ? `${name(root)} starts the ${s.label}`
+              : `${name(root)} starts`,
             "normal",
             root,
           );
@@ -257,11 +264,7 @@ export function buildTimeline(
         case "return": {
           const call = open.pop();
           const back = open.length ? open[open.length - 1].target : root;
-          const rTone: Tone = /INVALID|error/i.test(s.value ?? "")
-            ? "error"
-            : /no session/i.test(s.value ?? "")
-              ? "warn"
-              : "normal";
+          const rTone = s.tone;
           if (call) {
             tl.activations.push({
               node: call.target,
@@ -293,42 +296,38 @@ export function buildTimeline(
           );
           return t + PACE.return;
         }
-        case "sessionIssued": {
+        case "issue": {
           const half = PACE.sign;
+          const place = structure.places.find((p) => p.id === s.place);
+          const label = place?.label ?? s.place;
           move({
             execution: ex.id,
             kind: "sign",
             from: root,
-            to: SIGNER,
+            to: s.place,
             start: t,
             end: t + half,
-            label: "claims",
+            label: `to ${label}`,
             detail:
-              "The session's claims go to be signed with the deployment's key.",
+              `${name(root)} asks the ${label} for a token. ${place?.summary ?? ""}`.trim(),
             tokens: [],
             tone: "normal",
           });
-          const issued = ex.tokens.find((k) => k.kind === "access");
           move({
             execution: ex.id,
             kind: "sign",
-            from: SIGNER,
+            from: s.place,
             to: root,
             start: t + half,
             end: t + 2 * half,
-            label: `signed · ${issued?.label ?? "access token"}`,
-            detail: "A signed access token (a JWT) for the new session.",
-            tokens: issued ? [issued] : [],
+            label: `issued · ${s.token?.label ?? "token"}`,
+            detail: s.token
+              ? `The ${label} issues ${tokenNoun(structure, s.token)} ${s.token.label}.`
+              : `The ${label} issues a token.`,
+            tokens: s.token ? [s.token] : [],
             tone: "normal",
           });
-          beat(
-            t,
-            t + 2 * half,
-            ex.id,
-            "session issued — the platform signs an access token",
-            "normal",
-            SIGNER,
-          );
+          beat(t, t + 2 * half, ex.id, s.text, "normal", s.place);
           return t + 2 * half;
         }
         case "log": {
@@ -337,25 +336,21 @@ export function buildTimeline(
             end: t + PACE.log + PACE.return + PACE.commit + PACE.response,
             execution: ex.id,
             region: s.region,
+            level: s.level,
             text: s.message,
           });
           beat(
             t,
             t + PACE.log,
             ex.id,
-            `warning · ${s.message}`,
-            "warn",
+            `${s.level === "info" ? "log" : s.level} · ${s.message}`,
+            s.level === "info" ? "normal" : s.level,
             s.region,
           );
           return t + PACE.log;
         }
         case "result": {
-          const rTone: Tone =
-            s.status === "error"
-              ? "error"
-              : s.status === "noSession"
-                ? "warn"
-                : "normal";
+          const rTone = s.tone;
           beat(
             t,
             t + PACE.result,
@@ -419,35 +414,26 @@ export function buildTimeline(
         tokens: ex.tokens,
         tone,
       });
-      for (const token of ex.tokens) {
-        tl.holdings.push({ at: t, holder: ex.caller, token, op: "gain" });
-      }
-      if (ex.status === "noSession" && ex.presents) {
-        tl.holdings.push({
-          at: t,
-          holder: ex.caller,
-          token: ex.presents,
-          op: "drop",
-        });
-      }
+      for (const token of ex.tokens) hold(t, ex.caller, token, "gain");
+      for (const token of ex.drops) hold(t, ex.caller, token, "drop");
       beat(
         resStart,
         t,
         ex.id,
         ex.tokens.length
-          ? `${regionLabel(structure, ex.caller)} receives ${ex.tokens.map((k) => k.label).join(" + ")}`
-          : `${regionLabel(structure, ex.caller)} receives ${ex.status}${ex.error ? ` · ${ex.error}` : ""}`,
+          ? `${name(ex.caller)} receives ${ex.tokens.map((k) => k.label).join(" + ")}`
+          : `${name(ex.caller)} receives ${ex.status}${ex.error ? ` · ${ex.error}` : ""}`,
         tone,
         ex.caller,
       );
     }
 
-    for (const fn of ex.schedules) {
+    for (const fn of scheduler ? ex.schedules : []) {
       move({
         execution: ex.id,
         kind: "schedule",
         from: root,
-        to: SCHEDULER,
+        to: scheduler!.id,
         start: commitAt,
         end: commitAt + PACE.schedule,
         label: `schedules · ${name(fn)}`,
@@ -465,12 +451,6 @@ export function buildTimeline(
   return tl;
 }
 
-function regionLabel(structure: Structure, id: string): string {
-  return structure.regions.find((r) => r.id === id)?.label ?? id;
-}
-
-function methodLabel(ex: Execution): string {
-  return /Username|username/.test(ex.function)
-    ? "username + password"
-    : "sign-in";
+function tokenNoun(structure: Structure, token: TokenRef): string {
+  return structure.tokens.find((k) => k.kind === token.kind)?.label ?? "token";
 }

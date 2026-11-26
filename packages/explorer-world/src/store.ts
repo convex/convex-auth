@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { createWorld } from "./model/world.ts";
+import { project } from "./project.ts";
 import { nextStop, previousStop } from "./model/playback.ts";
 
-export const world = createWorld();
+export const world = createWorld(project.structure, project.recording);
+export const config = project.config;
 
 export type Selection =
   | { type: "region"; id: string }

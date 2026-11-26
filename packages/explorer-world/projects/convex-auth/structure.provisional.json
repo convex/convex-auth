@@ -1,6 +1,6 @@
 {
   "format": "explorer-world/structure@provisional",
-  "note": "Hand-written stand-in for the map that packages/explorer-structure will generate. Only src/model/adapter.ts reads this file.",
+  "note": "Hand-written stand-in for the map that packages/explorer-structure will generate. Only projects/convex-auth/adapter.ts reads this file.",
   "slice": "username-password",
   "regions": [
     {
@@ -252,6 +252,43 @@
       "name": "usernames",
       "fields": ["userId", "username", "usernameNormalized"],
       "summary": "One row per user that has a username."
+    }
+  ],
+  "places": [
+    {
+      "id": "platform:gate",
+      "role": "entry",
+      "region": "platform",
+      "label": "token check",
+      "caption": "The platform verifies the access token on every request, before the function runs",
+      "summary": "Every request from a client enters the deployment here. The platform verifies the access token's signature and expiry before the app's function runs; the function then sees the caller's identity."
+    },
+    {
+      "id": "platform:signer",
+      "role": "issuer",
+      "region": "platform",
+      "label": "deployment key",
+      "caption": "signs access tokens (JWTs)",
+      "summary": "The platform signs each access token (a JWT) with the deployment's key when a session is issued or refreshed."
+    },
+    {
+      "id": "platform:scheduler",
+      "role": "scheduler",
+      "region": "platform",
+      "label": "scheduler",
+      "summary": "Runs functions that a committed mutation scheduled. Here: the cleanup of a revoked session's refresh tokens."
+    }
+  ],
+  "tokens": [
+    {
+      "kind": "access",
+      "label": "access token",
+      "summary": "A JWT signed with the deployment's key. The platform checks it on every request; it is short-lived and is renewed by a refresh."
+    },
+    {
+      "kind": "refresh",
+      "label": "refresh token",
+      "summary": "An opaque secret. The core stores only its SHA-256 hash, in auth.refreshTokens. Presenting it rotates it; presenting it after its successor was redeemed revokes the session."
     }
   ]
 }

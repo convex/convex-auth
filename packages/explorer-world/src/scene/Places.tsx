@@ -11,15 +11,16 @@ import {
   type Group,
   type MeshStandardMaterial,
 } from "three";
-import { GATE, SCHEDULER, SIGNER } from "../model/schedule.ts";
-import { currentState, hover, usePlayback, world } from "../store.ts";
+import type { Place } from "../model/types.ts";
+import { config, currentState, hover, usePlayback, world } from "../store.ts";
 import { KeepSize, Label } from "./Label.tsx";
 import type { Layout } from "./layout.ts";
 import { Lod } from "./Lod.tsx";
-import { REGION_COLORS, TONE_COLORS } from "./palette.ts";
+import { platformRegion, regionColorOf, tokenNounOf } from "./look.ts";
+import { TONE_COLORS } from "./palette.ts";
 import { TokenMesh } from "./Travellers.tsx";
 
-const PLATFORM = new Color(REGION_COLORS.platform);
+const PLATFORM = new Color(regionColorOf(platformRegion?.id ?? ""));
 
 function usePick(id: string, label: string) {
   const select = usePlayback((s) => s.select);
@@ -56,14 +57,20 @@ const columnFragment = /* glsl */ `
   }
 `;
 
-/** The platform's check of the access token, where requests enter. */
-export function Gate({ layout }: { layout: Layout }) {
-  const position = layout.places.get(GATE)!;
+/** Where requests from clients enter: a column of light they pass through. */
+export function EntryPlace({
+  layout,
+  place,
+}: {
+  layout: Layout;
+  place: Place;
+}) {
+  const position = layout.places.get(place.id)!;
   const rings = useRef<MeshStandardMaterial[]>([]);
   const column = useRef<ShaderMaterial>(null);
   const spin = useRef<Group>(null);
   const glow = useRef(0);
-  const pick = usePick(GATE, "token check");
+  const pick = usePick(place.id, place.label);
   const uniforms = useMemo(
     () => ({
       uColor: { value: PLATFORM },
@@ -76,7 +83,8 @@ export function Gate({ layout }: { layout: Layout }) {
     const state = currentState();
     // A request lights the gate as it passes through.
     const passing = state.travellers.some(
-      (t) => t.movement.via === GATE && t.progress > 0.2 && t.progress < 0.65,
+      (t) =>
+        t.movement.via === place.id && t.progress > 0.2 && t.progress < 0.65,
     );
     glow.current = MathUtils.damp(glow.current, passing ? 1 : 0, 6, delta);
     for (const m of rings.current)
@@ -88,7 +96,7 @@ export function Gate({ layout }: { layout: Layout }) {
     if (spin.current)
       spin.current.rotation.y += delta * (0.25 + glow.current * 2.5);
   });
-  const ground = position.y - 3.2;
+  const ground = position.y;
   return (
     <group position={[position.x, ground, position.z]} {...pick}>
       <mesh position={[0, 5, 0]}>
@@ -150,31 +158,32 @@ export function Gate({ layout }: { layout: Layout }) {
           outlineWidth={0.04}
           outlineColor="#03050a"
         >
-          token check
+          {place.label}
         </Label>
       </Lod>
-      <Lod far={46}>
-        <Label
-          billboard
-          position={[0, 10.5, 0]}
-          fontSize={0.34}
-          color="#aab4d4"
-          maxWidth={9}
-          textAlign="center"
-        >
-          The platform verifies the access token on every request, before the
-          function runs
-        </Label>
-      </Lod>
+      {place.caption && (
+        <Lod far={46}>
+          <Label
+            billboard
+            position={[0, 10.5, 0]}
+            fontSize={0.34}
+            color="#aab4d4"
+            maxWidth={9}
+            textAlign="center"
+          >
+            {place.caption}
+          </Label>
+        </Lod>
+      )}
     </group>
   );
 }
 
-/** The React app in the browser: a floating screen behind the tokens it holds. */
+/** A client: a floating screen behind the tokens it holds. */
 export function Device({ layout, holder }: { layout: Layout; holder: string }) {
   const island = layout.islands.get(holder)!;
-  const color = new Color(REGION_COLORS[holder]);
-  const small = holder !== "browser";
+  const color = new Color(regionColorOf(holder));
+  const small = island.radius < 5;
   const w = small ? 2.6 : 8.4;
   const h = small ? 4.4 : 5.2;
   return (
@@ -242,14 +251,20 @@ export function Device({ layout, holder }: { layout: Layout; holder: string }) {
   );
 }
 
-/** The deployment's key, which signs every access token. */
-export function Signer({ layout }: { layout: Layout }) {
-  const position = layout.places.get(SIGNER)!;
+/** Where tokens are issued: a key stone that glows while it signs. */
+export function IssuerPlace({
+  layout,
+  place,
+}: {
+  layout: Layout;
+  place: Place;
+}) {
+  const position = layout.places.get(place.id)!;
   const core = useRef<MeshStandardMaterial>(null);
   const halo = useRef<Group>(null);
   const glow = useRef(0);
   const gold = useMemo(() => new Color("#ffd36b"), []);
-  const pick = usePick(SIGNER, "signing key");
+  const pick = usePick(place.id, place.label);
   useFrame((_, delta) => {
     const signing = currentState().travellers.some(
       (t) => t.movement.kind === "sign",
@@ -302,29 +317,42 @@ export function Signer({ layout }: { layout: Layout }) {
           outlineWidth={0.03}
           outlineColor="#03050a"
         >
-          deployment key
+          {place.label}
         </Label>
       </Lod>
-      <Lod far={34}>
-        <Label billboard position={[0, 6.5, 0]} fontSize={0.28} color="#9aa6c4">
-          signs access tokens (JWTs)
-        </Label>
-      </Lod>
+      {place.caption && (
+        <Lod far={34}>
+          <Label
+            billboard
+            position={[0, 6.5, 0]}
+            fontSize={0.28}
+            color="#9aa6c4"
+          >
+            {place.caption}
+          </Label>
+        </Lod>
+      )}
     </group>
   );
 }
 
 /** The platform's scheduler, which runs functions after a commit. */
-export function Scheduler({ layout }: { layout: Layout }) {
-  const position = layout.places.get(SCHEDULER)!;
+export function SchedulerPlace({
+  layout,
+  place,
+}: {
+  layout: Layout;
+  place: Place;
+}) {
+  const position = layout.places.get(place.id)!;
   const hand = useRef<Group>(null);
   const face = useRef<MeshStandardMaterial>(null);
   const glow = useRef(0);
-  const pick = usePick(SCHEDULER, "scheduler");
+  const pick = usePick(place.id, place.label);
   useFrame((_, delta) => {
     const state = currentState();
     const busy = state.travellers.some(
-      (t) => t.movement.kind === "schedule" || t.movement.from === SCHEDULER,
+      (t) => t.movement.kind === "schedule" || t.movement.from === place.id,
     );
     glow.current = MathUtils.damp(glow.current, busy ? 1 : 0, 5, delta);
     if (hand.current)
@@ -392,7 +420,7 @@ export function Scheduler({ layout }: { layout: Layout }) {
           outlineWidth={0.03}
           outlineColor="#03050a"
         >
-          scheduler
+          {place.label}
         </Label>
       </Lod>
     </group>
@@ -400,27 +428,47 @@ export function Scheduler({ layout }: { layout: Layout }) {
 }
 
 /**
- * The dependencies between regions: the app uses each component, the password
- * component uses the rate limiter, the browser reaches the app through the
- * token check.
+ * The dependencies between regions: a region and the one it belongs to, and
+ * the clients' way in through the entry place.
  */
 export function Links({ layout }: { layout: Layout }) {
   const links = useMemo(() => {
     const out: { from: Vector3; to: Vector3; color: string }[] = [];
-    for (const r of world.structure.regions) {
-      if (!r.parent || r.parent === "platform") continue;
+    const { regions, places } = world.structure;
+    const platform = platformRegion?.id;
+    // A region is linked to the region it belongs to.
+    for (const r of regions) {
+      if (!r.parent || r.parent === platform) continue;
       const a = layout.islands.get(r.parent)?.center;
       const b = layout.islands.get(r.id)?.center;
-      if (a && b)
-        out.push({ from: a, to: b, color: REGION_COLORS[r.id] ?? "#fff" });
+      if (a && b) out.push({ from: a, to: b, color: regionColorOf(r.id) });
     }
-    const gate = layout.places.get(GATE)!;
-    const app = layout.islands.get("app")!.center;
-    for (const client of ["browser", "elsewhere"]) {
-      const c = layout.islands.get(client)?.center;
-      if (c) out.push({ from: c, to: gate, color: REGION_COLORS[client] });
+    // Clients reach the top-level services through the entry place.
+    const entry = places.find((p) => p.role === "entry");
+    const door = entry ? layout.places.get(entry.id) : undefined;
+    const top = regions.filter(
+      (r) => r.kind === "service" && (!r.parent || r.parent === platform),
+    );
+    for (const client of regions.filter((r) => r.kind === "client")) {
+      const c = layout.islands.get(client.id)?.center;
+      if (!c) continue;
+      if (door)
+        out.push({ from: c, to: door, color: regionColorOf(client.id) });
+      else
+        for (const t of top)
+          out.push({
+            from: c,
+            to: layout.islands.get(t.id)!.center,
+            color: regionColorOf(client.id),
+          });
     }
-    out.push({ from: gate, to: app, color: REGION_COLORS.platform });
+    if (door) {
+      for (const t of top) {
+        const c = layout.islands.get(t.id)?.center;
+        if (c)
+          out.push({ from: door, to: c, color: regionColorOf(platform ?? "") });
+      }
+    }
     return out;
   }, [layout]);
   return (
@@ -464,13 +512,13 @@ export function Wallet({ holder, layout }: { holder: string; layout: Layout }) {
       held
         ? held.split(",").map((entry) => {
             const [kind, label] = entry.split(":");
-            return { kind: kind as "access" | "refresh", label };
+            return { kind, label };
           })
         : [],
     [held],
   );
   const select = usePlayback((s) => s.select);
-  const replayed = holder !== "browser";
+  const replayed = Boolean(config.regions?.[holder]?.holdsCopies);
   return (
     <group position={[island.center.x, island.center.y + 4.4, island.center.z]}>
       {tokens.map((token, i) => (
@@ -485,7 +533,7 @@ export function Wallet({ holder, layout }: { holder: string; layout: Layout }) {
           <TokenMesh
             token={token}
             scale={2.1}
-            tint={replayed ? TONE_COLORS.error : undefined}
+            tint={replayed ? regionColorOf(holder) : undefined}
           />
           <Lod far={50}>
             <Label
@@ -495,12 +543,7 @@ export function Wallet({ holder, layout }: { holder: string; layout: Layout }) {
               color="#aab4d4"
               letterSpacing={0.08}
             >
-              {(replayed
-                ? "copy of refresh token"
-                : token.kind === "access"
-                  ? "access token"
-                  : "refresh token"
-              ).toUpperCase()}
+              {`${replayed ? "copy of " : ""}${tokenNounOf(token.kind)}`.toUpperCase()}
             </Label>
           </Lod>
         </group>
@@ -514,14 +557,16 @@ export function AlertBanners({ layout }: { layout: Layout }) {
   const key = usePlayback((s) => {
     void s.time;
     return currentState()
-      .alerts.map((a) => `${a.region}|${a.text}`)
+      .alerts.map((a) => `${a.region}|${a.level}|${a.text}`)
       .join("\n");
   });
   if (!key) return null;
   return (
     <>
       {key.split("\n").map((entry) => {
-        const [region, text] = entry.split("|");
+        const [region, level, text] = entry.split("|");
+        const where =
+          world.structure.regions.find((r) => r.id === region)?.label ?? region;
         const island = layout.islands.get(region);
         if (!island) return null;
         return (
@@ -538,12 +583,16 @@ export function AlertBanners({ layout }: { layout: Layout }) {
             <Label
               billboard
               fontSize={0.8}
-              color={TONE_COLORS.error}
+              color={
+                level === "info"
+                  ? TONE_COLORS.normal
+                  : TONE_COLORS[level as "warn" | "error"]
+              }
               weight="bold"
               outlineWidth={0.05}
               outlineColor="#1a0006"
             >
-              WARNING · LOGGED BY THE CORE
+              {`${level} · logged by ${where}`.toUpperCase()}
             </Label>
             <Label
               billboard
@@ -560,6 +609,40 @@ export function AlertBanners({ layout }: { layout: Layout }) {
           </KeepSize>
         );
       })}
+    </>
+  );
+}
+
+/** Every place of the platform, each drawn by its role. */
+export function Places({ layout }: { layout: Layout }) {
+  return (
+    <>
+      {world.structure.places.map((place) => {
+        if (!layout.places.has(place.id)) return null;
+        const Component =
+          place.role === "entry"
+            ? EntryPlace
+            : place.role === "issuer"
+              ? IssuerPlace
+              : SchedulerPlace;
+        return <Component key={place.id} layout={layout} place={place} />;
+      })}
+    </>
+  );
+}
+
+/** A screen and a wallet on every client region. */
+export function Clients({ layout }: { layout: Layout }) {
+  return (
+    <>
+      {world.structure.regions
+        .filter((r) => r.kind === "client" && layout.islands.has(r.id))
+        .map((r) => (
+          <group key={r.id}>
+            <Device holder={r.id} layout={layout} />
+            <Wallet holder={r.id} layout={layout} />
+          </group>
+        ))}
     </>
   );
 }

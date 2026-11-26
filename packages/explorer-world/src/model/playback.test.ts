@@ -1,9 +1,13 @@
 import { describe, expect, test } from "vitest";
 import { DELETE_FADE, nextStop, previousStop } from "./playback.ts";
-import { SCHEDULER } from "./schedule.ts";
+import { project } from "../project.ts";
 import { createWorld } from "./world.ts";
 
-const world = createWorld();
+// The tests play the Convex Auth slice; the engine itself knows no project.
+const world = createWorld(project.structure, project.recording);
+const SCHEDULER = project.structure.places.find(
+  (p) => p.role === "scheduler",
+)!.id;
 const { timeline } = world;
 const chapter = (title: string) => {
   const c = timeline.chapters.find((c) => c.execution.title === title);

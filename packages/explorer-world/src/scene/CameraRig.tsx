@@ -12,7 +12,7 @@ export function selectionFocus(
 ): { target: Vector3; distance: number } {
   switch (s.type) {
     case "region": {
-      if (s.id === "platform")
+      if (!layout.islands.has(s.id))
         return { target: layout.platform.center.clone(), distance: 95 };
       const island = layout.islands.get(s.id);
       return {

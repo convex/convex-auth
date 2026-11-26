@@ -1,21 +1,13 @@
 import { useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { useMemo } from "react";
-import { usePlayback, world } from "../store.ts";
+import { config, usePlayback, world } from "../store.ts";
 import { Backdrop } from "./Backdrop.tsx";
 import { CameraRig } from "./CameraRig.tsx";
 import { FunctionNode } from "./FunctionNode.tsx";
 import { Island } from "./Island.tsx";
 import { createLayout } from "./layout.ts";
-import {
-  AlertBanners,
-  Device,
-  Gate,
-  Links,
-  Scheduler,
-  Signer,
-  Wallet,
-} from "./Places.tsx";
+import { AlertBanners, Clients, Links, Places } from "./Places.tsx";
 import { TableVault } from "./TableVault.tsx";
 import { Travellers } from "./Travellers.tsx";
 
@@ -36,7 +28,7 @@ function Clock() {
 }
 
 export function World({ effects = true }: { effects?: boolean }) {
-  const layout = useMemo(() => createLayout(world.structure), []);
+  const layout = useMemo(() => createLayout(world.structure, config), []);
   return (
     <>
       <Clock />
@@ -56,14 +48,9 @@ export function World({ effects = true }: { effects?: boolean }) {
           const l = layout.tables.get(t.id);
           return l ? <TableVault key={t.id} table={t} layout={l} /> : null;
         })}
-        <Gate layout={layout} />
-        <Signer layout={layout} />
-        <Scheduler layout={layout} />
+        <Places layout={layout} />
         <Links layout={layout} />
-        <Device holder="browser" layout={layout} />
-        <Device holder="elsewhere" layout={layout} />
-        <Wallet holder="browser" layout={layout} />
-        <Wallet holder="elsewhere" layout={layout} />
+        <Clients layout={layout} />
         <Travellers layout={layout} />
         <AlertBanners layout={layout} />
       </group>

@@ -8,7 +8,9 @@ import { currentState, hover, usePlayback } from "../store.ts";
 import { Label } from "./Label.tsx";
 import { ROW, type TableLayout } from "./layout.ts";
 import { Lod } from "./Lod.tsx";
-import { REGION_COLORS, STATE_COLORS } from "./palette.ts";
+import { config } from "../store.ts";
+import { isRetired, regionColorOf, stateColorOf } from "./look.ts";
+import { DELETED_COLOR } from "./palette.ts";
 
 /** The rows of a table that exist (or are dissolving) now, by id and state. */
 function useRows(table: string): RowState[] {
@@ -37,7 +39,7 @@ export function TableVault({
   layout: TableLayout;
 }) {
   const color = useMemo(
-    () => new Color(REGION_COLORS[table.region] ?? "#fff"),
+    () => new Color(regionColorOf(table.region)),
     [table.region],
   );
   const rows = useRows(table.id);
@@ -132,8 +134,8 @@ export function TableVault({
 }
 
 function rowColor(table: TableDef, row: RowState, base: Color): Color {
-  if (table.stateField && row.state && STATE_COLORS[row.state])
-    return new Color(STATE_COLORS[row.state]);
+  const color = table.stateField ? stateColorOf(row.state) : undefined;
+  if (color) return new Color(color);
   return base;
 }
 
@@ -167,12 +169,12 @@ function RowCard({
     col * (ROW.width + ROW.gap);
   const z =
     -((lines - 1) * (ROW.depth + ROW.gap)) / 2 + line * (ROW.depth + ROW.gap);
-  const deleted = useMemo(() => new Color(STATE_COLORS.deleted), []);
+  const deleted = useMemo(() => new Color(DELETED_COLOR), []);
   const white = useMemo(() => new Color("#ffffff"), []);
   const target = rowColor(table, row, color);
   const featured = layout.featured;
   const title = row.label ?? `…${row.id.slice(-6)}`;
-  const retired = row.state === "spent" || row.state === "dropped";
+  const retired = isRetired(row.state);
   const ink = retired ? "#ffd9e2" : "#04070e";
   const fields = Object.entries(row.doc)
     .filter(([k]) => k !== table.stateField)
@@ -199,7 +201,7 @@ function RowCard({
     current.current.lerp(target, 1 - Math.exp(-delta * 5));
     m.color.copy(current.current).multiplyScalar(0.35);
     m.emissive.copy(current.current);
-    const dim = row.state === "spent" || row.state === "dropped" ? 0.35 : 1;
+    const dim = retired ? 0.35 : 1;
     let flash = Math.max(0, 1 - sinceChange / 1.4);
     if (row.deletedAt !== undefined) {
       const k = MathUtils.clamp((time - row.deletedAt) / DELETE_FADE, 0, 1);
@@ -216,7 +218,7 @@ function RowCard({
     m.opacity = opacity;
     g.position.y = y;
     g.scale.setScalar(scale);
-    g.rotation.z = row.state === "spent" ? -0.06 : 0;
+    g.rotation.z = retired ? -0.06 : 0;
   });
 
   return (
@@ -280,7 +282,7 @@ function RowCard({
               color={ink}
               anchorX="left"
             >
-              {`session ${String(row.doc.sessionId ?? "").replace(/^s/, "")}`}
+              {config.rowCaption?.(table.id, row.doc) ?? ""}
             </Label>
           </Lod>
         )}

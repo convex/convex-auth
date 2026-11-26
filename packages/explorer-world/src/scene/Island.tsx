@@ -15,7 +15,8 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
 import type { IslandLayout } from "./layout.ts";
 import { Lod } from "./Lod.tsx";
-import { REGION_COLORS, TONE_COLORS } from "./palette.ts";
+import { regionColorOf } from "./look.ts";
+import { TONE_COLORS } from "./palette.ts";
 
 const wallVertex = /* glsl */ `
   varying vec2 vUv;
@@ -51,10 +52,7 @@ export function Island({
   region: Region;
   layout: IslandLayout;
 }) {
-  const color = useMemo(
-    () => new Color(REGION_COLORS[region.id] ?? "#ffffff"),
-    [region.id],
-  );
+  const color = useMemo(() => new Color(regionColorOf(region.id)), [region.id]);
   const rim = useRef<MeshStandardMaterial>(null);
   const wall = useRef<ShaderMaterial>(null);
   const light = useRef<PointLight>(null);
@@ -220,10 +218,10 @@ export function Island({
           color="#9aa6c4"
           letterSpacing={0.12}
         >
-          {(region.kind === "component"
-            ? `component · ${region.package ?? ""}`
-            : region.kind
-          ).toUpperCase()}
+          {[region.tag ?? region.kind, region.package]
+            .filter(Boolean)
+            .join(" · ")
+            .toUpperCase()}
         </Label>
       </Lod>
     </group>
