@@ -1,6 +1,6 @@
 import { Billboard, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useRef, type ComponentProps, type ReactNode } from "react";
+import { Suspense, useRef, type ComponentProps, type ReactNode } from "react";
 import { Vector3, type Group } from "three";
 import { FONT, FONT_BOLD, FONT_MONO } from "./fonts.ts";
 
@@ -49,18 +49,20 @@ export function Label({
     g.scale.setScalar(Math.min(keepSize[1], Math.max(keepSize[2] ?? 1, k)));
   });
   const text = (
-    <Text
-      font={
-        weight === "bold" ? FONT_BOLD : weight === "mono" ? FONT_MONO : FONT
-      }
-      anchorX="center"
-      anchorY="middle"
-      outlineWidth={props.outlineWidth ?? 0}
-      position={billboard ? undefined : position}
-      {...props}
-    >
-      {glyphSafe(children)}
-    </Text>
+    <Suspense fallback={null}>
+      <Text
+        font={
+          weight === "bold" ? FONT_BOLD : weight === "mono" ? FONT_MONO : FONT
+        }
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={props.outlineWidth ?? 0}
+        position={billboard ? undefined : position}
+        {...props}
+      >
+        {glyphSafe(children)}
+      </Text>
+    </Suspense>
   );
   const scaled = keepSize ? <group ref={group}>{text}</group> : text;
   return billboard ? (

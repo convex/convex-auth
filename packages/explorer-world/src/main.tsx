@@ -7,6 +7,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { usePlayback } from "./store.ts";
+import { configureTextBuilder } from "troika-three-text";
+
+// The page itself requests the fonts of 3D text. A request from troika's
+// worker can be refused where the page's own is not, and then no text loads.
+configureTextBuilder({ useWorker: false });
 
 // A hook for scripted screenshots: `?t=42&paused` opens the run at 42 s.
 const params = new URLSearchParams(location.search);
