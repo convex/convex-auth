@@ -15,7 +15,9 @@ export function Caption() {
       </div>
     );
   }
-  const beat = state.beat;
+  // A beat of the previous run does not caption the next one.
+  const beat =
+    state.beat?.execution === chapter.execution.id ? state.beat : null;
   return (
     <div
       className={`caption tone-${beat?.tone ?? "normal"}`}
@@ -29,7 +31,7 @@ export function Caption() {
           · {chapter.execution.function.replace(/^app:/, "")}
         </span>
       </div>
-      <div className="step">{beat?.text}</div>
+      <div className="step">{beat?.text ?? "…"}</div>
     </div>
   );
 }

@@ -35,16 +35,12 @@ function Clock() {
   return null;
 }
 
-const hidden = new Set(
-  (new URLSearchParams(location.search).get("hide") ?? "").split(","),
-);
-
 export function World({ effects = true }: { effects?: boolean }) {
   const layout = useMemo(() => createLayout(world.structure), []);
   return (
     <>
       <Clock />
-      {!hidden.has("Backdrop") && <Backdrop layout={layout} />}
+      <Backdrop layout={layout} />
       <group>
         {world.structure.regions.map((r) => {
           const island = layout.islands.get(r.id);
@@ -60,16 +56,16 @@ export function World({ effects = true }: { effects?: boolean }) {
           const l = layout.tables.get(t.id);
           return l ? <TableVault key={t.id} table={t} layout={l} /> : null;
         })}
-        {!hidden.has("Gate") && <Gate layout={layout} />}
-        {!hidden.has("Signer") && <Signer layout={layout} />}
-        {!hidden.has("Scheduler") && <Scheduler layout={layout} />}
-        {!hidden.has("Links") && <Links layout={layout} />}
+        <Gate layout={layout} />
+        <Signer layout={layout} />
+        <Scheduler layout={layout} />
+        <Links layout={layout} />
         <Device holder="browser" layout={layout} />
         <Device holder="elsewhere" layout={layout} />
-        {!hidden.has("Wallet") && <Wallet holder="browser" layout={layout} />}
-        {!hidden.has("Wallet") && <Wallet holder="elsewhere" layout={layout} />}
-        {!hidden.has("Travellers") && <Travellers layout={layout} />}
-        {!hidden.has("AlertBanners") && <AlertBanners layout={layout} />}
+        <Wallet holder="browser" layout={layout} />
+        <Wallet holder="elsewhere" layout={layout} />
+        <Travellers layout={layout} />
+        <AlertBanners layout={layout} />
       </group>
       <CameraRig layout={layout} />
       {effects && (
