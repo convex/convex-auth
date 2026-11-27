@@ -4,6 +4,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./stage.css";
 import { createRoot } from "react-dom/client";
+import { Vector3, type Camera } from "three";
 import { configureTextBuilder } from "troika-three-text";
 import {
   checkFonts,
@@ -64,6 +65,16 @@ if (replay && RECORDINGS[replay]) {
     return stageAt(modelOf(s), timeOf(s));
   },
   model: () => modelOf(useStage.getState()),
+  /** Where a point of the scene is on the window, in CSS pixels. */
+  project: (x: number, y: number, z: number) => {
+    const camera = (globalThis as { explorerCamera?: Camera }).explorerCamera;
+    if (!camera) return null;
+    const v = new Vector3(x, y, z).project(camera);
+    return {
+      x: ((v.x + 1) / 2) * innerWidth,
+      y: ((1 - v.y) / 2) * innerHeight,
+    };
+  },
 };
 
 void checkFonts();

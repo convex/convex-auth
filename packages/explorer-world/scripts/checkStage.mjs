@@ -25,7 +25,7 @@
 //
 //   pnpm --filter @convex-dev/explorer-world check:stage
 /* global setTimeout, URL -- Node globals. */
-/* global explorerStage -- run in the page. */
+/* global explorerStage, explorerCamera, innerWidth, innerHeight -- run in the page. */
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -216,6 +216,67 @@ try {
   await signedIn().waitFor({ timeout: 30_000 });
   await sleep(3000);
   await shot("stage-5-signed-in");
+
+  // The camera, as in the islands world, and the inspector.
+  const project = (x, yy, z) =>
+    page.evaluate(([x, yy, z]) => explorerStage.project(x, yy, z), [x, yy, z]);
+  const selection = () =>
+    page.evaluate(() => explorerStage.store.getState().selection);
+  const from = await project(9.5, 0, 2);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x - 220, from.y - 60, { steps: 12 });
+  await page.mouse.up();
+  await sleep(700);
+  const after = await project(9.5, 0, 2);
+  check(
+    Math.hypot(after.x - (from.x - 220), after.y - (from.y - 60)) < 4 &&
+      (await selection()) === null,
+    `a drag on the floor pans, holding the point pressed under the pointer (${Math.round(after.x - from.x + 220)}, ${Math.round(after.y - from.y + 60)} px off), and selects nothing`,
+  );
+  const tray = await project(-4.6, 0.36, 1.6);
+  await page.mouse.click(tray.x, tray.y);
+  await sleep(400);
+  const picked = await selection();
+  const inspector = await page
+    .locator(".stage-inspector")
+    .innerText()
+    .catch(() => "");
+  check(
+    picked?.type === "thing" &&
+      picked.id === "local" &&
+      /localStorage/.test(inspector),
+    `a click on localStorage opens the inspector on it (${JSON.stringify(picked)})`,
+  );
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.getByRole("button", { name: "Face the screen" }).click();
+  await sleep(2500);
+  const corners = await Promise.all(
+    [
+      [-8.35, 13.75],
+      [8.35, 3.05],
+    ].map(([x, yy]) => project(x, yy, -15.5)),
+  );
+  const size = await page.evaluate(() => [innerWidth, innerHeight]);
+  const fill = Math.max(
+    (corners[1].x - corners[0].x) / size[0],
+    (corners[1].y - corners[0].y) / size[1],
+  );
+  const inside = corners.every(
+    (c) => c.x >= -1 && c.y >= -1 && c.x <= size[0] + 1 && c.y <= size[1] + 1,
+  );
+  check(
+    inside && fill > 0.85,
+    `Face the screen shows all of it, square on, filling ${Math.round(fill * 100)}% of the window`,
+  );
+  await shot("stage-5b-facing");
+  await page.getByRole("button", { name: "Step back" }).click();
+  await sleep(2500);
+  const pos = await page.evaluate(() => explorerCamera.position.toArray());
+  check(
+    Math.hypot(pos[0], pos[1] - 19, pos[2] - 31) < 0.5,
+    `Step back returns to the whole stage (${pos.map((v) => v.toFixed(1)).join(", ")})`,
+  );
 
   // What the recorder captured, and what the floor holds.
   const seen = await page.evaluate((marks) => {

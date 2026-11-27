@@ -45,8 +45,8 @@ Time: the stage is live by default and nothing plays on its own. The time
 handle at the bottom can be dragged back and forth; what is shown is a
 function of the time (`stage/model.ts`, `stageAt`), so it moves smoothly in
 both directions. A real request takes milliseconds: each movement is drawn
-over 0.7 s from the moment it happened. Let go at the right end and it is live
-again. **Replay** plays a recording instead: this session from its start, a
+over 0.7 s from the moment it happened. Let go at the right end, or press
+**Back to live**, and it is live again. **Replay** plays a recording instead: this session from its start, a
 saved one of the project, or a file (the `run.ndjson` the command prints).
 In a replay the screen is dark and shows where the page was; **Live**
 returns.

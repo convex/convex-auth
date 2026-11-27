@@ -68,6 +68,7 @@ export function StageCamera() {
     const c = controls.current;
     if (!c) return;
     (globalThis as { explorerControls?: unknown }).explorerControls = c;
+    (globalThis as { explorerCamera?: unknown }).explorerCamera = camera;
     const [px, py, pz] = DEFAULT_VIEW.position;
     const [tx, ty, tz] = DEFAULT_VIEW.target;
     void c.setLookAt(px, py, pz, tx, ty, tz, false);

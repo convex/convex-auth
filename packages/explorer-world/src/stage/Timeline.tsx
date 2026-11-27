@@ -123,11 +123,12 @@ export function Timeline() {
     <div className="stage-timeline panel">
       <div className="stage-modes" role="group" aria-label="Live or replay">
         <button
-          className={isLive ? "on" : ""}
+          className={atLive ? "on" : ""}
           onClick={() => s.goLive()}
           title="Show the page as it is used now"
         >
-          <span className={`dot ${s.liveStatus}`} /> Live
+          <span className={`dot ${s.liveStatus}`} />{" "}
+          {atLive || !isLive ? "Live" : "Back to live"}
         </button>
         <button
           className={isLive ? "" : "on"}
