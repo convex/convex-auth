@@ -81,9 +81,16 @@ function partCard(id: string, state: WorldState): CardContent {
       </span>,
     );
   // Runs of it, and calls to it.
-  const ran = world.timeline.chapters.filter(
-    (c) => c.run.function === id && c.start <= t,
-  );
+  // A run counts once it is over; one under way is running now.
+  const mine = world.timeline.chapters.filter((c) => c.run.function === id);
+  const ran = mine.filter((c) => c.end <= t);
+  const under = mine.find((c) => c.start <= t && t < c.end);
+  if (under && !active)
+    doing.push(
+      <span className="live" key="now">
+        Running now
+      </span>,
+    );
   if (ran.length) {
     const last = ran[ran.length - 1].run;
     doing.push(
