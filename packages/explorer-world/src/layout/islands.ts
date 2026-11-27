@@ -628,18 +628,31 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
   const minX = -platformRadius;
   const maxX = platformRadius;
 
-  // Client islands on the left, stacked front to back.
+  // Client islands on the left. The region the page runs in (the
+  // presentation's `client`) stands level with the focus, so its calls go
+  // straight across; the others stack behind it, away from the viewer.
   const clients = byZone("client");
-  let z = 0;
-  const clientSizes = clients.map((i) => arrange(i, 0).radius);
-  const clientSpan = clientSizes.reduce((s, r) => s + 2 * r + 6, -6);
-  z = -clientSpan / 2;
-  const clientX = minX - 14 - Math.max(0, ...clientSizes);
-  clients.forEach((i, k) => {
-    const r = clientSizes[k];
-    arrange(i, 0).place([clientX, 3, z + r]);
-    z += 2 * r + 6;
-  });
+  const page = clients.find((i) => i.id === presentation.client);
+  const level = (focus ? parts.get(focus)?.position[2] : undefined) ?? 0;
+  const clientX =
+    minX - 14 - Math.max(0, ...clients.map((i) => arrange(i, 0).radius));
+  if (page) {
+    arrange(page, 0).place([clientX, 3, level]);
+    let z = level - arrange(page, 0).radius - 6;
+    for (const i of clients.filter((c) => c !== page)) {
+      const r = arrange(i, 0).radius;
+      arrange(i, 0).place([clientX, 3, z - r]);
+      z -= 2 * r + 6;
+    }
+  } else {
+    // Stacked front to back, centered.
+    const sizes = clients.map((i) => arrange(i, 0).radius);
+    let z = -sizes.reduce((s, r) => s + 2 * r + 6, -6) / 2;
+    clients.forEach((i, k) => {
+      arrange(i, 0).place([clientX, 3, z + sizes[k]]);
+      z += 2 * sizes[k] + 6;
+    });
+  }
 
   // Top-level parts that are not islands: external ones on the right, the
   // others (callers) on the platform's rim, facing the clients.
@@ -658,7 +671,7 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     })),
   ];
   const externalSpan = outer.reduce((s, o) => s + 2 * o.r + 5, -5);
-  z = -externalSpan / 2;
+  let z = -externalSpan / 2;
   const externalX = maxX + 16 + Math.max(0, ...outer.map((o) => o.r));
   for (const o of outer) {
     const at: Vec3 = [externalX, 5, z + o.r];
