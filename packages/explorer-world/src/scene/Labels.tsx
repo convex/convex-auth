@@ -342,7 +342,14 @@ function PartLabel({
           <Lod far={id.startsWith("storageKey:") ? KEY_NAME_FAR : Infinity}>
             <Billboard>
               {reporting ? (
-                <BesideHalo part={id} radius={p.radius} lift={h} grow={grow}>
+                <BesideHalo
+                  part={id}
+                  radius={p.radius}
+                  lift={h}
+                  grow={grow}
+                  chars={part.label.length}
+                  size={size}
+                >
                   <Label
                     fontSize={size}
                     color="#ffffff"
@@ -378,6 +385,11 @@ function PartLabel({
   );
 }
 
+/** How far right on the window (device coordinates) a name may end. */
+const EDGE = 0.97;
+const right = new Vector3();
+const end = new Vector3();
+
 /** The material of a name drawn over everything: it is not hidden by depth. */
 const ON_TOP = new MeshBasicMaterial({
   depthTest: false,
@@ -388,19 +400,25 @@ const ON_TOP = new MeshBasicMaterial({
 
 /**
  * Puts what it holds just right of the halo of a part (`haloRadius`), in
- * the units of a `KeepSize` group of `grow` at `lift` over the part.
+ * the units of a `KeepSize` group of `grow` at `lift` over the part; just
+ * left of it when the name would cross the window's right edge.
  */
 function BesideHalo({
   part,
   radius,
   lift,
   grow,
+  chars,
+  size,
   children,
 }: {
   part: string;
   radius: number;
   lift: number;
   grow: { distance: number; max: number };
+  /** The length of the name and its font size, to keep it on the window. */
+  chars: number;
+  size: number;
   children: ReactNode;
 }) {
   const ref = useRef<Group>(null);
@@ -413,7 +431,16 @@ function BesideHalo({
     if (!g) return;
     const d = camera.position.distanceTo(at);
     const scale = Math.min(grow.max, Math.max(1, d / grow.distance));
-    g.position.x = (haloRadius(radius, d) * 1.15) / scale;
+    const beside = haloRadius(radius, d) * 1.15;
+    // Where the name would end on the window, read to the right.
+    const across = (chars * 0.5 * size + 0.1) * scale;
+    right.setFromMatrixColumn(camera.matrixWorld, 0);
+    end
+      .copy(at)
+      .addScaledVector(right, beside + across)
+      .project(camera);
+    // Past the window's right edge: on the left of the halo instead.
+    g.position.x = end.x > EDGE ? -(beside + across) / scale : beside / scale;
   });
   return <group ref={ref}>{children}</group>;
 }

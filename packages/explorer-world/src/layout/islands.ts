@@ -614,7 +614,7 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
         ? {
             r,
             start: towardClients,
-            avoid: { angle: towardClients, half: 0.28 },
+            avoid: { angle: towardClients, half: 0.1 },
           }
         : { r, start: 0, avoid: { angle: towardClients, half: 0.9 } };
     }),
@@ -716,13 +716,21 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
           client.position[2],
         ];
         const d = 1.05 * ((r * 3) / 2 / 0.68);
-        const landing = focus ? parts.get(focus) : undefined;
+        // The focus's island, then the islands it uses.
+        const landing = [
+          ...(focus ? [focus] : []),
+          ...ordered
+            .slice(1)
+            .filter((i) => usedBy(i) > 0)
+            .map((i) => i.id),
+        ].flatMap((id) => {
+          const q = parts.get(id);
+          return q ? [{ center: q.position, radius: q.radius }] : [];
+        });
         return {
           target,
           region: { center: client.position, radius: r },
-          beyond: landing
-            ? { center: landing.position, radius: landing.radius }
-            : undefined,
+          beyond: landing,
           position: [
             target[0],
             direction[1] * d,

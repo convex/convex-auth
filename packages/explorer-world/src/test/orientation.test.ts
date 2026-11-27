@@ -85,7 +85,15 @@ for (const [width, height] of [
 ])
   test(`Home on a ${width}×${height} window has the browser and the running app, the browser the larger`, () => {
     const home = world.layout.home!;
-    expect(home.beyond?.center).toEqual(at(app).position);
+    expect(home.beyond[0].center).toEqual(at(app).position);
+    const held = new Set(
+      home.beyond.map(
+        (r) =>
+          [...world.layout.parts.values()].find((q) => q.position === r.center)!
+            .id,
+      ),
+    );
+    for (const id of mounted) expect(held).toContain(id);
     const fov = 42;
     const direction = new Vector3(...home.position)
       .sub(new Vector3(...home.target))
@@ -103,8 +111,9 @@ for (const [width, height] of [
       1 / direction.y,
     );
     const b = regionBox(home.region, view, fov, width, height);
-    const a = regionBox(home.beyond!, view, fov, width, height);
-    for (const box of [a, b]) {
+    const a = regionBox(home.beyond[0], view, fov, width, height);
+    const used = home.beyond.map((r) => regionBox(r, view, fov, width, height));
+    for (const box of [b, ...used]) {
       expect(box.left).toBeGreaterThanOrEqual(-1);
       expect(box.right).toBeLessThanOrEqual(width + 1);
       expect(box.top).toBeGreaterThanOrEqual(-1);
@@ -112,5 +121,8 @@ for (const [width, height] of [
     }
     // The browser keeps most of the room the two take.
     expect(b.right - b.left).toBeGreaterThan(1.5 * (a.right - a.left));
-    expect(b.right - b.left).toBeGreaterThan(0.3 * width);
+    // It is not a speck: it fills much of the window one way.
+    expect(
+      Math.max((b.right - b.left) / width, (b.bottom - b.top) / height),
+    ).toBeGreaterThan(0.45);
   });

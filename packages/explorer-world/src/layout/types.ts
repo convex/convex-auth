@@ -62,11 +62,12 @@ export interface Layout {
     /** The region on the ground, for the camera to fit to the window. */
     region: { center: Vec3; radius: number };
     /**
-     * The island the region's calls land on first: the one holding the
-     * presentation's `focus` (the app the page runs against). Home keeps it
-     * in view too when the region still gets most of the window.
+     * What the region's calls reach first: the island holding the
+     * presentation's `focus` (the app the page runs against), then the
+     * islands it uses (the components it mounts). Home keeps them in view
+     * too when the region still gets most of the window.
      */
-    beyond?: { center: Vec3; radius: number };
+    beyond: { center: Vec3; radius: number }[];
   };
   /** Parts the layout could not place, with the reason. */
   unplaced: { id: string; reason: string }[];

@@ -200,14 +200,14 @@ export function regionBox(
 const KEEP = 0.6;
 
 /**
- * Home with a second place in view: the region and `beyond` (the island a
- * call lands on first) both on the window's free rectangle, when the region
+ * Home with more in view: the region and `beyond` (the islands a call
+ * reaches first) all on the window's free rectangle, when the region
  * then keeps at least {@link KEEP} of the width it has alone; else the
  * region alone, as {@link homeRect} places it.
  */
 export function frameHome(
   region: Region,
-  beyond: Region | undefined,
+  beyond: Region[],
   direction: Vector3,
   fov: number,
   width: number,
@@ -219,7 +219,7 @@ export function frameHome(
 ): { position: Vector3; target: Vector3 } {
   const rect = homeRect(width, height, panel, bottomBar, beyondRight, aspect);
   const alone = frameRegion(region, direction, fov, width, height, rect);
-  if (!beyond) return alone;
+  if (!beyond.length) return alone;
   // The whole free room: a share of 1.
   const room = homeRect(
     width,
@@ -231,7 +231,7 @@ export function frameHome(
     1,
   );
   const both = frameRegion(
-    [region, beyond],
+    [region, ...beyond],
     direction,
     fov,
     width,
