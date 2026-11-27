@@ -24,6 +24,7 @@ import type { Placement } from "../layout/types.ts";
 import type { Profile, Shape } from "../presentation.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
+import { presence } from "./Groups.tsx";
 import { highlightOf } from "./highlight.ts";
 import { linkColor, nounOfPart, partOf } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
@@ -197,7 +198,10 @@ function ShapeInstances({ items }: { items: Placement[] }) {
       const covered = h.covered.has(p.id);
       const linkKind = h.linked.get(p.id);
       const related = covered || linkKind !== undefined;
-      const dim = any && !related && !active ? 0.35 : 1;
+      // A part of a group whose code has taken no part recedes.
+      const dim =
+        (any && !related && !active ? 0.35 : 1) *
+        (active || related ? 1 : presence(p.id, state.time));
       c.copy(base[i]).multiplyScalar(0.22 * dim);
       b.setColorAt(i, c);
       if (active) {

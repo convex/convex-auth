@@ -9,6 +9,7 @@ import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
 import { Browser } from "./Browser.tsx";
 import { CameraRig } from "./CameraRig.tsx";
+import { Groups } from "./Groups.tsx";
 import { Diagnostics, Layer } from "./Diagnostics.tsx";
 import { Islands } from "./Islands.tsx";
 import { Labels } from "./Labels.tsx";
@@ -70,6 +71,7 @@ export function World() {
       </Layer>
       <Layer name="parts">
         <Parts />
+        <Groups />
         <Browser />
       </Layer>
       <Layer name="rows">

@@ -280,8 +280,26 @@ frame takes milliseconds; that is not measured here.
   are pillars (round for a query, hexagonal for a mutation, square for an
   action), tables are vaults with their rows as cards on top, HTTP routes and
   callers are gates, environment variables are posts, client modules and hooks
-  are shards. Parts that share a parent from elsewhere stand together and the
-  group is named (the client code of each sign-in method in the browser).
+  are shards. Parts that share a parent from elsewhere stand together as a
+  group (the client code of each sign-in method in the browser); parts whose
+  parent is a region with no more specific owner group by their top
+  directory instead. A group stands on a ground of its own with a rim, and
+  is named by its owner or its directory, or by the project's `groups` in
+  its presentation.
+- **Groups before parts.** From where a whole district is in view, each of
+  its groups has one name and its parts none. Close to one group, looking at
+  it, its members are named (by the rest of their name after what the group
+  shares) and no member of another group is; within a few metres of a
+  member, the parts below it (a module's hooks). `src/scene/Groups.tsx`.
+- **What took part stands out** (`src/model/takenPart.ts`). A part of a
+  group took part once running code reported it; a group, once one of its
+  parts did, or once the page called a function the structure links to the
+  group's owner (a `signIn.call` naming the app's function that a sign-in
+  method defines). Until then they recede: a dark ground, a faint rim, dim
+  parts, a grey name, still there and named close in. A group the app the
+  recording ran in (`focus`) links to in the structure (it sets up that
+  sign-in method, from its source) is _wired_: a softer rim and name. All of
+  it follows the playhead.
 - **Distance is level of detail.** From afar: the islands, their names, and an
   arc between related islands. Nearer: the names of the parts of the islands
   around you. Close up: the source location under each part and the fields of

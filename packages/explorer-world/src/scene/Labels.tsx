@@ -35,7 +35,7 @@ import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
 import { runningNow } from "./Running.tsx";
 
-interface Entry {
+export interface Entry {
   group: Group;
   /** Characters on the widest line, and the lines. */
   chars: number;
@@ -57,11 +57,13 @@ interface Entry {
   quiet?: { far: number; named: () => boolean };
   /** A name beside a halo: placed beside it, else below it, else hidden. */
   beside?: Beside;
+  /** Shown only while this holds (a member's name, while its group is near). */
+  when?: () => boolean;
 }
 
 const registry = new Map<string, Entry>();
 
-function useDeclutter(key: string, entry: Omit<Entry, "group">) {
+export function useDeclutter(key: string, entry: Omit<Entry, "group">) {
   const group = useRef<Group>(null);
   const latest = useRef(entry);
   latest.current = entry;
@@ -189,6 +191,9 @@ const at = new Vector3();
 /** Hides labels that would cover more important ones on screen. */
 function Declutter() {
   const { camera, size } = useThree();
+  // For scripted checks: the keys of the names shown now.
+  (globalThis as { explorerLabels?: unknown }).explorerLabels = () =>
+    [...registry].filter(([, e]) => e.group.visible).map(([k]) => k);
   const last = useRef(0);
   useFrame(({ clock }) => {
     if (clock.elapsedTime - last.current < 0.15) return;
@@ -205,6 +210,7 @@ function Declutter() {
       projected.copy(at).project(camera);
       if (
         projected.z > 1 ||
+        (e.when && !e.when()) ||
         Math.abs(projected.x) > 1.2 ||
         Math.abs(projected.y) > 1.2 ||
         (e.hideNear !== undefined && d < e.hideNear) ||
