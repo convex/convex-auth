@@ -46,6 +46,12 @@ export type BrowserOptions = {
    * `PLAYWRIGHT_BROWSERS_PATH` when set.
    */
   executablePath?: string;
+  /**
+   * A browser installed on the machine, by its Playwright channel: `chrome`,
+   * `chrome-beta`, `msedge`, ... Playwright finds it where its installer puts
+   * it, so nothing is downloaded. Ignored with `executablePath`.
+   */
+  channel?: string;
   /** The URL of the deployment, to tell its calls and its socket. */
   deploymentUrl: string;
   redactor: BrowserRedactor;
@@ -184,8 +190,13 @@ export class BrowserSession {
     const browser = await chromium.launch({
       headless: !options.headed,
       executablePath: options.executablePath,
+      channel:
+        options.executablePath === undefined ? options.channel : undefined,
     });
-    const context = await browser.newContext();
+    // A window a person drives keeps the size they give it.
+    const context = await browser.newContext(
+      options.headed ? { viewport: null } : {},
+    );
     const session = new BrowserSession(options, browser, context);
     await context.exposeBinding(
       "__explorerInput",

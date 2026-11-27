@@ -188,14 +188,40 @@ export function mergeTimeline(
 }
 
 /**
+ * How long after an event arrives, in ms, the log stream must be known to be
+ * read before a write or a call that waits on it is released. The deployment
+ * writes the log entry of a run as the run ends, a few ms either side of the
+ * moment its result or its commit leaves it.
+ */
+export const LOG_MARGIN_MS = 25;
+
+export type TimelineBuilderOptions = {
+  /**
+   * Release each event as soon as nothing it depends on can still arrive,
+   * instead of always after `settleMs`. A write of a transaction and a call
+   * of the page wait until the log stream is known to be read past their
+   * arrival (see {@link TimelineBuilder.logsReadUntil}), since the run they
+   * attach to comes from it; every other event is released at once.
+   * `settleMs` stays the longest any event is held.
+   */
+  early?: boolean;
+};
+
+/**
  * Builds a timeline while the feeds arrive, for a recorder that writes events
  * as it goes.
  *
  * The two feeds are not in step: a write can arrive before the log entry of
- * its run, or after. Thus the builder holds each event for `settleMs` after it
- * arrives, then releases it, in order, with writes attached to the runs known
- * by then. A write whose run arrives later than that stays unattached; so
- * does a call of the page, which links to its run the same way.
+ * its run, or after. Thus the builder holds a write, and a call of the page,
+ * until its run can have arrived, then releases it with the runs known by
+ * then. Without `early`, it holds every event for `settleMs` after it
+ * arrives. With `early`, it releases a write or a call once the log stream
+ * is read past its arrival, and every other event at once; `settleMs` bounds
+ * the wait. A write or a call whose run arrives later than that stays
+ * unattached.
+ *
+ * The events of one call of {@link drain} are in order; with `early`, an
+ * event that waited can come after a later event released before it.
  */
 export class TimelineBuilder {
   private pending: { event: TimelineEvent; arrival: number }[] = [];
@@ -203,6 +229,8 @@ export class TimelineBuilder {
   private seen = new Set<string>();
   private lineCounts = new Map<string, number>();
   private usedRuns = new Set<string>();
+  private logsUntil = -Infinity;
+  private readonly early: boolean;
 
   /**
    * The offset of the deployment's clock from the recorder's, in ms, for
@@ -210,7 +238,12 @@ export class TimelineBuilder {
    */
   skew = 0;
 
-  constructor(private readonly settleMs: number) {}
+  constructor(
+    private readonly settleMs: number,
+    options: TimelineBuilderOptions = {},
+  ) {
+    this.early = options.early ?? false;
+  }
 
   /** Adds events that arrived at `now` (ms, of the recorder's clock). */
   add(events: readonly TimelineEvent[], now: number): void {
@@ -229,14 +262,52 @@ export class TimelineBuilder {
   }
 
   /**
-   * The events that settled by `now`, in order. Pass `Infinity` to release
+   * Tells the builder that every entry the log stream held at `time` (ms, of
+   * the recorder's clock) has been added.
+   */
+  logsReadUntil(time: number): void {
+    this.logsUntil = Math.max(this.logsUntil, time);
+  }
+
+  /**
+   * The time (ms, of the recorder's clock) the log stream must be read until
+   * to release the next event that waits on it, or null when none waits.
+   */
+  waitingForLogs(): number | null {
+    let earliest: number | null = null;
+    for (const item of this.pending) {
+      if (waitsForLogs(item.event)) {
+        const until = item.arrival + LOG_MARGIN_MS;
+        if (until > this.logsUntil && (earliest === null || until < earliest)) {
+          earliest = until;
+        }
+      }
+    }
+    return earliest;
+  }
+
+  private ready(item: { event: TimelineEvent; arrival: number }, now: number) {
+    if (item.arrival + this.settleMs <= now) {
+      return true;
+    }
+    if (!this.early) {
+      return false;
+    }
+    return (
+      !waitsForLogs(item.event) ||
+      item.arrival + LOG_MARGIN_MS <= this.logsUntil
+    );
+  }
+
+  /**
+   * The events that are ready by `now`, in order. Pass `Infinity` to release
    * everything.
    */
   drain(now: number): TimelineEvent[] {
     const readyEvents: TimelineEvent[] = [];
     const rest: typeof this.pending = [];
     for (const item of this.pending) {
-      if (item.arrival + this.settleMs <= now) {
+      if (this.ready(item, now)) {
         readyEvents.push(item.event);
       } else {
         rest.push(item);
@@ -268,4 +339,9 @@ export class TimelineBuilder {
       ),
     );
   }
+}
+
+/** A write of a transaction, or a call of the page: it attaches to a run. */
+function waitsForLogs(event: TimelineEvent): boolean {
+  return (event.kind === "write" && !event.snapshot) || event.kind === "call";
 }

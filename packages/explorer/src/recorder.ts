@@ -19,6 +19,7 @@ import { nodeDigest } from "./nodeDigest.ts";
 import { browserConfig, type ProjectConfig } from "./project.ts";
 import { runScenario, type Scenario } from "./scenario.ts";
 import { Secrets } from "./secrets.ts";
+import { TimelineServer } from "./stream.ts";
 import { SyncReader } from "./sync.ts";
 import { TimelineBuilder } from "./timeline.ts";
 
@@ -34,6 +35,15 @@ export type BrowserRecording = {
   headed: boolean;
   /** The Chromium to run; see `BrowserOptions.executablePath`. */
   executablePath?: string;
+  /** A browser installed on the machine; see `BrowserOptions.channel`. */
+  channel?: string;
+};
+
+export type ServeOptions = {
+  /** The port on 127.0.0.1; 0 picks a free one. */
+  port: number;
+  /** The origins allowed to read the stream. */
+  origins: string[];
 };
 
 export type RecordOptions = ResolvedTarget & {
@@ -46,6 +56,8 @@ export type RecordOptions = ResolvedTarget & {
   settleMs: number;
   /** Also record a browser on the app's page. */
   browser: BrowserRecording | null;
+  /** Also serve the timeline as it is written; see `stream.ts`. */
+  serve: ServeOptions | null;
 };
 
 export type RecordHooks = {
@@ -59,6 +71,8 @@ export type RecordHooks = {
    * that looks for them in the timeline. Never written.
    */
   onRawSecret?: (value: string) => void;
+  /** Gets the URL of the stream once it serves, with `serve`. */
+  onServing?: (url: string) => void;
 };
 
 /** The number of events written, by kind. */
@@ -149,7 +163,7 @@ export async function record(
   hooks: RecordHooks = {},
 ): Promise<RecordResult> {
   const log = hooks.log ?? ((message: string) => console.error(message));
-  const builder = new TimelineBuilder(options.settleMs);
+  const builder = new TimelineBuilder(options.settleMs, { early: true });
   const startedAt = Date.now();
   const stop = new AbortController();
   hooks.stop?.addEventListener("abort", () => stop.abort(), { once: true });
@@ -162,7 +176,15 @@ export async function record(
     page: options.browser?.url ?? null,
     scenario: options.browser?.scenario?.name ?? null,
   });
-  writeFileSync(options.out, JSON.stringify(header) + "\n");
+  const server =
+    options.serve === null ? null : await TimelineServer.start(options.serve);
+  const headerLine = JSON.stringify(header);
+  writeFileSync(options.out, headerLine + "\n");
+  server?.push([headerLine]);
+  if (server !== null) {
+    log(`Streaming the timeline at ${server.url}`);
+    hooks.onServing?.(server.url);
+  }
   const counts: Record<string, number> = {};
 
   const secrets = new Secrets(
@@ -170,20 +192,29 @@ export async function record(
     nodeDigest,
     hooks.onRawSecret,
   );
+  let flushQueued = false;
   const add = (events: readonly TimelineEvent[]) => {
     const now = Date.now();
     builder.add(events, now);
     builder.add(secrets.drain(), now);
+    // Write what is ready once the current burst of events is in.
+    if (!flushQueued) {
+      flushQueued = true;
+      setImmediate(() => {
+        flushQueued = false;
+        flush(Date.now());
+      });
+    }
   };
   const flush = (now: number) => {
     const events = builder.drain(now);
     if (events.length === 0) {
       return;
     }
-    appendFileSync(
-      options.out,
-      events.map((event) => JSON.stringify(event) + "\n").join(""),
-    );
+    // One string per event, for the file and the stream alike.
+    const lines = events.map((event) => JSON.stringify(event));
+    appendFileSync(options.out, lines.map((line) => line + "\n").join(""));
+    server?.push(lines);
     for (const event of events) {
       counts[event.kind] = (counts[event.kind] ?? 0) + 1;
     }
@@ -209,7 +240,10 @@ export async function record(
   // `Progress` and `Completion` entries.
   const linesSeen = new Map<string, number>();
   const logs = loop("the function logs", stopped, log, async () => {
-    for (const entry of await poller.next()) {
+    // The page holds every entry the deployment had when the request left.
+    const requested = Date.now();
+    const entries = await poller.next();
+    for (const entry of entries) {
       if (!isLogEntry(entry)) {
         continue;
       }
@@ -218,7 +252,50 @@ export async function record(
       linesSeen.set(entry.executionId, seen + lines.length);
       add(run === null ? lines : [run, ...lines]);
     }
+    builder.logsReadUntil(requested);
   });
+
+  // The request above waits while the deployment is idle, thus it can have
+  // left long before a write or a call that waits on the logs arrived. A
+  // probe tells whether the log stream holds anything new: the deployment
+  // answers at once when it does, so a probe still unanswered after the
+  // round trip and some margin shows that every entry it had when the probe
+  // left was read. The entries a probe gets are left to the request above.
+  // The shortest round trip of the data sync seen, which bounds the network's.
+  let roundTrip = 50;
+  let probing = false;
+  const probe = async () => {
+    const until = builder.waitingForLogs();
+    if (
+      probing ||
+      until === null ||
+      until > Date.now() ||
+      poller.nextCursor === 0
+    ) {
+      return;
+    }
+    probing = true;
+    const sent = Date.now();
+    try {
+      const { text } = await deploymentFetch(
+        options,
+        `/api/stream_function_logs?cursor=${poller.nextCursor}`,
+        { method: "GET" },
+        Math.max(50, 3 * roundTrip),
+        stop.signal,
+      );
+      if ((JSON.parse(text) as { entries: unknown[] }).entries.length === 0) {
+        builder.logsReadUntil(sent);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        builder.logsReadUntil(sent);
+        flush(Date.now());
+      }
+    } finally {
+      probing = false;
+    }
+  };
 
   // The data sync.
   const reader = new SyncReader(options.project, (...document) =>
@@ -230,7 +307,8 @@ export async function record(
   let snapshotDone = false;
   log(`Reading the data of ${options.url}...`);
   const sync = loop("the data sync", stopped, log, async () => {
-    const { text } = await deploymentFetch(
+    const sent = Date.now();
+    const { text, receivedAt } = await deploymentFetch(
       options,
       "/api/v1/data/sync",
       {
@@ -242,6 +320,7 @@ export async function record(
       30_000,
       stop.signal,
     );
+    roundTrip = Math.min(roundTrip, receivedAt - sent);
     const { writes, reset } = reader.read(text);
     if (reset) {
       log(
@@ -261,7 +340,10 @@ export async function record(
     }
   });
 
-  const flushing = setInterval(() => flush(Date.now()), 250);
+  const flushing = setInterval(() => {
+    void probe();
+    flush(Date.now());
+  }, 20);
   let failure: string | null = null;
   const failed = new Promise<void>((done) => {
     for (const reading of [logs, sync]) {
@@ -292,6 +374,7 @@ export async function record(
         url: browser.url,
         headed: browser.headed,
         executablePath: browser.executablePath,
+        channel: browser.channel,
         deploymentUrl: options.url,
         redactor,
         secrets,
@@ -345,6 +428,7 @@ export async function record(
   await Promise.race([Promise.allSettled([logs, sync]), sleep(2000)]);
   builder.skew = session?.skew ?? builder.skew;
   flush(Infinity);
+  await server?.end();
   const summary = Object.entries(counts)
     .map(([kind, count]) => `${count} ${kind}`)
     .join(", ");

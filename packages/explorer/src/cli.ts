@@ -36,7 +36,7 @@ Options:
   --drop-personal-data   Replace the personal data that the project keeps
   --history <n>          Also record the last n function runs before the start
   --poll <ms>            How often to poll the data sync once it caught up (default: 1000)
-  --settle <ms>          How long to wait for the other feed before writing (default: 3000)
+  --settle <ms>          The longest to hold a write or a call for its run (default: 3000)
   --app <name>           The name of the app in the timeline (default: the app directory's name)
 
 Browser:
@@ -47,6 +47,17 @@ Browser:
                          and close the browser (or press Ctrl-C) to stop
   --chromium <path>      The Chromium to run (default: EXPLORER_CHROMIUM, else
                          Playwright's: npx playwright@1.63.0 install chromium)
+  --browser-channel <name>
+                         Run a browser installed on the machine instead, by its
+                         Playwright channel: chrome, msedge, ...
+
+Live:
+  --serve <port>         Also serve the timeline as it is written, over
+                         Server-Sent Events at http://127.0.0.1:<port>/timeline
+                         (0 picks a free port)
+  --serve-origin <origin>
+                         An origin allowed to read the stream, e.g.
+                         http://127.0.0.1:5174; repeat for more. Needed with --serve
 
 Local: the admin key of the deployment that \`npx convex dev\` runs, or
 CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY.
@@ -72,6 +83,9 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       scenario: { type: "string" },
       headed: { type: "boolean" },
       chromium: { type: "string" },
+      "browser-channel": { type: "string" },
+      serve: { type: "string" },
+      "serve-origin": { type: "string", multiple: true },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -114,7 +128,12 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
     }
   }
   if (values.page === undefined) {
-    for (const flag of ["scenario", "headed", "chromium"] as const) {
+    for (const flag of [
+      "scenario",
+      "headed",
+      "chromium",
+      "browser-channel",
+    ] as const) {
       if (values[flag] !== undefined) {
         throw new UsageError(`--${flag} needs --page.`);
       }
@@ -123,6 +142,22 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
     throw new UsageError(
       "--page needs --scenario, or --headed for you to drive the page.",
     );
+  }
+  const origins = values["serve-origin"] ?? [];
+  if (values.serve === undefined && origins.length > 0) {
+    throw new UsageError("--serve-origin needs --serve.");
+  }
+  if (values.serve !== undefined && origins.length === 0) {
+    throw new UsageError(
+      "--serve needs --serve-origin: the origin of the viewer that reads the stream.",
+    );
+  }
+  for (const origin of origins) {
+    if (!URL.canParse(origin) || new URL(origin).origin !== origin) {
+      throw new UsageError(
+        `--serve-origin takes an origin such as http://127.0.0.1:5174, not "${origin}".`,
+      );
+    }
   }
   return {
     ...target,
@@ -139,7 +174,12 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
             headed: values.headed === true,
             executablePath:
               values.chromium ?? process.env.EXPLORER_CHROMIUM ?? undefined,
+            channel: values["browser-channel"],
           },
+    serve:
+      values.serve === undefined
+        ? null
+        : { port: number("--serve", values.serve, 0), origins },
     out: resolve(
       base,
       values.out ??

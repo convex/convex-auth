@@ -26,7 +26,9 @@ each token from the response that returned it to the row of the server that
 stores its hash, without writing the token.
 
 The recorder writes the timeline as NDJSON, one event per line, as the events
-arrive. The timeline holds no secret: see [Redaction](#redaction).
+arrive, and with `--serve` it also [streams it](#stream-the-timeline) to a
+viewer on the same machine. The timeline holds no secret: see
+[Redaction](#redaction).
 
 This package is private. It is a development tool of this repository.
 
@@ -95,8 +97,11 @@ pnpm --filter @convex-dev/explorer record examples/react-username-password \
 
 The recorder runs the Chromium that Playwright (`playwright-core` 1.63.0)
 installs: `npx playwright@1.63.0 install chromium`. To run another one, give
-its path in `--chromium` or `EXPLORER_CHROMIUM`. Each recording starts with
-an empty profile: no storage, no cookies.
+its path in `--chromium` or `EXPLORER_CHROMIUM`, or name a browser installed
+on the machine with `--browser-channel chrome` (or `msedge`, ...): Playwright
+finds it where its installer puts it, and nothing is downloaded. Each
+recording starts with an empty profile: no storage, no cookies. A window that
+a person drives keeps the size they give it.
 
 It reads the browser from the outside, through the Chrome DevTools Protocol:
 the HTTP requests and WebSocket frames (`Network`), the changes of
@@ -123,6 +128,29 @@ reload (the session comes back from storage), wait for the refresh that the
 page schedules before its access token expires, sign out, sign in with a
 wrong password, sign in. The passwords are random on each run.
 
+## Stream the timeline
+
+With `--serve <port>`, the recorder also serves the timeline while it writes
+it, over Server-Sent Events at `http://127.0.0.1:<port>/timeline`: every line
+written so far, then each new line, then an `end` message when the recording
+stops. Each message is one line of the file, the same string, and its `id` is
+the line's number (the `recording` event is 0); a client that reconnects with
+`Last-Event-ID` gets the lines after it. The file is written as before.
+
+```sh
+pnpm --filter @convex-dev/explorer record examples/react-username-password \
+  --project convex-auth --page http://localhost:5173 --headed \
+  --serve 5199 --serve-origin http://127.0.0.1:5174 --out run.ndjson
+```
+
+The server listens on 127.0.0.1 only, and answers only a request whose `Host`
+is 127.0.0.1 or localhost on its port and whose `Origin` is one given with
+`--serve-origin`: another site's page cannot read it, through the browser or
+through DNS rebinding. A request with no `Origin` is refused too. The stream
+carries nothing that the file does not: see [Redaction](#redaction).
+`explorer-world` reads it in live mode; `pnpm explorer:live` at the root
+starts both (see that package's README).
+
 ## Options
 
 - `--cloud`: record a cloud deployment, with `CONVEX_DEPLOY_KEY`.
@@ -137,21 +165,30 @@ wrong password, sign in. The passwords are random on each run.
 - `--drop-personal-data`: replace the personal data that the project config
   would keep, such as usernames and email addresses.
 - `--history <n>`: also record the last `n` function runs before the start.
-- `--poll <ms>`: how often to poll the data sync once it caught up. Default: 1000.
-- `--settle <ms>`: how long to hold an event for the other feed. Default: 3000.
-  A write whose run reaches the recorder later than that stays unattached.
+- `--poll <ms>`: how often to poll the data sync once it caught up. Default: 1000. A write reaches the timeline up to that much after it commits.
+- `--settle <ms>`: the longest to hold a write or a call for its run.
+  Default: 3000. A write or a call whose run reaches the recorder later than
+  that stays unattached. See [When an event is written](#when-an-event-is-written).
 - `--page <url>`: open the app's page in Chromium and record it. Needs
   `--scenario` or `--headed`.
 - `--scenario <name|file>`: drive the page with a scenario, then stop.
 - `--headed`: show the browser. Without `--scenario`, you drive the page.
 - `--chromium <path>`: the Chromium to run.
+- `--browser-channel <name>`: a browser installed on the machine, by its
+  Playwright channel (`chrome`, `msedge`, ...), instead of Playwright's
+  Chromium.
+- `--serve <port>`: also serve the timeline as it is written; 0 picks a free
+  port. See [Stream the timeline](#stream-the-timeline).
+- `--serve-origin <origin>`: an origin allowed to read the stream, such as
+  `http://127.0.0.1:5174`. Repeat it for more. Needed with `--serve`.
 
 ## The timeline
 
 Each line is one event. Every event has a `kind` and a `time` in milliseconds
-since the Unix epoch. The file is sorted by `time`, except that an event that
-arrives more than `--settle` late is written when it arrives. The types, with
-the meaning of each field, are in [`src/events.ts`](src/events.ts).
+since the Unix epoch. Events are written as soon as they are ready (see
+[When an event is written](#when-an-event-is-written)), thus mostly in order
+of `time`, but not always: a reader sorts them. The types, with the meaning of
+each field, are in [`src/events.ts`](src/events.ts).
 
 - `recording`: the first line. The version of the format (`v`), the start of
   the recording, the name of the app (`app`), the deployment URL, the name of
@@ -196,6 +233,31 @@ does not know.
 - `secret`: the first sighting of a token. See
   [Following tokens](#following-tokens).
 - `secretLink`: a token and the row of the server that belongs to it.
+
+### When an event is written
+
+The feeds are not in step, and a write or a call of the page names its run
+only once the recorder has the run, from the log stream. Thus the recorder
+writes each event as soon as nothing it depends on can still arrive:
+
+- A run, its lines, a write of the initial snapshot, and every event of the
+  browser except a call: at once.
+- A write of a transaction, and a call: once the log stream is known to be
+  read past the moment the event arrived, plus 25 ms. The deployment writes
+  the log entry of a run as the run ends, before or within a few ms of the
+  moment the page sees its result or the data sync its commit. The log stream
+  is a long poll that answers at once when it has a new entry, so the
+  recorder knows it is read up to a moment when a request sent then comes
+  back, or when a probe sent then is still unanswered after a few round trips
+  (at least 50 ms).
+- Anything still held after `--settle` is written then.
+
+Measured on a local deployment (`pnpm --filter @convex-dev/explorer-world
+check:live`), from the moment in question to the line leaving the recorder: a
+person's input about 4 ms, a run's end about 3 ms, a call's result in the page
+about 100 ms, a write's commit about 200 ms. A write waits for the data sync,
+which the recorder polls every `--poll` ms (`explorer:live` sets 100), and
+then for the log stream as above.
 
 ### How a write finds its run
 
@@ -364,8 +426,8 @@ pnpm --filter @convex-dev/explorer typecheck
 The pure modules (`src/logs.ts`, `src/logPoller.ts`, `src/sync.ts`,
 `src/timeline.ts`, `src/redact.ts`, `src/config.ts`, `src/secrets.ts`,
 `src/browser.ts`, `src/calls.ts`) run in any runtime; `src/recorder.ts`,
-`src/browserRecorder.ts`, `src/scenario.ts`, and `src/cli.ts` are the
-Node-only part. The tests use feeds captured from a local backend in
+`src/browserRecorder.ts`, `src/scenario.ts`, `src/stream.ts`, and
+`src/cli.ts` are the Node-only part. The tests use feeds captured from a local backend in
 `src/fixtures/`, with each hash replaced by a fake. `browser-session.json`
 holds what a browser showed the recorder during a session, with each JWT
 re-signed by a fake signature, each refresh token a fake, and each hash the

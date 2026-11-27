@@ -84,6 +84,7 @@ const { code } = await record(
     pollMs: 1000,
     settleMs: 3000,
     browser: { url: values.page, scenario, headed: false },
+    serve: null,
   },
   { onRawSecret: (value) => secrets.add(value) },
 );

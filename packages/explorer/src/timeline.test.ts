@@ -9,7 +9,12 @@ import { eventsFromLogEntry } from "./logs.ts";
 import { convexAuthProject } from "./projects/convexAuth.ts";
 import { SyncReader } from "./sync.ts";
 import { logEntries, syncPages } from "./testFixtures.ts";
-import { mergeTimeline, runForCommit, TimelineBuilder } from "./timeline.ts";
+import {
+  LOG_MARGIN_MS,
+  mergeTimeline,
+  runForCommit,
+  TimelineBuilder,
+} from "./timeline.ts";
 
 function fixtureEvents(): TimelineEvent[] {
   const reader = new SyncReader(convexAuthProject);
@@ -178,5 +183,47 @@ describe("TimelineBuilder", () => {
     expect(rest.length).toBe(logsLater.length);
     builder.add(events, 2000);
     expect(builder.drain(Infinity)).toEqual([]);
+  });
+
+  test("with early, releases at once what waits on nothing, and the rest once the logs are read", () => {
+    const builder = new TimelineBuilder(3000, { early: true });
+    const events = fixtureEvents();
+    const writes = events.filter(
+      (event) => event.kind === "write" && !event.snapshot,
+    );
+    const others = events.filter((event) => !writes.includes(event));
+    builder.add(writes, 0);
+    builder.add(others, 10);
+    // The runs and lines are out; the writes wait for the log stream.
+    const first = builder.drain(20);
+    expect(first.length).toBe(others.length);
+    expect(builder.waitingForLogs()).toBe(LOG_MARGIN_MS);
+    builder.logsReadUntil(LOG_MARGIN_MS - 1);
+    expect(builder.drain(30)).toEqual([]);
+    builder.logsReadUntil(LOG_MARGIN_MS);
+    expect(builder.waitingForLogs()).toBeNull();
+    const released = builder.drain(30);
+    expect(released.length).toBe(writes.length);
+    // Attached as the whole timeline attaches them.
+    expect(
+      released.map((event) => (event.kind === "write" ? event.runId : null)),
+    ).toEqual(
+      timeline
+        .filter(
+          (event): event is WriteEvent =>
+            event.kind === "write" && !event.snapshot,
+        )
+        .map((write) => write.runId),
+    );
+  });
+
+  test("with early, still releases a waiting event after settleMs", () => {
+    const builder = new TimelineBuilder(1000, { early: true });
+    const write = fixtureEvents().find(
+      (event) => event.kind === "write" && !event.snapshot,
+    )!;
+    builder.add([write], 0);
+    expect(builder.drain(999)).toEqual([]);
+    expect(builder.drain(1000)).toHaveLength(1);
   });
 });

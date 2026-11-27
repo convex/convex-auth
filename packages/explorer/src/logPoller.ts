@@ -85,6 +85,11 @@ export class LogPoller {
   private cursor = 0;
   private first = true;
 
+  /** The cursor of the next page; 0 before the first. */
+  get nextCursor(): number {
+    return this.cursor;
+  }
+
   constructor(
     private readonly fetchPage: FetchLogPage,
     /** When the recorder started, in ms of the recorder's clock. */
