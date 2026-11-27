@@ -65,6 +65,11 @@ export interface OpPath {
   /** In shown time, increasing. */
   points: OpPoint[];
   tone: Tone;
+  /**
+   * The client did it by itself while no pressed control was under way (a
+   * token refreshed on its timer): it plays briefly and is drawn quieter.
+   */
+  unasked?: boolean;
   /** The run of the call it made, when matched by bracket. */
   run?: string;
   matched?: Derivation;
@@ -107,6 +112,8 @@ export function operations(
   runs: Run[],
   calls: Map<string, CallSpan>,
   brackets: Bracket[] = [],
+  /** The operations nobody asked for: brief hops, and drawn quieter. */
+  brief: Set<string> = new Set(),
 ): OpPath[] {
   const byOp = new Map<string, { item: PageItem; at: number }[]>();
   for (const x of items) {
@@ -138,7 +145,12 @@ export function operations(
       const key = item.lights?.[1];
       if (!(key && inKeyOf === item.part))
         points.push({ at, anchor: item.part, step: item.step! });
-      if (key) points.push({ at: at + HOP_KEY, anchor: key, step: item.step! });
+      if (key)
+        points.push({
+          at: at + HOP_KEY * (brief.has(id) ? 0.5 : 1),
+          anchor: key,
+          step: item.step!,
+        });
       inKeyOf = key ? item.part : null;
     }
     const path: OpPath = {
@@ -147,6 +159,7 @@ export function operations(
       parent: steps.find((s) => s.item.parentOp)?.item.parentOp,
       points,
       tone: steps.some((s) => s.item.tone === "error") ? "error" : "normal",
+      ...(brief.has(id) ? { unasked: true } : {}),
     };
     if (call && span) {
       const from = steps.find((s) =>

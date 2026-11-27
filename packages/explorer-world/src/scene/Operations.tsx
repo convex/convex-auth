@@ -132,13 +132,16 @@ function Operation({ op }: { op: OpPath }) {
   useFrame(({ camera }) => {
     const { time } = currentState();
     const end = op.points.at(-1)!.at;
-    const fade = time > end ? Math.max(0, 1 - (time - end) / LINGER) : 1;
+    // What the client did by itself is drawn quieter than an action.
+    const quiet = op.unasked ? 0.45 : 1;
+    const fade =
+      (time > end ? Math.max(0, 1 - (time - end) / LINGER) : 1) * quiet;
     const along = opAt(op, time, positions, at);
     const g = body.current;
     if (g) {
       g.position.copy(at);
       const r = Math.max(LEAST, camera.position.distanceTo(at) * ON_SCREEN);
-      g.scale.setScalar(r * (0.6 + 0.4 * fade));
+      g.scale.setScalar(r * (op.unasked ? 0.6 : 1) * (0.6 + 0.4 * fade));
     }
     for (const m of [core.current, halo.current])
       if (m)

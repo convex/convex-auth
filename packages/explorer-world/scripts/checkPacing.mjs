@@ -273,18 +273,26 @@ try {
   );
 
   const hops = await page.evaluate(() =>
-    window.explorerWorld.timeline.ops.flatMap((op) =>
-      op.points.slice(1).flatMap((b, i) => {
-        const a = op.points[i];
-        if (a.anchor === b.anchor) return [];
-        const key = [a.anchor, b.anchor].some((x) =>
-          x.startsWith("storageKey:"),
-        );
-        return [
-          { key, gap: b.at - a.at, what: `${op.kind}: ${a.step} → ${b.step}` },
-        ];
-      }),
-    ),
+    // What the client did by itself between pressed controls plays at
+    // half the hops (BRIEF in model/schedule.ts).
+    window.explorerWorld.timeline.ops
+      .filter((op) => !op.unasked)
+      .flatMap((op) =>
+        op.points.slice(1).flatMap((b, i) => {
+          const a = op.points[i];
+          if (a.anchor === b.anchor) return [];
+          const key = [a.anchor, b.anchor].some((x) =>
+            x.startsWith("storageKey:"),
+          );
+          return [
+            {
+              key,
+              gap: b.at - a.at,
+              what: `${op.kind}: ${a.step} → ${b.step}`,
+            },
+          ];
+        }),
+      ),
   );
   const short = hops.filter(
     (h) => h.gap < (h.key ? MIN_HOP_KEY : MIN_HOP) - 1e-6,

@@ -55,7 +55,8 @@ describe("pacing", () => {
 
   test("an operation's body takes at least a hop to get from one place to the next", () => {
     let hops = 0;
-    for (const op of tl.ops)
+    // What nobody asked for plays briefly (BRIEF), at half the hops.
+    for (const op of tl.ops.filter((o) => !o.unasked))
       for (let i = 1; i < op.points.length; i++) {
         const [a, b] = [op.points[i - 1], op.points[i]];
         if (a.anchor === b.anchor) continue;
@@ -67,7 +68,22 @@ describe("pacing", () => {
           (key ? HOP_KEY : HOP) - 1e-9,
         );
       }
-    expect(hops).toBeGreaterThan(50);
+    expect(hops).toBeGreaterThan(40);
+  });
+
+  test("what the client does by itself between pressed controls plays briefly", () => {
+    const own = tl.ops.filter((o) => o.unasked && o.kind === "tokenFetch");
+    expect(own.length).toBeGreaterThanOrEqual(3);
+    const asked = tl.ops.filter(
+      (o) => !o.unasked && o.kind === "tokenFetch" && o.run,
+    );
+    expect(asked.length).toBeGreaterThan(0);
+    const length = (o: (typeof own)[number]) =>
+      o.points.at(-1)!.at - o.points[0].at;
+    const longest = Math.max(...own.map(length));
+    expect(longest).toBeLessThan(Math.min(...asked.map(length)) * 0.75);
+    // No pressed control's start is drawn for it.
+    expect(tl.actions).toHaveLength(3);
   });
 
   test("shown time is one increasing function of real time", () => {

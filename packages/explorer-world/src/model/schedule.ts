@@ -263,7 +263,40 @@ function naturalLength(run: Run): number {
  */
 function browserLeg(run: Run, rerun?: Set<string>): number {
   const quick = !run.steps.length && !run.writes.length;
-  return run.via && !run.scheduledBy && !quick && !rerun?.has(run.id) ? HOP : 0;
+  return run.via && !run.scheduledBy && !quick && !rerun?.has(run.id)
+    ? HOP * (unasked.has(run) ? BRIEF : 1)
+    : 0;
+}
+
+/**
+ * How much faster what nobody asked for plays: what the client does by
+ * itself (a token refreshed on its timer) while no pressed control is under
+ * way, when a scenario drove the page. It is real and plays; it is not an
+ * action, and passes by quickly.
+ */
+export const BRIEF = 0.5;
+/** The runs nobody asked for (see {@link BRIEF}), for the timeline being built. */
+let unasked = new WeakSet<Run>();
+
+/**
+ * The real spans of the pressed controls: from a scenario step's start to
+ * its end. None when no scenario drove the page.
+ */
+function pressedSpans(recording: Recording): [number, number][] {
+  const items = recording.runs
+    .flatMap((r) => [...r.before, ...r.after])
+    .filter((i) => i.scenario)
+    .sort((a, b) => a.time - b.time);
+  const out: [number, number][] = [];
+  let open: number | null = null;
+  for (const i of items)
+    if (i.scenario === "start") open ??= i.time;
+    else if (open !== null) {
+      out.push([open, i.time]);
+      open = null;
+    }
+  if (open !== null) out.push([open, Infinity]);
+  return out;
 }
 
 /**
@@ -288,7 +321,8 @@ function reruns(runs: Run[]): Set<string> {
  */
 function runScale(run: Run, rerun: Set<string>): number {
   const n = naturalLength(run);
-  return rerun.has(run.id) && n > RERUN ? RERUN / n : 1;
+  if (rerun.has(run.id) && n > RERUN) return RERUN / n;
+  return unasked.has(run) ? BRIEF : 1;
 }
 
 /** The shown length of a run: its parts, scaled, and its legs in the browser. */
@@ -312,7 +346,13 @@ type Placed =
  * Thus things that happened at the same time play at the same time, and
  * shown time is one increasing function of real time.
  */
-function place(recording: Recording, rerun: Set<string>) {
+function place(
+  recording: Recording,
+  rerun: Set<string>,
+  asked: (real: number) => boolean,
+) {
+  // The operations nobody asked for: their hops are brief.
+  const briefOps = new Set<string>();
   const all: Placed[] = [];
   for (const run of recording.runs) {
     for (const item of run.before)
@@ -387,6 +427,8 @@ function place(recording: Recording, rerun: Set<string>) {
     const op = p.kind === "item" && p.item.step ? opOf(p.item) : null;
     if (op && p.kind === "item") {
       const last = opAt.get(op);
+      if (!last && !asked(p.real)) briefOps.add(op);
+      const b = briefOps.has(op) ? BRIEF : 1;
       // A body that may have gone out with a call since is back at the
       // module that sent it when the call is home.
       const back = last ? wentOut(last.real, p.real) : [];
@@ -405,21 +447,27 @@ function place(recording: Recording, rerun: Set<string>) {
         s = Math.max(
           s,
           was.at +
-            (was.anchor === p.item.part
-              ? HOP_SAME
-              : was.keyOf === p.item.part
-                ? key
-                  ? 0
-                  : HOP_KEY
-                : HOP),
+            b *
+              (was.anchor === p.item.part
+                ? HOP_SAME
+                : was.keyOf === p.item.part
+                  ? key
+                    ? 0
+                    : HOP_KEY
+                  : HOP),
         );
       opAt.set(
         op,
         key
-          ? { at: s + HOP_KEY, anchor: key, keyOf: p.item.part, real: p.real }
+          ? {
+              at: s + b * HOP_KEY,
+              anchor: key,
+              keyOf: p.item.part,
+              real: p.real,
+            }
           : { at: s, anchor: p.item.part, real: p.real },
       );
-      bodiesAt = Math.max(bodiesAt, key ? s + HOP_KEY : s);
+      bodiesAt = Math.max(bodiesAt, key ? s + b * HOP_KEY : s);
     } else if (p.kind === "run") s = Math.max(s, bodiesAt);
     at.set(p, s);
     if (p.kind === "run") {
@@ -452,7 +500,7 @@ function place(recording: Recording, rerun: Set<string>) {
     prev = p;
     prevShown = s;
   }
-  return { all, at, runStart, warp, last };
+  return { all, at, runStart, warp, last, briefOps };
 }
 
 export function buildTimeline(
@@ -573,7 +621,13 @@ export function buildTimeline(
   };
 
   const rerun = reruns(recording.runs);
-  const placed = place(recording, rerun);
+  const spans = pressedSpans(recording);
+  const asked = (real: number) =>
+    !spans.length || spans.some(([a, b]) => real >= a && real <= b);
+  unasked = new WeakSet(
+    recording.runs.filter((r) => !asked(r.sentAt ?? r.startedAt)),
+  );
+  const placed = place(recording, rerun, asked);
   // Where each call that left by a way out of the browser is, for the
   // operations that made them.
   const calls = new Map<string, CallSpan>();
@@ -879,6 +933,7 @@ export function buildTimeline(
     recording.runs,
     calls,
     brackets,
+    placed.briefOps,
   );
 
   tl.duration = Math.max(
