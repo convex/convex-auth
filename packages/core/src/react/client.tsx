@@ -15,6 +15,7 @@ import {
   INITIAL_AUTH_STATE,
   type AuthClient,
 } from "../browser/sessionManager.ts";
+import { reportClientStep } from "../browser/steps.ts";
 import type {
   IsAuthenticatedFn,
   SlimTokenBundle,
@@ -141,7 +142,10 @@ export function SessionWatcher({
   );
   const revoked = hasLiveSession === false;
   useEffect(() => {
-    if (revoked) void authClient.signOut();
+    if (revoked) {
+      reportClientStep("module:react/client", "session.revoked");
+      void authClient.signOut();
+    }
   }, [revoked, authClient]);
   return null;
 }

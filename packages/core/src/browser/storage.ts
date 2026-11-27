@@ -10,6 +10,7 @@
  * Nothing here depends on React or Convex, so other client libraries can build
  * on it.
  */
+import { clientStepReportsEnabled, reportClientStep } from "./steps.ts";
 
 /**
  * Read/write/delete string values by key. Every method may be synchronous or
@@ -51,6 +52,34 @@ export class InMemoryStorage implements TokenStorage {
 }
 
 let warnedAboutInMemoryFallback = false;
+
+/** The part that reports the steps of this module. */
+const STEPS = "module:browser/storage";
+
+/**
+ * Report a read, with whether it found a value, once the value is known. The
+ * value itself is never reported.
+ *
+ * The reports of this module name a key as the logical key and the namespace
+ * of a {@link NamespacedStorage}, whose stored key is `<key>_<namespace>`.
+ * Together the stored key mixes digits and both cases, and a tool that scrubs
+ * random-looking text from the reports would take it for a token.
+ */
+function reportRead(
+  where: { key: string; namespace: string },
+  value: ReturnType<TokenStorage["getItem"]>,
+): void {
+  const report = (found: string | undefined | null) =>
+    reportClientStep(STEPS, "storage.read", {
+      ...where,
+      found: found !== null && found !== undefined,
+    });
+  if (value instanceof Promise) {
+    value.then(report, () => {});
+  } else {
+    report(value);
+  }
+}
 
 /** Exposed for tests; the warning is otherwise once per process. */
 export function resetInMemoryFallbackWarning(): void {
@@ -113,26 +142,39 @@ export class NamespacedStorage {
   /** The wrapped storage. Exposed so callers can compare a `StorageEvent`'s
    * `storageArea` against it for cross-tab sync. */
   readonly storage: TokenStorage;
-  private readonly suffix: string;
+  /** The sanitized namespace that ends each stored key. */
+  readonly namespace: string;
 
   constructor(storage: TokenStorage, namespace: string) {
     this.storage = storage;
     // Non-alphanumeric characters are stripped for React Native compatibility.
-    this.suffix = namespace.replace(/[^a-zA-Z0-9]/g, "");
+    this.namespace = namespace.replace(/[^a-zA-Z0-9]/g, "");
   }
 
   /** The fully-qualified (namespaced) key for a logical key. */
   key(key: string): string {
-    return `${key}_${this.suffix}`;
+    return `${key}_${this.namespace}`;
   }
 
   get(key: string) {
-    return this.storage.getItem(this.key(key));
+    const value = this.storage.getItem(this.key(key));
+    if (clientStepReportsEnabled()) {
+      reportRead({ key, namespace: this.namespace }, value);
+    }
+    return value;
   }
   set(key: string, value: string) {
+    reportClientStep(STEPS, "storage.write", {
+      key,
+      namespace: this.namespace,
+    });
     return this.storage.setItem(this.key(key), value);
   }
   remove(key: string) {
+    reportClientStep(STEPS, "storage.remove", {
+      key,
+      namespace: this.namespace,
+    });
     return this.storage.removeItem(this.key(key));
   }
 

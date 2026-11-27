@@ -3,7 +3,7 @@
  *
  * @module
  */
-import type { LogEvent, RunEvent, StepEvent } from "./events.ts";
+import type { FunctionStepEvent, LogEvent, RunEvent } from "./events.ts";
 import { scrubText, scrubValue } from "./redact.ts";
 
 /**
@@ -53,7 +53,7 @@ export type EntryEvents = {
   /** The run, for a `Completion` entry; null for a `Progress` entry. */
   run: RunEvent | null;
   /** The log lines and step reports, in the order of the entry. */
-  lines: (LogEvent | StepEvent)[];
+  lines: (LogEvent | FunctionStepEvent)[];
 };
 
 /**
@@ -147,7 +147,7 @@ function eventFromLogLine(
   entryComponentPath: string,
   entryIdentifier: string,
   fallbackTime: number,
-): LogEvent | StepEvent {
+): LogEvent | FunctionStepEvent {
   const messages = Array.isArray(line.messages)
     ? line.messages.map((message) => unquote(String(message)))
     : [];
@@ -156,7 +156,7 @@ function eventFromLogLine(
   if (messages.length === 1) {
     const report = parseStepReport(messages[0]);
     if (report !== null) {
-      return { kind: "step", id, time, runId, ...report };
+      return { kind: "step", from: "function", id, time, runId, ...report };
     }
   }
   return {
@@ -192,7 +192,7 @@ function unquote(message: string): string {
  */
 export function parseStepReport(
   message: string,
-): Pick<StepEvent, "v" | "source" | "step" | "detail"> | null {
+): Pick<FunctionStepEvent, "v" | "source" | "step" | "detail"> | null {
   if (!message.startsWith(STEP_REPORT_PREFIX)) {
     return null;
   }

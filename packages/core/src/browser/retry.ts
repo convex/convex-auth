@@ -5,6 +5,8 @@
  * so a network error is worth a couple of retries before giving up.
  */
 
+import { reportClientStep } from "./steps.ts";
+
 /** Retry after this much time (ms), based on the retry number. */
 const RETRY_BACKOFF = [500, 2000];
 const RETRY_JITTER = 100;
@@ -37,6 +39,10 @@ export async function retryOnNetworkError<T>(
       }
       const wait = backoff + RETRY_JITTER * Math.random();
       log?.(`network error, retry ${retry + 1} in ${wait}ms`);
+      reportClientStep("module:browser/retry", "retry", {
+        attempt: retry + 1,
+        waitMs: Math.round(wait),
+      });
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
   }

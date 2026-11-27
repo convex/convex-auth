@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  readPageStep,
   BrowserRedactor,
   CallTracker,
   decodeSyncTs,
@@ -377,5 +378,48 @@ describe("helpers", () => {
     );
     expect(input(convexAuthProject, "text", "username", "alice")).toBe("alice");
     expect(input(GENERIC_PROJECT, "text", "username", "alice")).toBe(REDACTED);
+  });
+});
+
+describe("readPageStep", () => {
+  const ids = () => {
+    let n = 0;
+    return () => `p1#${n++}`;
+  };
+
+  test("reads a step report of the page, with its part", () => {
+    const line =
+      '[explorer:step] {"v":1,"source":"convex-auth","step":"storage.write",' +
+      '"runsIn":"browser","part":"module:browser/storage",' +
+      '"key":"__convexAuthRefreshToken","namespace":"http1270013210"}';
+    expect(readPageStep(line, "p1", ids(), 1000)).toEqual({
+      kind: "step",
+      from: "page",
+      id: "p1#0",
+      time: 1000,
+      runId: null,
+      pageId: "p1",
+      runsIn: "browser",
+      part: "module:browser/storage",
+      v: 1,
+      source: "convex-auth",
+      step: "storage.write",
+      detail: { key: "__convexAuthRefreshToken", namespace: "http1270013210" },
+    });
+  });
+
+  test("takes no id for a line that is not a report", () => {
+    const nextId = ids();
+    expect(readPageStep("hello", "p1", nextId, 0)).toBeNull();
+    expect(nextId()).toBe("p1#0");
+  });
+
+  test("scrubs a token that a report should not hold", () => {
+    const jwt =
+      "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyMSIsImV4cCI6MX0.c2lnbmF0dXJlLW9uZQ";
+    const line = `[explorer:step] {"v":1,"source":"x","step":"s","token":"${jwt}"}`;
+    const event = readPageStep(line, "p1", ids(), 0);
+    expect(event?.part).toBeNull();
+    expect(JSON.stringify(event)).not.toContain("eyJ");
   });
 });

@@ -23,6 +23,7 @@ import type {
   AuthSignInApi,
 } from "../browser/ambientSignInClient.ts";
 import { AuthClient } from "../browser/sessionManager.ts";
+import { reportedSignInCall } from "./signInSteps.ts";
 import { TokenStorage, defaultStorage } from "../browser/storage.ts";
 import { oauth } from "../methods/oauth/client.ts";
 import type { ConvexAuthApi } from "../lib/types.ts";
@@ -135,8 +136,14 @@ export function ConvexAuthProvider({
     // `setSession` to persist. The same object serves the setups of the
     // methods here and, via AuthProvider below, the hooks of the methods.
     const signInApi: AuthSignInApi = {
-      mutation: (fn, args) => client.mutation(fn, args),
-      action: (fn, args) => client.action(fn, args),
+      mutation: (fn, args) =>
+        reportedSignInCall("module:react/index", "mutation", fn, () =>
+          client.mutation(fn, args),
+        ),
+      action: (fn, args) =>
+        reportedSignInCall("module:react/index", "action", fn, () =>
+          client.action(fn, args),
+        ),
     };
     const authClient = new AuthClient({
       mode: "spa",

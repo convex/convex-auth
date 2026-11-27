@@ -121,16 +121,60 @@ export type LogEvent = {
 };
 
 /**
- * One step report: a log line `[explorer:step] {"v":1,"source":...,"step":...}`
- * that a library writes to show the steps inside a function, such as its
- * calls into components, which the logs do not show.
+ * One step report: a line `[explorer:step] {"v":1,"source":...,"step":...}`
+ * that a library writes to show the steps that the other feeds do not show.
+ * A function writes it to its logs ({@link FunctionStepEvent}), such as the
+ * calls of a function into components, and the page to its console
+ * ({@link PageStepEvent}), such as which client code read a stored token.
  */
-export type StepEvent = {
+export type StepEvent = FunctionStepEvent | PageStepEvent;
+
+/** A step report from the logs of a function run. */
+export type FunctionStepEvent = {
   kind: "step";
+  /** Where the step ran. */
+  from: "function";
   /** `<runId>#<n>`, numbered with the log lines of the run. */
   id: string;
   time: number;
   runId: string;
+  /** The version of the report format, or null if the report has none. */
+  v: number | null;
+  /** The library that wrote the report, e.g. "convex-auth", or null. */
+  source: string | null;
+  /**
+   * The name of the step, e.g. "call" or "return". Each source has its own
+   * steps; a viewer shows the ones it does not know as they are.
+   */
+  step: string;
+  /** The other fields of the report. */
+  detail: Record<string, unknown>;
+};
+
+/**
+ * A step report that the page logged to its console. It belongs to no run.
+ * Convex Auth writes them when the page sets `__CONVEX_AUTH_REPORT_STEPS__`,
+ * which the recorder does.
+ */
+export type PageStepEvent = {
+  kind: "step";
+  /** Where the step ran. */
+  from: "page";
+  /** `<pageId>#<n>`, numbered with the other events of the page. */
+  id: string;
+  time: number;
+  /** Null: a step of the page has no run. */
+  runId: null;
+  /** The tab, e.g. "p1". */
+  pageId: string;
+  /** Where the code that wrote the report runs, e.g. "browser", or null. */
+  runsIn: string | null;
+  /**
+   * The part of the code that ran the step, by its id in
+   * `packages/explorer-structure`, e.g. "module:browser/sessionManager", or
+   * null.
+   */
+  part: string | null;
   /** The version of the report format, or null if the report has none. */
   v: number | null;
   /** The library that wrote the report, e.g. "convex-auth", or null. */

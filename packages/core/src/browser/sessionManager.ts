@@ -11,6 +11,7 @@ import type {
   ConvexMutationApi,
 } from "./ambientSignInClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
+import { reportClientStep } from "./steps.ts";
 import {
   JWT_STORAGE_KEY,
   NamespacedStorage,
@@ -94,6 +95,11 @@ export interface AuthState {
 }
 
 type Listener = () => void;
+
+/** The part that reports the steps of this module. */
+const STEPS = "module:browser/sessionManager";
+/** The part that reports the steps of the refresh lock. */
+const MUTEX_STEPS = "module:browser/mutex";
 
 /** The state a fresh client reports until {@link AuthClient.init} has loaded
  * the persisted session. Exported so framework bindings can use it as their
@@ -227,6 +233,9 @@ export class AuthClient {
       };
       this.#signOutInternal = async () => {
         const refreshToken = await this.#currentRefreshToken();
+        reportClientStep(STEPS, "signOut.revoke", {
+          skipped: refreshToken === null,
+        });
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
     } else {
@@ -240,7 +249,10 @@ export class AuthClient {
           ? { kind: "noSession" }
           : { kind: "rotated", session };
       };
-      this.#signOutInternal = () => authApi.signOut();
+      this.#signOutInternal = () => {
+        reportClientStep(STEPS, "signOut.revoke", { skipped: false });
+        return authApi.signOut();
+      };
     }
 
     // Runs last so setups see a fully initialized client.
@@ -352,12 +364,17 @@ export class AuthClient {
     this.#attachStorageListener();
     if (this.#initialized) return;
     this.#initialized = true;
+    reportClientStep(STEPS, "init", {
+      mode: this.#mode,
+      hasInitialAccessToken: this.#initialAccessToken !== null,
+    });
     // Run ambient sign-in onInit callbacks before anything observable
     // happens, so a withSignInPending call inside one marks loading before
     // the session
     // loads. A callback that throws is logged and skipped, so the others
     // still run and the session still loads.
     for (const { id, callback } of this.#initCallbacks) {
+      reportClientStep(STEPS, "ambientSignIn.init", { id });
       try {
         callback();
       } catch (error) {
@@ -392,6 +409,7 @@ export class AuthClient {
    * {@link init} restores the client without losing its subscribers.
    */
   dispose(): void {
+    reportClientStep(STEPS, "dispose");
     const target = domEventTarget();
     if (this.#storageListener !== null && target !== null) {
       target.removeEventListener("storage", this.#storageListener);
@@ -410,6 +428,9 @@ export class AuthClient {
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
+    reportClientStep(STEPS, "session.set", {
+      hasRefreshToken: hasRefreshToken(session),
+    });
     await this.#storeFullTokenResult(session);
   };
 
@@ -423,11 +444,13 @@ export class AuthClient {
    */
   withSignInPending = async <T>(fn: () => Promise<T>): Promise<T> => {
     this.#pendingSignIns++;
+    reportClientStep(STEPS, "signIn.pending.start");
     this.#notify();
     try {
       return await fn();
     } finally {
       this.#pendingSignIns--;
+      reportClientStep(STEPS, "signIn.pending.end");
       this.#notify();
     }
   };
@@ -436,13 +459,16 @@ export class AuthClient {
    * Revoke the current session on the server and clear it locally.
    */
   signOut = async (): Promise<void> => {
+    reportClientStep(STEPS, "signOut.start");
     try {
       await this.#signOutInternal();
     } catch {
       // Usually means we were already signed out, which is fine.
+      reportClientStep(STEPS, "signOut.revokeFailed");
     }
     this.#log("signed out, erasing tokens");
     await this.#storeTokens(null);
+    reportClientStep(STEPS, "signOut.end");
   };
 
   /**
@@ -456,25 +482,64 @@ export class AuthClient {
   }: {
     forceRefreshToken: boolean;
   }): Promise<string | null> => {
+    reportClientStep(STEPS, "token.fetch", {
+      forceRefresh: forceRefreshToken,
+      hasToken: this.#accessToken !== null,
+    });
     if (!forceRefreshToken) {
       return this.#accessToken;
     }
     const tokenBeforeLock = this.#accessToken;
+    // The lock is named after the stored refresh token. Reported here rather
+    // than in `runWithMutex`, which has only the stored key (see `storage.ts`
+    // on why the reports name keys this way).
+    const lock = {
+      lock: REFRESH_TOKEN_STORAGE_KEY,
+      namespace: this.#storage.namespace,
+    };
+    reportClientStep(MUTEX_STEPS, "lock.request", lock);
     return await runWithMutex(this.#lockKey, async () => {
-      // Another tab may have refreshed while we waited for the lock; if so,
-      // use its result rather than rotating again.
-      if (this.#accessToken !== tokenBeforeLock) {
-        this.#log(`using token refreshed by another tab`);
-        return this.#accessToken;
+      reportClientStep(MUTEX_STEPS, "lock.acquired", lock);
+      try {
+        return await this.#refreshHoldingLock(tokenBeforeLock);
+      } finally {
+        reportClientStep(MUTEX_STEPS, "lock.released", lock);
       }
-      const result = await retryOnNetworkError(
+    });
+  };
+
+  /** Refresh the session while holding the refresh lock of all tabs. */
+  async #refreshHoldingLock(
+    tokenBeforeLock: string | null,
+  ): Promise<string | null> {
+    // Another tab may have refreshed while we waited for the lock; if so,
+    // use its result rather than rotating again.
+    if (this.#accessToken !== tokenBeforeLock) {
+      this.#log(`using token refreshed by another tab`);
+      reportClientStep(STEPS, "refresh.skipped", {
+        reason: "refreshedByAnotherTab",
+        hasToken: this.#accessToken !== null,
+      });
+      return this.#accessToken;
+    }
+    reportClientStep(STEPS, "refresh.start", { mode: this.#mode });
+    let result: RefreshOutcome;
+    try {
+      result = await retryOnNetworkError(
         () => this.#refresh(),
         (message) => this.#log(`refresh: ${message}`),
       );
-      await this.#handleRefresh(result);
-      return this.#accessToken;
+    } catch (error) {
+      reportClientStep(STEPS, "refresh.throw");
+      throw error;
+    }
+    await this.#handleRefresh(result);
+    reportClientStep(STEPS, "refresh.end", {
+      outcome: result.kind,
+      hasToken: this.#accessToken !== null,
     });
-  };
+    return this.#accessToken;
+  }
 
   // --- Internals -----------------------------------------------------------
 
@@ -594,19 +659,31 @@ export class AuthClient {
       // would loop).
       if (event.storageArea !== this.#storage.storage) return;
       if (event.key === jwtKey) {
+        reportClientStep(STEPS, "crossTab.change", {
+          key: JWT_STORAGE_KEY,
+          namespace: this.#storage.namespace,
+          cleared: event.newValue === null,
+        });
         this.#accessToken = event.newValue;
         this.#log(`synced access token, is null: ${event.newValue === null}`);
         this.#isLoading = false;
         this.#notify();
       } else if (event.key === refreshKey) {
+        reportClientStep(STEPS, "crossTab.change", {
+          key: REFRESH_TOKEN_STORAGE_KEY,
+          namespace: this.#storage.namespace,
+          cleared: event.newValue === null,
+        });
         this.#refreshToken = event.newValue;
       }
     };
     target.addEventListener("storage", listener);
     this.#storageListener = listener;
+    reportClientStep(STEPS, "crossTab.listen");
   }
 
   #notify(): void {
+    const before = this.#snapshot;
     this.#snapshot = {
       // Loading until the persisted session has been read, and again while a
       // sign-in completion is pending (see withSignInPending).
@@ -614,6 +691,18 @@ export class AuthClient {
       isAuthenticated: this.#accessToken !== null,
       token: this.#accessToken,
     };
+    const tokenChanged = before.token !== this.#snapshot.token;
+    if (
+      tokenChanged ||
+      before.isLoading !== this.#snapshot.isLoading ||
+      before.isAuthenticated !== this.#snapshot.isAuthenticated
+    ) {
+      reportClientStep(STEPS, "state", {
+        isLoading: this.#snapshot.isLoading,
+        isAuthenticated: this.#snapshot.isAuthenticated,
+        tokenChanged,
+      });
+    }
     for (const listener of this.#listeners) listener();
   }
 

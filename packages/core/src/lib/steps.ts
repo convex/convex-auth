@@ -16,6 +16,10 @@
  * npx convex env set CONVEX_AUTH_REPORT_STEPS true
  * ```
  *
+ * The client of the library writes the same reports to the console of the
+ * page when the page's `__CONVEX_AUTH_REPORT_STEPS__` global is `true`. See
+ * `browser/steps.ts`.
+ *
  * A report never holds a secret or personal data: no password, no token, no
  * token hash, no email address, and no username. It holds the name of the
  * step, the names of functions and components, user ids, and result codes.
@@ -28,21 +32,22 @@
  * @module
  */
 import { getFunctionAddress } from "convex/server";
+import {
+  STEP_REPORT_PREFIX,
+  STEP_REPORT_SOURCE,
+  STEP_REPORT_VERSION,
+  type StepDetail,
+} from "./stepFormat.ts";
 
 /** The environment variable that turns the step reports on. */
 export const STEP_REPORTS_ENV = "CONVEX_AUTH_REPORT_STEPS";
 
-/** The start of each log line that is a step report. JSON follows it. */
-export const STEP_REPORT_PREFIX = "[explorer:step] ";
-
-/** The library that writes the reports, in the `source` field of each report. */
-export const STEP_REPORT_SOURCE = "convex-auth";
-
-/** The version of the report format, in the `v` field of each report. */
-export const STEP_REPORT_VERSION = 1;
-
-/** The fields of a step report, other than the name of the step. */
-export type StepDetail = Record<string, string | number | boolean | null>;
+export {
+  STEP_REPORT_PREFIX,
+  STEP_REPORT_SOURCE,
+  STEP_REPORT_VERSION,
+  type StepDetail,
+} from "./stepFormat.ts";
 
 /**
  * Whether the deployment asked for step reports. Read at call time, so that a

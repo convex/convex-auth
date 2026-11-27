@@ -119,7 +119,10 @@ function countLines(
   counts: Map<string, number>,
 ) {
   for (const event of events) {
-    if (event.kind === "log" || event.kind === "step") {
+    if (
+      event.kind === "log" ||
+      (event.kind === "step" && event.from === "function")
+    ) {
       counts.set(event.runId, (counts.get(event.runId) ?? 0) + 1);
     }
   }

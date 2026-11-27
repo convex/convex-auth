@@ -7,7 +7,8 @@
  *
  * One script is injected into every page: a listener of the person's clicks,
  * typing, submits, and Enter and Escape keys, which the protocol does not
- * report. It never sends the text of a password field.
+ * report. It never sends the text of a password field. A second one turns on
+ * the client step reports of Convex Auth, which the console carries.
  *
  * Node-only.
  *
@@ -24,9 +25,11 @@ import {
 import {
   BrowserRedactor,
   CallTracker,
+  CLIENT_STEP_REPORTS_SCRIPT,
   diffCookies,
   readHttp,
   readInput,
+  readPageStep,
   readStorage,
   SocketReader,
   type Cookie,
@@ -254,6 +257,7 @@ export class BrowserSession {
       }
     });
     await context.addInitScript(inputListener(options.stage !== undefined));
+    await context.addInitScript(CLIENT_STEP_REPORTS_SCRIPT);
     context.on("page", (page) => void session.attach(page));
     session.cookieTimer = setInterval(() => void session.readCookies(), 500);
     const page = await context.newPage();
@@ -416,7 +420,18 @@ export class BrowserSession {
         return;
       }
       const type = message.type();
-      if (type === "error" || type === "warning") {
+      const step =
+        type === "log"
+          ? readPageStep(
+              message.text(),
+              pageId,
+              () => this.nextId(pageId),
+              Date.now(),
+            )
+          : null;
+      if (step !== null) {
+        this.emit([step]);
+      } else if (type === "error" || type === "warning") {
         this.emit([
           {
             kind: "console",

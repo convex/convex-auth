@@ -33,6 +33,7 @@ import { makeFunctionReference } from "convex/server";
 import { ReactNode, useMemo } from "react";
 import type { AmbientSignInClient } from "../../browser/ambientSignInClient.ts";
 import { AuthClient } from "../../browser/sessionManager.ts";
+import { reportedSignInCall } from "../../react/signInSteps.ts";
 import { TokenStorage, defaultStorage } from "../../browser/storage.ts";
 import type {
   AuthSessionResponse,
@@ -160,8 +161,14 @@ export function ConvexAuthNextjsProvider({
       return proxy;
     };
     const signInApi: AuthSignInApi = {
-      mutation: (fn, args) => withAuth().mutation(fn, args),
-      action: (fn, args) => withAuth().action(fn, args),
+      mutation: (fn, args) =>
+        reportedSignInCall("module:ssr/nextjs/client", "mutation", fn, () =>
+          withAuth().mutation(fn, args),
+        ),
+      action: (fn, args) =>
+        reportedSignInCall("module:ssr/nextjs/client", "action", fn, () =>
+          withAuth().action(fn, args),
+        ),
     };
     authClient = new AuthClient({
       mode: "ssr",

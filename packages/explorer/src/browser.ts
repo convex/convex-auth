@@ -20,10 +20,12 @@ import {
   type HttpEvent,
   type InputEvent,
   type InputTarget,
+  type PageStepEvent,
   type SocketEvent,
   type StorageEvent,
 } from "./events.ts";
 import { nanosOf, parseJsonLossless } from "./json.ts";
+import { parseStepReport } from "./logs.ts";
 import {
   browserConfig,
   type BrowserProjectConfig,
@@ -868,5 +870,45 @@ export function readInput(
         : input.action === "key"
           ? input.value
           : null,
+  };
+}
+
+/**
+ * The script that asks the client of Convex Auth for its step reports, which
+ * it writes to the console of the page. The recorder runs it in every frame
+ * before the page's own scripts. See `packages/core/src/browser/steps.ts`.
+ */
+export const CLIENT_STEP_REPORTS_SCRIPT =
+  "globalThis.__CONVEX_AUTH_REPORT_STEPS__ = true;";
+
+/**
+ * The step event of a console line of the page, or null if the line is not a
+ * step report. `nextId` is called only for a report. The report is scrubbed
+ * as a report of a function is (see `parseStepReport`).
+ */
+export function readPageStep(
+  text: string,
+  pageId: string,
+  nextId: () => string,
+  time: number,
+): PageStepEvent | null {
+  const report = parseStepReport(text);
+  if (report === null) {
+    return null;
+  }
+  const { runsIn, part, ...detail } = report.detail;
+  return {
+    kind: "step",
+    from: "page",
+    id: nextId(),
+    time,
+    runId: null,
+    pageId,
+    runsIn: typeof runsIn === "string" ? runsIn : null,
+    part: typeof part === "string" ? part : null,
+    v: report.v,
+    source: report.source,
+    step: report.step,
+    detail,
   };
 }

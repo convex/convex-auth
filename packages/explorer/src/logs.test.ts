@@ -32,6 +32,7 @@ describe("eventsFromLogEntry", () => {
     ]);
     expect(lines[0]).toEqual({
       kind: "step",
+      from: "function",
       id: `${run!.id}#0`,
       time: (logEntries[0].logLines[0] as { timestamp: number }).timestamp,
       runId: run!.id,

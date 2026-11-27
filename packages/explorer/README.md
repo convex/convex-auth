@@ -107,9 +107,10 @@ It reads the browser from the outside, through the Chrome DevTools Protocol:
 the HTTP requests and WebSocket frames (`Network`), the changes of
 `localStorage` and `sessionStorage` (`DOMStorage`), and, every half second,
 the cookies. The console and uncaught errors come from Playwright. It injects
-one script into each page: a listener of clicks, typing, submits, and the
-Enter and Escape keys, which the protocol does not report. The listener never
-sends the text of a password field out of the page.
+two scripts into each page: a listener of clicks, typing, submits, and the
+Enter and Escape keys, which the protocol does not report, and the switch of
+the client step reports of Convex Auth (see [Step reports](#step-reports)).
+The listener never sends the text of a password field out of the page.
 
 It records the requests of type document, fetch, and XHR, and the sync
 WebSocket of the deployment; not the scripts, styles, and images, nor other
@@ -355,6 +356,22 @@ Convex Auth writes step reports when the deployment's
 ```sh
 npx convex env set CONVEX_AUTH_REPORT_STEPS true
 ```
+
+Its client writes them to the console of the page when the page's
+`__CONVEX_AUTH_REPORT_STEPS__` global is `true` before the client runs. The
+recorder sets it in every page it records, with a stage or without one, so the
+app's code does not change. A client report adds `runsIn: "browser"` and
+`part`, the id in `packages/explorer-structure` of the module that ran the
+step, such as `module:browser/sessionManager`. It names a stored value by its
+logical key and namespace (`__convexAuthJWT` and `http1270013210` for
+`__convexAuthJWT_http1270013210`), never by its value. See
+[`packages/core/src/browser/steps.ts`](../core/src/browser/steps.ts).
+
+The recorder writes a report of a function's logs as a `step` event with
+`from: "function"` and the `runId` of its run, and a report of the page as a
+`step` event with `from: "page"`, the `pageId`, `runId: null`, and `runsIn`
+and `part` taken out of `detail`. A report of the page is not a `console`
+event.
 
 ## Redaction
 

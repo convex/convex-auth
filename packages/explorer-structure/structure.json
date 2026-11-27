@@ -5057,7 +5057,7 @@
       "id": "hook:react/client.useAuth",
       "name": "useAuth",
       "parent": "module:react/client",
-      "source": { "file": "packages/core/src/react/client.tsx", "line": 103 },
+      "source": { "file": "packages/core/src/react/client.tsx", "line": 104 },
       "runsIn": "browser"
     },
     {
@@ -5065,7 +5065,7 @@
       "id": "hook:react/client.useAuthSignInApi",
       "name": "useAuthSignInApi",
       "parent": "module:react/client",
-      "source": { "file": "packages/core/src/react/client.tsx", "line": 37 },
+      "source": { "file": "packages/core/src/react/client.tsx", "line": 38 },
       "runsIn": "browser"
     },
     {
@@ -5084,7 +5084,7 @@
       "id": "hook:react/index.useAuthActions",
       "name": "useAuthActions",
       "parent": "module:react/index",
-      "source": { "file": "packages/core/src/react/index.tsx", "line": 185 },
+      "source": { "file": "packages/core/src/react/index.tsx", "line": 192 },
       "runsIn": "browser"
     },
     {
@@ -5092,7 +5092,7 @@
       "id": "hook:react/index.useAuthToken",
       "name": "useAuthToken",
       "parent": "module:react/index",
-      "source": { "file": "packages/core/src/react/index.tsx", "line": 202 },
+      "source": { "file": "packages/core/src/react/index.tsx", "line": 209 },
       "runsIn": "browser"
     },
     {
@@ -5797,6 +5797,15 @@
     },
     {
       "kind": "module",
+      "id": "module:browser/steps",
+      "name": "browser/steps",
+      "parent": "region:browser",
+      "source": { "file": "packages/core/src/browser/steps.ts", "line": 1 },
+      "module": "browser/steps",
+      "runsIn": "browser"
+    },
+    {
+      "kind": "module",
       "id": "module:browser/storage",
       "name": "browser/storage",
       "parent": "region:browser",
@@ -6165,6 +6174,15 @@
       "parent": "region:browser",
       "source": { "file": "packages/core/src/react/methods.ts", "line": 1 },
       "module": "react/methods",
+      "runsIn": "browser"
+    },
+    {
+      "kind": "module",
+      "id": "module:react/signInSteps",
+      "name": "react/signInSteps",
+      "parent": "region:browser",
+      "source": { "file": "packages/core/src/react/signInSteps.ts", "line": 1 },
+      "module": "react/signInSteps",
       "runsIn": "browser"
     },
     {
@@ -11785,7 +11803,7 @@
       "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-apple"
     },
@@ -11794,7 +11812,7 @@
       "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-apple"
     },
@@ -11803,7 +11821,7 @@
       "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-apple"
     },
@@ -11828,7 +11846,7 @@
       "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-discord"
     },
@@ -11837,7 +11855,7 @@
       "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-discord"
     },
@@ -11846,7 +11864,7 @@
       "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-discord"
     },
@@ -11873,7 +11891,7 @@
       "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-email-magic-link"
     },
@@ -11882,7 +11900,7 @@
       "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-email-magic-link"
     },
@@ -11891,7 +11909,7 @@
       "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-email-magic-link"
     },
@@ -11936,7 +11954,7 @@
       "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-email-password"
     },
@@ -11945,7 +11963,7 @@
       "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-email-password"
     },
@@ -11966,7 +11984,7 @@
       "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-email-password"
     },
@@ -11987,7 +12005,7 @@
       "from": "app:react-github",
       "to": "fn:app:react-github:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-github"
     },
@@ -11996,7 +12014,7 @@
       "from": "app:react-github",
       "to": "fn:app:react-github:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-github"
     },
@@ -12005,7 +12023,7 @@
       "from": "app:react-github",
       "to": "fn:app:react-github:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-github"
     },
@@ -12030,7 +12048,7 @@
       "from": "app:react-google",
       "to": "fn:app:react-google:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-google"
     },
@@ -12039,7 +12057,7 @@
       "from": "app:react-google",
       "to": "fn:app:react-google:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-google"
     },
@@ -12048,7 +12066,7 @@
       "from": "app:react-google",
       "to": "fn:app:react-google:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-google"
     },
@@ -12121,7 +12139,7 @@
       "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-username-passkey"
     },
@@ -12142,7 +12160,7 @@
       "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-username-passkey"
     },
@@ -12163,7 +12181,7 @@
       "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-username-passkey"
     },
@@ -12256,7 +12274,7 @@
       "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-username-passkey-basic"
     },
@@ -12265,7 +12283,7 @@
       "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-username-passkey-basic"
     },
@@ -12274,7 +12292,7 @@
       "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-username-passkey-basic"
     },
@@ -12319,7 +12337,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 138 }
+        { "file": "packages/core/src/react/client.tsx", "line": 139 }
       ],
       "app": "react-username-password"
     },
@@ -12328,7 +12346,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.refreshSession",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 145 }
+        { "file": "packages/core/src/react/index.tsx", "line": 152 }
       ],
       "app": "react-username-password"
     },
@@ -12349,7 +12367,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signOut",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 147 }
+        { "file": "packages/core/src/react/index.tsx", "line": 154 }
       ],
       "app": "react-username-password"
     },
@@ -13368,6 +13386,12 @@
     },
     {
       "kind": "imports",
+      "from": "module:browser/retry",
+      "to": "module:browser/steps",
+      "evidence": [{ "file": "packages/core/src/browser/retry.ts", "line": 8 }]
+    },
+    {
+      "kind": "imports",
       "from": "module:browser/sessionManager",
       "to": "module:browser/ambientSignInClient",
       "evidence": [
@@ -13401,9 +13425,25 @@
     {
       "kind": "imports",
       "from": "module:browser/sessionManager",
-      "to": "module:browser/storage",
+      "to": "module:browser/steps",
       "evidence": [
         { "file": "packages/core/src/browser/sessionManager.ts", "line": 14 }
+      ]
+    },
+    {
+      "kind": "imports",
+      "from": "module:browser/sessionManager",
+      "to": "module:browser/storage",
+      "evidence": [
+        { "file": "packages/core/src/browser/sessionManager.ts", "line": 15 }
+      ]
+    },
+    {
+      "kind": "imports",
+      "from": "module:browser/storage",
+      "to": "module:browser/steps",
+      "evidence": [
+        { "file": "packages/core/src/browser/storage.ts", "line": 13 }
       ]
     },
     {
@@ -14123,6 +14163,12 @@
     },
     {
       "kind": "imports",
+      "from": "module:react/client",
+      "to": "module:browser/steps",
+      "evidence": [{ "file": "packages/core/src/react/client.tsx", "line": 18 }]
+    },
+    {
+      "kind": "imports",
       "from": "module:react/index",
       "to": "module:browser/ambientSignInClient",
       "evidence": [{ "file": "packages/core/src/react/index.tsx", "line": 21 }]
@@ -14138,24 +14184,30 @@
       "from": "module:react/index",
       "to": "module:browser/storage",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 26 },
-        { "file": "packages/core/src/react/index.tsx", "line": 37 }
+        { "file": "packages/core/src/react/index.tsx", "line": 27 },
+        { "file": "packages/core/src/react/index.tsx", "line": 38 }
       ]
     },
     {
       "kind": "imports",
       "from": "module:react/index",
       "to": "module:methods/oauth/client",
-      "evidence": [{ "file": "packages/core/src/react/index.tsx", "line": 27 }]
+      "evidence": [{ "file": "packages/core/src/react/index.tsx", "line": 28 }]
     },
     {
       "kind": "imports",
       "from": "module:react/index",
       "to": "module:react/client",
       "evidence": [
-        { "file": "packages/core/src/react/index.tsx", "line": 29 },
-        { "file": "packages/core/src/react/index.tsx", "line": 39 }
+        { "file": "packages/core/src/react/index.tsx", "line": 30 },
+        { "file": "packages/core/src/react/index.tsx", "line": 40 }
       ]
+    },
+    {
+      "kind": "imports",
+      "from": "module:react/index",
+      "to": "module:react/signInSteps",
+      "evidence": [{ "file": "packages/core/src/react/index.tsx", "line": 26 }]
     },
     {
       "kind": "imports",
@@ -14168,6 +14220,14 @@
       "from": "module:react/methods",
       "to": "module:react/client",
       "evidence": [{ "file": "packages/core/src/react/methods.ts", "line": 20 }]
+    },
+    {
+      "kind": "imports",
+      "from": "module:react/signInSteps",
+      "to": "module:browser/steps",
+      "evidence": [
+        { "file": "packages/core/src/react/signInSteps.ts", "line": 11 }
+      ]
     },
     {
       "kind": "imports",
@@ -14290,7 +14350,7 @@
       "from": "module:ssr/nextjs/client",
       "to": "module:browser/storage",
       "evidence": [
-        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 36 }
+        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 37 }
       ]
     },
     {
@@ -14298,7 +14358,7 @@
       "from": "module:ssr/nextjs/client",
       "to": "module:methods/oauth/client",
       "evidence": [
-        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 41 }
+        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 42 }
       ]
     },
     {
@@ -14306,7 +14366,15 @@
       "from": "module:ssr/nextjs/client",
       "to": "module:react/client",
       "evidence": [
-        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 42 }
+        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 43 }
+      ]
+    },
+    {
+      "kind": "imports",
+      "from": "module:ssr/nextjs/client",
+      "to": "module:react/signInSteps",
+      "evidence": [
+        { "file": "packages/core/src/ssr/nextjs/client.tsx", "line": 36 }
       ]
     },
     {
@@ -16835,7 +16903,7 @@
       "to": "fn:app:react-apple:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-apple/src/main.tsx", "line": 23 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-apple"
     },
@@ -16868,7 +16936,7 @@
       "to": "fn:app:react-discord:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-discord/src/main.tsx", "line": 23 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-discord"
     },
@@ -16896,7 +16964,7 @@
       "to": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-email-magic-link/src/main.tsx", "line": 18 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-email-magic-link"
     },
@@ -16924,7 +16992,7 @@
       "to": "fn:app:react-email-password:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-email-password/src/main.tsx", "line": 18 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-email-password"
     },
@@ -16961,7 +17029,7 @@
       "to": "fn:app:react-github:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-github/src/main.tsx", "line": 23 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-github"
     },
@@ -16998,7 +17066,7 @@
       "to": "fn:app:react-google:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-google/src/main.tsx", "line": 23 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-google"
     },
@@ -17026,7 +17094,7 @@
       "to": "fn:app:react-username-passkey:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-username-passkey/src/main.tsx", "line": 18 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-username-passkey"
     },
@@ -17057,7 +17125,7 @@
           "file": "examples/react-username-passkey-basic/src/main.tsx",
           "line": 18
         },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-username-passkey-basic"
     },
@@ -17091,7 +17159,7 @@
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
         { "file": "examples/react-username-password/src/main.tsx", "line": 18 },
-        { "file": "packages/core/src/react/index.tsx", "line": 167 }
+        { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-username-password"
     },
@@ -20273,7 +20341,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 323
+        "line": 335
       },
       "code": "setup({ client: this, values: this.#ambientValues.forSignIn(id), storage: this.#storage.forSignIn...",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
@@ -20283,7 +20351,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 362
+        "line": 379
       },
       "code": "callback()",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
@@ -20307,7 +20375,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 440
+        "line": 464
       },
       "code": "this.#signOutInternal()",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20331,7 +20399,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 471
+        "line": 529
       },
       "code": "this.#refresh()",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20355,7 +20423,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 617
+        "line": 706
       },
       "code": "listener()",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20382,7 +20450,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 130
+        "line": 160
       },
       "code": "this.storage.getItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20416,7 +20484,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 133
+        "line": 171
       },
       "code": "this.storage.setItem(this.key(key), value)",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20450,7 +20518,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 136
+        "line": 178
       },
       "code": "this.storage.removeItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20859,7 +20927,7 @@
     },
     {
       "kind": "clientCall",
-      "location": { "file": "packages/core/src/react/index.tsx", "line": 156 },
+      "location": { "file": "packages/core/src/react/index.tsx", "line": 163 },
       "code": "client.mutation(fn, args)",
       "reason": "The function reference is not one the analysis can trace",
       "from": [
@@ -20878,7 +20946,7 @@
       "kind": "fetch",
       "location": {
         "file": "packages/core/src/ssr/nextjs/client.tsx",
-        "line": 60
+        "line": 61
       },
       "code": "fetch(route, { method: \"POST\", headers: { \"content-type\": \"application/json\" }, body: \"{}\", })",
       "reason": "The URL is not a value the analysis can trace to a literal",
@@ -20926,7 +20994,7 @@
       "httpRoute": 6,
       "method": 10,
       "methodFunction": 39,
-      "module": 50,
+      "module": 52,
       "region": 3,
       "setupFunction": 11,
       "table": 69,
@@ -20939,7 +21007,7 @@
       "clientCalls": 87,
       "definedBy": 71,
       "fetches": 5,
-      "imports": 117,
+      "imports": 124,
       "mounts": 28,
       "reads": 176,
       "readsEnv": 21,
