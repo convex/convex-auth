@@ -471,16 +471,28 @@ export class BrowserSession {
     const requests = new Map<string, PendingRequest>();
     const sockets = new Map<string, string>();
     let socketCount = 0;
-    // On a stage, the requests of the app's frame only: the frame is known by
-    // the first document of the app's origin that a frame other than the main
-    // one loads, and keeps its id across its navigations.
+    // On a stage, the requests of the app's frame only. The frame is known by
+    // the documents of the app's origin that a frame other than the main one
+    // loads; it keeps its id across its navigations, and a new frame (the
+    // stage loaded again) takes over with its first document.
     const stage = this.options.stage !== undefined;
     let mainFrameId: string | null = null;
     let screenFrameId: string | null = null;
+    // The parent of each frame: the screen is a child of the main frame,
+    // not a frame inside the app's page.
+    const parents = new Map<string, string>();
     if (stage) {
+      cdp.on("Page.frameAttached", (event) => {
+        parents.set(event.frameId, event.parentFrameId);
+      });
       void cdp
-        .send("Page.getFrameTree")
-        .then(({ frameTree }) => (mainFrameId = frameTree.frame.id))
+        .send("Page.enable")
+        .then(() => cdp.send("Page.getFrameTree"))
+        .then(({ frameTree }) => {
+          mainFrameId = frameTree.frame.id;
+          for (const child of frameTree.childFrames ?? [])
+            parents.set(child.frame.id, frameTree.frame.id);
+        })
         .catch(() => {});
     }
     const recorded = (event: {
@@ -492,11 +504,10 @@ export class BrowserSession {
         return true;
       }
       if (
-        screenFrameId === null &&
         event.type === "Document" &&
         event.frameId !== undefined &&
-        event.frameId !== mainFrameId &&
         mainFrameId !== null &&
+        parents.get(event.frameId) === mainFrameId &&
         this.ofApp(event.request.url)
       ) {
         screenFrameId = event.frameId;

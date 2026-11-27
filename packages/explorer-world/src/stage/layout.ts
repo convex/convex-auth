@@ -61,6 +61,6 @@ export const FLIGHT_Y = 0.55;
 
 /** The camera's places. */
 export const DEFAULT_VIEW = {
-  position: [0, 17, 30] as Vec3,
-  target: [0, 2.4, -3.5] as Vec3,
+  position: [0, 19, 31] as Vec3,
+  target: [0, 2.2, -2.6] as Vec3,
 };

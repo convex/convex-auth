@@ -14,7 +14,8 @@
     "check:camera": "node scripts/checkCamera.mjs",
     "check:looks": "node scripts/checkLooks.mjs",
     "check:live": "node scripts/checkLive.mjs",
-    "live": "node scripts/live.mjs"
+    "live": "node scripts/live.mjs",
+    "check:stage": "node scripts/checkStage.mjs"
   },
   "dependencies": {
     "@convex-dev/explorer-structure": "workspace:*",

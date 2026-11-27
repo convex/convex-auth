@@ -130,7 +130,9 @@ function SlotObjects({
         const name = token
           ? `${slot.name}: ${held.secrets.join(", ")}${secret ? ` (${secret.type === "jwt" ? "JWT" : "opaque"})` : ""}`
           : slot.name;
-        const lift = (1 - settled) * (leaving ? 2.5 : 3.5);
+        // Lands from just above and grows into place; leaves upward,
+        // shrinking and fading.
+        const lift = (1 - settled) * 1.3;
         return (
           <SlotObject
             key={`${slot.key}@${held.eventId}`}
@@ -138,6 +140,7 @@ function SlotObjects({
             w={cw - 0.25}
             token={token}
             opacity={leaving ? settled : 1}
+            scale={0.35 + 0.65 * settled}
             name={name}
             area={area}
             k={slot.key}
@@ -154,6 +157,7 @@ function SlotObject({
   w,
   token,
   opacity,
+  scale,
   name,
   area,
   k,
@@ -163,6 +167,7 @@ function SlotObject({
   w: number;
   token: boolean;
   opacity: number;
+  scale: number;
   name: string;
   area: "local" | "session" | "cookie";
   k: string;
@@ -175,7 +180,8 @@ function SlotObject({
   return (
     <group position={position}>
       <mesh
-        position={[0, h / 2, 0]}
+        position={[0, (h * scale) / 2, 0]}
+        scale={scale}
         {...selectOnClick({ type: "slot", area, key: k })}
       >
         <boxGeometry args={[w, h, 0.8]} />
@@ -238,7 +244,9 @@ function flightPosition(f: FlightAt, exits: Exit[]): [number, number, number] {
     x = b[0] + ((c[0] - b[0]) * d) / Math.max(l2, 1e-6);
     z = b[1] + ((c[1] - b[1]) * d) / Math.max(l2, 1e-6);
   }
-  return [x, FLIGHT_Y, z];
+  const level = f.flight.stack % 6;
+  const column = Math.floor(f.flight.stack / 6);
+  return [x + column * 0.55 * Math.sign(lane), FLIGHT_Y + level * 0.62, z];
 }
 
 function Flights({ at, exits }: { at: StageAt; exits: Exit[] }) {

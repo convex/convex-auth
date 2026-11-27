@@ -71,6 +71,8 @@ button.on {
   top: 14px;
   right: 14px;
   padding: 6px;
+  display: flex;
+  gap: 6px;
 }
 
 .stage-timeline {

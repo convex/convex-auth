@@ -13,6 +13,24 @@ const H = SCREEN.height;
 /** drei's Html maps one CSS pixel to distanceFactor / 400 units. */
 const DISTANCE_FACTOR = (400 * W) / SCREEN.pxWidth;
 
+// A fixed element to put the page in. drei's Html otherwise follows the
+// element R3F listens on, which appears after the first render and would
+// mount the page a second time.
+const PORTAL = { current: document.getElementById("root") as HTMLElement };
+
+let frameElement: HTMLIFrameElement | null = null;
+
+/**
+ * Loads the page on the screen again, at the path where the recording last
+ * saw it: the frame is of another origin, so the stage cannot read its
+ * address or call its `location.reload()`, but it may navigate it.
+ */
+export function reloadPage(path: string | null): void {
+  if (!frameElement) return;
+  const url = new URL(path ?? "/", new URL(frameElement.src).origin);
+  frameElement.src = url.href;
+}
+
 /**
  * The app's page, live, in a frame on the screen. It is mounted once and
  * never again: a new mount would load the page anew. The canvas is drawn over
@@ -20,11 +38,6 @@ const DISTANCE_FACTOR = (400 * W) / SCREEN.pxWidth;
  * front of the screen hide it as they should, and the pointer reaches the
  * page through the hole.
  */
-// A fixed element to put the page in. drei's Html otherwise follows the
-// element R3F listens on, which appears after the first render and would
-// mount the page a second time.
-const PORTAL = { current: document.getElementById("root") as HTMLElement };
-
 const LivePage = memo(function LivePage({ url }: { url: string }) {
   return (
     <Html
@@ -36,6 +49,9 @@ const LivePage = memo(function LivePage({ url }: { url: string }) {
       zIndexRange={[100, 0]}
     >
       <iframe
+        ref={(el) => {
+          frameElement = el;
+        }}
         name={SCREEN_FRAME}
         title="The app's page"
         src={url}

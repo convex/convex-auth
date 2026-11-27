@@ -16,19 +16,79 @@ picks one of its recordings; Convex Auth has `page` (a browser driven through
 the `react-username-password` scenario) and `cli` (`npx convex run` calls,
 including the reuse of a spent refresh token).
 
-## Live mode
-
-Run a Convex app and watch the world react as you use it:
+## The stage
 
 ```sh
 pnpm explorer:live examples/react-username-password
 ```
 
-It starts the app's local deployment, turns on the project's step reports,
-serves the app's page, opens it in a browser window for you to use, and opens
-the world in your default browser. The world shows what your clicks cause as
-they happen. Ctrl-C stops everything; the timeline is saved (its path is
-printed) and plays like any other recording.
+One browser window opens: the stage (`stage.html`). The app's page stands
+live on a large screen at the back; you use it there (**Face the screen**
+brings you in front of it, close enough to read and type; **Step back**
+returns). On the floor in front of and below the screen is the browser: the
+page (the elements you used stand on it), the client code, localStorage, the
+cookies, and the connections out, HTTP and the WebSocket. At the front edge
+stands one plain exit for each thing outside the browser: the backend, the
+page's server, and any other site the page called. Everything is there from
+the start. More detail (the names of storage keys, a token's label and kind,
+the elements) appears on approach; a click opens the inspector.
+
+Only what the recording shows happening moves. A click or typing outlines the
+element on the screen and lights its tile on the page; a message leaves along
+its pipe to its exit and comes back; an HTTP request waits at its exit for
+its response; a storage write lands in localStorage as an object (a token is
+one object, named by its secret label, never its text) and a removed one
+leaves. The client code never moves: the recorder sees what leaves the page
+and what it stores, not which code ran.
+
+Time: the stage is live by default and nothing plays on its own. The time
+handle at the bottom can be dragged back and forth; what is shown is a
+function of the time (`stage/model.ts`, `stageAt`), so it moves smoothly in
+both directions. A real request takes milliseconds: each movement is drawn
+over 0.7 s from the moment it happened. Let go at the right end and it is live
+again. **Replay** plays a recording instead: this session from its start, a
+saved one of the project, or a file (the `run.ndjson` the command prints).
+In a replay the screen is dark and shows where the page was; **Live**
+returns.
+
+**Reload the page** loads the page on the screen again, as the browser's
+reload button would. Keys typed into the page stay in the page: the camera's
+keys (below) work when the pointer is off the screen.
+
+How it is built: the page is an iframe placed in the scene with drei's
+`Html transform occlude="blending"`: the canvas is drawn over it with a hole
+where the screen is, so things in front of the screen hide it, and the
+pointer reaches the page through the hole. The stage is served from
+`localhost` like the page (another port), so the page in its frame is on the
+same site and keeps first-party storage and cookies. The recorder opens the
+stage (`record --stage <url>`) and records the frame named `explorer-screen`
+only: its navigations, the person's actions (with each element's place on the
+page), its requests, its storage and its console; nothing the stage itself
+does. `src/adapters/browserStage.ts` reads the browser feed into the stage's
+model; `src/stage/` is the rest. Every colour, material and light of the stage
+is in `src/stage/look.ts`. A project names its exits and its client code in
+`projects/<name>/stage.json`.
+
+Known limits: a sign-in provider's page (GitHub, Google) refuses to load in a
+frame. `?screen=` must be on the stage's own host. The wheel over the screen
+scrolls the page, not the camera.
+
+`pnpm --filter @convex-dev/explorer-world check:stage` runs the command as a
+person would, and uses its window over the DevTools port (`--debug-port`)
+with real clicks and keys: sign up, reload, sign out, sign in on the screen;
+it checks what was recorded and from where, what the floor holds at chosen
+times, that dragging the handle back and forth shows the same thing at the
+same time, the way back to live, replay, that the password is nowhere in the
+timeline, and that no process is left after Ctrl-C. Without a display it runs
+the window under `xvfb-run`. About two minutes; `STAGE_SHOTS=<dir>` saves
+screenshots.
+
+## Live mode in the islands world
+
+`pnpm explorer:live <app> --view islands` opens the app's page in a window of
+its own and the islands world in your default browser, which shows what your
+clicks cause as they happen. Ctrl-C stops everything; the timeline is saved
+(its path is printed) and plays like any other recording.
 
 What it needs: Node 20.6 or later, `pnpm install` and `pnpm build` at the root,
 and Google Chrome, which the recorder drives through Playwright with nothing

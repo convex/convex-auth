@@ -26,6 +26,9 @@ type Event = { kind: string; id?: string; time?: number } & Record<
   unknown
 >;
 
+/** Messages closer than this in time are one burst, drawn stacked. */
+const BURST_MS = 400;
+
 /** What a project says about the outside of the browser. */
 export type StageLabels = {
   /** The exit of the Convex deployment. */
@@ -268,6 +271,7 @@ export function stageFromEvents(
           failed: false,
           secrets: secretsIn(message),
           detail: { socket: socketId, type: e.type, ...message },
+          stack: 0,
         });
         break;
       }
@@ -293,6 +297,7 @@ export function stageFromEvents(
             ...(request ? { request } : {}),
             ...(response ? { response } : {}),
           },
+          stack: 0,
         });
         break;
       }
@@ -324,6 +329,21 @@ export function stageFromEvents(
     start = Math.min(start, recording.time);
   for (const f of flights)
     if (f.endTime !== null) end = Math.max(end, f.endTime);
+
+  // Messages of a burst stack up rather than draw as one.
+  const lastOf = new Map<string, Flight[]>();
+  for (const f of flights.sort((a, b) => a.time - b.time)) {
+    const lane = `${f.via}:${f.direction}`;
+    const recent = (lastOf.get(lane) ?? []).filter(
+      (g) => f.time - g.time < BURST_MS,
+    );
+    const used = new Set(recent.map((g) => g.stack));
+    let stack = 0;
+    while (used.has(stack)) stack++;
+    f.stack = stack;
+    recent.push(f);
+    lastOf.set(lane, recent);
+  }
 
   const cookieList = cookies.list;
   for (const c of cookieList) c.attrs = cookieAttrs.get(c.key);

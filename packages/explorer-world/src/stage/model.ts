@@ -111,6 +111,12 @@ export type Flight = {
   secrets: string[];
   /** The fields to show in the inspector. */
   detail: Record<string, unknown>;
+  /**
+   * Its place in a burst: how many messages of the same connection and
+   * direction left shortly before it and are still on their way. Drawn
+   * stacked, so that a burst does not draw as one object.
+   */
+  stack: number;
 };
 
 /** Where the page was, from a time on. */
