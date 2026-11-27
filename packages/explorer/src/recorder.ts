@@ -449,6 +449,13 @@ export async function record(
         log(
           `Recording the page at ${origin} through the proxy; use it in your browser, then press Ctrl-C.`,
         );
+        server?.setControls({
+          busy: null,
+          username: null,
+          observed: { signedIn: null, loading: false, page: "" },
+          actions: [],
+          note: "No actions: you use the page in your own browser (--recorder in-page).",
+        });
         if (
           recording.stageOrigins.length === 0 &&
           !process.env.EXPLORER_PAGE_TOKEN
@@ -523,6 +530,7 @@ export async function record(
             username: null,
             observed: { signedIn: null, loading: false, page: "" },
             actions: [],
+            note: `No actions: ${browser.scenario?.name ?? "this app"} declares none.`,
           });
           log(
             `Recording ${browser.url}; ${browser.scenario?.name ?? "this app"} declares no actions. Ctrl-C to stop.`,

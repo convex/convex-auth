@@ -40,7 +40,7 @@ export function Controls() {
             : "Waiting for the recorder's page…"}
         </p>
       ) : state.actions.length === 0 ? (
-        <p className="hint">This app declares no actions.</p>
+        <p className="hint">{state.note ?? "This app declares no actions."}</p>
       ) : (
         <ul>
           {state.actions.map((action) => {

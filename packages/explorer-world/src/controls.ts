@@ -34,6 +34,8 @@ export interface ControlsState {
   username: string | null;
   observed: ObservedPage;
   actions: ControlState[];
+  /** Why there are no actions, when there are none. */
+  note?: string;
 }
 
 interface ControlsStore {

@@ -44,6 +44,19 @@ function setup(overrides: Partial<PageActions<Memory>> = {}) {
         },
       },
       {
+        id: "echo",
+        label: "Echo",
+        unavailable: () => null,
+        // A page that shows the typed password back, in its result or in
+        // the error of a failed step.
+        async run(ctx) {
+          const secret = ctx.newSecret("pw");
+          if (ctx.observed.page === "/fail")
+            throw new Error(`no field for ${secret}`);
+          return `welcome ${secret}`;
+        },
+      },
+      {
         id: "broken",
         label: "Broken",
         unavailable: () => null,
@@ -111,6 +124,7 @@ describe("ActionRunner", () => {
       "running",
       "another action is running",
       "another action is running",
+      "another action is running",
     ]);
     t.release();
     await t.runner.idle();
@@ -164,5 +178,28 @@ describe("ActionRunner", () => {
       },
     ]);
     expect(t.states.at(-1)!.busy).toBeNull();
+  });
+
+  test("a secret the action typed never reaches its result or its error", async () => {
+    let page = "/";
+    const t = setup({
+      observe: async () => ({ signedIn: false, loading: false, page }),
+    });
+    current = t.runner;
+    await waitUntil(() => t.states.length > 0);
+    expect(t.runner.request("echo")).toBeNull();
+    await t.runner.idle();
+    page = "/fail";
+    await new Promise((done) => setTimeout(done, 1100));
+    expect(t.runner.request("echo")).toBeNull();
+    await t.runner.idle();
+    const ends = t.actionEvents().filter((e) => e.status !== "start");
+    expect(ends).toMatchObject([
+      { outcome: "ok", result: "welcome [secret]" },
+      { outcome: "failed", error: "no field for [secret]" },
+    ]);
+    expect(t.secrets).toHaveLength(2);
+    for (const secret of t.secrets)
+      expect(JSON.stringify(t.events)).not.toContain(secret);
   });
 });

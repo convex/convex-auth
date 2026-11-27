@@ -244,9 +244,18 @@ function startPart(name, argv, { cwd, env = {}, onLine } = {}) {
 }
 
 /** Runs `node <argv>` to its end; throws a StartError when it fails. */
-async function runStep(name, argv, opts) {
+async function runStep(name, argv, opts, timeoutMs = 300_000) {
   const part = startPart(name, argv, opts);
-  const { code, signal } = await part.done;
+  const result = await Promise.race([part.done, sleep(timeoutMs)]);
+  if (result === undefined) {
+    await stopPart(part, 5000);
+    parts.splice(parts.indexOf(part), 1);
+    throw new StartError(
+      part,
+      `${name} did not finish in ${timeoutMs / 1000} s; stopped it.`,
+    );
+  }
+  const { code, signal } = result;
   parts.splice(parts.indexOf(part), 1);
   if (code !== 0) {
     throw new StartError(
@@ -365,6 +374,36 @@ async function stopAll() {
 
 // ---------------------------------------------------------------- helpers --
 
+/**
+ * The process that listens on the port of `url` on this machine, or null
+ * when it cannot tell (no lsof, no ss).
+ */
+function listener(url) {
+  if (isWindows) return null;
+  const port = Number(new URL(url).port || 80);
+  let pid = null;
+  const lsof = spawnSync(
+    "lsof",
+    ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+    {
+      encoding: "utf8",
+    },
+  );
+  if (lsof.status === 0) pid = lsof.stdout.split("\n")[0].trim() || null;
+  if (pid === null) {
+    const ss = spawnSync("ss", ["-ltnpH", `sport = :${port}`], {
+      encoding: "utf8",
+    });
+    pid = /pid=(\d+)/.exec(ss.stdout ?? "")?.[1] ?? null;
+  }
+  if (pid === null) return null;
+  const ps = spawnSync("ps", ["-o", "args=", "-p", pid], { encoding: "utf8" });
+  return {
+    pid,
+    command: (ps.stdout ?? "").trim().slice(0, 120) || "unknown command",
+  };
+}
+
 /** Whether a port is free on one address; true when the address is absent. */
 const freeOn = (port, host) =>
   new Promise((done) => {
@@ -377,13 +416,22 @@ const freeOn = (port, host) =>
 
 /**
  * A free port on 127.0.0.1 and on ::1, from `start` up: `localhost` can
- * reach either, so a port taken on one would take the other's requests.
+ * reach either, so a port taken on one would take the other's requests. Also
+ * free on every address: a server listening on all of them (0.0.0.0) answers
+ * on 127.0.0.1 too, and some systems let a second server bind 127.0.0.1 on
+ * the same port, so the first test alone can miss it.
  */
 async function freePort(start, taken = []) {
   for (let port = start; port < start + 100; port++) {
     if (taken.includes(port)) continue;
-    if ((await freeOn(port, "127.0.0.1")) && (await freeOn(port, "::1")))
-      return port;
+    let free = true;
+    for (const host of ["127.0.0.1", "::1", "0.0.0.0", "::"]) {
+      if (!(await freeOn(port, host))) {
+        free = false;
+        break;
+      }
+    }
+    if (free) return port;
   }
   throw new Error(`No free port from ${start} to ${start + 99}.`);
 }
@@ -574,10 +622,28 @@ async function main() {
     url0 !== null &&
     (await answers(`${url0}/version`).catch(() => false));
   if (alreadyUp) {
+    const holder = listener(url0);
     say(
-      `a deployment already answers at ${url0}; using it, and leaving it running.`,
+      `a deployment already answers at ${url0}; using it, and leaving it running` +
+        (holder
+          ? ` (pid ${holder.pid}, ${holder.command}; if it is left from an earlier run, stop it with: kill ${holder.pid}).`
+          : "."),
     );
   } else {
+    // Something on the deployment's port that does not answer as a
+    // deployment would take the new backend's port.
+    const port = url0 === null ? 3210 : Number(new URL(url0).port || 80);
+    if (!values.cloud && !(await freeOn(port, "127.0.0.1"))) {
+      const holder = listener(`http://127.0.0.1:${port}`);
+      throw new StartError(
+        null,
+        `Something listens on 127.0.0.1:${port}, the deployment's port, and does not answer as a Convex deployment` +
+          (holder
+            ? `: pid ${holder.pid}, ${holder.command}. If it is a backend left by an earlier run, stop it with: kill ${holder.pid}`
+            : ". Find it with: lsof -iTCP:" + port + " -sTCP:LISTEN") +
+          ", then run this again.",
+      );
+    }
     say("deploying the app's functions (convex dev --once)...");
     await runStep("convex-once", [convexBin, "dev", "--once"], {
       cwd: appDir,

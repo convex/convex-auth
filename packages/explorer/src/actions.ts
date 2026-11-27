@@ -108,6 +108,8 @@ export type ControlsState = {
   username: string | null;
   observed: Observed;
   actions: ControlState[];
+  /** Why there are no actions, when there are none. */
+  note?: string;
 };
 
 /** Why {@link ActionRunner.request} refused an action. */
@@ -247,6 +249,13 @@ export class ActionRunner<Memory = unknown> {
       username: options.actions.username(this.memory),
     });
     options.emit([event("start", null, null, null)]);
+    // The secrets this action typed, kept out of its result and its error,
+    // which are text taken from the page and from Playwright.
+    const typed: string[] = [];
+    const clean = (text: string) =>
+      scrubText(
+        typed.reduce((out, value) => out.split(value).join("[secret]"), text),
+      );
     const timeoutMs = action.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = new Promise<"timeout">((done) => {
@@ -261,6 +270,7 @@ export class ActionRunner<Memory = unknown> {
       unique: () => randomBytes(3).toString("hex"),
       newSecret: (prefix) => {
         const value = `${prefix}-${randomBytes(12).toString("base64url")}`;
+        typed.push(value);
         options.onSecret(value);
         return value;
       },
@@ -280,13 +290,13 @@ export class ActionRunner<Memory = unknown> {
               null,
               `did not finish in ${timeoutMs / 1000} s`,
             )
-          : event("end", "ok", scrubText(result), null);
+          : event("end", "ok", clean(result), null);
     } catch (error) {
       end = event(
         "error",
         "failed",
         null,
-        scrubText(firstLine(error instanceof Error ? error.message : error)),
+        clean(firstLine(error instanceof Error ? error.message : error)),
       );
     } finally {
       clearTimeout(timer);

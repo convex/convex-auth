@@ -11,7 +11,8 @@
 //   and no `eyJ` appears in the stream or in the timeline file;
 // - a page of another origin, in another tab of the same browser, can
 //   neither start an action nor read the stream, even with the token;
-// - after Ctrl-C (SIGINT to the command), no process it started is left.
+// - after Ctrl-C (SIGINT to the command), no process it started is left,
+//   also when it comes in the middle of the start.
 //
 // Needs the example's dependencies, `pnpm build` at the root, and Playwright
 // with a Chromium (`require("playwright")`). Takes about a minute.
@@ -21,6 +22,7 @@
 /* global window, document -- run in the page. */
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
+import { createServer as createNetServer } from "node:net";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -65,6 +67,56 @@ const env = { ...process.env, EXPLORER_CHECK_SECRETS: secretsFile };
 // No display, as on a server or in a terminal over SSH.
 delete env.DISPLAY;
 delete env.WAYLAND_DISPLAY;
+// ------------------------------------------------ interrupted start --
+
+/**
+ * Starts the command, interrupts it with Ctrl-C once `pattern` shows in its
+ * output, and checks that it leaves no process behind and frees the port of
+ * the deployment.
+ */
+async function interruptedStart(pattern) {
+  const child = spawn(
+    process.execPath,
+    [join(root, "scripts/live.mjs"), appDir, "--browser", "chromium"],
+    { stdio: ["ignore", "pipe", "pipe"], env },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => (output += chunk));
+  child.stderr.on("data", (chunk) => (output += chunk));
+  const ended = new Promise((done) => child.on("exit", (code) => done(code)));
+  const deadline = Date.now() + 180_000;
+  while (
+    !pattern.test(output) &&
+    child.exitCode === null &&
+    Date.now() < deadline
+  )
+    await sleep(50);
+  child.kill("SIGINT");
+  const code = await Promise.race([ended, sleep(60_000).then(() => "timeout")]);
+  await sleep(500);
+  const left = [...processes()].filter(
+    ([pid, args]) =>
+      !before.has(pid) &&
+      /convex|vite|chrom|tsx|live\.mjs|playwright|explorer|esbuild|node -e/i.test(
+        args,
+      ) &&
+      !/\bps\b/.test(args),
+  );
+  const port = await new Promise((done) => {
+    const server = createNetServer();
+    server.once("error", () => done(false));
+    server.listen(3210, "127.0.0.1", () => server.close(() => done(true)));
+  });
+  check(
+    pattern.test(output) && code === 0 && left.length === 0 && port,
+    `Ctrl-C at "${pattern.source}" stops cleanly (exit ${code}${left.length ? `; left: ${left.map(([pid, args]) => `${pid} ${args.slice(0, 80)}`).join("; ")}` : ""}${port ? "" : "; port 3210 still taken"})`,
+  );
+}
+await interruptedStart(/deploying the app's functions|starting the deployment/);
+await interruptedStart(/the app's page:/);
+
+// ---------------------------------------------------------- full run --
+
 const lines = [];
 const launcher = spawn(
   process.execPath,
