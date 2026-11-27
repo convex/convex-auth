@@ -40,9 +40,8 @@ and providers. Big things hold smaller things, shown as you come near and
 hidden as you leave: localStorage holds its keys, a key its value, a token its
 claims; the auth client holds the structure map's modules that run in the
 browser, a module its hooks and functions. Everything is there from the
-start. The territory is wider and deeper than the screen (720 by 522 m
-against a screen 512 m wide), so from afar it reads as a field before a
-monument rather than a keyboard before a monitor. Labels are drawn at
+start. The territory is about as wide as the screen (480 m against a
+512 m wall; `GROUND` in `stage/layout.ts` scales the ground plan). Labels are drawn at
 reading size, never larger than their thing allows, and hidden until they
 fit: a district's name is large from afar and modest close in, a module's
 name shows once it can be read. The camera goes from a metre to kilometres
@@ -88,8 +87,8 @@ changes. Everything is stretched alike, so storage, messages and paths stay
 in step. The track marks the stretched stretches, the clock says "slowed:
 1060 ms shown over 7.1 s" while in one, and the inspector gives real times.
 Live plays a burst at its stretched pace, falling a few seconds behind now
-(the clock says how far) and catching up as soon as nothing is left to
-play. Let go at the right end, or press **Back to live**, and it is live
+(the clock says how far), faster the further behind it is (at most 8 s), and
+skips ahead as soon as nothing is left to play. Let go at the right end, or press **Back to live**, and it is live
 again. **Replay** plays a recording instead: this session from its start, a
 saved one of the project, or a file (the `run.ndjson` the command prints).
 In a replay the screen is dark and shows where the page was; **Live**

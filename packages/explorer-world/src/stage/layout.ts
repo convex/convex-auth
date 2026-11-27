@@ -36,12 +36,12 @@ export const SCREEN = {
 };
 
 /**
- * The ground plan below is drawn at this scale. At 1 the browser's
- * territory was as wide as the screen and shallow, and from afar the two
- * read as a monitor and its keyboard; at 1.5 the browser is a field wider
- * and deeper than the screen, which stands at its back.
+ * The ground plan below is drawn at this scale; heights are kept. At 1 the
+ * territory is as wide as the screen (480 m against a 512 m wall), and from
+ * afar the two read as one compact object on the plane. Which proportion to
+ * keep is not settled: this is the one knob for it.
  */
-export const GROUND = 1.5;
+export const GROUND = 1;
 /** The back edge of the territory, which the scale keeps in place. */
 const BACK = -300;
 const gx = (x: number) => x * GROUND;

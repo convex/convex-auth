@@ -35,7 +35,12 @@ export const LIVE_LAG_MS = 120;
  */
 export const SETTLE_MS = 1600;
 /** Live never falls further behind now than this, in shown ms. */
-export const MOST_BEHIND_MS = 20_000;
+export const MOST_BEHIND_MS = 8_000;
+/**
+ * Behind now, live plays faster: one more times the pace for each this many
+ * shown ms behind, so a run of bursts does not pile up.
+ */
+export const CATCH_UP_MS = 3_000;
 
 export type Clock =
   | { mode: "live" }
@@ -154,12 +159,17 @@ function beatAfter(model: StageModel, t: number): number {
 
 /**
  * The time live shows at the clock time `now`: it moves at the shown pace
- * from where it was, never past the shown time of now. When the last beat
+ * from where it was, faster the further behind it is ({@link CATCH_UP_MS}),
+ * never past the shown time of now. When the last beat
  * it played is more than {@link SETTLE_MS} behind it, nothing is moving:
  * it skips the quiet to the next beat, or to now.
  */
 export function liveTime(model: StageModel, end: number, now: number): number {
-  let t = head ? head.shown + Math.max(0, now - head.wall) : end;
+  let t = end;
+  if (head) {
+    const rate = 1 + Math.max(0, end - head.shown) / CATCH_UP_MS;
+    t = head.shown + Math.max(0, now - head.wall) * rate;
+  }
   t = Math.min(t, end);
   const i = beatAfter(model, t);
   const prev = i > 0 ? model.beats[i - 1].time : -Infinity;
