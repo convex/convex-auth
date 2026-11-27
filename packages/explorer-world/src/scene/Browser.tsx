@@ -65,7 +65,9 @@ export function Browser() {
       ))}
       {rings.map(([part, steps]) => (
         <group key={part} position={placementOf(part)!.position}>
-          <Lod far={70}>
+          {/* Only at the innermost level: when the module's ring spans
+              about a quarter of the window's height (42° of view). */}
+          <Lod far={10 * (placementOf(part)!.radius + 0.75)}>
             <StepRing part={part} steps={steps} />
           </Lod>
         </group>
