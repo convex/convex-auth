@@ -157,6 +157,87 @@ export type Unresolved = {
   reason: string;
 };
 
+/** What a module exports. `all` is an `export * from`, named `*`. */
+export type ExportKind =
+  | "function"
+  | "class"
+  | "const"
+  | "let"
+  | "interface"
+  | "type"
+  | "enum"
+  | "namespace"
+  | "default"
+  | "all";
+
+/** One export of a module, as its source declares it. */
+export type ModuleExport = {
+  name: string;
+  /** What it is. A `const` whose value is a function is a `function`. */
+  kind: ExportKind;
+  /** The line of the export in the module's file. */
+  line: number;
+  /** The first sentence of its doc comment, copied from the source. Absent when it has none. */
+  summary?: string;
+  /**
+   * For a re-export: where it comes from. The part id of a module the model
+   * has, else the file's path from the repository root, else the import
+   * specifier (an npm package).
+   */
+  from?: string;
+  /** The part that this export is, when the model has one (a React hook). */
+  part?: string;
+  /** For a class this module declares: its public members, in the order of the source. */
+  members?: {
+    name: string;
+    /** A field that holds a function is a `method`. */
+    kind: "method" | "field" | "accessor";
+    line: number;
+    static?: boolean;
+    summary?: string;
+  }[];
+};
+
+/**
+ * A place where a module keeps state: a `let` or `var` at its top level, a
+ * `Map`, `Set`, `WeakMap`, or `WeakSet` that a top-level `const` holds, or a
+ * field of one of its classes.
+ */
+export type ModuleState = {
+  name: string;
+  kind: "let" | "var" | "collection" | "field";
+  line: number;
+  /** For a field: its class. */
+  class?: string;
+  /** For a field: `readonly` (the binding, not what it holds). */
+  readonly?: boolean;
+  /** For a field: `#name` or `private`. */
+  private?: boolean;
+  static?: boolean;
+  /** The first sentence of its doc comment, copied from the source. */
+  summary?: string;
+};
+
+/**
+ * The inside of a module, read from its source: what it says it is, what it
+ * exports, and where it keeps state.
+ */
+export type ModuleInside = {
+  /** The file, from the repository root. */
+  file: string;
+  /**
+   * The first sentence of the file's module doc comment, copied from the
+   * source. Absent when the file has none: never written by the generator.
+   */
+  summary?: string;
+  /** The first paragraph of the module doc comment. */
+  description?: string;
+  /** In the order of the file. */
+  exports: ModuleExport[];
+  /** In the order of the file. */
+  state: ModuleState[];
+};
+
 /**
  * What a reader needs to draw a kind it does not know: the layer that defines
  * it (`convex` for the generic layer, else the project layer's name), a label,
@@ -188,6 +269,12 @@ export type StructureModel<
   parts: (ConvexPart | ExtraPart)[];
   dependencies: Dependency<ConvexDependencyKind | ExtraDependencyKind>[];
   unresolved: Unresolved[];
+  /**
+   * The insides of the modules a project layer reads, by part id. Kept apart
+   * from `parts` so that the parts, and the layout that follows them, do not
+   * change when the inside of a module does.
+   */
+  modules?: Record<string, ModuleInside>;
   counts: {
     parts: Partial<Record<(ConvexPart | ExtraPart)["kind"], number>>;
     dependencies: Partial<
