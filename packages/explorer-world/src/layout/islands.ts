@@ -638,7 +638,10 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     minX - 14 - Math.max(0, ...clients.map((i) => arrange(i, 0).radius));
   if (page) {
     arrange(page, 0).place([clientX, 3, level]);
-    let z = level - arrange(page, 0).radius - 6;
+    // Far enough behind that Home, which frames the page's region, has
+    // them wholly off the window rather than half on it.
+    const pageR = arrange(page, 0).radius;
+    let z = level - pageR - Math.max(6, 0.9 * pageR);
     for (const i of clients.filter((c) => c !== page)) {
       const r = arrange(i, 0).radius;
       arrange(i, 0).place([clientX, 3, z - r]);

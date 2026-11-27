@@ -119,6 +119,25 @@ for (const [width, height] of [
       expect(box.top).toBeGreaterThanOrEqual(-1);
       expect(box.bottom).toBeLessThanOrEqual(height + 1);
     }
+    // Every other client region is wholly on the window, or wholly off it.
+    for (const i of world.layout.islands.filter(
+      (i) => i.zone === "client" && i.id !== "region:browser",
+    )) {
+      const o = regionBox(
+        { center: i.position, radius: i.radius },
+        view,
+        fov,
+        width,
+        height,
+      );
+      // Its name stands over its rim: room for it above.
+      const top = o.top - 0.25 * (o.bottom - o.top) - 30;
+      const inside =
+        o.left >= 0 && o.right <= width && top >= 0 && o.bottom <= height;
+      const outside =
+        o.right <= 0 || o.left >= width || o.bottom <= 0 || top >= height;
+      expect(inside || outside, `${i.id} is half on the window`).toBe(true);
+    }
     // The browser keeps most of the room the two take.
     expect(b.right - b.left).toBeGreaterThan(1.5 * (a.right - a.left));
     // It is not a speck: it fills much of the window one way.
