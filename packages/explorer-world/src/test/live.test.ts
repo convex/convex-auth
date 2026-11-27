@@ -62,7 +62,8 @@ describe("a live recording", () => {
     }
     expect(summarize(world)).toEqual(summarize(saved));
     // The layout is reused until the recording adds a part to the map.
-    expect(relaidOut).toBeLessThan(6);
+    // The page, its elements and its storage keys are added as they first show.
+    expect(relaidOut).toBeLessThan(10);
     expect(world.layout.parts.size).toBe(saved.layout.parts.size);
   });
 
@@ -89,7 +90,10 @@ describe("a live recording", () => {
     const late = runs[2];
     const without = events.filter((e) => e !== late);
     const before = worldFromEvents(project, without, "live").world;
-    const chapter = before.timeline.chapters[5];
+    // A run that started after the late one, a few runs on.
+    const chapter = before.timeline.chapters.find(
+      (c, i) => i >= 5 && c.run.startedAt > Number(late.time),
+    )!;
     const time = chapter.start + 1.3;
     const after = worldFromEvents(project, events, "live", before).world;
     const moved = anchorTime(before.timeline, time, after.timeline);

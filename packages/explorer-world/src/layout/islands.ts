@@ -125,6 +125,42 @@ export function packCircles(
   return placed;
 }
 
+/** Room between the columns of a flow, and between the nodes of a column. */
+const FLOW_GAP = 7;
+const COLUMN_GAP = 3;
+
+/**
+ * Nodes in columns by their `flow`, left to right (+x, toward the
+ * platform), each column stacked front to back and centered; the nodes
+ * without a flow make the column after the last. The result is centered.
+ */
+function flowColumns(nodes: Node[]): Circle[] {
+  const last = Math.max(...nodes.map((n) => n.flow ?? -Infinity));
+  const columnOf = (n: Node) => n.flow ?? last + 1;
+  const columns = [...new Set(nodes.map(columnOf))].sort((a, b) => a - b);
+  const out: Circle[] = nodes.map((n) => ({ r: n.r, x: 0, z: 0 }));
+  let x = 0;
+  for (const c of columns) {
+    const members = nodes
+      .map((n, i) => ({ n, i }))
+      .filter(({ n }) => columnOf(n) === c);
+    const width = Math.max(...members.map(({ n }) => n.r));
+    const height =
+      members.reduce((s, { n }) => s + 2 * n.r, 0) +
+      COLUMN_GAP * (members.length - 1);
+    let z = -height / 2;
+    for (const { n, i } of members) {
+      out[i] = { r: n.r, x: x + width, z: z + n.r };
+      z += 2 * n.r + COLUMN_GAP;
+    }
+    x += 2 * width + FLOW_GAP;
+  }
+  const x0 = Math.min(...out.map((c) => c.x - c.r));
+  const x1 = Math.max(...out.map((c) => c.x + c.r));
+  for (const c of out) c.x -= (x0 + x1) / 2;
+  return out;
+}
+
 /** The radius of the smallest circle around the origin holding them all. */
 function enclosing(circles: Circle[]): number {
   return Math.max(0, ...circles.map((c) => Math.hypot(c.x, c.z) + c.r));
@@ -134,6 +170,7 @@ interface Node {
   id: string;
   r: number;
   order: number;
+  flow?: number;
   /** Positions relative to the node's center, filled by `arrange`. */
   layoutChildren?: (origin: Vec3) => void;
 }
@@ -252,6 +289,7 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
           id: p.id,
           r: footprint(p),
           order: ORDER[look(p).shape],
+          flow: look(p).flow,
           layoutChildren: (o) => setPart(p, o, island.id, depth),
         };
       }
@@ -324,12 +362,19 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
             id: child.id,
             r: sub.radius,
             order: containsFocus(child.id) ? 7.5 : 8,
+            flow: look(child).flow,
             layoutChildren: (o) => sub.place([o[0], o[1] + PLATEAU, o[2]]),
           };
         }),
     ].sort((a, b) => a.order - b.order || b.r - a.r);
-    const circles = packCircles(nodes.map((n) => n.r));
-    const radius = Math.max(4, enclosing(circles) + MARGIN);
+    const circles = nodes.some((n) => n.flow !== undefined)
+      ? flowColumns(nodes)
+      : packCircles(nodes.map((n) => n.r));
+    // An island's kind can ask for more room than its contents need.
+    const radius = Math.max(
+      4 * (look(island).size ?? 1),
+      enclosing(circles) + MARGIN,
+    );
     const result = {
       radius,
       place: (center: Vec3) => {

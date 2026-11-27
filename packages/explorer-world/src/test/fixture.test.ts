@@ -89,7 +89,7 @@ describe("a made-up chat app", () => {
     expect(
       world
         .stateAt(end)
-        .holdings.get("page:p1")
+        .holdings.get("storageKey:ticket")
         ?.map((c) => c.label),
     ).toEqual(["ticket s1"]);
   });

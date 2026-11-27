@@ -4,6 +4,7 @@
  * from the data and copies every other field of a part into its facts.
  */
 import type { Graph, Part } from "../model/graph.ts";
+import { withBrowserPlaces } from "./browserPlaces.ts";
 import {
   fill,
   kindLook,
@@ -128,14 +129,17 @@ export function graphFromStructure(
     code: u.code,
     reason: u.reason,
   }));
-  return {
-    project: input.project,
-    parts,
-    links,
-    unresolved,
-    kinds: {
-      parts: input.kinds?.parts ?? {},
-      links: input.kinds?.dependencies ?? {},
+  return withBrowserPlaces(
+    {
+      project: input.project,
+      parts,
+      links,
+      unresolved,
+      kinds: {
+        parts: input.kinds?.parts ?? {},
+        links: input.kinds?.dependencies ?? {},
+      },
     },
-  };
+    presentation,
+  );
 }

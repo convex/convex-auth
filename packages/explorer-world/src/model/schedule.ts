@@ -12,6 +12,7 @@ import type {
   Cargo,
   Derivation,
   Doc,
+  PageState,
   Recording,
   Run,
   Tone,
@@ -59,6 +60,22 @@ export interface HoldingChange {
   op: "gain" | "drop";
 }
 
+/** A page's sign-in state changes, as its client library reported. */
+export interface StateChange {
+  at: number;
+  holder: string;
+  state: PageState;
+}
+
+/** A step the client library reported, at the module that reported it. */
+export interface ClientStep {
+  start: number;
+  end: number;
+  part: string;
+  step: string;
+  tone: Tone;
+}
+
 export interface Beat {
   start: number;
   end: number;
@@ -99,6 +116,8 @@ export interface Timeline {
   rowChanges: RowChange[];
   holdings: HoldingChange[];
   alerts: Alert[];
+  states: StateChange[];
+  clientSteps: ClientStep[];
 }
 
 /** Seconds of playback for each kind of step. */
@@ -110,12 +129,17 @@ export const PACE = {
   return: 1.0,
   note: 1.6,
   page: 1.1,
+  /** A step the client library reported: many come in a row. */
+  step: 0.5,
   log: 2.6,
   commit: 1.6,
   response: 1.8,
   schedule: 1.2,
   gap: 1.4,
 };
+
+/** Seconds of the leg between a caller in the browser and its way out. */
+const HOP = 0.6;
 
 export function buildTimeline(
   index: GraphIndex,
@@ -130,6 +154,8 @@ export function buildTimeline(
     rowChanges: [],
     holdings: [],
     alerts: [],
+    states: [],
+    clientSteps: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
   // Ids count within each run, so that a run keeps the ids of its movements
@@ -159,24 +185,82 @@ export function buildTimeline(
   const playItems = (run: Run, items: Run["before"], from: number) => {
     let at = from;
     for (const it of items) {
+      const pace = it.kind === "step" ? PACE.step : PACE.page;
       beat(
         at,
-        at + PACE.page,
+        at + pace,
         run.id,
         `${name(it.part)}: ${it.text}`,
         it.tone,
         it.part,
+        it.lights ?? [it.part],
       );
+      for (const node of it.lights ?? [])
+        tl.activations.push({
+          node,
+          run: run.id,
+          start: at,
+          end: at + pace,
+          tone: it.tone,
+        });
+      if (it.step)
+        tl.clientSteps.push({
+          start: at,
+          end: at + pace,
+          part: it.part,
+          step: it.step,
+          tone: it.tone,
+        });
+      if (it.state)
+        tl.states.push({
+          at: at + pace * 0.5,
+          holder: it.state.holder,
+          state: it.state.state,
+        });
       if (it.hold)
         tl.holdings.push({
-          at: at + PACE.page * 0.5,
+          at: at + pace * 0.5,
           holder: it.part,
           cargo: it.hold.cargo,
           op: it.hold.op,
         });
-      at += PACE.page;
+      at += pace;
     }
     return at;
+  };
+
+  /**
+   * The short leg between a caller and the way out it used, inside the
+   * browser. Returns when it ends.
+   */
+  const hop = (
+    run: Run,
+    from: Anchor,
+    to: Anchor,
+    start: number,
+    kind: "request" | "response",
+    end = start + HOP,
+  ) => {
+    move({
+      run: run.id,
+      kind,
+      from,
+      to,
+      start,
+      end,
+      label: `${kind} · ${name(to)}`,
+      detail: `${name(from)} to ${name(to)}.`,
+      cargo: kind === "request" ? run.carriesIn : run.carriesOut,
+      tone: kind === "request" ? "normal" : run.tone,
+    });
+    tl.activations.push({
+      node: run.via!,
+      run: run.id,
+      start,
+      end,
+      tone: "normal",
+    });
+    return end;
   };
 
   let t = 0;
@@ -191,15 +275,18 @@ export function buildTimeline(
     const scheduled = Boolean(run.scheduledBy);
     const verb = run.type.toLowerCase();
 
-    // The request, from the caller.
+    // The request, from the caller, out by the way it left (a WebSocket).
     const reqStart = t;
     t += (scheduled ? PACE.schedule : PACE.request) * pace;
+    const out = run.via
+      ? hop(run, run.caller, run.via, reqStart, "request")
+      : reqStart;
     move({
       run: run.id,
       kind: "request",
-      from: run.caller,
+      from: run.via ?? run.caller,
       to: root,
-      start: reqStart,
+      start: out,
       end: t,
       label: scheduled
         ? `scheduled run · ${name(root)}`
@@ -386,13 +473,15 @@ export function buildTimeline(
     if (!scheduled) {
       const resStart = t;
       t += PACE.response * pace;
+      const back = run.via ? t - HOP * pace : t;
+      if (run.via) hop(run, run.via, run.caller, back, "response", t);
       move({
         run: run.id,
         kind: "response",
         from: root,
-        to: run.caller,
+        to: run.via ?? run.caller,
         start: resStart,
-        end: t,
+        end: back,
         label: `response · ${run.status}`,
         detail: run.carriesOut.length
           ? `The result goes back to ${name(run.caller)} with ${run.carriesOut.map((c) => c.label).join(", ")}.`

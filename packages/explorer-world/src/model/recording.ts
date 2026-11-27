@@ -69,6 +69,10 @@ export interface Cargo {
   derived?: Derivation;
 }
 
+/** The sign-in state of a page, as its client library reports it. */
+export type PageState =
+  "loading" | "signedOut" | "signingIn" | "signedIn" | "error";
+
 /**
  * Something a client page did outside a function run: an input, a
  * navigation, a change to its storage, a step of the scenario that drove it,
@@ -85,6 +89,12 @@ export interface PageItem {
   hold?: { op: "gain" | "drop"; cargo: Cargo; where: string };
   /** For an unlinked call: the runs it may be, one of which it is. */
   candidates?: string[];
+  /** The parts it lights while it plays: the module that reported a step, the key it named. */
+  lights?: string[];
+  /** For a step the client library reported: its name. */
+  step?: string;
+  /** The sign-in state the page is in after it. */
+  state?: { holder: string; state: PageState };
 }
 
 export interface Run {
@@ -93,6 +103,8 @@ export interface Run {
   function: string;
   /** The place the run came from: a caller such as an HTTP client or the scheduler. */
   caller: string;
+  /** The way out of the caller's region the request left by (a page's WebSocket), when recorded. */
+  via?: string;
   /** Real start and end, in ms. */
   startedAt: number;
   endedAt: number;

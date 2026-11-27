@@ -72,10 +72,61 @@
       "color": "#9fb6ff"
     },
     "page": {
-      "shape": "gate",
+      "shape": "island",
       "noun": "page",
       "color": "#9fd0ff",
-      "placeIn": "{region}",
+      "flow": 0,
+      "size": 2.2
+    },
+    "library": {
+      "shape": "island",
+      "noun": "client library",
+      "color": "#6aa8ff",
+      "flow": 1
+    },
+    "connection": {
+      "shape": "island",
+      "noun": "client",
+      "color": "#b48cff",
+      "flow": 2,
+      "size": 1.8
+    },
+    "store": {
+      "shape": "island",
+      "noun": "store",
+      "color": "#ffc24a",
+      "flow": 2,
+      "size": 1.8
+    },
+    "exit": {
+      "shape": "gate",
+      "noun": "way out",
+      "color": "#d6b8ff",
+      "size": 1.6,
+      "flow": 3
+    },
+    "storageKey": {
+      "shape": "vault",
+      "noun": "storage key",
+      "color": "#ffc24a",
+      "size": 0.45
+    },
+    "cookie": {
+      "shape": "vault",
+      "noun": "cookie",
+      "color": "#ffc24a",
+      "size": 0.45
+    },
+    "element": {
+      "shape": "post",
+      "noun": "page element",
+      "color": "#9fd0ff",
+      "size": 1.2
+    },
+    "pageState": {
+      "shape": "marker",
+      "noun": "sign-in state",
+      "color": "#9fd0ff",
       "size": 1.6
     }
   },

@@ -30,13 +30,13 @@
     "module": {
       "shape": "shard",
       "noun": "client module",
-      "placeIn": "region:{runsIn}",
+      "placeIn": "library:region:{runsIn}",
       "color": "#6aa8ff"
     },
     "hook": {
       "shape": "shard",
       "noun": "hook",
-      "placeIn": "region:{runsIn}",
+      "placeIn": "library:region:{runsIn}",
       "color": "#9fd0ff",
       "size": 0.7
     }
@@ -62,7 +62,8 @@
     "region:browser": {
       "zone": "client",
       "color": "#6aa8ff",
-      "summary": "Code that runs in the user's browser: the session client, the storage of tokens, and the React hooks of each sign-in method."
+      "summary": "Code that runs in the user's browser: the session client, the storage of tokens, and the React hooks of each sign-in method.",
+      "library": "Convex Auth client"
     },
     "region:ssr": {
       "zone": "client",
@@ -158,5 +159,44 @@
       }
     }
   },
-  "client": "region:browser"
+  "client": "region:browser",
+  "pageStates": [
+    {
+      "step": "state",
+      "when": {
+        "isLoading": true
+      },
+      "state": "loading"
+    },
+    {
+      "step": "state",
+      "when": {
+        "isAuthenticated": true
+      },
+      "state": "signedIn"
+    },
+    {
+      "step": "state",
+      "state": "signedOut"
+    },
+    {
+      "step": "signIn.call",
+      "state": "signingIn"
+    },
+    {
+      "step": "signIn.pending.start",
+      "state": "signingIn"
+    },
+    {
+      "step": "signIn.return",
+      "when": {
+        "status": "error"
+      },
+      "state": "error"
+    },
+    {
+      "step": "signIn.throw",
+      "state": "error"
+    }
+  ]
 }

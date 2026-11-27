@@ -27,6 +27,7 @@ import type {
   Write,
 } from "../model/recording.ts";
 import { fill, type Presentation } from "../presentation.ts";
+import { exitOf } from "./browserPlaces.ts";
 import { PAGE_KINDS, readPageFeed } from "./convexPage.ts";
 
 interface RunEvent {
@@ -241,12 +242,9 @@ export function recordingFromTimeline(
         break;
       case "log":
       case "step": {
-        // A step the page reported (the client library) has no run; the
-        // stage shows it, not the islands.
-        if (e.kind === "step" && e.from === "page") {
-          count("step (page)", false);
-          break;
-        }
+        // A step the page reported (the client library) has no run: the
+        // browser feed reads it below.
+        if (e.kind === "step" && e.from === "page") break;
         const ev = e as unknown as LogEvent | StepEvent;
         byRun.set(ev.runId, [...(byRun.get(ev.runId) ?? []), ev]);
         break;
@@ -466,6 +464,7 @@ export function recordingFromTimeline(
     presentation,
     resolveTable,
     new Set(runs.map((r) => r.id)),
+    has,
   );
   for (const p of page.pages) observe(p);
   for (const [kind, c] of Object.entries(page.counts)) {
@@ -480,6 +479,7 @@ export function recordingFromTimeline(
     const call = page.calls.get(run.id);
     if (call) {
       run.caller = call.page;
+      if (has(exitOf(call.transport))) run.via = exitOf(call.transport);
       run.carriesIn = call.cargoIn;
       run.carriesOut = call.cargoOut;
       run.facts.push([

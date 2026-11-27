@@ -29,7 +29,17 @@ describe("the map of Convex Auth", () => {
         .filter((p) => p.observed)
         .map((p) => p.id)
         .sort(),
-    ).toEqual(["caller:HttpApi", "caller:Scheduler"]);
+    ).toEqual([
+      "browser:convex",
+      "caller:HttpApi",
+      "caller:Scheduler",
+      "exit:http",
+      "exit:socket",
+      "library:region:browser",
+      "library:region:ssr",
+      "store:cookies",
+      "store:local",
+    ]);
   });
 
   test("no two parts on an island overlap", () => {

@@ -2,12 +2,13 @@
  * The state of the world at a time of the timeline. Pure: the same time always
  * gives the same world, so scrubbing backwards is as cheap as playing forward.
  */
-import type { Cargo, Doc } from "./recording.ts";
+import type { Cargo, Doc, PageState } from "./recording.ts";
 import type {
   Activation,
   Alert,
   Beat,
   Chapter,
+  ClientStep,
   Movement,
   Timeline,
   Tone,
@@ -53,6 +54,10 @@ export interface WorldState {
   tables: Map<string, RowState[]>;
   holdings: Map<string, Cargo[]>;
   alerts: Alert[];
+  /** Per page state part: the sign-in state it is in, and since when. */
+  states: Map<string, { state: PageState; since: number }>;
+  /** The steps the client library is reporting now, by the part that reports them. */
+  clientSteps: Map<string, ClientStep>;
 }
 
 export function clampTime(timeline: Timeline, t: number): number {
@@ -167,6 +172,16 @@ export function stateAt(
 
   const alerts = timeline.alerts.filter((a) => a.start <= time && time < a.end);
 
+  const states = new Map<string, { state: PageState; since: number }>();
+  for (const c of timeline.states) {
+    if (c.at > time) continue;
+    if (states.get(c.holder)?.state !== c.state)
+      states.set(c.holder, { state: c.state, since: c.at });
+  }
+  const clientSteps = new Map<string, ClientStep>();
+  for (const c of timeline.clientSteps)
+    if (c.start <= time && time < c.end) clientSteps.set(c.part, c);
+
   return {
     time,
     chapter,
@@ -177,6 +192,8 @@ export function stateAt(
     tables,
     holdings,
     alerts,
+    states,
+    clientSteps,
   };
 }
 

@@ -11,8 +11,9 @@
  * it is.
  */
 import type { Part } from "../model/graph.ts";
-import type { Cargo, PageItem, Tone } from "../model/recording.ts";
+import type { Cargo, PageItem, PageState, Tone } from "../model/recording.ts";
 import type { Presentation } from "../presentation.ts";
+import { PLACES } from "./browserPlaces.ts";
 
 type Event = { kind: string; id: string; time: number } & Record<
   string,
@@ -35,6 +36,7 @@ export const PAGE_KINDS = new Set([
 ]);
 
 export interface PageFeed {
+  /** The pages, and what the recording shows in the browser: elements, storage keys, cookies. */
   pages: Part[];
   /** Per run id: the call of a page that the run answered. */
   calls: Map<
@@ -74,6 +76,7 @@ export function readPageFeed(
   presentation: Presentation,
   resolveTable: (component: string, table: string) => string,
   runIds: Set<string>,
+  hasPart: (id: string) => boolean = () => false,
 ): PageFeed {
   const counts: PageFeed["counts"] = {};
   const count = (kind: string, played: boolean) => {
@@ -82,8 +85,8 @@ export function readPageFeed(
     if (played) counts[kind].played++;
   };
   const feed = events
-    .filter((e) => PAGE_KINDS.has(e.kind))
-    .sort((a, b) => a.time - b.time);
+    .filter((e) => PAGE_KINDS.has(e.kind) || isPageStep(e))
+    .sort((a, b) => a.time - b.time || sequence(a.id) - sequence(b.id));
   const byId = new Map(feed.map((e) => [e.id, e]));
 
   // Secrets: their type, and the row each one is.
@@ -119,8 +122,58 @@ export function readPageFeed(
       .map(cargoOf)
       .filter((c): c is Cargo => c !== null);
 
-  // Pages.
+  // Pages, and the places in the browser the recording shows.
   const pages = new Map<string, Part>();
+  const region =
+    presentation.client && hasPart(presentation.client)
+      ? presentation.client
+      : null;
+  const placeOf = (
+    id: string,
+    kind: string,
+    name: string,
+    parent: string | null,
+    observed: string,
+  ) => {
+    if (!pages.has(id) && !hasPart(id))
+      pages.set(id, {
+        id,
+        kind,
+        name,
+        label: name,
+        parent,
+        source: null,
+        facts: [],
+        observed,
+      });
+    return id;
+  };
+  // A key's store is the area of the first storage event that names it.
+  const areaOfKey = new Map<string, string>();
+  for (const e of feed)
+    if (e.kind === "storage" && typeof e.key === "string")
+      if (!areaOfKey.has(e.key)) areaOfKey.set(e.key, String(e.area));
+  const keyOf = (key: string, reporter?: string) => {
+    const area = areaOfKey.get(key);
+    const store = area ? PLACES.store(area) : null;
+    if (store && region)
+      placeOf(
+        store,
+        "store",
+        `${area}Storage`,
+        region,
+        `The browser's ${area}Storage for the page's origin.`,
+      );
+    return placeOf(
+      PLACES.storageKey(key),
+      "storageKey",
+      key,
+      store ?? reporter ?? region,
+      store
+        ? `A key of ${area}Storage the recording shows.`
+        : "A storage key the client library names; no storage event of the recording says which storage holds it.",
+    );
+  };
   // A scenario step names no page: it belongs to the page last seen.
   let lastPage: string | null = null;
   const pageOf = (pageId: unknown) => {
@@ -142,11 +195,18 @@ export function readPageFeed(
         kind: "page",
         name: String(pageId ?? "page"),
         label: host ? `page ${host}` : "page",
-        parent: null,
+        parent: region,
         source: null,
         facts: presentation.client ? [["region", presentation.client]] : [],
         observed: "A page of the app in a browser, as the recording shows it.",
       });
+      placeOf(
+        PLACES.state(id),
+        "pageState",
+        "sign-in state",
+        id,
+        "The page's sign-in state, as its client library reports it.",
+      );
     }
     return id;
   };
@@ -163,7 +223,7 @@ export function readPageFeed(
     tone: Tone = "normal",
     extra: Partial<PageItem> = {},
   ) => {
-    const part = pageOf(e.pageId);
+    const part = extra.lights?.[0] ?? pageOf(e.pageId);
     // Repeats in a row (a page navigating to the same URL twice) show once.
     if (`${part}|${text}` === lastText && !extra.hold) return true;
     lastText = `${part}|${text}`;
@@ -172,6 +232,33 @@ export function readPageFeed(
   };
 
   for (const e of feed) {
+    if (isPageStep(e)) {
+      const part = String(e.part);
+      const reporter = hasPart(part) ? part : pageOf(e.pageId);
+      const detail = (e.detail ?? {}) as Record<string, unknown>;
+      const page = pageOf(e.pageId);
+      const lights = [reporter];
+      if (typeof detail.key === "string") {
+        const key =
+          typeof detail.namespace === "string"
+            ? `${detail.key}_${detail.namespace}`
+            : detail.key;
+        lights.push(keyOf(key, reporter));
+      }
+      const state = stateAfter(presentation, String(e.step), detail);
+      items.push({
+        time: e.time,
+        kind: "step",
+        part: reporter,
+        text: stepText(String(e.step), detail),
+        tone: state === "error" ? "error" : "normal",
+        lights,
+        step: String(e.step),
+        ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
+      });
+      count("step (page)", true);
+      continue;
+    }
     switch (e.kind) {
       case "secret":
       case "secretLink":
@@ -220,6 +307,14 @@ export function readPageFeed(
       case "input": {
         const t = (e.target ?? {}) as Record<string, string | null>;
         const what = t.text ?? t.name ?? t.id ?? t.selector ?? t.tag;
+        const page = pageOf(e.pageId);
+        const element = placeOf(
+          PLACES.element(page, String(t.selector ?? t.tag)),
+          "element",
+          String(what),
+          page,
+          "An element of the page the person used, as the recording shows it.",
+        );
         const value = typeof e.value === "string" ? ` "${e.value}"` : "";
         const verb: Record<string, string> = {
           click: `clicks "${what}"`,
@@ -233,6 +328,8 @@ export function readPageFeed(
             e,
             "input",
             verb[String(e.action)] ?? `${String(e.action)} ${what}`,
+            "normal",
+            { lights: [element] },
           ),
         );
         break;
@@ -280,29 +377,36 @@ export function readPageFeed(
       }
       case "storage": {
         const where = `${String(e.area)}Storage ${String(e.key ?? "")}`;
+        const key = keyOf(String(e.key ?? ""));
         const gained = secretOf(e.value);
         const lost = secretOf(e.oldValue);
         const gain = gained ? cargoOf(gained) : null;
         const drop = lost ? cargoOf(lost) : null;
+        pageOf(e.pageId);
         if (drop)
           items.push({
             time: e.time,
             kind: "storage",
-            part: pageOf(e.pageId),
+            part: key,
             text: `removes ${drop.label} from ${where}`,
             tone: "normal",
             hold: { op: "drop", cargo: drop, where },
+            lights: [key],
           });
         if (gain)
           items.push({
             time: e.time,
             kind: "storage",
-            part: pageOf(e.pageId),
+            part: key,
             text: `stores ${gain.label} in ${where}`,
             tone: "normal",
             hold: { op: "gain", cargo: gain, where },
+            lights: [key],
           });
-        if (!gain && !drop) item(e, "storage", `${where}: ${String(e.op)}`);
+        if (!gain && !drop)
+          item(e, "storage", `${where}: ${String(e.op)}`, "normal", {
+            lights: [key],
+          });
         count(e.kind, true);
         break;
       }
@@ -319,12 +423,28 @@ export function readPageFeed(
         );
         break;
       }
-      case "cookie":
+      case "cookie": {
+        const cookie = placeOf(
+          PLACES.cookie(String(e.name)),
+          "cookie",
+          String(e.name),
+          region ? PLACES.store("cookies") : null,
+          "A cookie the recording shows.",
+        );
         count(
           e.kind,
-          item(e, "cookie", `cookie ${String(e.name)}: ${String(e.op)}`),
+          item(
+            e,
+            "cookie",
+            `cookie ${String(e.name)}: ${String(e.op)}`,
+            "normal",
+            {
+              lights: [cookie],
+            },
+          ),
         );
         break;
+      }
       default:
         break;
     }
@@ -346,4 +466,36 @@ export function readPageFeed(
       http: "Requests that no call refers to (the page's own documents and assets).",
     },
   };
+}
+
+const sequence = (id: string) => Number(String(id).split("#").pop()) || 0;
+
+/** A step the client library reported from the page (it has no run). */
+export function isPageStep(e: { kind: string; from?: unknown }): boolean {
+  return e.kind === "step" && e.from === "page";
+}
+
+/**
+ * The page's sign-in state after a step its client library reported, by the
+ * presentation's rules, if one matches.
+ */
+function stateAfter(
+  presentation: Presentation,
+  step: string,
+  detail: Record<string, unknown>,
+): PageState | null {
+  const rule = presentation.pageStates?.find(
+    (r) =>
+      r.step === step &&
+      Object.entries(r.when ?? {}).every(([k, v]) => detail[k] === v),
+  );
+  return rule?.state ?? null;
+}
+
+/** The step as one short line: its name, and its detail without secrets. */
+function stepText(step: string, detail: Record<string, unknown>): string {
+  const shown = Object.entries(detail)
+    .filter(([, v]) => typeof v !== "object" || v === null)
+    .map(([k, v]) => `${k} ${String(v)}`);
+  return shown.length ? `${step} · ${shown.join(", ")}` : step;
 }

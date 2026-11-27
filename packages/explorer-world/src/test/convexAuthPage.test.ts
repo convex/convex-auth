@@ -74,8 +74,13 @@ describe("the recording of the page", () => {
         expect(rows.has(c.row)).toBe(true);
   });
 
-  test("the page holds what its storage holds", () => {
-    const end = world.stateAt(world.timeline.duration).holdings.get(PAGE) ?? [];
+  /** What the page's storage keys hold at a time. */
+  const held = (t: number) =>
+    [...world.stateAt(t).holdings]
+      .filter(([holder]) => holder.startsWith("storageKey:"))
+      .flatMap(([, cargo]) => cargo);
+  test("the page's storage keys hold what its storage holds", () => {
+    const end = held(world.timeline.duration);
     expect(end.map((c) => c.label.replace(/ s\d+$/, "")).sort()).toEqual([
       "access token",
       "refresh token",
@@ -87,7 +92,7 @@ describe("the recording of the page", () => {
     const wrong = world.timeline.chapters.find(
       (c) => c.section === "sign in with a wrong password",
     )!;
-    expect(world.stateAt(wrong.end).holdings.get(PAGE) ?? []).toEqual([]);
+    expect(held(wrong.end)).toEqual([]);
     expect(signOut.section).toBe("sign out");
   });
 

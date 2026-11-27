@@ -9,6 +9,8 @@ import type { Part } from "./model/graph.ts";
 import type { Tone } from "./model/recording.ts";
 
 /** The shapes the world can draw. A kind of part picks one. */
+import type { PageState } from "./model/recording.ts";
+
 export type Shape =
   | "island"
   | "pillar"
@@ -48,6 +50,13 @@ export interface KindLook {
   label?: string;
   /** Larger parts get more room; 1 is the default. */
   size?: number;
+  /**
+   * Where along the way through an island a part stands, from the outside
+   * (0, where a person acts) to the way out (higher). An island with members
+   * that have one lays them out in columns by it, left to right, toward the
+   * platform; the members without one share the column after the last.
+   */
+  flow?: number;
 }
 
 export interface LinkLook {
@@ -115,7 +124,14 @@ export interface Presentation {
   /** Per part id: what only it has. */
   parts?: Record<
     string,
-    { color?: string; zone?: Zone; summary?: string; label?: string }
+    {
+      color?: string;
+      zone?: Zone;
+      summary?: string;
+      label?: string;
+      /** For a region: the name of the district its client code stands in. */
+      library?: string;
+    }
   >;
   /** Per table part id. */
   tables?: Record<string, TableLook>;
@@ -126,6 +142,16 @@ export interface Presentation {
   callers?: Record<string, { label?: string; summary?: string }>;
   /** The part a recorded page runs in, e.g. the region of the browser. */
   client?: string;
+  /**
+   * How the steps a page's client library reports set its sign-in state: the
+   * first rule whose step is the step reported and whose `when` fields equal
+   * those of its detail.
+   */
+  pageStates?: {
+    step: string;
+    when?: Record<string, unknown>;
+    state: PageState;
+  }[];
   /** The id of the part the recording ran in (the app being replayed). */
   focus?: string;
   /** The name of the layout strategy (see `src/layout/index.ts`); "islands" by default. */

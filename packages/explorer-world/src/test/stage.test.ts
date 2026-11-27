@@ -8,7 +8,12 @@ import { PROJECTS } from "../project.ts";
 import { screenUrl } from "../stage/frame.ts";
 import { LAND_MS, stageAt, TRAVEL_MS } from "../stage/model.ts";
 
-const events = parseNdjson(PROJECTS["convex-auth"].timelines.page);
+// The saved recording without the steps the page reported: the tests below add their own.
+const withoutPageSteps = PROJECTS["convex-auth"].timelines.page
+  .split("\n")
+  .filter((line) => !line.includes('"from":"page"'))
+  .join("\n");
+const events = parseNdjson(withoutPageSteps);
 const model = stageFromEvents(events);
 
 test("the browser feed becomes the stage's things", () => {
@@ -167,7 +172,7 @@ test("a step the page reported lights its module and the key it names", () => {
   expect(stageFromEvents(events).steps).toEqual([]);
 });
 
-test("the islands world counts page steps without placing them under a run", async () => {
+test("the islands world plays the steps the page reported", async () => {
   const { recordingFromTimeline } =
     await import("../adapters/convexRecording.ts");
   void recordingFromTimeline;
@@ -185,11 +190,12 @@ test("the islands world counts page steps without placing them under a run", asy
   const src = PROJECTS["convex-auth"];
   const world = loadProject({
     ...src,
-    timelines: { x: `${src.timelines.page}\n${JSON.stringify(step)}` },
+    timelines: { x: `${withoutPageSteps}\n${JSON.stringify(step)}` },
   });
   expect(
     world.recording.unplaced.some((u) => u.what.includes("step (page)")),
-  ).toBe(true);
+  ).toBe(false);
+  expect(world.recording.events["step (page)"]).toEqual({ seen: 1, played: 1 });
 });
 
 test("the modules the client library names are in the auth client district", async () => {
