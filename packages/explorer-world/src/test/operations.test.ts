@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { parseNdjson } from "../adapters/convexRecording.ts";
-import { BRACKET } from "../model/operations.ts";
+import { BRACKET, loadMoments, loadWord } from "../model/operations.ts";
 import { prepareProject, PROJECTS, worldFromEvents } from "../project.ts";
 
 // sign up, sign out, sign in, pressed in the live example.
@@ -119,6 +119,28 @@ describe("operations of the client", () => {
         ).toBe(true);
       }
     }
+  });
+
+  test("a carried thing is named where it changes hands, by its kind and field, never its label", () => {
+    const signIn = ops.find((o) => o.kind === "signIn")!;
+    const moments = loadMoments(signIn);
+    expect(moments.map((m) => loadWord(m.load.load))).toEqual([
+      "password · blanked",
+      "access token",
+      "refresh token",
+    ]);
+    // Out at the way out, from when the body leaves for it; back at the key
+    // that took it, from when it is put down.
+    const via = signIn.points.find((p) => p.step === "out")!;
+    expect(moments[0].anchor).toBe(via.anchor);
+    expect(moments[0].from).toBeLessThan(via.at);
+    for (const m of moments.slice(1)) {
+      expect(m.anchor).toBe(m.load.at);
+      expect(m.from).toBe(m.load.to);
+    }
+    for (const o of ops)
+      for (const m of loadMoments(o))
+        expect(loadWord(m.load.load)).not.toMatch(/\bs\d+\b/);
   });
 
   test("a forced token fetch is matched to its refresh call", () => {

@@ -79,6 +79,53 @@ export function loadName(l: OpLoad["load"]): string {
   return l.cargo?.label ?? `${l.type} secret ${l.secret}`;
 }
 
+/**
+ * What a carried thing is called at the moment it is picked up or put
+ * down: from the recording's own facts, never its value or its label. A
+ * blanked field by its field; a token by the noun the presentation gives
+ * its table, else by its field.
+ */
+export function loadWord(l: OpLoad["load"]): string {
+  if (l.kind === "blanked") return `${l.field} · blanked`;
+  return l.cargo?.noun ?? l.field;
+}
+
+/** How long a carried thing is named where it changed hands (shown s). */
+export const NAMED_FOR = 1.6;
+
+/**
+ * The moments a carried thing changes hands, in shown time, and how long
+ * each is named: going out, at the way out from when the body leaves for
+ * it until a little after it gets there; picked up from a key, or put down
+ * on one, at that key for {@link NAMED_FOR}.
+ */
+export function loadMoments(
+  op: OpPath,
+): { from: number; until: number; anchor: string; load: OpLoad }[] {
+  const out: { from: number; until: number; anchor: string; load: OpLoad }[] =
+    [];
+  const via = op.points.find((p) => p.step === "out")?.anchor;
+  for (const l of op.loads) {
+    if (l.dir === "out" && l.at)
+      out.push({
+        from: l.from,
+        until: l.from + NAMED_FOR,
+        anchor: l.at,
+        load: l,
+      });
+    else if (l.dir === "out" && via)
+      out.push({
+        from: l.from,
+        until: l.to + NAMED_FOR / 2,
+        anchor: via,
+        load: l,
+      });
+    else if (l.dir === "back" && l.at)
+      out.push({ from: l.to, until: l.to + NAMED_FOR, anchor: l.at, load: l });
+  }
+  return out.sort((a, b) => a.from - b.from);
+}
+
 /** One place an operation is at, at a shown time. */
 export interface OpPoint {
   at: number;

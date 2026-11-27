@@ -65,6 +65,8 @@ export interface Cargo {
   label: string;
   /** The label of the secret in the recording (`s3`), when the recording shows it. */
   secret?: string;
+  /** What it is, without its label (`access token`), from the presentation. */
+  noun?: string;
   /** Set when the recording does not show the value travel. */
   derived?: Derivation;
 }

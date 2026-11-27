@@ -31,7 +31,7 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
 import { anchorPosition } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
-import { CargoMesh, heldPlace } from "./Travellers.tsx";
+import { CargoMesh, cargoLook, heldPlace } from "./Travellers.tsx";
 
 /** Shown seconds an operation stays at its last place before it fades. */
 const LINGER = 0.6;
@@ -249,10 +249,10 @@ function Operation({ op }: { op: OpPath }) {
 /** Shown seconds a load takes to appear, or to go into the way out or down onto its key. */
 const HAND = 0.3;
 /** A load's size, and the gap between loads, as multiples of the body's radius. */
-const LOAD_SIZE = 2.6;
-const LOAD_GAP = 3;
+const LOAD_SIZE = 3.4;
+const LOAD_GAP = 3.8;
 /** How high over the body the row of loads rides, in body radii. */
-const LOAD_LIFT = 3.6;
+const LOAD_LIFT = 4.2;
 
 /**
  * What the operation's call carried, riding over its body: a row facing
@@ -351,6 +351,14 @@ function Loads({ op, positions }: { op: OpPath; positions: Vector3[] }) {
 }
 
 const BLANKED_COLOR = "#c3cad8";
+
+/** The colour a carried thing is drawn in, and named in. */
+export const loadColor = (load: OpLoad["load"]) =>
+  load.kind === "blanked"
+    ? BLANKED_COLOR
+    : load.cargo
+      ? cargoLook(load.cargo.table).color
+      : cargoLook("").color;
 
 function LoadMesh({ load }: { load: OpLoad["load"] }) {
   if (load.kind === "blanked")

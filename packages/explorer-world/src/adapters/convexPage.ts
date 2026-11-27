@@ -158,6 +158,7 @@ export function readPageFeed(
       row: s.row,
       secret: label,
       label: `${rule?.noun ?? `${s.type} secret`} ${label}`,
+      ...(rule?.noun ? { noun: rule.noun } : {}),
     };
   };
   const loadOf = (value: unknown): Load[] =>

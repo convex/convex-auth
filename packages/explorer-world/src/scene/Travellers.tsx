@@ -24,7 +24,7 @@ import { isDrag } from "./clicks.ts";
 import { MOVEMENT_COLORS, TONE_COLORS } from "./palette.ts";
 
 /** How cargo of a table is drawn, from the presentation. */
-function cargoLook(table: string): {
+export function cargoLook(table: string): {
   shape: "key" | "coin" | "card";
   color: string;
 } {

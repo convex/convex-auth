@@ -28,7 +28,8 @@ import { highlightOf } from "./highlight.ts";
 import { actingModules, haloRadius } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
-import type { OpPath } from "../model/operations.ts";
+import { loadMoments, loadWord, type OpPath } from "../model/operations.ts";
+import { loadColor } from "./Operations.tsx";
 import type { Timeline } from "../model/schedule.ts";
 import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
@@ -277,7 +278,11 @@ function bodyAt(
   ops: OpPath[],
   t: number,
 ): { anchor: string; code?: string } | null {
-  let best: { at: number; anchor: string; code?: string } | null = null;
+  let best: {
+    at: number;
+    anchor: string;
+    code?: string;
+  } | null = null;
   for (const op of ops) {
     const p = op.points;
     if (p[0].at > t || p[p.length - 1].at + 0.6 < t) continue;
@@ -299,6 +304,37 @@ function bodyAt(
   return best ? { anchor: best.anchor, code: best.code } : null;
 }
 
+/** The part an acting key names. */
+const partIn = (id: string) =>
+  id
+    .replace(/^report:/, "")
+    .split(CODE)[0]
+    .split(NAME)[0];
+
+/**
+ * The carried things changing hands now, in an operation somebody asked
+ * for, each named at the place it changes hands (see `loadMoments`).
+ */
+function handedAt(ops: OpPath[], t: number) {
+  const out: { anchor: string; text: string; color: string }[] = [];
+  for (const op of ops) {
+    if (op.unasked || !op.loads.length) continue;
+    if (op.points[0].at > t || op.points[op.points.length - 1].at + 3 < t)
+      continue;
+    for (const m of loadMoments(op))
+      if (m.from <= t && t < m.until)
+        out.push({
+          anchor: m.anchor,
+          text: loadWord(m.load.load),
+          color: loadColor(m.load.load),
+        });
+  }
+  return out;
+}
+
+/** Between a part's id and the text that names it instead, in an acting key. */
+const NAME = "|name:";
+
 /** Between a part's id and the text that names it instead, in an acting key. */
 const CODE = "|code:";
 
@@ -319,12 +355,20 @@ function useActing(): string[] {
     // run again, a row on its way) has its halo or its body, not a small
     // name; a click names it.
     const run = runningNow(world.timeline, state.time);
+    // A carried thing changing hands is named in the place of the place
+    // it changes hands at, and of the body's place while it does.
+    const handed = handedAt(world.timeline.ops, state.time);
     const list = [
-      ...(at ? [`report:${at}${body?.code ? CODE + body.code : ""}`] : []),
+      ...handed.map(
+        (h) => `report:${h.anchor}${NAME}${h.color}${NAME}${h.text}`,
+      ),
+      ...(at && !handed.length
+        ? [`report:${at}${body?.code ? CODE + body.code : ""}`]
+        : []),
       ...(run ? [`report:${run}`] : []),
     ]
       .filter((id) => {
-        const p = placementOf(id.replace(/^report:/, "").split(CODE)[0]);
+        const p = placementOf(partIn(id));
         return p && p.shape !== "island" && p.shape !== "state";
       })
       .sort();
@@ -348,12 +392,15 @@ function PartLabel({
   rank,
   reporting = false,
   text,
+  color,
 }: {
   id: string;
   rank: 1 | 2;
   reporting?: boolean;
-  /** What names it instead of its own name (a refusal's code). */
+  /** What names it instead of its own name (a refusal's code, a carried thing). */
   text?: string;
+  /** The colour of that name: a refusal's is red. */
+  color?: string;
 }) {
   const p = placementOf(id);
   const found = partOf(id);
@@ -393,13 +440,17 @@ function PartLabel({
         <KeepSize distance={grow.distance} max={grow.max}>
           {/* A storage key is named only close in: from afar its mark and
               the body at it are enough. */}
-          <Lod far={id.startsWith("storageKey:") ? KEY_NAME_FAR : Infinity}>
+          <Lod
+            far={
+              id.startsWith("storageKey:") && !text ? KEY_NAME_FAR : Infinity
+            }
+          >
             <Billboard>
               {reporting ? (
                 <BesideHalo beside={beside!}>
                   <Label
                     fontSize={size}
-                    color={text ? TONE_COLORS.error : "#ffffff"}
+                    color={color ?? (text ? TONE_COLORS.error : "#ffffff")}
                     anchorX="left"
                     position={[0, -0.2, 0]}
                     weight="regular"
@@ -569,8 +620,9 @@ export function Labels() {
           id.startsWith("report:") ? (
             <PartLabel
               key={`r:${id}`}
-              id={id.slice("report:".length).split(CODE)[0]}
-              text={id.split(CODE)[1]}
+              id={partIn(id)}
+              text={id.split(CODE)[1] ?? id.split(NAME)[2]}
+              color={id.split(NAME)[1]}
               rank={1}
               reporting
             />

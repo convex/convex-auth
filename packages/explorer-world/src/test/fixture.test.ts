@@ -71,6 +71,7 @@ describe("a made-up chat app", () => {
         row: "r1",
         secret: "s1",
         label: "ticket s1",
+        noun: "ticket",
       },
     ]);
     expect(send.after.map((i) => i.text)).toEqual([
