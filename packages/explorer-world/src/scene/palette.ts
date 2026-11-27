@@ -25,3 +25,12 @@ export const MOVEMENT_COLORS: Record<string, string> = {
   schedule: "#c3b5ff",
   write: "#ffb454",
 };
+
+/** A page's sign-in state, as its client library reports it. */
+export const STATE_COLORS: Record<string, string> = {
+  loading: "#6f7c99",
+  signedOut: "#8fa3c8",
+  signingIn: "#ffd36b",
+  signedIn: "#5dffb0",
+  error: "#ff3b5c",
+};

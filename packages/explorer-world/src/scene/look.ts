@@ -17,6 +17,7 @@ export const HEIGHT: Record<Shape, number> = {
   shard: 2.2,
   beacon: 8,
   marker: 1,
+  state: 1.2,
 };
 
 export const placementOf = (id: string): Placement | undefined =>

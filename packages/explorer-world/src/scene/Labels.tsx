@@ -1,16 +1,15 @@
 /**
- * The text of the world, by distance:
+ * The few words of the world. Meaning comes from shape, place, colour and
+ * movement first; text is kept to:
  *
- * - From afar, island names. Once the camera is on an island, its name
- *   steps aside for the names of its parts.
- * - Nearer, the names of the parts on the islands around the camera. Only
- *   those islands mount their labels, so the cost of text stays bounded.
- * - Close up, the source location under each part, and the fields of tables.
+ * - the names of the islands: the top-level ones from afar, the ones inside
+ *   an island as the camera comes near it;
+ * - the name of each part that is acting now (it runs, it reported a step,
+ *   something leaves or reaches it), and of the selected part.
  *
- * One declutter pass hides any label that would cover a more important one on
- * screen: the selection first, then the parts its links reach, the focus,
- * larger islands, and the rest. The selected part and the parts its links
- * reach are always mounted.
+ * Everything else (a part's kind, source, fields) is in the inspector, on
+ * click; a part's name shows by the pointer on hover. One declutter pass
+ * hides any label that would cover a more important one on screen.
  */
 import { Billboard } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -21,8 +20,7 @@ import type { IslandPlacement } from "../layout/types.ts";
 import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
 import { KeepSize, Label } from "./Label.tsx";
-import { Lod } from "./Lod.tsx";
-import { HEIGHT, nounOfPart, partOf, placementOf } from "./look.ts";
+import { HEIGHT, partOf, placementOf } from "./look.ts";
 
 interface Entry {
   group: Group;
@@ -35,6 +33,8 @@ interface Entry {
   priority: number;
   /** Hidden when the camera is nearer than this (an island's own name). */
   hideNear?: number;
+  /** Hidden when the camera is farther than this (the name of an island inside another). */
+  hideFar?: number;
   /** Whether it relates to the selection or the current beat; else it fades with distance. */
   important?: () => boolean;
 }
@@ -67,14 +67,10 @@ function islandLabelSize(i: IslandPlacement) {
 
 function IslandLabel({ island }: { island: IslandPlacement }) {
   const text = partOf(island.id)?.label ?? island.id;
-  const children = world.layout.islands.filter(
-    (i) => i.parentIsland === island.id,
-  ).length;
-  const sub = `${nounOfPart(island.id).toUpperCase()}  ·  ${island.members.length + children}`;
   const size = islandLabelSize(island);
   const group = useDeclutter(`island:${island.id}`, {
-    chars: Math.max(text.length, sub.length * 0.6),
-    lines: 2,
+    chars: text.length,
+    lines: 1,
     size,
     grow: ISLAND_GROW,
     priority:
@@ -83,6 +79,7 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
       island.radius -
       island.depth * 4,
     hideNear: island.radius * 1.3 + 8,
+    hideFar: island.depth ? island.radius * 7 + 40 : undefined,
     important: () => {
       const h = highlightOf(usePlayback.getState().selected);
       if (h.covered.has(island.id) || h.linked.has(island.id)) return true;
@@ -108,16 +105,6 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
             outlineColor="#03050a"
           >
             {text}
-          </Label>
-          <Label
-            position={[0, -size * 0.72, 0]}
-            fontSize={size * 0.26}
-            color="#7f8bab"
-            letterSpacing={0.16}
-            outlineWidth={size * 0.02}
-            outlineColor="#03050a"
-          >
-            {sub}
           </Label>
         </Billboard>
       </KeepSize>
@@ -150,6 +137,7 @@ function Declutter() {
         Math.abs(projected.x) > 1.2 ||
         Math.abs(projected.y) > 1.2 ||
         (e.hideNear !== undefined && d < e.hideNear) ||
+        (e.hideFar !== undefined && d > e.hideFar) ||
         // From inside the map, what is far and unrelated fades.
         (e.important &&
           d > Math.max(90, camera.position.y * 2.4) &&
@@ -186,108 +174,64 @@ function Declutter() {
   return null;
 }
 
-/** The islands near enough to the camera to label their parts. */
-function useNearIslands(): Set<string> {
-  const { camera } = useThree();
-  const [near, setNear] = useState<Set<string>>(new Set());
-  const last = useRef({ t: 0, key: "" });
+/**
+ * The parts acting now: running, reporting a step, or at either end of
+ * something moving. Updated when the set changes.
+ */
+function useActing(): string[] {
+  const [acting, setActing] = useState<string[]>([]);
+  const last = useRef({ t: -1, key: "" });
   useFrame(({ clock }) => {
-    if (clock.elapsedTime - last.current.t < 0.3) return;
+    if (clock.elapsedTime - last.current.t < 0.1) return;
     last.current.t = clock.elapsedTime;
-    const ids = world.layout.islands
-      .filter((i) => {
-        at.set(...i.position);
-        return (
-          camera.position.distanceTo(at) < Math.max(40, i.radius * 3.2 + 12)
-        );
+    const state = currentState();
+    const ids = new Set<string>(state.active.keys());
+    for (const t of state.travellers) {
+      ids.add(t.progress < 0.5 ? t.movement.from : t.movement.to);
+    }
+    const list = [...ids]
+      .filter((id) => {
+        const p = placementOf(id);
+        return p && p.shape !== "island" && p.shape !== "state";
       })
-      .map((i) => i.id);
-    const key = ids.join(",");
+      .sort();
+    const key = list.join(",");
     if (key !== last.current.key) {
       last.current.key = key;
-      setNear(new Set(ids));
+      setActing(list);
     }
   });
-  return near;
+  return acting;
 }
 
-function PartLabel({ id, rank }: { id: string; rank: 0 | 1 | 2 }) {
+function PartLabel({ id, rank }: { id: string; rank: 1 | 2 }) {
   const p = placementOf(id);
   const part = partOf(id);
-  const vault = p?.shape === "vault";
-  const strong = rank > 0;
-  const size = vault ? 0.3 : strong ? 0.34 : 0.27;
+  const size = rank === 2 ? 0.36 : 0.32;
   const group = useDeclutter(`part:${id}`, {
-    chars: vault ? 4 : (part?.label.length ?? 4),
-    lines: part?.source && strong ? 2 : 1,
+    chars: part?.label.length ?? 4,
+    lines: 1,
     size,
-    grow: strong ? PART_GROW : undefined,
-    priority: rank === 2 ? 200 : rank === 1 ? 120 : 10 + (p?.radius ?? 0),
+    grow: PART_GROW,
+    priority: rank === 2 ? 200 : 120,
   });
   if (!p || !part) return null;
   const [x, y, z] = p.position;
   const h = HEIGHT[p.shape] * (p.radius / FOOTPRINT[p.shape]) + 0.4;
   return (
     <group position={[x, y, z]}>
-      {vault && (
-        <Label
-          position={[0, 0.26, 1.33]}
-          fontSize={0.36}
-          color={p.color}
-          weight="bold"
-          letterSpacing={0.1}
-        >
-          {part.label.toUpperCase()}
-        </Label>
-      )}
-      <group ref={group} position={[0, vault ? 1.4 : h, vault ? -1.5 : 0]}>
-        <KeepSize
-          distance={strong ? PART_GROW.distance : 1e9}
-          max={strong ? PART_GROW.max : 1}
-        >
+      <group ref={group} position={[0, h, 0]}>
+        <KeepSize distance={PART_GROW.distance} max={PART_GROW.max}>
           <Billboard>
-            {!vault && (
-              <Label
-                fontSize={size}
-                color={strong ? "#ffffff" : "#dfe6ff"}
-                weight={strong ? "bold" : "regular"}
-                outlineWidth={0.025}
-                outlineColor="#03050a"
-              >
-                {part.label}
-              </Label>
-            )}
-            {part.source && (
-              <Lod far={strong ? 40 : 9}>
-                <Label
-                  position={[0, vault ? 0 : -size * 0.95, 0]}
-                  fontSize={0.16}
-                  color="#8fa0c8"
-                  weight="mono"
-                  outlineWidth={0.015}
-                  outlineColor="#03050a"
-                >
-                  {`${part.source.file}:${part.source.line}`}
-                </Label>
-              </Lod>
-            )}
-            {vault && part.fields && (
-              <Lod far={14}>
-                <Label
-                  position={[0, 0.25 + part.fields.length * 0.11, 0]}
-                  fontSize={0.17}
-                  color="#c6d2f2"
-                  weight="mono"
-                  outlineWidth={0.015}
-                  outlineColor="#03050a"
-                  textAlign="center"
-                >
-                  {part.fields
-                    .map((f) => `${f.name}${f.optional ? "?" : ""}: ${f.type}`)
-                    .join("\n")}
-                </Label>
-              </Lod>
-            )}
+            <Label
+              fontSize={size}
+              color="#ffffff"
+              weight={rank === 2 ? "bold" : "regular"}
+              outlineWidth={0.025}
+              outlineColor="#03050a"
+            >
+              {part.label}
+            </Label>
           </Billboard>
         </KeepSize>
       </group>
@@ -295,72 +239,29 @@ function PartLabel({ id, rank }: { id: string; rank: 0 | 1 | 2 }) {
   );
 }
 
-/** The names of the groups of an island that share a parent from elsewhere. */
-function ClusterLabels({ island }: { island: IslandPlacement }) {
-  return (
-    <>
-      {island.clusters.map((c) => (
-        <Label
-          key={c.id}
-          position={[
-            c.center[0],
-            c.center[1] + 0.05,
-            c.center[2] + c.radius + 0.3,
-          ]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.55}
-          color={placementOf(c.id)?.color ?? "#9fb6ff"}
-          weight="bold"
-          letterSpacing={0.12}
-        >
-          {(partOf(c.id)?.label ?? c.id).toUpperCase()}
-        </Label>
-      ))}
-    </>
-  );
-}
-
 export function Labels() {
-  const near = useNearIslands();
+  const acting = useActing();
   const selected = usePlayback((s) => s.selected);
-  const ranked = useMemo(() => {
+  const chosen = useMemo(() => {
     const h = highlightOf(selected);
-    const ranks = new Map<string, 1 | 2>();
-    if (!h.island) {
-      for (const id of h.linked.keys()) ranks.set(id, 1);
-      for (const id of h.covered) ranks.set(id, 2);
-    }
-    // Callers and other parts off the islands are always named.
-    for (const p of world.layout.parts.values())
-      if (p.shape !== "island" && !p.island && !ranks.has(p.id))
-        ranks.set(p.id, 1);
-    return [...ranks]
-      .filter(([id]) => placementOf(id)?.shape !== "island")
-      .slice(0, 200);
+    return h.island
+      ? []
+      : [...h.covered].filter((id) => placementOf(id)?.shape !== "island");
   }, [selected]);
-  const nearMembers = useMemo(() => {
-    const strong = new Set(ranked.map(([id]) => id));
-    return world.layout.islands
-      .filter((i) => near.has(i.id))
-      .flatMap((i) => i.members.filter((m) => !strong.has(m)));
-  }, [near, ranked]);
   return (
     <>
       <Declutter />
       {world.layout.islands.map((i) => (
         <IslandLabel key={i.id} island={i} />
       ))}
-      {world.layout.islands
-        .filter((i) => near.has(i.id))
-        .map((i) => (
-          <ClusterLabels key={i.id} island={i} />
+      {chosen.map((id) => (
+        <PartLabel key={`s:${id}`} id={id} rank={2} />
+      ))}
+      {acting
+        .filter((id) => !chosen.includes(id))
+        .map((id) => (
+          <PartLabel key={`a:${id}`} id={id} rank={1} />
         ))}
-      {nearMembers.map((id) => (
-        <PartLabel key={id} id={id} rank={0} />
-      ))}
-      {ranked.map(([id, rank]) => (
-        <PartLabel key={id} id={id} rank={rank} />
-      ))}
     </>
   );
 }

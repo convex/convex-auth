@@ -107,7 +107,8 @@ export function Parts() {
   const groups = useMemo(() => {
     const map = new Map<string, Placement[]>();
     for (const p of world.layout.parts.values()) {
-      if (p.shape === "island") continue;
+      // A page's state has a scene of its own (`Browser.tsx`).
+      if (p.shape === "island" || p.shape === "state") continue;
       const key = `${p.shape}|${p.profile ?? ""}`;
       map.set(key, [...(map.get(key) ?? []), p]);
     }

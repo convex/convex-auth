@@ -47,6 +47,12 @@ export interface PageFeed {
       link: string;
       cargoIn: Cargo[];
       cargoOut: Cargo[];
+      /**
+       * The module that sent it: the one that reported a `signIn.call` of
+       * its function when this was the only call of that function from the
+       * page before the matching `signIn.return` (matched by bracket).
+       */
+      sender?: string;
     }
   >;
   items: PageItem[];
@@ -212,6 +218,9 @@ export function readPageFeed(
   };
 
   const calls: PageFeed["calls"] = new Map();
+  // Open sign-in calls, per page and function: who reported it, and the
+  // calls of that function the page made since.
+  const brackets = new Map<string, { part: string; runs: string[] }[]>();
   const items: PageItem[] = [];
   const sections: PageFeed["sections"] = [];
   const referenced = new Set<string>();
@@ -246,6 +255,18 @@ export function readPageFeed(
         lights.push(keyOf(key, reporter));
       }
       const state = stateAfter(presentation, String(e.step), detail);
+      if (typeof detail.function === "string") {
+        const key = `${page}|${detail.function}`;
+        const open = brackets.get(key) ?? [];
+        if (e.step === "signIn.call") {
+          open.push({ part: reporter, runs: [] });
+          brackets.set(key, open);
+        } else if (e.step === "signIn.return" || e.step === "signIn.throw") {
+          const bracket = open.shift();
+          const call = bracket?.runs.length === 1 && calls.get(bracket.runs[0]);
+          if (call) call.sender = bracket.part;
+        }
+      }
       items.push({
         time: e.time,
         kind: "step",
@@ -274,6 +295,8 @@ export function readPageFeed(
           typeof e.runId === "string" && runIds.has(e.runId) ? e.runId : null;
         if (runId) {
           count("call", true);
+          for (const b of brackets.get(`${page}|${String(e.identifier)}`) ?? [])
+            b.runs.push(runId);
           calls.set(runId, {
             page,
             transport: String(e.transport),

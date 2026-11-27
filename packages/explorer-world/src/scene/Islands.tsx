@@ -117,8 +117,9 @@ export function Islands() {
     }
   }, []);
 
-  useFrame(({ clock }, delta) => {
-    wallMaterial.uniforms.uTime.value = clock.elapsedTime;
+  // The walls' sweep stands still (uTime stays 0): nothing moves in the
+  // world unless running code reported it.
+  useFrame((_, delta) => {
     const state = currentState();
     const busy = new Set<string>();
     for (const id of state.active.keys())

@@ -480,6 +480,14 @@ export function recordingFromTimeline(
     if (call) {
       run.caller = call.page;
       if (has(exitOf(call.transport))) run.via = exitOf(call.transport);
+      if (call.sender)
+        run.sender = {
+          part: call.sender,
+          derived: {
+            rule: "sender-by-bracket",
+            note: "The recording does not link the call to the module. It is the only call of this function the page made between the module's signIn.call and signIn.return.",
+          },
+        };
       run.carriesIn = call.cargoIn;
       run.carriesOut = call.cargoOut;
       run.facts.push([

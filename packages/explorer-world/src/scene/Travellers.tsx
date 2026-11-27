@@ -13,7 +13,6 @@ import type { Cargo } from "../model/recording.ts";
 import type { Movement } from "../model/schedule.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
-import { Tag } from "./Tag.tsx";
 import { anchorPosition } from "./look.ts";
 import { isDrag } from "./clicks.ts";
 import { MOVEMENT_COLORS, TONE_COLORS } from "./palette.ts";
@@ -155,14 +154,6 @@ function TravellerMesh({ movement }: { movement: Movement }) {
             <CargoMesh cargo={cargo} scale={1.5} labelled={false} />
           </group>
         ))}
-        <Tag
-          position={[0, movement.cargo.length ? 3.2 : 1.4, 0]}
-          color={`#${color.getHexString()}`}
-        >
-          {movement.cargo.length
-            ? `${movement.label} · ${movement.cargo.map((k) => k.label).join(" + ")}${movement.derived ? " (derived)" : ""}`
-            : movement.label}
-        </Tag>
       </group>
     </>
   );
@@ -246,15 +237,12 @@ export function CargoMesh({
   scale?: number;
   labelled?: boolean;
 }) {
-  const spin = useRef<Group>(null);
-  useFrame((_, delta) => {
-    if (spin.current) spin.current.rotation.y += delta * 1.6;
-  });
   const look = cargoLook(cargo.table);
   const color = tint ?? look.color;
   return (
     <group scale={scale}>
-      <group ref={spin}>
+      {/* Still: a token at rest does nothing, so nothing moves. */}
+      <group>
         {look.shape === "card" ? (
           <mesh>
             <boxGeometry args={[0.9, 0.12, 0.6]} />
@@ -354,11 +342,11 @@ export function Holdings() {
             }}
             onPointerOver={(e) => {
               e.stopPropagation();
-              hover.label = `${cargo.label} (derived)`;
+              hover.label = `${cargo.label}${cargo.derived ? " (derived)" : ""}`;
             }}
             onPointerOut={() => (hover.label = "")}
           >
-            <CargoMesh cargo={cargo} scale={1.3} />
+            <CargoMesh cargo={cargo} scale={1.3} labelled={false} />
           </group>
         ));
       })}

@@ -18,35 +18,13 @@ export function Caption() {
   });
   const state = currentState();
   const chapter = state.chapter;
-  const live = usePlayback((s) => s.live !== null);
-  if (!chapter) {
-    return (
-      <div className="caption">
-        <div className="step">
-          {live
-            ? "Waiting for the app: use it, and what it does plays here"
-            : "Press play to watch a recorded run"}
-        </div>
-      </div>
-    );
-  }
-  // A beat of the previous run does not caption the next one.
-  const beat = state.beat?.run === chapter.run.id ? state.beat : null;
+  // Quiet when nothing is happening: one line, only while a beat plays.
+  const beat =
+    chapter && state.beat?.run === chapter.run.id ? state.beat : null;
+  if (!beat || state.time >= beat.end) return null;
   return (
-    <div
-      className={`caption tone-${beat?.tone ?? "normal"}`}
-      key={beat ? beat.start : 0}
-    >
-      <div className="run">
-        <span className="n">{state.chapterIndex + 1}</span>
-        {chapter.title}
-        <span className="dim mono">
-          {" "}
-          · {chapter.run.facts.find(([k]) => k === "function")?.[1]} ·{" "}
-          {(chapter.run.endedAt - chapter.run.startedAt).toFixed(1)} ms real
-        </span>
-      </div>
-      <div className="step">{beat?.text ?? "…"}</div>
+    <div className={`caption tone-${beat.tone}`} key={beat.start}>
+      <div className="step">{beat.text}</div>
     </div>
   );
 }
@@ -66,12 +44,7 @@ export function Chapters() {
   const { setTime } = usePlayback.getState();
   return (
     <nav className="chapters panel">
-      <h1>
-        {world.presentation.title}
-        {world.presentation.subtitle && (
-          <span> · {world.presentation.subtitle}</span>
-        )}
-      </h1>
+      <h1>{world.presentation.title}</h1>
       {!live && recordings.length > 1 && (
         <div className="recordings" role="group" aria-label="Recording">
           {recordings.map((r) => (
@@ -85,44 +58,36 @@ export function Chapters() {
           ))}
         </div>
       )}
-      <ol>
-        {world.timeline.chapters.map((c, i) => [
-          c.section &&
-            c.section !== world.timeline.chapters[i - 1]?.section && (
-              <li key={`s${i}`} className="section">
-                {c.section}
-              </li>
-            ),
-          <li
-            key={c.run.id}
-            className={i === current ? "current" : i < current ? "past" : ""}
-          >
-            <button
-              onClick={() => {
-                setTime(c.start);
-                usePlayback.getState().select({ type: "run", id: c.run.id });
-              }}
+      <details>
+        <summary>{world.timeline.chapters.length} runs</summary>
+        <ol>
+          {world.timeline.chapters.map((c, i) => [
+            c.section &&
+              c.section !== world.timeline.chapters[i - 1]?.section && (
+                <li key={`s${i}`} className="section">
+                  {c.section}
+                </li>
+              ),
+            <li
+              key={c.run.id}
+              className={i === current ? "current" : i < current ? "past" : ""}
             >
-              <span className="n">{i + 1}</span>
-              <span className={`tone-${c.run.tone}`}>{c.title}</span>
-              <span className="ms">
-                {Math.round(c.run.endedAt - c.run.startedAt)} ms
-              </span>
-            </button>
-          </li>,
-        ])}
-      </ol>
-      <p className="note">
-        {live ? "A live recording" : "A recording"} of{" "}
-        {world.recording.runs.length} runs, slowed to human speed; real
-        durations at right. {world.graph.parts.length} parts and{" "}
-        {world.graph.links.length} dependencies on the map.
-      </p>
-      <p className="keys">
-        drag pan · ⌘/Ctrl-drag or right-drag orbit · scroll zoom · WASD fly ·
-        Q/E down/up · click inspect · O overview · F follow · R L U overlays ·
-        space play
-      </p>
+              <button
+                onClick={() => {
+                  setTime(c.start);
+                  usePlayback.getState().select({ type: "run", id: c.run.id });
+                }}
+              >
+                <span className="n">{i + 1}</span>
+                <span className={`tone-${c.run.tone}`}>{c.title}</span>
+                <span className="ms">
+                  {Math.round(c.run.endedAt - c.run.startedAt)} ms
+                </span>
+              </button>
+            </li>,
+          ])}
+        </ol>
+      </details>
     </nav>
   );
 }
@@ -161,28 +126,30 @@ export function CameraHud() {
         >
           Follow
         </button>
-        <span className="sep" />
-        <button
-          className={overlays.relations ? "on" : ""}
-          onClick={() => toggleOverlay("relations")}
-          title="Arcs between related islands (R)"
-        >
-          Relations
-        </button>
-        <button
-          className={overlays.links ? "on" : ""}
-          onClick={() => toggleOverlay("links")}
-          title={`Every dependency: ${world.graph.links.length} (L)`}
-        >
-          All links
-        </button>
-        <button
-          className={overlays.unresolved ? "on" : ""}
-          onClick={() => toggleOverlay("unresolved")}
-          title={`Every unresolved dependency: ${world.graph.unresolved.length} (U)`}
-        >
-          Unresolved
-        </button>
+        <details className="layers">
+          <summary title="Overlays">Layers</summary>
+          <button
+            className={overlays.relations ? "on" : ""}
+            onClick={() => toggleOverlay("relations")}
+            title="Arcs between related islands (R)"
+          >
+            Relations
+          </button>
+          <button
+            className={overlays.links ? "on" : ""}
+            onClick={() => toggleOverlay("links")}
+            title={`Every dependency: ${world.graph.links.length} (L)`}
+          >
+            All links
+          </button>
+          <button
+            className={overlays.unresolved ? "on" : ""}
+            onClick={() => toggleOverlay("unresolved")}
+            title={`Every unresolved dependency: ${world.graph.unresolved.length} (U)`}
+          >
+            Unresolved
+          </button>
+        </details>
       </div>
       <div className="tip" ref={tip} />
     </>

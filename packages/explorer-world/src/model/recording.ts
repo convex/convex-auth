@@ -105,6 +105,8 @@ export interface Run {
   caller: string;
   /** The way out of the caller's region the request left by (a page's WebSocket), when recorded. */
   via?: string;
+  /** The part of the caller that sent it (a module of the page's client library), if known. */
+  sender?: { part: string; derived: Derivation };
   /** Real start and end, in ms. */
   startedAt: number;
   endedAt: number;

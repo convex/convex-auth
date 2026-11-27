@@ -45,6 +45,7 @@ export const FOOTPRINT: Record<Shape, number> = {
   shard: 0.75,
   beacon: 3,
   marker: 0.7,
+  state: 1.6,
 };
 /** Inner parts first, so tables sit in the middle of an island. */
 const ORDER: Record<Shape, number> = {
@@ -55,6 +56,7 @@ const ORDER: Record<Shape, number> = {
   gate: 3,
   post: 4,
   marker: 5,
+  state: 0,
   beacon: 6,
   island: 8,
 };

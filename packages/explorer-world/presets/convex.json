@@ -124,7 +124,7 @@
       "size": 1.2
     },
     "pageState": {
-      "shape": "marker",
+      "shape": "state",
       "noun": "sign-in state",
       "color": "#9fd0ff",
       "size": 1.6

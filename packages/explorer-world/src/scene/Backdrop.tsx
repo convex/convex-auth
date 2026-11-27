@@ -1,5 +1,5 @@
 import { Environment, Lightformer, Sparkles, Stars } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
 import { usePlayback, world } from "../store.ts";
@@ -34,7 +34,7 @@ export function Backdrop() {
           factor={5}
           saturation={0.4}
           fade
-          speed={0.4}
+          speed={0}
         />
       </Layer>
       <Layer name="sparkles">
@@ -43,7 +43,7 @@ export function Backdrop() {
           scale={[span * 2.4, 40, span * 2]}
           position={[0, 10, -8]}
           size={2.2}
-          speed={0.15}
+          speed={0}
           opacity={0.35}
           color="#9fb6ff"
         >
@@ -148,10 +148,8 @@ function PlatformFloor() {
     () => ({ uColor: { value: color }, uTime: { value: 0 } }),
     [color],
   );
-  useFrame(({ clock }) => {
-    if (floor.current) floor.current.uniforms.uTime.value = clock.elapsedTime;
-    if (wall.current) wall.current.uniforms.uTime.value = clock.elapsedTime;
-  });
+  // The floor's rings and the wall's bands stand still: nothing moves in the
+  // world unless running code reported it.
   return (
     <group position={center}>
       <mesh

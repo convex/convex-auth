@@ -117,7 +117,6 @@ export function Timeline() {
             }}
             title={c.title}
           >
-            <span>{c.title}</span>
             <i
               className="commit"
               style={{

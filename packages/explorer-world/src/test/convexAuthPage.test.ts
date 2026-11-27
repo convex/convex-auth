@@ -109,3 +109,43 @@ describe("the recording of the page", () => {
     for (const i of unlinked) expect(i.text).toContain("not linked");
   });
 });
+
+describe("the client library in the browser", () => {
+  test("a sign-in call leaves from the module that reported it, matched by bracket", () => {
+    const signUp = runs.find((r) =>
+      r.function.endsWith("signUpWithUsernamePassword"),
+    )!;
+    expect(signUp.sender?.part).toBe("module:react/index");
+    expect(signUp.sender?.derived.rule).toBe("sender-by-bracket");
+    expect(signUp.via).toBe("exit:socket");
+    const legs = world.timeline.movements.filter((m) => m.run === signUp.id);
+    expect(legs[0]).toMatchObject({
+      from: "module:react/index",
+      to: "exit:socket",
+    });
+    // A run no sign-in call brackets leaves from the page.
+    const refresh = runs.find((r) => r.function.endsWith("refreshSession"))!;
+    expect(refresh.sender).toBeUndefined();
+    expect(refresh.via).toBe("exit:http");
+  });
+
+  test("every step the page reported lights its module, and a storage step its key", () => {
+    const steps = runs
+      .flatMap((r) => [...r.before, ...r.after])
+      .filter((i) => i.kind === "step");
+    expect(steps.length).toBe(world.recording.events["step (page)"].seen);
+    for (const s of steps) {
+      expect(world.layout.parts.has(s.part), s.part).toBe(true);
+      expect(s.lights?.[0]).toBe(s.part);
+      if (s.step?.startsWith("storage."))
+        expect(s.lights?.[1]).toMatch(/^storageKey:/);
+    }
+  });
+
+  test("the page's sign-in state follows what the client library reported", () => {
+    const states = world.timeline.states.map((s) => s.state);
+    expect(states).toContain("signingIn");
+    expect(states).toContain("error");
+    expect(states.at(-1)).toBe("signedIn");
+  });
+});

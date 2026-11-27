@@ -252,6 +252,7 @@ export function buildTimeline(
       detail: `${name(from)} to ${name(to)}.`,
       cargo: kind === "request" ? run.carriesIn : run.carriesOut,
       tone: kind === "request" ? "normal" : run.tone,
+      derived: run.sender?.derived,
     });
     tl.activations.push({
       node: run.via!,
@@ -278,8 +279,9 @@ export function buildTimeline(
     // The request, from the caller, out by the way it left (a WebSocket).
     const reqStart = t;
     t += (scheduled ? PACE.schedule : PACE.request) * pace;
+    const sender = run.sender?.part ?? run.caller;
     const out = run.via
-      ? hop(run, run.caller, run.via, reqStart, "request")
+      ? hop(run, sender, run.via, reqStart, "request")
       : reqStart;
     move({
       run: run.id,
@@ -310,8 +312,8 @@ export function buildTimeline(
       t,
       run.id,
       run.carriesIn.length
-        ? `${name(run.caller)} calls ${name(root)} with ${run.carriesIn.map((c) => c.label).join(", ")}`
-        : `${name(run.caller)} calls ${name(root)}`,
+        ? `${name(sender)} calls ${name(root)} with ${run.carriesIn.map((c) => c.label).join(", ")}`
+        : `${name(sender)} calls ${name(root)}`,
       "normal",
       root,
       [run.caller, root],
@@ -474,7 +476,8 @@ export function buildTimeline(
       const resStart = t;
       t += PACE.response * pace;
       const back = run.via ? t - HOP * pace : t;
-      if (run.via) hop(run, run.via, run.caller, back, "response", t);
+      if (run.via)
+        hop(run, run.via, run.sender?.part ?? run.caller, back, "response", t);
       move({
         run: run.id,
         kind: "response",

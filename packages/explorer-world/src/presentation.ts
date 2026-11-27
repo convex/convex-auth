@@ -20,7 +20,9 @@ export type Shape =
   | "beacon"
   | "shard"
   | "obelisk"
-  | "marker";
+  | "marker"
+  /** A page's sign-in state: drawn by the scene from the state it is in. */
+  | "state";
 
 /** The variants of a pillar. */
 export type Profile = "round" | "hex" | "square" | "tri";

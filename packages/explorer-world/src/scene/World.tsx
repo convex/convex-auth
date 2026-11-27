@@ -6,6 +6,7 @@ import { frames } from "../problems.ts";
 import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
+import { Browser } from "./Browser.tsx";
 import { CameraRig } from "./CameraRig.tsx";
 import { Diagnostics, Layer } from "./Diagnostics.tsx";
 import { Islands } from "./Islands.tsx";
@@ -48,6 +49,7 @@ export function World() {
       </Layer>
       <Layer name="parts">
         <Parts />
+        <Browser />
       </Layer>
       <Layer name="rows">
         <Rows />
