@@ -105,6 +105,7 @@ describe("operations of client steps", () => {
     expect(chain()).toEqual([
       ["crossTab.listen", 1, "init", undefined],
       ["init", 1, "init", undefined],
+      ["state", 1, "init", undefined],
       [`storage.read ${JWT_KEY}`, 1, "init", undefined],
       [`storage.read ${REFRESH_KEY}`, 1, "init", undefined],
       ["state", 1, "init", undefined],
@@ -342,6 +343,7 @@ describe("operations of client steps", () => {
     expect(rows).toEqual([
       ["crossTab.listen", 1, "init", undefined],
       ["init", 1, "init", undefined],
+      ["state", 1, "init", undefined],
       ["ambientSignIn.init", 1, "init", undefined],
       ["storage.read __convexAuthProvider_test_flow", 1, "init", undefined],
       ["signIn.pending.start", 2, "signInPending", 1],
@@ -350,6 +352,34 @@ describe("operations of client steps", () => {
       ["signIn.pending.end", 2, "signInPending", 1],
       ["state", 1, "init", undefined],
     ]);
+  });
+});
+
+describe("the initial state", () => {
+  test("report the state the client starts from once, under the start-up", async () => {
+    enable();
+    const client = newClient(async () => ({ kind: "noSession" }));
+    await client.init();
+    client.dispose();
+    await client.init();
+    const states = reports().filter((r) => r.step === "state");
+    expect(states[0]).toEqual({
+      v: 1,
+      source: "convex-auth",
+      step: "state",
+      runsIn: "browser",
+      part: "module:browser/sessionManager",
+      isLoading: true,
+      isAuthenticated: false,
+      tokenChanged: false,
+      initial: true,
+      op: 1,
+      opKind: "init",
+    });
+    // Only the first start-up reports it; the change after the load does not.
+    expect(states.filter((r) => r.initial === true)).toHaveLength(1);
+    expect(states[1]).toMatchObject({ isLoading: false, op: 1 });
+    expect(states[1].initial).toBeUndefined();
   });
 });
 

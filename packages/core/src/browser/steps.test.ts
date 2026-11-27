@@ -129,6 +129,7 @@ describe("client step reports", () => {
       // The load of the stored session.
       "crossTab.listen",
       "init",
+      "state",
       "storage.read",
       "storage.read",
       "state",
@@ -195,6 +196,7 @@ describe("client step reports", () => {
       [REFRESH_KEY, true],
     ]);
     expect(byStep("state").map((r) => r.isAuthenticated)).toEqual([
+      false,
       false,
       true,
       true,

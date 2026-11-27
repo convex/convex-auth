@@ -386,6 +386,19 @@ export class AuthClient {
       },
       op,
     );
+    // Later `state` reports come only on a change, so report the state the
+    // client starts from once, marked `initial`.
+    reportClientStep(
+      STEPS,
+      "state",
+      {
+        isLoading: this.#snapshot.isLoading,
+        isAuthenticated: this.#snapshot.isAuthenticated,
+        tokenChanged: false,
+        initial: true,
+      },
+      op,
+    );
     // Run ambient sign-in onInit callbacks before anything observable
     // happens, so a withSignInPending call inside one marks loading before
     // the session
