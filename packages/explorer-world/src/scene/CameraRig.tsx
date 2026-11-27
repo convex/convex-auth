@@ -142,6 +142,15 @@ const typing = (e: KeyboardEvent) => {
 /** Whether the camera is at Home as it opened or was flown there. */
 let atHome = false;
 
+/**
+ * Where the camera is headed, kept across mounts of the rig: a live
+ * recording that lays the map out again mounts the scene afresh, and the
+ * camera must stay where the viewer put it. Null until the first open.
+ */
+let pose: { position: Vector3; target: Vector3 } | null = null;
+/** The last flight flown: a remount must not fly it again. */
+let flown = 0;
+
 /** The viewer takes the camera: Follow stops until turned on again. */
 const takeOver = () => {
   atHome = false;
@@ -161,6 +170,9 @@ export function CameraRig() {
   const director = usePlayback((s) => s.director);
   const flight = usePlayback((s) => s.flight);
   const lastFocus = useRef<string | null>(null);
+  // Set once this mount has put the camera in place: a frame can come
+  // before that, with new controls that look at the origin.
+  const placed = useRef(false);
 
   const canvas = useThree((s) => s.gl.domElement);
   const camera = useThree((s) => s.camera);
@@ -184,8 +196,15 @@ export function CameraRig() {
         smooth,
       );
     };
-    fit(false);
-    atHome = true;
+    if (pose) {
+      // Mounted again (the map was laid out again): stay put.
+      const { position: p, target: t } = pose;
+      void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false);
+    } else {
+      fit(false);
+      atHome = true;
+    }
+    placed.current = true;
     const refit = () => {
       if (atHome) fit(false);
     };
@@ -385,7 +404,8 @@ export function CameraRig() {
   // A requested flight: to the overview or to a selection.
   useEffect(() => {
     const c = controls.current;
-    if (!c || !flight) return;
+    if (!c || !flight || flight.seq <= flown) return;
+    flown = flight.seq;
     if (flight.target === "overview" || flight.target === "home") {
       const { position, target } =
         flight.target === "home" ? home(camera, canvas) : overview;
@@ -423,6 +443,11 @@ export function CameraRig() {
   useFrame((_, delta) => {
     const c = controls.current;
     if (!c) return;
+    // Where the camera is headed, for the next mount (see `pose`).
+    if (!placed.current) return;
+    pose ??= { position: new Vector3(), target: new Vector3() };
+    c.getPosition(pose.position, true);
+    c.getTarget(pose.target, true);
     // Fly with the keyboard.
     const speed = (KEYS.has("shift") ? 120 : 36) * delta;
     const moves: [string, () => unknown][] = [
