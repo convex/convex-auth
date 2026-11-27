@@ -290,7 +290,11 @@ frame takes milliseconds; that is not measured here.
   its groups has one name and its parts none. Close to one group, looking at
   it, its members are named (by the rest of their name after what the group
   shares) and no member of another group is; within a few metres of a
-  member, the parts below it (a module's hooks). `src/scene/Groups.tsx`.
+  member, the parts below it (a module's hooks), and the member's whole
+  name stands on the ground on the camera's side of it. A group's name
+  floats over the middle of its own disc; names of groups, members and
+  islands are drawn over the shapes around them, never cut by them.
+  `src/scene/Groups.tsx`.
 - **What took part stands out** (`src/model/takenPart.ts`). A part of a
   group took part once running code reported it; a group, once one of its
   parts did, or once the page called a function the structure links to the
@@ -299,7 +303,10 @@ frame takes milliseconds; that is not measured here.
   parts, a grey name, still there and named close in. A group the app the
   recording ran in (`focus`) links to in the structure (it sets up that
   sign-in method, from its source) is _wired_: a softer rim and name. All of
-  it follows the playhead.
+  it follows the playhead. What the page reported before any run (a
+  page that loads signed out calls nothing) is placed on the timeline on
+  its own (`Recording.early`), so what ran on load counts from the start;
+  the world still opens at rest, at the end.
 - **Distance is level of detail.** From afar: the islands, their names, and an
   arc between related islands. Nearer: the names of the parts of the islands
   around you. Close up: the source location under each part and the fields of

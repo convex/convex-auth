@@ -24,9 +24,11 @@ import {
   Color,
   InstancedMesh,
   Matrix4,
+  MeshBasicMaterial,
   Quaternion,
   RingGeometry,
   Vector3,
+  type Group,
 } from "three";
 import { FOOTPRINT } from "../layout/islands.ts";
 import type { Cluster, IslandPlacement } from "../layout/types.ts";
@@ -86,15 +88,24 @@ export const groupName = (c: Cluster) =>
   world.presentation.groups?.[c.id]?.label ?? c.label;
 
 /**
- * The groups drawn: not one that holds all its island holds (the keys of
- * one storage), which would only repeat the island.
+ * The groups drawn: those of an island with more than one. A single group
+ * (the keys of one storage) would only repeat its island.
  */
 const all = () =>
   world.layout.islands.flatMap((i) =>
-    i.clusters
-      .filter((c) => c.members.length < i.members.length)
-      .map((c) => ({ i, c })),
+    i.clusters.length > 1 ? i.clusters.map((c) => ({ i, c })) : [],
   );
+
+/**
+ * The material of a name drawn over everything: the shapes around a name
+ * never cut it. The declutter pass keeps names off each other.
+ */
+export const OVER = new MeshBasicMaterial({
+  depthTest: false,
+  depthWrite: false,
+  transparent: true,
+  toneMapped: false,
+});
 
 const disc = new CircleGeometry(1, 48).rotateX(-Math.PI / 2);
 const ring = new RingGeometry(0.94, 1, 64).rotateX(-Math.PI / 2);
@@ -277,11 +288,14 @@ function GroupNames({
   );
   return (
     <>
-      <group ref={group} position={[x, y + 0.45, z + c.radius + 0.2]}>
+      {/* Over the middle of its own disc: it reads as that disc's name. */}
+      <group ref={group} position={[x, y + 2.6, z]}>
         <KeepSize distance={GROUP_GROW.distance} max={GROUP_GROW.max}>
           <Billboard>
             <Label
               ref={color}
+              material={OVER}
+              renderOrder={18}
               fontSize={size}
               weight="bold"
               color="#ffffff"
@@ -305,6 +319,7 @@ function GroupNames({
                   )
                 : (partOf(id)?.label ?? id)
             }
+            full={partOf(id)?.label ?? id}
             below={!roots.includes(id)}
           />
         ))}
@@ -320,13 +335,22 @@ const BELOW_NEAR = 7;
 function MemberName({
   id,
   text,
+  full,
   below,
 }: {
   id: string;
+  /** Its name inside its group. */
   text: string;
+  /** Its whole name, for when the group's name has stepped back. */
+  full: string;
   below: boolean;
 }) {
   const p = placementOf(id);
+  // Close to a member whose own parts are named, its name stands on the
+  // ground on the camera's side of it, where the window does not cut it,
+  // and says its whole name.
+  const [close, setClose] = useState(false);
+  const place = useRef<Group>(null);
   const size = below ? 0.11 : 0.14;
   const group = useDeclutter(`member:${id}`, {
     chars: text.length,
@@ -337,25 +361,48 @@ function MemberName({
     hideFar: below ? BELOW_NEAR : undefined,
   });
   const color = usePartColor(id);
+  useFrame(({ camera }) => {
+    const g = place.current;
+    if (!p || !g || below) return;
+    const [x, y, z] = p.position;
+    const d = camera.position.distanceTo(v.set(x, y, z));
+    const now = d < BELOW_NEAR + 1;
+    if (now !== close) setClose(now);
+    if (!now) {
+      g.position.set(0, 0, 0);
+      return;
+    }
+    const dx = camera.position.x - x;
+    const dz = camera.position.z - z;
+    const len = Math.hypot(dx, dz) || 1;
+    const out = p.radius + 0.5;
+    g.position.set((dx / len) * out, 0.25 - h, (dz / len) * out);
+  });
   if (!p) return null;
   const h = HEIGHT[p.shape] * (p.radius / FOOTPRINT[p.shape]) + 0.3;
   const [x, y, z] = p.position;
   return (
-    <group ref={group} position={[x, y + h, z]}>
-      <KeepSize distance={MEMBER_GROW.distance} max={MEMBER_GROW.max}>
-        <Billboard>
-          <Label
-            ref={color}
-            fontSize={size}
-            weight="regular"
-            color="#ffffff"
-            outlineWidth={size * 0.09}
-            outlineColor="#03050a"
-          >
-            {text}
-          </Label>
-        </Billboard>
-      </KeepSize>
+    <group position={[x, y + h, z]}>
+      <group ref={place}>
+        <group ref={group}>
+          <KeepSize distance={MEMBER_GROW.distance} max={MEMBER_GROW.max}>
+            <Billboard>
+              <Label
+                ref={color}
+                material={OVER}
+                renderOrder={17}
+                fontSize={size}
+                weight={close ? "bold" : "regular"}
+                color="#ffffff"
+                outlineWidth={size * 0.09}
+                outlineColor="#03050a"
+              >
+                {close ? full : text}
+              </Label>
+            </Billboard>
+          </KeepSize>
+        </group>
+      </group>
     </group>
   );
 }

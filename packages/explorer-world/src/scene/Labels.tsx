@@ -174,6 +174,9 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
             fontSize={size}
             weight="bold"
             color={island.color}
+            // Over the shapes around it: a name is never cut.
+            material={ON_TOP}
+            renderOrder={19}
             outlineWidth={size * 0.06}
             outlineColor="#03050a"
           >
