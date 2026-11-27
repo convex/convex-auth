@@ -58,13 +58,15 @@ interface Diag {
   open: boolean;
   layers: Record<LayerName, boolean>;
   fog: boolean;
+  /** The effect composer itself: off draws straight to the canvas. */
+  composer: boolean;
   bloom: boolean;
   vignette: boolean;
   /** Replaces non-finite and negative values before the bloom. */
   sanitize: boolean;
   scan: Scan | null;
   toggle: (
-    key: LayerName | "fog" | "bloom" | "vignette" | "sanitize",
+    key: LayerName | "fog" | "composer" | "bloom" | "vignette" | "sanitize",
     on?: boolean,
   ) => void;
 }
@@ -78,6 +80,7 @@ export const useDiag = create<Diag>((set) => ({
     boolean
   >,
   fog: true,
+  composer: !params.has("noeffects"),
   bloom: !params.has("noeffects"),
   vignette: !params.has("noeffects"),
   sanitize: !params.has("nosanitize"),
@@ -88,7 +91,8 @@ export const useDiag = create<Diag>((set) => ({
         const layer = key as LayerName;
         return { layers: { ...s.layers, [layer]: on ?? !s.layers[layer] } };
       }
-      const flag = key as "fog" | "bloom" | "vignette" | "sanitize";
+      const flag = key as
+        "fog" | "composer" | "bloom" | "vignette" | "sanitize";
       return { [flag]: on ?? !s[flag] } as Partial<Diag>;
     }),
 }));

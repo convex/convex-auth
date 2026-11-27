@@ -77,9 +77,11 @@ export function World() {
  * diagnostics can turn each off.
  */
 function Effects() {
-  const { bloom, vignette, sanitize } = useDiag();
+  const { composer, bloom, vignette, sanitize } = useDiag();
   const pass = useMemo(() => new SanitizePass(), []);
-  if (!bloom && !vignette) return null;
+  // With the composer on and every effect off, the frame still goes through
+  // its half-float, multisampled buffers: a check of the composer alone.
+  if (!composer) return null;
   return (
     <EffectComposer multisampling={4}>
       <>{sanitize && <primitive object={pass} />}</>

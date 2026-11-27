@@ -90,7 +90,7 @@ function blackedOut(withEffects, without) {
 const setEffects = async (page, on) => {
   await page.evaluate((on) => {
     const s = explorerDiag.state.getState();
-    s.toggle("bloom", on);
+    s.toggle("composer", on);
     s.toggle("vignette", on);
   }, on);
   await page.waitForTimeout(2500);

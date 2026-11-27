@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { LAYERS, useDiag, type LayerName } from "../diag.ts";
 import { diagLive } from "../scene/Diagnostics.tsx";
 
-const EFFECTS = ["sanitize", "bloom", "vignette", "fog"] as const;
+const EFFECTS = ["composer", "sanitize", "bloom", "vignette", "fog"] as const;
 
 /**
  * `?diag`: what the GPU is, how the scene buffer looks, and a switch for each
