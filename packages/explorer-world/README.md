@@ -12,14 +12,45 @@ pnpm --filter @convex-dev/explorer-world build   # static app in dist/, relative
 
 `?project=<name>` picks a project (the first under `projects/` by default):
 `convex-auth`, or `chat`, a made-up app under `fixtures/`. `?recording=<name>`
-picks one of its recordings; Convex Auth has `page` (a browser driven through
-the `react-username-password` scenario) and `cli` (`npx convex run` calls,
-including the reuse of a spent refresh token).
+shows one of its saved recordings, paused; Convex Auth has `page` (a browser
+driven through the `react-username-password` scenario) and `cli` (`npx convex
+run` calls, including the reuse of a spent refresh token). Without
+`?recording=` or a live feed, the world shows the map alone, still, and says
+how to start live mode: no saved recording plays by itself.
+
+## Live mode
+
+```sh
+pnpm explorer:live examples/react-username-password
+```
+
+Runs the app on a local deployment, its page in a headless browser (no
+window, no display needed), the recorder, and the islands world, then prints
+one link. Open it in your own browser. The panel at the bottom left has one
+button per action of the app (sign up, sign in, sign in with a wrong
+password, sign out, reload) and the username in use; the recorder performs
+the action in the hidden page by filling in and submitting the app's own
+forms, and everything the world shows comes from what the page and the
+deployment then report. A button is enabled only when the recorder, looking
+at the page, says its action applies, and says why otherwise.
+
+On load the world is still: it shows the present (what the page already did)
+and plays nothing until something new happens. The timeline drags back over
+everything of the session. `--open` also opens the link; `--headed` shows the
+app's window, for debugging; `--view stage` runs the stage below instead.
+
+The actions are declared by the recorder's scenario module of the app (see
+`packages/explorer`, "Actions"); `--actions <name>` picks one (default: the
+app directory's name). The link carries a token of the run after `#`; the
+recorder answers only the world's origin with that token, so a page in
+another tab can neither read the stream nor start an action.
+`pnpm --filter @convex-dev/explorer-world check:controls` does what a person
+does, from a plain headless Chromium, and checks the hostile-tab cases.
 
 ## The stage
 
 ```sh
-pnpm explorer:live examples/react-username-password
+pnpm explorer:live examples/react-username-password --view stage
 ```
 
 One browser window opens: the stage (`stage.html`). With `--recorder
@@ -154,13 +185,12 @@ it runs the window under `xvfb-run`. About four minutes; `STAGE_SHOTS=<dir>`
 saves screenshots. `src/test/paths.test.ts` checks the paths on a session
 the command saved (`src/test/fixtures/stage-session.ndjson`).
 
-## Live mode in the islands world
+## Live mode: how it runs
 
-`pnpm explorer:live <app> --view islands` opens the app's page in a window of
-its own (with `--recorder in-page`, prints a link to it) and the islands world
-in your default browser, which shows what your
-clicks cause as they happen. Ctrl-C stops everything; the timeline is saved
-(its path is printed) and plays like any other recording.
+`pnpm explorer:live <app>` (see [Live mode](#live-mode)). With `--recorder
+in-page` it starts no browser and prints a link to the app's page for your
+own browser instead, with no actions. Ctrl-C stops everything; the timeline
+is saved (its path is printed).
 
 What it needs: Node 20.6 or later, and `pnpm install` and `pnpm build` at the
 root, and Google Chrome, which the recorder drives through Playwright

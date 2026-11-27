@@ -3,6 +3,7 @@ import { ACESFilmicToneMapping } from "three";
 import { isDrag } from "./scene/clicks.ts";
 import { World } from "./scene/World.tsx";
 import { usePlayback } from "./store.ts";
+import { Controls } from "./ui/Controls.tsx";
 import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
 import { DiagPanel } from "./ui/DiagPanel.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
@@ -50,6 +51,7 @@ export function App() {
       <CameraHud />
       <Inspector />
       <Timeline />
+      <Controls />
       <DiagPanel />
     </div>
   );

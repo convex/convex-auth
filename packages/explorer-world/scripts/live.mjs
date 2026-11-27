@@ -5,10 +5,16 @@
 //
 // It starts the app's local deployment (`convex dev`), turns on the step
 // reports of the project, serves the app's page, starts the recorder with a
-// browser window on that page and the timeline streamed to the world, serves
-// the world, and opens it. Use the app in its window; the world shows what
-// each click causes. Ctrl-C stops every part. When a part fails to start,
-// the command says which, shows the end of its output, and stops the rest.
+// headless browser on that page and the timeline streamed to the world, and
+// serves the world. It prints one link: open it in your own browser. The
+// world's controls ask the recorder for an action (sign up, sign in, ...),
+// which it performs in the hidden page; the world shows what each causes.
+// Ctrl-C stops every part. When a part fails to start, the command says
+// which, shows the end of its output, and stops the rest.
+//
+// The link carries a token of this run after `#`; the recorder's stream and
+// its actions answer only requests from the world's origin that carry it
+// (see `packages/explorer/src/stream.ts`).
 //
 // `--recorder in-page` starts no browser instead: the app's page goes
 // through the recorder's page proxy, and the command prints one link to the
@@ -33,41 +39,41 @@ import {
 import { createRequire } from "node:module";
 import { createServer as createNetServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 const USAGE = `Usage: pnpm explorer:live <app directory> [options]
 
-Runs the Convex app on a local deployment and opens one browser window: the
-stage, with the app's page live on its screen for you to use, and the browser's
-storage, cookies and connections in front of it, moving as the page does.
-With --recorder in-page, it opens no window and prints one link to open in
-your own browser instead. Ctrl-C stops everything.
+Runs the Convex app on a local deployment, its page in a headless browser,
+and the islands world, then prints one link. Open it in your own browser: the
+world's controls perform actions in the hidden page (sign up, sign in, ...)
+and the world shows what each causes. Ctrl-C stops everything.
 
 Options:
-  --view <which>       stage (default): the window above. islands: the app's
-                       page in its own window (a link with --recorder
-                       in-page), and the islands world in your default
-                       browser
+  --view <which>       islands (default): the above. stage: one browser window,
+                       the stage, with the app's page live on its screen for
+                       you to use
+  --actions <name>     The recorder's scenario whose actions the controls offer
+                       (default: the app directory's name)
+  --open               Also open the link in the default browser
+  --headed             Show the app's window, for debugging
   --recorder <which>   cdp (default): the recorder launches its own Chromium
                        and reads it over the DevTools protocol. in-page: no
                        browser is started; the recorder's page proxy records
-                       the page in your browser, from inside it (not with
-                       --scenario or --debug-port)
+                       the page in your browser, from inside it (no actions;
+                       not with --scenario or --debug-port)
   --project <name>     The recorder's project config (default: convex-auth)
   --page <url>         Use a page you serve yourself, against the same
                        deployment, instead of serving the app with its Vite
-  --browser <which>    The browser of the app's window: chrome (the Google
+  --browser <which>    The browser of the app's page: chrome (the Google
                        Chrome installed on this machine), chromium (the one
                        Playwright installed), or a path to a Chromium
                        (default: chrome when installed, else chromium)
-  --scenario <name>    Drive the page with a scenario of the recorder instead
-                       of a person; the window stays hidden unless --headed
-  --headed             Show the window even with --scenario
+  --scenario <name>    Run a scenario of the recorder from start to end
+                       instead of the controls
   --out <file>         Where to save the timeline (default: a new directory
                        under the system's temporary directory)
-  --no-open            Do not open the world in the default browser
   --cloud              Record the cloud deployment of the app's .env.local
                        instead, with CONVEX_DEPLOY_KEY (not run here: see the
                        README)
@@ -100,13 +106,16 @@ try {
     allowPositionals: true,
     options: {
       project: { type: "string", default: "convex-auth" },
-      view: { type: "string", default: "stage" },
+      view: { type: "string", default: "islands" },
       recorder: { type: "string" },
+      actions: { type: "string" },
+      open: { type: "boolean", default: false },
       page: { type: "string" },
       browser: { type: "string" },
       scenario: { type: "string" },
       headed: { type: "boolean", default: false },
       out: { type: "string" },
+      // The default now; kept so that older commands still run.
       "no-open": { type: "boolean", default: false },
       cloud: { type: "boolean", default: false },
       settle: { type: "string", default: "3000" },
@@ -550,13 +559,13 @@ async function main() {
   await server.listen();
   if (stopping) throw new StartError(null, "Stopped while starting.");
 
-  // The islands world opens first: it shows the map, and connects to the
-  // stream once the recorder serves it. The stage opens in the recorder's
-  // window, once the page is served.
+  // The islands world's link is printed once the recorder serves its stream.
+  // The stage opens in the recorder's window, once the page is served.
+  let worldUrl = null;
   if (!stageView) {
-    const worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamLink)}`;
-    say(`World: ${worldUrl}`);
-    if (!values["no-open"]) openInBrowser(worldUrl);
+    // The token goes after `#`, which the browser sends to no server; the
+    // world adds it to its requests to the stream.
+    worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamUrl)}&project=${encodeURIComponent(values.project)}#token=${streamToken}`;
   }
 
   const url0 = deploymentUrl();
@@ -725,8 +734,15 @@ async function main() {
               ? ["--debug-port", values["debug-port"]]
               : []),
             ...browserArgs(),
-            ...(values.scenario ? ["--scenario", values.scenario] : []),
-            ...(values.headed || !values.scenario ? ["--headed"] : []),
+            ...(values.scenario
+              ? ["--scenario", values.scenario]
+              : stageView
+                ? []
+                : ["--actions", values.actions ?? basename(appDir)]),
+            // The stage is a window for a person; the islands view has none.
+            ...(values.headed || (stageView && !values.scenario)
+              ? ["--headed"]
+              : []),
           ]),
     ],
     {
@@ -739,7 +755,11 @@ async function main() {
         const found = /Streaming the timeline at (\S+)/.exec(line);
         if (found) streaming = found[1];
         if (/^(Recording |Running the scenario)/.test(line)) recording = true;
-        if (/^(Recording |Running the scenario|The scenario|Wrote )/.test(line))
+        if (
+          /^(Recording |Running the scenario|The scenario|Wrote |Action |A \w+ event held)/.test(
+            line,
+          )
+        )
           say(`recorder: ${line}`);
       },
     },
@@ -759,6 +779,11 @@ async function main() {
       `\n  Open in your browser:\n\n    ${stageView ? stageUrl : screenLink}\n`,
     );
   }
+  if (worldUrl !== null) {
+    // The one link of the world, printed once everything answers.
+    console.log(`\n  World: ${worldUrl}\n`);
+    if (values.open) openInBrowser(worldUrl);
+  }
   say(
     values.scenario
       ? `running the scenario ${values.scenario}; Ctrl-C to stop.`
@@ -766,7 +791,7 @@ async function main() {
         ? "use the app on the stage's screen. Ctrl-C stops everything."
         : inPage
           ? "use the app at the link above; the world shows what it does. Ctrl-C stops everything."
-          : "use the app in its window; the world shows what it does. Ctrl-C stops everything.",
+          : "open the link above; its controls drive the app. Ctrl-C stops everything.",
   );
 
   recorder.done.then(({ code, signal }) => {

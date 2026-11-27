@@ -693,3 +693,65 @@ button {
 .diag label {
   cursor: pointer;
 }
+
+/* Live controls (ui/Controls.tsx), bottom left, above the timeline. Kept
+   plain on purpose; restyle freely. */
+.controls {
+  left: 18px;
+  bottom: 136px;
+  width: 250px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.controls .who {
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.controls .who .mono {
+  color: var(--text);
+}
+.controls ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.controls li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.controls button {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.controls button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.controls button:disabled {
+  color: var(--dim);
+  cursor: default;
+}
+.controls button[data-running] {
+  border-color: var(--live);
+  color: var(--live);
+}
+.controls .reason {
+  color: var(--dim);
+  font-size: 11px;
+}
+.controls .hint {
+  margin: 0;
+  color: var(--dim);
+}
+.controls .hint.error {
+  color: var(--warn);
+  margin-top: 6px;
+}

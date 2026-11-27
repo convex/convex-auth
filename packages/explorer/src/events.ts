@@ -462,7 +462,26 @@ export type ScenarioEvent = {
   status: "start" | "end" | "error";
   /** The error, scrubbed, for "error". */
   error: string | null;
+  // The fields below mark an action that the viewer asked for (see
+  // `actions.ts`); a step of a scenario run from start to end has none.
+  /** The id of the action, from the list the scenario module declares. */
+  action?: string;
+  /** The number of the action in the recording, from 1; pairs start and end. */
+  actionRun?: number;
+  /** Null at the start; at the end, how the action ended. */
+  outcome?: ActionOutcome | null;
+  /** What the page showed at the end of an "ok" action, e.g. "signed in". */
+  result?: string | null;
+  /** The username the action used, if any. Never a password. */
+  username?: string | null;
 };
+
+/**
+ * How an action ended: "ok", the page got where the action leads (which can
+ * be the app refusing a wrong password, when that is the action);
+ * "failed", it did not; "timeout", it took too long.
+ */
+export type ActionOutcome = "ok" | "failed" | "timeout";
 
 /**
  * One call of a function that the page made, linked to its run on the

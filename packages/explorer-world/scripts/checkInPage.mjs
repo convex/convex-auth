@@ -152,6 +152,8 @@ async function run(recorder) {
   const command = [
     join(root, "scripts/live.mjs"),
     appDir,
+    "--view",
+    "stage",
     "--recorder",
     recorder,
     "--world-port",

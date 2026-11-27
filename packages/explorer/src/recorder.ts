@@ -8,6 +8,7 @@
  * @module
  */
 import { appendFileSync, writeFileSync } from "node:fs";
+import { ActionRunner } from "./actions.ts";
 import { BrowserRedactor } from "./browser.ts";
 import { BrowserSession, SCREEN_FRAME } from "./browserRecorder.ts";
 import type { ResolvedTarget } from "./config.ts";
@@ -33,6 +34,11 @@ export type BrowserRecording = {
   url: string;
   /** The scenario to run on it; without one, a person drives the page. */
   scenario: Scenario | null;
+  /**
+   * Instead of running the scenario from start to end, perform its actions
+   * when the viewer asks for them (`serve` must be set); see `actions.ts`.
+   */
+  actions?: boolean;
   /** Show the window. */
   headed: boolean;
   /**
@@ -68,7 +74,7 @@ export type ServeOptions = {
   port: number;
   /** The origins allowed to read the stream. */
   origins: string[];
-  /** A token that a reader must give in the `token` query parameter. */
+  /** A token that every request to the stream must carry. */
   token?: string;
 };
 
@@ -236,13 +242,32 @@ export async function record(
       });
     }
   };
+  // The secrets that actions typed into the page. The redaction of the
+  // browser feed keeps them out; this is the last check before a line is
+  // written, should a page echo one where the redaction does not look.
+  const typed = new Set<string>();
+  const onTyped = (value: string) => {
+    typed.add(value);
+    hooks.onRawSecret?.(value);
+  };
   const flush = (now: number) => {
     const events = builder.drain(now);
     if (events.length === 0) {
       return;
     }
     // One string per event, for the file and the stream alike.
-    const lines = events.map((event) => JSON.stringify(event));
+    const lines = events.map((event) => {
+      let line = JSON.stringify(event);
+      for (const value of typed) {
+        if (line.includes(value)) {
+          log(
+            `A ${event.kind} event held a secret that an action typed; it is replaced with [typed secret].`,
+          );
+          line = line.split(value).join("[typed secret]");
+        }
+      }
+      return line;
+    });
     appendFileSync(options.out, lines.map((line) => line + "\n").join(""));
     server?.push(lines);
     for (const event of events) {
@@ -392,6 +417,7 @@ export async function record(
   let session: BrowserSession | null = null;
   let proxy: PageProxy | null = null;
   let ingest: PageIngest | null = null;
+  let runner: ActionRunner | null = null;
   let scenarioFailed = false;
   await Promise.race([ready, failed, aborted]);
   if (failure === null && !stopped()) {
@@ -454,14 +480,58 @@ export async function record(
           emit: (events) => {
             add(events);
             builder.skew = session?.skew ?? 0;
+            runner?.see(events);
           },
         });
       } catch (error) {
         // The timeline keeps what the feeds gave until now.
         failure = `The browser did not start: ${error instanceof Error ? error.message : String(error)}`;
       }
+      const actions = browser.actions ? browser.scenario?.actions : undefined;
       if (session === null) {
         // Reported below.
+      } else if (browser.actions === true) {
+        const screen = await session.screen();
+        const page = session.page;
+        if (actions !== undefined && server !== null) {
+          const live = server;
+          runner = new ActionRunner({
+            actions,
+            scenario: browser.scenario!.name,
+            page,
+            frame: screen,
+            // Until the new document is there; the action waits for what
+            // it needs of it.
+            reload: async () => {
+              if (screen === page.mainFrame())
+                await page.reload({ waitUntil: "commit" });
+              else await screen.goto(screen.url(), { waitUntil: "commit" });
+            },
+            baseUrl: browser.url,
+            emit: (events) => add(events),
+            onSecret: onTyped,
+            publish: (state) => live.setControls(state),
+            log,
+          });
+          live.handleActions((id) => runner!.request(id));
+          log(
+            `Recording ${browser.url}; waiting for actions from the viewer. Ctrl-C to stop.`,
+          );
+        } else {
+          server?.setControls({
+            busy: null,
+            username: null,
+            observed: { signedIn: null, loading: false, page: "" },
+            actions: [],
+          });
+          log(
+            `Recording ${browser.url}; ${browser.scenario?.name ?? "this app"} declares no actions. Ctrl-C to stop.`,
+          );
+        }
+        await Promise.race([session.closed, failed, aborted]);
+        runner?.close();
+        // Let a running action end before the browser closes, briefly.
+        await Promise.race([runner?.idle(), sleep(2000)]);
       } else if (browser.scenario === null) {
         log(
           `Recording ${browser.url}; use the page, then close the browser or press Ctrl-C.`,
@@ -477,7 +547,7 @@ export async function record(
           session.screen(),
           browser.url,
           (event) => add([event]),
-          hooks.onRawSecret,
+          onTyped,
         ).then(
           () => log("The scenario ended."),
           (error: unknown) => {

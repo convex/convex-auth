@@ -17,7 +17,7 @@
 // with a Chromium (`require("playwright")`). Takes about two minutes.
 //
 //   pnpm --filter @convex-dev/explorer-world check:live
-/* global setTimeout, URL -- Node globals. */
+/* global setTimeout, URL, URLSearchParams -- Node globals. */
 /* global window -- runs in the page. */
 import { spawn, spawnSync } from "node:child_process";
 import { request } from "node:http";
@@ -124,10 +124,11 @@ function readStream() {
   if (streamPath === null) {
     const world = seen(/World: (\S+)/);
     if (world) {
-      const live = new URL(
-        new URL(/World: (\S+)/.exec(world.line)[1]).searchParams.get("live"),
-      );
-      streamPath = live.pathname + live.search;
+      const link = new URL(/World: (\S+)/.exec(world.line)[1]);
+      const live = new URL(link.searchParams.get("live"));
+      // The token is after `#` in the world's link.
+      const token = new URLSearchParams(link.hash.slice(1)).get("token");
+      streamPath = `${live.pathname}?token=${encodeURIComponent(token)}`;
     } else {
       setTimeout(readStream, 300);
       return;
@@ -185,7 +186,9 @@ try {
     if (!["127.0.0.1", "localhost"].includes(hostname))
       external.push(request.url());
   });
-  await page.goto(`${worldUrl}&free&noeffects&capture`);
+  // The link ends in its token (`#token=`); the hooks go before it.
+  const [linkBase, linkToken] = worldUrl.split("#");
+  await page.goto(`${linkBase}&free&noeffects&capture#${linkToken}`);
   const state = () =>
     page.evaluate(() => {
       const s = window.explorer.getState();

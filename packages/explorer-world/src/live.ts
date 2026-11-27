@@ -125,6 +125,22 @@ export function liveUrl(param: string | null): URL | null {
   return url;
 }
 
+/**
+ * The token of this run, from the link's fragment (`#token=`), which the
+ * browser sends to no server. Null without one.
+ */
+export function liveToken(hash: string): string | null {
+  const token = new URLSearchParams(hash.replace(/^#/, "")).get("token");
+  return token && /^[A-Za-z0-9_-]{16,128}$/.test(token) ? token : null;
+}
+
+/** The URL of the stream with the token, which the stream requires. */
+export function withToken(url: URL, token: string | null): URL {
+  const out = new URL(url);
+  if (token !== null) out.searchParams.set("token", token);
+  return out;
+}
+
 export type LiveConnection = {
   /** Closes the stream. */
   close: () => void;
@@ -134,7 +150,9 @@ export type LiveConnection = {
  * Reads the stream at `url` with `EventSource`. Until it first connects, it
  * tries again every 500 ms; after, the browser reconnects on its own and
  * resumes after the last line it got. `onLines` gets each batch; a batch ends
- * when the browser has no more messages queued.
+ * when the browser has no more messages queued. `onCaughtUp` is called once
+ * the lines written before the world connected are in (the past), and
+ * `onControls` with each state of the recorder's controls.
  */
 export function connectLive(
   url: URL,
@@ -142,6 +160,8 @@ export function connectLive(
   handlers: {
     onLines: () => void;
     onStatus: (status: "connecting" | "open" | "ended" | "lost") => void;
+    onCaughtUp?: () => void;
+    onControls?: (state: unknown) => void;
   },
 ): LiveConnection {
   let source: EventSource;
@@ -165,6 +185,17 @@ export function connectLive(
         handlers.onLines();
       }, 0);
     };
+    source.addEventListener("caughtup", () => {
+      // After the lines queued before it: the batch they make goes first.
+      setTimeout(() => handlers.onCaughtUp?.(), 0);
+    });
+    source.addEventListener("actions", (message) => {
+      try {
+        handlers.onControls?.(JSON.parse((message as MessageEvent).data));
+      } catch {
+        // Not JSON: ignored.
+      }
+    });
     source.addEventListener("end", () => {
       feed.ended = true;
       source.close();

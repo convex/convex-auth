@@ -1,12 +1,15 @@
 import { create } from "zustand";
 import { parseNdjson } from "./adapters/convexRecording.ts";
+import { setActionEndpoint, takeControls } from "./controls.ts";
 import {
   anchorTime,
   connectLive,
   LiveFeed,
   liveEdge,
+  liveToken,
   liveUrl,
   placedBehind,
+  withToken,
 } from "./live.ts";
 import { nextStop, previousStop } from "./model/playback.ts";
 import type { World } from "./model/world.ts";
@@ -28,26 +31,38 @@ try {
   reportProblem(error instanceof Error ? error.message : String(error));
 }
 
+/**
+ * `?recording=<name>`: a saved recording of the project, shown only when
+ * asked for by name. Without it and without `?live=`, the world is the map
+ * alone, still.
+ */
 const recordingName = (() => {
   const asked = params.get("recording");
-  return asked && asked in project.source.timelines
-    ? asked
-    : (Object.keys(project.source.timelines)[0] ?? "");
+  if (asked === null) return null;
+  if (asked in project.source.timelines) return asked;
+  reportProblem(
+    `No saved recording "${asked}"; the project has ${Object.keys(project.source.timelines).join(", ")}.`,
+  );
+  return null;
 })();
+
+/** Neither live nor a saved recording: the world waits for live mode. */
+export const idle = !liveSource && recordingName === null;
 
 /**
  * The world of the project in the URL (`?project=`), or the first one, with
- * the recording in the URL (`?recording=`), or the live recording at
- * `?live=`. Live, it is replaced as the recording grows: read it where it is
+ * the live recording at `?live=`, or the saved recording `?recording=`, or
+ * none. Live, it is replaced as the recording grows: read it where it is
  * used, not once at the top of a module.
  */
-export let world: World = liveSource
-  ? worldFromEvents(project, [], "live").world
-  : worldFromEvents(
-      project,
-      parseNdjson(project.source.timelines[recordingName] ?? ""),
-      recordingName,
-    ).world;
+export let world: World =
+  liveSource || recordingName === null
+    ? worldFromEvents(project, [], liveSource ? "live" : "none").world
+    : worldFromEvents(
+        project,
+        parseNdjson(project.source.timelines[recordingName] ?? ""),
+        recordingName,
+      ).world;
 export const projectName = name;
 
 /** What the HUD shows of a live recording. */
@@ -58,6 +73,11 @@ export interface LiveStatus {
   events: number;
   /** Runs that arrived late and fell before the run the playhead was in. */
   placedBehind: number;
+  /**
+   * Whether the lines written before the world connected are in. Until then
+   * the world shows the newest state, still; after, what is new plays.
+   */
+  caughtUp: boolean;
 }
 
 export type Selection =
@@ -80,6 +100,8 @@ export interface Overlays {
 interface PlaybackStore {
   time: number;
   playing: boolean;
+  /** The viewer paused: what arrives live does not start playback. */
+  held: boolean;
   speed: number;
   selected: Selection | null;
   /** The camera follows the action until the viewer takes the controls. */
@@ -111,7 +133,9 @@ const clamp = (t: number) => Math.min(Math.max(t, 0), world.timeline.duration);
 
 export const usePlayback = create<PlaybackStore>((set, get) => ({
   time: 0,
-  playing: true,
+  // Still on load: nothing plays until something new happens.
+  playing: false,
+  held: false,
   speed: 1,
   selected: null,
   director: true,
@@ -125,9 +149,11 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
         connection: "connecting",
         events: 0,
         placedBehind: 0,
+        caughtUp: false,
       }
     : null,
-  skipToLive: () => set({ time: liveEdge(world.timeline), playing: true }),
+  skipToLive: () =>
+    set({ time: liveEdge(world.timeline), playing: true, held: false }),
   setTime: (t) => set({ time: clamp(t) }),
   play: () => {
     const live = get().live;
@@ -137,13 +163,14 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
       !(live && live.connection !== "ended")
     )
       set({ time: 0 });
-    set({ playing: true });
+    set({ playing: true, held: false });
   },
-  pause: () => set({ playing: false }),
+  pause: () => set({ playing: false, held: true }),
   toggle: () => (get().playing ? get().pause() : get().play()),
   step: (direction) =>
     set((s) => ({
       playing: false,
+      held: true,
       time:
         direction === 1
           ? nextStop(world.timeline, s.time)
@@ -179,11 +206,22 @@ export function currentState() {
 export function replaceWorld(next: World, relaidOut: boolean) {
   const s = usePlayback.getState();
   const before = world.timeline;
-  const time = anchorTime(before, s.time, next.timeline);
   const behind = placedBehind(before, s.time, next.timeline);
+  // Before the world caught up, what arrives is the past: the playhead stays
+  // at the newest state. After, what arrives is new: a playhead waiting at
+  // the end plays it, unless the viewer paused.
+  const caughtUp = s.live?.caughtUp ?? true;
+  const atEnd = s.time >= before.duration - 1e-6;
+  const time = caughtUp
+    ? anchorTime(before, s.time, next.timeline)
+    : next.timeline.duration;
+  const grew = next.timeline.duration > before.duration + 1e-6;
   world = next;
   cached = null;
   usePlayback.setState({
+    ...(s.live && caughtUp && atEnd && grew && !s.held && !s.playing
+      ? { playing: true }
+      : {}),
     time,
     version: s.version + 1,
     layoutVersion: s.layoutVersion + (relaidOut ? 1 : 0),
@@ -196,6 +234,8 @@ export function replaceWorld(next: World, relaidOut: boolean) {
 
 /** When each rebuild was made and first drawn, for measuring the lag. */
 export const liveTrace: {
+  /** The events of the stream, in order. */
+  events: readonly unknown[];
   /** Per event of the stream, in order: when the world received it. */
   received: number[];
   /**
@@ -208,11 +248,15 @@ export const liveTrace: {
     ms: number;
     drawnAt: number | null;
   }[];
-} = { received: [], builds: [] };
+} = { events: [], received: [], builds: [] };
 
 if (liveSource) {
+  const token = liveToken(location.hash);
+  const stream = withToken(liveSource, token);
+  setActionEndpoint(liveSource, token);
   const feed = new LiveFeed();
   liveTrace.received = feed.arrivals;
+  liveTrace.events = feed.events;
   let lastBuild = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   // Rebuilding takes a few ms; at most one every MIN_GAP ms.
@@ -238,7 +282,17 @@ if (liveSource) {
       live: s.live && { ...s.live, events: feed.events.length },
     }));
   };
-  connectLive(liveSource, feed, {
+  connectLive(stream, feed, {
+    onCaughtUp: () => {
+      if (usePlayback.getState().live?.caughtUp) return;
+      if (timer !== null) clearTimeout(timer);
+      rebuild();
+      usePlayback.setState((s) => ({
+        time: world.timeline.duration,
+        live: s.live && { ...s.live, caughtUp: true },
+      }));
+    },
+    onControls: takeControls,
     onLines: () => {
       if (timer !== null) return;
       timer = setTimeout(
@@ -249,7 +303,7 @@ if (liveSource) {
     onStatus: (connection) => {
       if (connection === "lost")
         reportProblem(
-          `The live recording at ${liveSource.href} cannot be reached; the world keeps what it received.`,
+          `The live recording at ${liveSource.href} cannot be reached${token === null ? " (the link has no #token=: open the link that explorer:live printed)" : ""}; the world keeps what it received.`,
         );
       usePlayback.setState((s) => ({
         live: s.live && { ...s.live, connection },

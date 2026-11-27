@@ -14,6 +14,7 @@
  */
 import { randomBytes } from "node:crypto";
 import type { Frame, Page } from "playwright-core";
+import type { PageActions } from "./actions.ts";
 import type { ScenarioEvent } from "./events.ts";
 import { scrubText } from "./redact.ts";
 
@@ -50,6 +51,12 @@ export type Scenario = {
   /** What the scenario does, for `--help`. */
   description: string;
   run(ctx: ScenarioContext): Promise<void>;
+  /**
+   * The actions a viewer can ask for, one at a time, instead of running the
+   * scenario from start to end (`--actions`); see `actions.ts`.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- each module has its own memory.
+  actions?: PageActions<any>;
 };
 
 /**

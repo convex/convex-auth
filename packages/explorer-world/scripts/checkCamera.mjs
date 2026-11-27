@@ -30,7 +30,7 @@ const server = await preview({
   preview: { port: 0, host: "127.0.0.1" },
   build: { outDir: out },
 });
-const url = `${server.resolvedUrls.local[0]}world/index.html?paused&capture&free`;
+const url = `${server.resolvedUrls.local[0]}world/index.html?recording=page&paused&capture&free`;
 const W = 1000;
 const H = 600;
 

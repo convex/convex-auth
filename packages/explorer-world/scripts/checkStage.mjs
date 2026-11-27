@@ -74,6 +74,8 @@ const before = processes();
 const command = [
   join(root, "scripts/live.mjs"),
   appDir,
+  "--view",
+  "stage",
   "--browser",
   "chromium",
   "--world-port",

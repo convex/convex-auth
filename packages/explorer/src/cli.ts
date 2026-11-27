@@ -10,7 +10,7 @@
  * @module
  */
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { appendFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
@@ -44,6 +44,9 @@ Browser:
   --page <url>           Open the app's page, served against the deployment, and record it
   --scenario <name|file> Drive the page with a scenario, then stop: ${Object.keys(SCENARIOS).join(", ")},
                          or a module whose default export is a Scenario
+  --actions <name|file>  Perform the actions of a scenario when the viewer
+                         asks for them, one at a time, in a headless browser
+                         unless --headed; needs --serve
   --headed               Show the browser; without --scenario, you drive the page
   --stage <url>          Open this page instead, which shows the app's page in a
                          frame named explorer-screen, and record that frame only
@@ -73,7 +76,8 @@ Live:
   --serve-origin <origin>
                          An origin allowed to read the stream, e.g.
                          http://127.0.0.1:5174; repeat for more. Needed with --serve
-  With EXPLORER_STREAM_TOKEN set, a reader must also give it as ?token=.
+  With EXPLORER_STREAM_TOKEN set, every request to the stream must carry it
+  (?token= on the stream, X-Explorer-Token on an action).
 
 Local: the admin key of the deployment that \`npx convex dev\` runs, or
 CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY.
@@ -97,6 +101,7 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       app: { type: "string" },
       page: { type: "string" },
       scenario: { type: "string" },
+      actions: { type: "string" },
       headed: { type: "boolean" },
       chromium: { type: "string" },
       stage: { type: "string" },
@@ -151,6 +156,7 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
   if (values.page === undefined) {
     for (const flag of [
       "scenario",
+      "actions",
       "headed",
       "stage",
       "debug-port",
@@ -161,9 +167,17 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
         throw new UsageError(`--${flag} needs --page.`);
       }
     }
-  } else if (values.scenario === undefined && values.headed !== true) {
+  } else if (values.scenario !== undefined && values.actions !== undefined) {
+    throw new UsageError("Give --scenario or --actions, not both.");
+  } else if (values.actions !== undefined && values.serve === undefined) {
+    throw new UsageError("--actions needs --serve: the viewer asks for them.");
+  } else if (
+    values.scenario === undefined &&
+    values.actions === undefined &&
+    values.headed !== true
+  ) {
     throw new UsageError(
-      "--page needs --scenario, or --headed for you to drive the page.",
+      "--page needs --scenario, --actions, or --headed for you to drive the page.",
     );
   }
   if (values.proxy !== undefined && values.page !== undefined) {
@@ -224,9 +238,12 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
         : {
             url: values.page,
             scenario:
-              values.scenario === undefined
-                ? null
-                : await loadScenario(values.scenario, base),
+              values.scenario !== undefined
+                ? await loadScenario(values.scenario, base)
+                : values.actions !== undefined
+                  ? await loadActions(values.actions, base)
+                  : null,
+            actions: values.actions !== undefined,
             headed: values.headed === true,
             stage: values.stage,
             debugPort:
@@ -288,6 +305,23 @@ async function loadScenario(name: string, base: string): Promise<Scenario> {
   return module.default;
 }
 
+/**
+ * The scenario whose actions `--actions` names; null, with a warning, when
+ * there is none: the page is recorded and the viewer gets no actions.
+ */
+async function loadActions(
+  name: string,
+  base: string,
+): Promise<Scenario | null> {
+  if (SCENARIOS[name] === undefined && !existsSync(resolve(base, name))) {
+    console.error(
+      `No scenario "${name}" declares actions (known: ${Object.keys(SCENARIOS).join(", ")}); recording the page with no actions.`,
+    );
+    return null;
+  }
+  return loadScenario(name, base);
+}
+
 function number(flag: string, value: string | undefined, fallback: number) {
   if (value === undefined) {
     return fallback;
@@ -304,7 +338,16 @@ try {
   const stop = new AbortController();
   process.once("SIGINT", () => stop.abort());
   process.once("SIGTERM", () => stop.abort());
-  const { code } = await record(options, { stop: stop.signal });
+  // For a check that looks for raw values in what was written: each raw
+  // secret the recorder saw goes to this file. Never set otherwise.
+  const secretsFile = process.env.EXPLORER_CHECK_SECRETS;
+  const { code } = await record(options, {
+    stop: stop.signal,
+    onRawSecret:
+      secretsFile === undefined || secretsFile === ""
+        ? undefined
+        : (value) => appendFileSync(secretsFile, `${value}\n`, { mode: 0o600 }),
+  });
   process.exit(code);
 } catch (error) {
   if (error instanceof UsageError || error instanceof TargetError) {

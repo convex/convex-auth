@@ -40,7 +40,7 @@ const server = await preview({
   preview: { port: 0, host: "127.0.0.1" },
   build: { outDir: out },
 });
-const url = `${server.resolvedUrls.local[0]}nested/world/index.html?paused&t=8&free&capture`;
+const url = `${server.resolvedUrls.local[0]}nested/world/index.html?recording=page&paused&t=8&free&capture`;
 
 const browser = await chromium.launch({
   args: [
