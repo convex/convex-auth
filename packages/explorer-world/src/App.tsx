@@ -3,6 +3,7 @@ import { ACESFilmicToneMapping } from "three";
 import { World } from "./scene/World.tsx";
 import { usePlayback } from "./store.ts";
 import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
+import { DiagPanel } from "./ui/DiagPanel.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { Problems, SceneBoundary } from "./ui/Problems.tsx";
 import { Timeline } from "./ui/Timeline.tsx";
@@ -37,7 +38,7 @@ export function App() {
         }
       >
         <SceneBoundary>
-          <World key={layoutVersion} effects={!params.has("noeffects")} />
+          <World key={layoutVersion} />
         </SceneBoundary>
       </Canvas>
       <Problems />
@@ -46,6 +47,7 @@ export function App() {
       <CameraHud />
       <Inspector />
       <Timeline />
+      <DiagPanel />
     </div>
   );
 }

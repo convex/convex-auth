@@ -1,15 +1,19 @@
 import { useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
+import { useMemo } from "react";
+import { useDiag } from "../diag.ts";
 import { frames } from "../problems.ts";
 import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
 import { CameraRig } from "./CameraRig.tsx";
+import { Diagnostics, Layer } from "./Diagnostics.tsx";
 import { Islands } from "./Islands.tsx";
 import { Labels } from "./Labels.tsx";
 import { Links } from "./Links.tsx";
 import { Parts } from "./Parts.tsx";
 import { Rows } from "./Rows.tsx";
+import { SanitizePass } from "./safety.ts";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
 /** Advances the playback time while playing, and counts the frames drawn. */
@@ -34,22 +38,53 @@ function Clock() {
   return null;
 }
 
-export function World({ effects = true }: { effects?: boolean }) {
+export function World() {
   return (
     <>
       <Clock />
       <Backdrop />
-      <Islands />
-      <Parts />
-      <Rows />
-      <Links />
-      <Labels />
-      <Travellers />
-      <Holdings />
-      <Alerts />
+      <Layer name="islands">
+        <Islands />
+      </Layer>
+      <Layer name="parts">
+        <Parts />
+      </Layer>
+      <Layer name="rows">
+        <Rows />
+      </Layer>
+      <Layer name="links">
+        <Links />
+      </Layer>
+      <Layer name="labels">
+        <Labels />
+      </Layer>
+      <Layer name="travellers">
+        <Travellers />
+        <Holdings />
+        <Alerts />
+      </Layer>
+      <Diagnostics />
       <CameraRig />
-      {effects && (
-        <EffectComposer multisampling={4}>
+      <Effects />
+    </>
+  );
+}
+
+/**
+ * Bloom and vignette, after a pass that removes NaN, infinite and negative
+ * values from the scene buffer: the bloom would spread one such pixel over a
+ * black rectangle (see `safety.ts`). `?noeffects` turns both off, and the
+ * diagnostics can turn each off.
+ */
+function Effects() {
+  const { bloom, vignette, sanitize } = useDiag();
+  const pass = useMemo(() => new SanitizePass(), []);
+  if (!bloom && !vignette) return null;
+  return (
+    <EffectComposer multisampling={4}>
+      <>{sanitize && <primitive object={pass} />}</>
+      <>
+        {bloom && (
           <Bloom
             mipmapBlur
             intensity={0.9}
@@ -57,9 +92,9 @@ export function World({ effects = true }: { effects?: boolean }) {
             luminanceSmoothing={0.3}
             radius={0.75}
           />
-          <Vignette offset={0.25} darkness={0.75} />
-        </EffectComposer>
-      )}
-    </>
+        )}
+      </>
+      <>{vignette && <Vignette offset={0.25} darkness={0.75} />}</>
+    </EffectComposer>
   );
 }

@@ -1,9 +1,11 @@
 import { Environment, Lightformer, Sparkles, Stars } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
 import { usePlayback, world } from "../store.ts";
+import { Layer } from "./Diagnostics.tsx";
 import { BACKGROUND, PLATFORM_COLOR } from "./palette.ts";
+import { SparklesMaterial } from "./safety.ts";
 
 /** The space the world floats in, and the floor of the platform. */
 export function Backdrop() {
@@ -23,24 +25,30 @@ export function Backdrop() {
         intensity={0.5}
         color="#7a5cff"
       />
-      <Stars
-        radius={Math.max(260, span * 4)}
-        depth={80}
-        count={4000}
-        factor={5}
-        saturation={0.4}
-        fade
-        speed={0.4}
-      />
-      <Sparkles
-        count={160}
-        scale={[span * 2.4, 40, span * 2]}
-        position={[0, 10, -8]}
-        size={2.2}
-        speed={0.15}
-        opacity={0.35}
-        color="#9fb6ff"
-      />
+      <Layer name="stars">
+        <Stars
+          radius={Math.max(260, span * 4)}
+          depth={80}
+          count={4000}
+          factor={5}
+          saturation={0.4}
+          fade
+          speed={0.4}
+        />
+      </Layer>
+      <Layer name="sparkles">
+        <Sparkles
+          count={160}
+          scale={[span * 2.4, 40, span * 2]}
+          position={[0, 10, -8]}
+          size={2.2}
+          speed={0.15}
+          opacity={0.35}
+          color="#9fb6ff"
+        >
+          <SafeSparkles />
+        </Sparkles>
+      </Layer>
       {/* Local light shapes for reflections on metal; nothing is fetched. */}
       <Environment resolution={128} frames={1}>
         <Lightformer
@@ -75,7 +83,9 @@ export function Backdrop() {
           scale={[30, 4, 1]}
         />
       </Environment>
-      <PlatformFloor />
+      <Layer name="platform">
+        <PlatformFloor />
+      </Layer>
     </>
   );
 }
@@ -99,7 +109,8 @@ const floorFragment = /* glsl */ `
     // Concentric contour lines, slowly drifting outward.
     float rings = smoothstep(0.035, 0.0, abs(fract(r * 14.0 - uTime * 0.05) - 0.5) - 0.47);
     // Spokes, faint.
-    float a = atan(p.y, p.x);
+    // atan(0, 0) is undefined: some GPUs give NaN at the center.
+    float a = r > 1e-4 ? atan(p.y, p.x) : 0.0;
     float spokes = smoothstep(0.02, 0.0, abs(fract(a / 6.2831853 * 36.0) - 0.5) - 0.48) * 0.35;
     float edge = smoothstep(0.93, 0.995, r) * smoothstep(1.0, 0.985, r);
     float body = (1.0 - r) * 0.08;
@@ -114,7 +125,8 @@ const wallFragment = /* glsl */ `
   uniform float uTime;
   varying vec2 vUv;
   void main() {
-    float fade = pow(1.0 - vUv.y, 2.2);
+    // pow of a negative base is NaN on some GPUs; vUv.y can pass 1 by a hair.
+    float fade = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 2.2);
     float scan = 0.5 + 0.5 * sin(vUv.x * 600.0);
     float band = smoothstep(0.0, 0.08, fract(vUv.y * 3.0 - uTime * 0.12)) * 0.15;
     gl_FragColor = vec4(uColor, fade * (0.10 + scan * 0.04 + band * 0.2));
@@ -174,4 +186,12 @@ function PlatformFloor() {
       </mesh>
     </group>
   );
+}
+
+/** drei's sparkles, through a shader that cannot give NaN (see `safety.ts`). */
+function SafeSparkles() {
+  const material = useMemo(() => new SparklesMaterial(), []);
+  const dpr = useThree((s) => s.viewport.dpr);
+  material.pixelRatio = dpr;
+  return <primitive object={material} attach="material" />;
 }

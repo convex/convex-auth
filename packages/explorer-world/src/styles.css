@@ -629,3 +629,52 @@ button {
   color: var(--text);
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* `?diag`: the diagnostics panel. */
+.diag {
+  right: 16px;
+  top: 76px;
+  width: 440px;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+  padding: 12px 14px;
+  font:
+    11px/1.4 "JetBrains Mono",
+    monospace;
+  color: var(--text, #dfe6ff);
+  z-index: 20;
+}
+.diag h3,
+.diag h4 {
+  margin: 8px 0 4px;
+  font-family: Inter, sans-serif;
+}
+.diag dl {
+  margin: 0;
+}
+.diag dl div {
+  display: flex;
+  gap: 8px;
+}
+.diag dt {
+  flex: 0 0 96px;
+  opacity: 0.6;
+}
+.diag dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.diag .bad {
+  color: #ff6b6b;
+}
+.diag .good {
+  color: #5ee6a8;
+}
+.diag .switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.diag label {
+  cursor: pointer;
+}

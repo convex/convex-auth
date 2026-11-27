@@ -49,7 +49,8 @@ const wallMaterial = new ShaderMaterial({
     varying vec2 vUv;
     varying vec3 vColor;
     void main() {
-      float fade = pow(1.0 - vUv.y, 1.6);
+      // pow of a negative base is NaN on some GPUs; vUv.y can pass 1 by a hair.
+      float fade = pow(clamp(1.0 - vUv.y, 0.0, 1.0), 1.6);
       float lines = smoothstep(0.6, 1.0, sin(vUv.x * 240.0) * 0.5 + 0.5) * 0.25;
       float sweep = smoothstep(0.92, 1.0, sin(vUv.x * 6.2831853 - uTime * 0.6) * 0.5 + 0.5);
       gl_FragColor = vec4(vColor, fade * (0.06 + lines * 0.07 + sweep * 0.05));
