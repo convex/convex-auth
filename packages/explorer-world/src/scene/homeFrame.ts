@@ -41,7 +41,8 @@ export function homeRect(
 ): Rect {
   const all: Rect = {
     left: 0,
-    top: 0,
+    // Room above the region for its name, which stands over its rim.
+    top: Math.min(72, Math.max(36, height * 0.07)),
     right: width,
     bottom: height - bottomBar,
   };
@@ -49,7 +50,11 @@ export function homeRect(
   if (panel) {
     // Beside the panel, or above it: whichever leaves the region more room.
     const beside: Rect = { ...all, left: panel.right };
-    const above: Rect = { ...all, bottom: Math.min(all.bottom, panel.top) };
+    // Above it, with room under the region for a neighbour's name.
+    const above: Rect = {
+      ...all,
+      bottom: Math.min(all.bottom, panel.top - 64),
+    };
     // The width the region gets in a rectangle, as `homeRect` shares it.
     const room = (r: Rect) => {
       const w = r.right - r.left;
