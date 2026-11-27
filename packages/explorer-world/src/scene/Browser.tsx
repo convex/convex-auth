@@ -248,6 +248,10 @@ const HALO_FADE = 0.35;
 /** A halo's radius as a fraction of its distance to the camera, at least. */
 export const HALO_ON_SCREEN = 0.03;
 
+/** A halo's radius around a part of `radius`, seen from `distance`. */
+export const haloRadius = (radius: number, distance: number) =>
+  Math.max(radius * 1.6, distance * HALO_ON_SCREEN);
+
 const nextCache = new WeakMap<ClientStep[], (ClientStep | undefined)[]>();
 /** For each step, the next step at another module. */
 function nextElsewhere(steps: ClientStep[]) {
@@ -309,9 +313,18 @@ function Halos() {
 /**
  * The halo of a module while it reports: a soft disc and a ring facing the
  * camera, at least {@link HALO_ON_SCREEN} of the distance across, and a
- * ripple out of it at the start of each step.
+ * ripple out of it at the start of each step. `steps` are what lights it,
+ * as {@link actingModules} reads them; `quiet` dims it.
  */
-function Halo({ part, steps }: { part: string; steps: ClientStep[] }) {
+export function Halo({
+  part,
+  steps,
+  quiet = 1,
+}: {
+  part: string;
+  steps: ClientStep[];
+  quiet?: number;
+}) {
   const p = placementOf(part)!;
   const group = useRef<Group>(null);
   const disc = useRef<Mesh>(null);
@@ -336,11 +349,9 @@ function Halo({ part, steps }: { part: string; steps: ClientStep[] }) {
       if (s.start > t) break;
       last = s;
     }
-    const on = actingModules(steps, t).on.get(part) ?? 0;
+    const on = (actingModules(steps, t).on.get(part) ?? 0) * quiet;
     g.position.copy(at);
-    g.scale.setScalar(
-      Math.max(p.radius * 1.6, camera.position.distanceTo(at) * HALO_ON_SCREEN),
-    );
+    g.scale.setScalar(haloRadius(p.radius, camera.position.distanceTo(at)));
     const since = last ? t - last.start : 1;
     const set = (m: Mesh | null, opacity: number, scale = 1) => {
       if (!m) return;

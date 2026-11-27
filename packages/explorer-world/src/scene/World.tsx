@@ -16,6 +16,7 @@ import { Links } from "./Links.tsx";
 import { Parts } from "./Parts.tsx";
 import { Rows } from "./Rows.tsx";
 import { SanitizePass } from "./safety.ts";
+import { RunningHalos } from "./Running.tsx";
 import { Operations } from "./Operations.tsx";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
@@ -24,10 +25,11 @@ const LONGEST_FRAME = 5;
 
 /** Advances the playback time while playing, and counts the frames drawn. */
 function Clock() {
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, scene }, delta) => {
     frames.count++;
-    // For scripted checks: where the camera is.
+    // For scripted checks: where the camera is, and what is drawn.
     (globalThis as { explorerCamera?: unknown }).explorerCamera = camera;
+    (globalThis as { explorerScene?: unknown }).explorerScene = scene;
     const build = liveTrace.builds[liveTrace.builds.length - 1];
     if (build && build.drawnAt === null) build.drawnAt = Date.now();
     const s = usePlayback.getState();
@@ -82,6 +84,7 @@ export function World() {
       <Layer name="travellers">
         <Travellers />
         <Operations />
+        <RunningHalos />
         <Holdings />
         <Alerts />
       </Layer>

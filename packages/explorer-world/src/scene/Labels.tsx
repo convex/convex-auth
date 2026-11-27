@@ -13,17 +13,23 @@
  */
 import { Billboard } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { PerspectiveCamera, Vector3, type Group } from "three";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  MeshBasicMaterial,
+  PerspectiveCamera,
+  Vector3,
+  type Group,
+} from "three";
 import { FOOTPRINT } from "../layout/islands.ts";
 import type { IslandPlacement } from "../layout/types.ts";
 import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
-import { actingModules, HALO_ON_SCREEN } from "./Browser.tsx";
+import { actingModules, haloRadius } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
 import type { OpPath } from "../model/operations.ts";
 import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
+import { runningNow } from "./Running.tsx";
 
 interface Entry {
   group: Group;
@@ -220,9 +226,12 @@ function useActing(): string[] {
     const at =
       bodyAt(world.timeline.ops, state.time) ??
       actingModules(world.timeline.clientSteps, state.time).now;
+    // In the backend, the part the call of an operation is in now.
+    const run = runningNow(world.timeline, state.time);
     const list = [...ids]
       .filter((id) => !inClient(id))
       .concat(at ? [`report:${at}`] : [])
+      .concat(run ? [`report:${run}`] : [])
       .filter((id) => {
         const p = placementOf(id.replace(/^report:/, ""));
         return p && p.shape !== "island" && p.shape !== "state";
@@ -274,29 +283,81 @@ function PartLabel({
               the body at it are enough. */}
           <Lod far={id.startsWith("storageKey:") ? KEY_NAME_FAR : Infinity}>
             <Billboard>
-              <Label
-                fontSize={size}
-                color="#ffffff"
-                // Beside the halo, which is HALO_ON_SCREEN of the distance
-                // across: the same in this group's units.
-                anchorX={reporting ? "left" : "center"}
-                position={
-                  reporting
-                    ? [HALO_ON_SCREEN * grow.distance * 1.15, -0.2, 0]
-                    : undefined
-                }
-                weight={rank === 2 ? "bold" : "regular"}
-                outlineWidth={0.025}
-                outlineColor="#03050a"
-              >
-                {part.label}
-              </Label>
+              {reporting ? (
+                <BesideHalo part={id} radius={p.radius} lift={h} grow={grow}>
+                  <Label
+                    fontSize={size}
+                    color="#ffffff"
+                    anchorX="left"
+                    position={[0, -0.2, 0]}
+                    weight="regular"
+                    // Over what lies between it and the camera: the name of
+                    // the one part acting now is not hidden by an island.
+                    renderOrder={20}
+                    material={ON_TOP}
+                    outlineWidth={0.025}
+                    outlineColor="#03050a"
+                  >
+                    {part.label}
+                  </Label>
+                </BesideHalo>
+              ) : (
+                <Label
+                  fontSize={size}
+                  color="#ffffff"
+                  weight={rank === 2 ? "bold" : "regular"}
+                  outlineWidth={0.025}
+                  outlineColor="#03050a"
+                >
+                  {part.label}
+                </Label>
+              )}
             </Billboard>
           </Lod>
         </KeepSize>
       </group>
     </group>
   );
+}
+
+/** The material of a name drawn over everything: it is not hidden by depth. */
+const ON_TOP = new MeshBasicMaterial({
+  depthTest: false,
+  depthWrite: false,
+  transparent: true,
+  toneMapped: false,
+});
+
+/**
+ * Puts what it holds just right of the halo of a part (`haloRadius`), in
+ * the units of a `KeepSize` group of `grow` at `lift` over the part.
+ */
+function BesideHalo({
+  part,
+  radius,
+  lift,
+  grow,
+  children,
+}: {
+  part: string;
+  radius: number;
+  lift: number;
+  grow: { distance: number; max: number };
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  const at = useMemo(() => {
+    const [x, y, z] = placementOf(part)!.position;
+    return new Vector3(x, y + lift, z);
+  }, [part, lift]);
+  useFrame(({ camera }) => {
+    const g = ref.current;
+    if (!g) return;
+    const d = camera.position.distanceTo(at);
+    const scale = Math.min(grow.max, Math.max(1, d / grow.distance));
+    g.position.x = (haloRadius(radius, d) * 1.15) / scale;
+  });
+  return <group ref={ref}>{children}</group>;
 }
 
 /** The farthest a storage key's name shows from (world units). */
