@@ -80,6 +80,8 @@ export function packCircles(
   radii: number[],
   gap = GAP,
   start = Math.PI / 2,
+  /** Center the group on its bounds; else the first circle stays at the middle. */
+  centered = true,
 ): Circle[] {
   const placed: Circle[] = [];
   let reach = 0;
@@ -114,7 +116,7 @@ export function packCircles(
     reach = Math.max(reach, Math.hypot(done.x, done.z) + r);
   }
   // Center the group on the middle of its bounds.
-  if (placed.length > 1) {
+  if (centered && placed.length > 1) {
     const x0 = Math.min(...placed.map((c) => c.x - c.r));
     const x1 = Math.max(...placed.map((c) => c.x + c.r));
     const z0 = Math.min(...placed.map((c) => c.z - c.r));
@@ -172,6 +174,8 @@ interface Node {
   id: string;
   r: number;
   order: number;
+  /** How much of its district depends on it (see `heart`); 1 when unknown. */
+  weight?: number;
   flow?: number;
   /** Positions relative to the node's center, filled by `arrange`. */
   layoutChildren?: (origin: Vec3) => void;
@@ -260,6 +264,46 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     return false;
   };
 
+  const inClientZone = (id: string) => {
+    let top = id;
+    while (parentIsland.get(top)) top = parentIsland.get(top)!;
+    const p = index.part.get(top);
+    return !!p && zoneOf(p) === "client";
+  };
+  /**
+   * A scale per member of a district of client code, by how much of the
+   * district depends on it: the members that reach it along the links
+   * between members (a module every other one imports, at the heart, is
+   * the largest; a helper only its own method uses, at the rim, the
+   * smallest). Larger members are packed first, nearest the middle. A
+   * district with no links between its members keeps its sizes.
+   */
+  const heart = new Map<string, number>();
+  const weightOf = (n: Node) => n.weight ?? heart.get(n.id) ?? 1;
+  const weigh = (own: Part[]) => {
+    const ids = new Set(own.map((p) => p.id));
+    const out = new Map<string, string[]>();
+    for (const l of graph.links)
+      if (ids.has(l.from) && ids.has(l.to) && l.from !== l.to)
+        out.set(l.from, [...(out.get(l.from) ?? []), l.to]);
+    const reached = new Map<string, number>();
+    for (const from of ids) {
+      const seen = new Set<string>([from]);
+      const stack = [from];
+      while (stack.length)
+        for (const n of out.get(stack.pop()!) ?? [])
+          if (!seen.has(n)) {
+            seen.add(n);
+            stack.push(n);
+            reached.set(n, (reached.get(n) ?? 0) + 1);
+          }
+    }
+    const most = Math.max(0, ...reached.values());
+    if (!most) return;
+    for (const id of ids)
+      heart.set(id, 0.6 + 0.9 * Math.sqrt((reached.get(id) ?? 0) / most));
+  };
+
   // Sizes bottom-up: each island arranges its contents around its center.
   const arranged = new Map<
     string,
@@ -281,8 +325,9 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
         kids.set(p.parent, [...(kids.get(p.parent) ?? []), p]);
       else roots.push(p);
     }
+    if (inClientZone(island.id)) weigh(own);
     const footprint = (p: Part) =>
-      FOOTPRINT[look(p).shape] * (look(p).size ?? 1);
+      FOOTPRINT[look(p).shape] * (look(p).size ?? 1) * (heart.get(p.id) ?? 1);
     // A bundle: a member and the members below it.
     const bundle = (p: Part): Node => {
       const below = (kids.get(p.id) ?? []).map(bundle);
@@ -332,7 +377,9 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     const nodes: Node[] = [
       ...loose.map(bundle),
       ...[...groups].map(([key, list]): Node => {
-        const inner = list.map(bundle).sort((a, b) => a.order - b.order);
+        const inner = list
+          .map(bundle)
+          .sort((a, b) => a.order - b.order || weightOf(b) - weightOf(a));
         const circles = packCircles(
           inner.map((n) => n.r),
           GAP * 0.8,
@@ -342,6 +389,9 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
           id: key,
           r,
           order: 7,
+          weight: list.some((p) => heart.has(p.id))
+            ? Math.max(...list.map((p) => heart.get(p.id) ?? 1))
+            : undefined,
           layoutChildren: (o) => {
             clusters.push({ id: key, center: o, radius: r });
             inner.forEach((n, i) =>
@@ -368,10 +418,18 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
             layoutChildren: (o) => sub.place([o[0], o[1] + PLATEAU, o[2]]),
           };
         }),
-    ].sort((a, b) => a.order - b.order || b.r - a.r);
+    ].sort(
+      (a, b) => a.order - b.order || weightOf(b) - weightOf(a) || b.r - a.r,
+    );
     const circles = nodes.some((n) => n.flow !== undefined)
       ? flowColumns(nodes)
-      : packCircles(nodes.map((n) => n.r));
+      : // A district with a heart keeps it at its middle.
+        packCircles(
+          nodes.map((n) => n.r),
+          GAP,
+          Math.PI / 2,
+          !nodes.some((n) => heart.has(n.id) || n.weight !== undefined),
+        );
     // An island's kind can ask for more room than its contents need.
     const radius = Math.max(
       4 * (look(island).size ?? 1),
@@ -417,7 +475,7 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
       id: p.id,
       shape: l.shape,
       position,
-      radius: FOOTPRINT[l.shape] * (l.size ?? 1),
+      radius: FOOTPRINT[l.shape] * (l.size ?? 1) * (heart.get(p.id) ?? 1),
       island,
       color:
         presentation.parts?.[p.id]?.color ?? l.color ?? colors.get(island)!,

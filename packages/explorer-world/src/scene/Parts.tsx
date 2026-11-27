@@ -37,6 +37,19 @@ interface ShapeGeometry {
 
 const cache = new Map<string, ShapeGeometry>();
 
+const firstReports = new WeakMap<object, Map<string, number>>();
+/** When a part first reported a step the client library reported, if it did. */
+function firstReport(id: string): number | undefined {
+  const steps = world.timeline.clientSteps;
+  let m = firstReports.get(steps);
+  if (!m) {
+    m = new Map();
+    for (const s of steps) if (!m.has(s.part)) m.set(s.part, s.start);
+    firstReports.set(steps, m);
+  }
+  return m.get(id);
+}
+
 function geometryOf(shape: Shape, profile: Profile | undefined): ShapeGeometry {
   const key = `${shape}|${profile ?? ""}`;
   const known = cache.get(key);
@@ -200,7 +213,12 @@ function ShapeInstances({ items }: { items: Placement[] }) {
         c.copy(base[i]).multiplyScalar(shape === "vault" ? 0.6 : 1.4);
       else if (linkKind) c.set(linkColor(linkKind)).multiplyScalar(2.2);
       else
-        c.copy(base[i]).multiplyScalar((shape === "vault" ? 0.35 : 0.9) * dim);
+        c.copy(base[i]).multiplyScalar(
+          (shape === "vault" ? 0.35 : 0.9) *
+            dim *
+            // A part that has reported a step by now stays a little warmer.
+            ((firstReport(p.id) ?? Infinity) <= state.time ? 1.8 : 1),
+        );
       k.setColorAt(i, c);
     });
     if (b.instanceColor) b.instanceColor.needsUpdate = true;
