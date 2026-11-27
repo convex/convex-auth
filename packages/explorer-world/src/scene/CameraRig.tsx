@@ -150,6 +150,42 @@ let atHome = false;
 let pose: { position: Vector3; target: Vector3 } | null = null;
 /** The last flight flown: a remount must not fly it again. */
 let flown = 0;
+/** The layout the camera was last placed over (see `holdView`). */
+let placedOver: typeof world.layout | null = null;
+
+/**
+ * A live recording that adds parts lays the map out again, and things the
+ * viewer was looking at can move (a district that grows moves its region).
+ * The view holds what it looked at: the camera moves by as much as the
+ * placed thing nearest the point it looks at moved. That thing, and all
+ * that moved with it, stay where they were on the screen.
+ */
+function holdView(
+  p: { position: Vector3; target: Vector3 },
+  from: typeof world.layout,
+  to: typeof world.layout,
+) {
+  let best: string | null = null;
+  let least = Infinity;
+  for (const [id, was] of from.parts) {
+    if (!to.parts.has(id)) continue;
+    const d = Math.hypot(
+      was.position[0] - p.target.x,
+      was.position[1] - p.target.y,
+      was.position[2] - p.target.z,
+    );
+    if (d < least) {
+      least = d;
+      best = id;
+    }
+  }
+  if (!best) return;
+  const a = from.parts.get(best)!.position;
+  const b = to.parts.get(best)!.position;
+  const delta = new Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  p.position.add(delta);
+  p.target.add(delta);
+}
 
 /** The viewer takes the camera: Follow stops until turned on again. */
 const takeOver = () => {
@@ -197,7 +233,10 @@ export function CameraRig() {
       );
     };
     if (pose) {
-      // Mounted again (the map was laid out again): stay put.
+      // Mounted again (the map was laid out again): stay on what it was
+      // looking at.
+      if (placedOver && placedOver !== world.layout)
+        holdView(pose, placedOver, world.layout);
       const { position: p, target: t } = pose;
       void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false);
     } else {
@@ -205,6 +244,7 @@ export function CameraRig() {
       atHome = true;
     }
     placed.current = true;
+    placedOver = world.layout;
     const refit = () => {
       if (atHome) fit(false);
     };

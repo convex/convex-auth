@@ -502,13 +502,18 @@ pressed on an island; Cmd-drag orbits; a click in place selects, and a click
 on empty space clears.
 
 The camera moves only when the viewer moves it or asks it to (Home,
-Overview, Follow, Fly to): pressing a control leaves it where it is, also
-when what the control causes lays the map out again and the scene mounts
-afresh. While the camera is still at Home, a resize of the window or the
-panel fits Home again. `pnpm --filter @convex-dev/explorer-world
-check:camera-stays` runs `explorer:live`, moves the camera with the wheel, a
-drag and the keys, presses a control after each, and checks that the camera
-stayed; and that Home and the resize behave as above.
+Overview, Follow, Fly to): pressing a control leaves the view where it is.
+When what the control causes adds parts, the map is laid out again (a
+packing, so a district that grows moves its region); the camera then moves
+by as much as the placed thing nearest the point it looks at moved, so that
+thing, and all that moved with it, stay where they were on the window. What
+re-packs inside the thing looked at (its own new parts) still moves. While
+the camera is still at Home, a resize of the window or the panel fits Home
+again. `pnpm --filter @convex-dev/explorer-world check:camera-stays` runs
+`explorer:live`, moves the camera with the wheel (over the busiest
+district), a drag and the keys, presses a control after each, and checks
+that the things nearest the point looked at are where they were on the
+window, within 2 px; and that Home and the resize behave as above.
 
 Everything the app needs is bundled, fonts included. Text in the 3D scene goes
 through `glyphSafe` so that troika never fetches a fallback font.

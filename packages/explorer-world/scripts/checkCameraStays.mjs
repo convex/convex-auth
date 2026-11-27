@@ -3,7 +3,8 @@
 // and for each way of moving the camera (the wheel, a drag, the keys) moves
 // it, presses a control of the panel, waits for what the control causes
 // (which can lay the map out again and mount the scene afresh), and asserts
-// that the camera has not moved. Also: a forced remount of the scene leaves
+// that the things nearest the point looked at are where they were on the
+// window, within 2 px. Also: a forced remount of the scene leaves
 // the camera where it is, Home moves it, and a resize refits Home only while
 // the camera is still at Home.
 //
@@ -140,24 +141,82 @@ try {
       .catch(() => {});
     await sleep(6_000);
   };
+  /**
+   * The placed things nearest the point looked at that are on the window,
+   * and where each is on it (px).
+   */
+  const inView = () =>
+    page.evaluate(() => {
+      const c = window.explorerControls;
+      const cam = window.explorerCamera;
+      const t = c.getTarget(cam.position.clone(), false);
+      const v = cam.position.clone();
+      return [...window.explorerWorld.layout.parts.values()]
+        .map((p) => ({ id: p.id, d: v.set(...p.position).distanceTo(t) }))
+        .sort((a, b) => a.d - b.d)
+        .map(({ id }) => id)
+        .filter((id) => {
+          v.set(...window.explorerWorld.layout.parts.get(id).position);
+          v.project(cam);
+          return Math.abs(v.x) < 0.9 && Math.abs(v.y) < 0.9 && v.z < 1;
+        })
+        .slice(0, 6);
+    });
+  const onScreen = (ids) =>
+    page.evaluate((ids) => {
+      const cam = window.explorerCamera;
+      const v = cam.position.clone();
+      return ids.map((id) => {
+        const p = window.explorerWorld.layout.parts.get(id);
+        if (!p) return null;
+        v.set(...p.position).project(cam);
+        return [
+          ((v.x + 1) / 2) * window.innerWidth,
+          ((1 - v.y) / 2) * window.innerHeight,
+        ];
+      });
+    }, ids);
+  const shift = (a, b) =>
+    Math.max(
+      ...a.map((p, i) =>
+        p && b[i] ? Math.hypot(p[0] - b[i][0], p[1] - b[i][1]) : Infinity,
+      ),
+    );
   const stays = async (how, move, action) => {
     await page.mouse.move(centre.x, centre.y);
     await move();
-    const moved = await settle();
+    await settle();
     const v0 = await layouts();
+    const ids = await inView();
+    const before = await onScreen(ids);
     await press(action);
-    const after = await settle();
+    await settle();
     const v1 = await layouts();
+    const moved = shift(before, await onScreen(ids));
     check(
-      far(moved, after) < 0.01,
-      `${how}, then ${action}: the camera stays (${show(moved)} → ${show(after)}; the map was laid out again ${v1 - v0} time(s))`,
+      ids.length > 0 && moved <= 2,
+      `${how}, then ${action}: the ${ids.length} things nearest the point looked at stay on the window (moved ${moved.toFixed(1)} px; the map was laid out again ${v1 - v0} time(s))`,
     );
   };
 
   const opened = await settle();
   await stays(
-    "zoomed in with the wheel",
+    "zoomed in with the wheel on the busiest district",
     async () => {
+      // Over the island with the most parts, as a person looking at it.
+      const over = await page.evaluate(() => {
+        const busiest = [...window.explorerWorld.layout.islands].sort(
+          (a, b) => b.members.length - a.members.length,
+        )[0];
+        const camera = window.explorerControls.camera;
+        const s = camera.position.clone().set(...busiest.position);
+        s.project(camera);
+        return [
+          ((s.x + 1) / 2) * window.innerWidth,
+          ((1 - s.y) / 2) * window.innerHeight,
+        ];
+      });
+      await page.mouse.move(over[0], over[1]);
       for (let i = 0; i < 6; i++) {
         await page.mouse.wheel(0, -300);
         await sleep(120);
