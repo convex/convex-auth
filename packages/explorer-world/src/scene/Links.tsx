@@ -1,8 +1,10 @@
 /**
  * Dependencies as arcs of light. From afar, one arc per pair of related
  * top-level islands, brighter the more links join them. A selected part
- * lights each of its links in both directions, in the color of its kind,
- * and shows each unresolved dependency as a dashed stub rising into nothing.
+ * lights who it dealt with so far in the recording, one arc each, the
+ * latest brightest. With the detail asked for, it lights each of its links
+ * in the source in both directions, in the color of its kind, and shows
+ * each unresolved dependency as a dashed stub rising into nothing.
  * Overlays draw every link, or every unresolved stub, at once. Each layer is
  * one draw call.
  */
@@ -224,6 +226,38 @@ function islandArcs(h: ReturnType<typeof highlightOf>) {
   return { points, colors };
 }
 
+/** How a recorded contact is drawn: warm white, fading with age. */
+const CONTACT = new Color("#ffe9c2");
+
+/**
+ * The parts the selection dealt with by now, as the recording shows: one
+ * arc from the covered part that dealt to each other part, brighter the
+ * more recent. Nothing else: a part that dealt with no one has no arc.
+ */
+function ContactLinks() {
+  const selected = usePlayback((s) => s.selected);
+  const time = usePlayback((s) => s.time);
+  const version = usePlayback((s) => s.version);
+  const h = highlightOf(selected);
+  const key = h.contacts.map((c) => `${c.from}>${c.other}:${c.n}`).join();
+  const arcs = useMemo(() => {
+    void version;
+    const points: Vector3[] = [];
+    const colors: Color[] = [];
+    for (const c of h.contacts) {
+      if (!placementOf(c.from) || !placementOf(c.other)) continue;
+      const before = points.length;
+      arc(anchorPosition(c.from), anchorPosition(c.other), points, 0.16);
+      const age = Math.max(0, time - c.last);
+      const color = CONTACT.clone().multiplyScalar(0.55 + 1.2 / (1 + age / 6));
+      for (let i = before; i < points.length; i++) colors.push(color);
+    }
+    return { points, colors };
+    // Redrawn when who dealt with whom changes, and as the latest one ages.
+  }, [key, Math.floor(time), version]);
+  return <Segments points={arcs.points} colors={arcs.colors} width={2.2} />;
+}
+
 function SelectionLinks() {
   const selected = usePlayback((s) => s.selected);
   const h = highlightOf(selected);
@@ -278,12 +312,13 @@ function SelectionLinks() {
 export function Links() {
   const overlays = usePlayback((s) => s.overlays);
   const anySelected = usePlayback((s) => s.selected !== null);
+  const detail = usePlayback((s) => s.detail);
   return (
     <>
       {overlays.relations && !anySelected && !overlays.links && <Relations />}
       {overlays.links && <AllLinks />}
       {overlays.unresolved && <AllUnresolved />}
-      <SelectionLinks />
+      {anySelected && (detail ? <SelectionLinks /> : <ContactLinks />)}
     </>
   );
 }

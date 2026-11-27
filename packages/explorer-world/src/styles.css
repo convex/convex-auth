@@ -845,3 +845,63 @@ button {
   background: var(--panel);
   white-space: nowrap;
 }
+
+/* The card a click opens, beside what was clicked (`ui/Card.tsx`). */
+.card {
+  top: 0;
+  left: 0;
+  width: 286px;
+  padding: 11px 13px 9px;
+  border-radius: 11px;
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+  will-change: transform;
+  z-index: 3;
+}
+.card .card-kind {
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.card h2 {
+  margin: 2px 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  word-break: break-word;
+}
+.card .card-line {
+  margin: 0 0 6px;
+  color: #c6cfec;
+}
+.card .card-doing {
+  margin: 6px 0 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.card .card-dealt {
+  margin-top: 4px;
+}
+.card .link.inline {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  color: var(--accent);
+}
+.card .card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.card .card-actions button {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+.card .card-actions button:last-child {
+  margin-left: auto;
+}
+.card .card-actions button[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+}

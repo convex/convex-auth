@@ -106,6 +106,13 @@ interface PlaybackStore {
   held: boolean;
   speed: number;
   selected: Selection | null;
+  /**
+   * Whether the selection shows all there is on it: the panel with its full
+   * detail, and its links in the source (imports, dependencies, the
+   * unresolved ones). Off on each new selection: a click leads with what it
+   * is and what it did.
+   */
+  detail: boolean;
   /** The camera follows the action until the viewer takes the controls. */
   director: boolean;
   /** Bumped to ask the camera to fly somewhere. */
@@ -126,6 +133,7 @@ interface PlaybackStore {
   step: (direction: 1 | -1) => void;
   setSpeed: (speed: number) => void;
   select: (selection: Selection | null) => void;
+  setDetail: (on: boolean) => void;
   setDirector: (on: boolean) => void;
   flyTo: (target: "overview" | "home" | Selection) => void;
   toggleOverlay: (name: keyof Overlays) => void;
@@ -140,6 +148,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   held: false,
   speed: 1,
   selected: null,
+  detail: false,
   // The camera stays where the viewer put it; it follows only when asked (F).
   director: false,
   flight: null,
@@ -180,7 +189,13 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
           : previousStop(world.timeline, s.time),
     })),
   setSpeed: (speed) => set({ speed }),
-  select: (selected) => set({ selected }),
+  select: (selected) =>
+    set((s) =>
+      JSON.stringify(selected) === JSON.stringify(s.selected)
+        ? {}
+        : { selected, detail: false },
+    ),
+  setDetail: (detail) => set({ detail }),
   setDirector: (director) => set({ director }),
   flyTo: (target) =>
     set((s) => ({

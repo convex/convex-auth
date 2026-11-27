@@ -6,6 +6,7 @@ import { usePlayback } from "./store.ts";
 import { Controls } from "./ui/Controls.tsx";
 import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
 import { DiagPanel } from "./ui/DiagPanel.tsx";
+import { Card } from "./ui/Card.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { Problems, SceneBoundary } from "./ui/Problems.tsx";
 import { LiveLine, Timeline } from "./ui/Timeline.tsx";
@@ -55,6 +56,7 @@ export function App() {
       {replay && <Chapters />}
       {replay && <Caption />}
       <CameraHud full={replay} />
+      <Card />
       <Inspector />
       {replay ? <Timeline /> : <LiveLine />}
       <Controls />

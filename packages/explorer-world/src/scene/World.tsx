@@ -8,6 +8,7 @@ import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
 import { Browser } from "./Browser.tsx";
+import { CardAnchor } from "./CardAnchor.tsx";
 import { CameraRig } from "./CameraRig.tsx";
 import { Groups } from "./Groups.tsx";
 import { Diagnostics, Layer } from "./Diagnostics.tsx";
@@ -90,6 +91,7 @@ export function World() {
         <Holdings />
         <Alerts />
       </Layer>
+      <CardAnchor />
       <Diagnostics />
       <CameraRig />
       <Effects />

@@ -1,9 +1,13 @@
 /**
- * What a selection lights: the parts it covers, the links that touch them,
- * and the parts at the other end of those links.
+ * What a selection lights: the parts it covers, and the parts they dealt
+ * with so far in the recording. With the detail asked for (`detail` in the
+ * store), the links of the source too: every link that touches them, the
+ * parts at the other end, and the unresolved ones.
  */
 import type { Link, Unresolved } from "../model/graph.ts";
-import { world, type Selection } from "../store.ts";
+import { lighting, type contactsOf } from "../model/done.ts";
+import { done } from "../insides.ts";
+import { usePlayback, world, type Selection } from "../store.ts";
 import { coverage } from "./look.ts";
 
 export interface Highlight {
@@ -12,9 +16,16 @@ export interface Highlight {
   /** Whether that part is an island: its parts are covered but not singled out. */
   island: boolean;
   covered: Set<string>;
-  /** The other end of each link, by the kind of the link that reaches it. */
+  /**
+   * The other end of each link lit, by its kind: a link of the source with
+   * the detail asked for, else how the recording shows them deal (`call`,
+   * `request`, `step`…).
+   */
   linked: Map<string, string>;
+  /** The links of the source, only with the detail asked for. */
   links: Link[];
+  /** Who the covered parts dealt with by now, as recorded. */
+  contacts: ReturnType<typeof contactsOf>;
   unresolved: Unresolved[];
 }
 
@@ -24,15 +35,21 @@ const EMPTY: Highlight = {
   covered: new Set(),
   linked: new Map(),
   links: [],
+  contacts: [],
   unresolved: [],
 };
 
-let memo: { key: string; value: Highlight } | null = null;
+let memo: {
+  key: string;
+  timeline: typeof world.timeline;
+  value: Highlight;
+} | null = null;
 
 export function highlightOf(s: Selection | null): Highlight {
   if (!s) return EMPTY;
-  const key = JSON.stringify(s);
-  if (memo?.key === key) return memo.value;
+  const { detail, time } = usePlayback.getState();
+  const key = `${JSON.stringify(s)}|${detail}|${time}`;
+  if (memo?.key === key && memo.timeline === world.timeline) return memo.value;
   let covered: Set<string>;
   switch (s.type) {
     case "part":
@@ -69,35 +86,22 @@ export function highlightOf(s: Selection | null): Highlight {
       break;
     }
   }
-  const links: Link[] = [];
-  const linked = new Map<string, string>();
-  const unresolved: Unresolved[] = [];
-  // Only a part's own selection lights its links; a run lights its parts.
-  if (s.type === "part") {
-    const seen = new Set<string>();
-    for (const id of covered) {
-      for (const l of [
-        ...(world.index.out.get(id) ?? []),
-        ...(world.index.in.get(id) ?? []),
-      ]) {
-        if (seen.has(l.id)) continue;
-        seen.add(l.id);
-        links.push(l);
-        for (const end of [l.from, l.to])
-          if (!covered.has(end) && !linked.has(end)) linked.set(end, l.kind);
-      }
-      unresolved.push(...(world.index.unresolvedFrom.get(id) ?? []));
-    }
-  }
+  const lit =
+    s.type === "part"
+      ? lighting(world.index, done(), covered, time, detail)
+      : {
+          linked: new Map<string, string>(),
+          links: [],
+          contacts: [],
+          unresolved: [],
+        };
   const part = s.type === "part" ? s.id : null;
   const value = {
     part,
     island: part !== null && covered.size > 1,
     covered,
-    linked,
-    links,
-    unresolved: [...new Set(unresolved)],
+    ...lit,
   };
-  memo = { key, value };
+  memo = { key, timeline: world.timeline, value };
   return value;
 }

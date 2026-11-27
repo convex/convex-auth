@@ -655,14 +655,18 @@ function body(
   }
 }
 
-/** What the selected thing is and its state at the current time. */
+/**
+ * All there is on the selected thing, at the current time: shown only when
+ * asked for ("All of it" on the card, or I). The card leads.
+ */
 export function Inspector() {
   const selected = usePlayback((s) => s.selected);
+  const detail = usePlayback((s) => s.detail);
   // The inspector shows the state at the current time, of the current world.
   usePlayback((s) => s.time);
   usePlayback((s) => s.version);
-  const { select, flyTo } = usePlayback.getState();
-  if (!selected) return null;
+  const { setDetail, flyTo } = usePlayback.getState();
+  if (!selected || !detail) return null;
   const state = currentState();
   const b = body(selected, state);
   return (
@@ -675,7 +679,7 @@ export function Inspector() {
         <h2>{b.title}</h2>
         <div className="actions">
           <button onClick={() => flyTo(selected)}>Fly to</button>
-          <button onClick={() => select(null)} aria-label="Close">
+          <button onClick={() => setDetail(false)} aria-label="Close">
             ✕
           </button>
         </div>
