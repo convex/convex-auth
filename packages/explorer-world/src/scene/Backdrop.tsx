@@ -5,10 +5,9 @@ import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
 import { usePlayback, world } from "../store.ts";
 import { BACKGROUND, PLATFORM_COLOR } from "./palette.ts";
 
-const span = world.layout.platform.radius;
-
 /** The space the world floats in, and the floor of the platform. */
 export function Backdrop() {
+  const span = world.layout.platform.radius;
   return (
     <>
       <color attach="background" args={[BACKGROUND]} />

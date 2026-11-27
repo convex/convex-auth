@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
+import { behindLive } from "../live.ts";
 import { currentState, usePlayback, world } from "../store.ts";
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
-const { timeline } = world;
 
 function format(t: number) {
   const s = Math.floor(t);
@@ -14,7 +14,11 @@ export function Timeline() {
   const time = usePlayback((s) => s.time);
   const playing = usePlayback((s) => s.playing);
   const speed = usePlayback((s) => s.speed);
+  // A live recording grows while paused, too.
+  usePlayback((s) => s.version);
   const { toggle, step, setSpeed, setTime, pause } = usePlayback.getState();
+  // The bar spans the timeline; an empty one still has a width.
+  const span = Math.max(world.timeline.duration, 1e-6);
   const bar = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
@@ -22,7 +26,7 @@ export function Timeline() {
     const el = bar.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setTime(((clientX - rect.left) / rect.width) * timeline.duration);
+    setTime(((clientX - rect.left) / rect.width) * span);
   };
 
   useEffect(() => {
@@ -79,8 +83,9 @@ export function Timeline() {
         </button>
         <span className="clock">
           {format(time)}{" "}
-          <span className="dim">/ {format(timeline.duration)}</span>
+          <span className="dim">/ {format(world.timeline.duration)}</span>
         </span>
+        <LiveControl />
         <div className="speeds" role="group" aria-label="Speed">
           {SPEEDS.map((s) => (
             <button
@@ -102,13 +107,13 @@ export function Timeline() {
           seek(e.clientX);
         }}
       >
-        {timeline.chapters.map((c, i) => (
+        {world.timeline.chapters.map((c, i) => (
           <div
             key={c.run.id}
             className={`chapter ${i === current ? "current" : ""} ${c.run.tone === "normal" ? "" : c.run.tone}`}
             style={{
-              left: `${(c.start / timeline.duration) * 100}%`,
-              width: `${((c.end - c.start) / timeline.duration) * 100}%`,
+              left: `${(c.start / span) * 100}%`,
+              width: `${((c.end - c.start) / span) * 100}%`,
             }}
             title={c.title}
           >
@@ -121,11 +126,57 @@ export function Timeline() {
             />
           </div>
         ))}
-        <div
-          className="head"
-          style={{ left: `${(time / timeline.duration) * 100}%` }}
-        />
+        <div className="head" style={{ left: `${(time / span) * 100}%` }} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * For a live recording: whether it is still recording, how far the playhead
+ * is behind the newest run, and a button that skips to it.
+ */
+function LiveControl() {
+  const live = usePlayback((s) => s.live);
+  const time = usePlayback((s) => s.time);
+  usePlayback((s) => s.version);
+  if (!live) return null;
+  const behind = behindLive(world.timeline, time);
+  const atEdge = behind.runs === 0;
+  const state =
+    live.connection === "ended"
+      ? "ended"
+      : live.connection === "open"
+        ? "recording"
+        : live.connection === "lost"
+          ? "lost"
+          : "connecting";
+  return (
+    <div className={`live ${state} ${atEdge ? "at-edge" : "behind"}`}>
+      <span className="dot" aria-hidden />
+      <span className="status" title={live.url}>
+        {state === "recording" ? "Live" : state}
+      </span>
+      <span className="lag" data-runs={behind.runs}>
+        {atEdge
+          ? "up to date"
+          : `${behind.runs} run${behind.runs === 1 ? "" : "s"} · ${Math.round(behind.seconds)} s behind`}
+      </span>
+      {live.placedBehind > 0 && (
+        <span
+          className="late"
+          title="Runs that reached the world after the playhead had passed their place in time; scrub back to see them"
+        >
+          {live.placedBehind} late
+        </span>
+      )}
+      <button
+        onClick={() => usePlayback.getState().skipToLive()}
+        disabled={atEdge}
+        title="Play the newest run (End)"
+      >
+        Skip to live
+      </button>
     </div>
   );
 }

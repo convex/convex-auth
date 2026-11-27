@@ -18,15 +18,18 @@ export interface World {
   stateAt: (t: number) => WorldState;
 }
 
+/**
+ * `layout` reuses the layout of an earlier world of the same graph, so that a
+ * world rebuilt as a live recording grows does not lay the map out again.
+ */
 export function createWorld(
   graph: Graph,
   recording: Recording,
   presentation: Presentation,
+  layout?: Layout,
 ): World {
   const index = indexGraph(graph);
-  const strategy = LAYOUTS[presentation.layout ?? "islands"];
-  if (!strategy) throw new Error(`No layout named "${presentation.layout}".`);
-  const layout = strategy(graph, presentation);
+  layout ??= layOut(graph, presentation);
   const timeline = buildTimeline(index, recording);
   const stateFields = new Map(
     Object.entries(presentation.tables ?? {}).flatMap(([id, t]) =>
@@ -43,4 +46,10 @@ export function createWorld(
     stateFields,
     stateAt: (t) => stateAt(timeline, t, stateFields),
   };
+}
+
+function layOut(graph: Graph, presentation: Presentation): Layout {
+  const strategy = LAYOUTS[presentation.layout ?? "islands"];
+  if (!strategy) throw new Error(`No layout named "${presentation.layout}".`);
+  return strategy(graph, presentation);
 }

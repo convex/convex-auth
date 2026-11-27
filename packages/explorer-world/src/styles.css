@@ -381,6 +381,56 @@ button {
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
 }
+/* Live: whether it records, how far behind the newest run, skip to live. */
+.live {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--dim);
+}
+.live .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.live.recording .dot {
+  background: var(--error);
+  box-shadow: 0 0 8px var(--error);
+}
+.live.lost .dot {
+  background: var(--warn);
+}
+.live .status {
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.live.behind .lag {
+  color: var(--warn);
+}
+.live .late {
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.live button {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.live button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.live + .speeds {
+  margin-left: 12px;
+}
 .speeds {
   margin-left: auto;
   display: flex;

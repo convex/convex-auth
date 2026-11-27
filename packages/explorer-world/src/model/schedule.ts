@@ -132,9 +132,14 @@ export function buildTimeline(
     alerts: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
-  let movementCount = 0;
-  const move = (m: Omit<Movement, "id">) =>
-    tl.movements.push({ ...m, id: `m${++movementCount}` });
+  // Ids count within each run, so that a run keeps the ids of its movements
+  // when a live recording grows and runs arrive before it.
+  const movementCounts = new Map<string, number>();
+  const move = (m: Omit<Movement, "id">) => {
+    const n = (movementCounts.get(m.run) ?? 0) + 1;
+    movementCounts.set(m.run, n);
+    tl.movements.push({ ...m, id: `${m.run}#m${n}` });
+  };
   const beat = (
     start: number,
     end: number,

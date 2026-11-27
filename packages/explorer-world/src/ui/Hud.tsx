@@ -8,8 +8,6 @@ import {
   world,
 } from "../store.ts";
 
-const { timeline } = world;
-
 /** What is happening now: the function run and its current step. */
 export function Caption() {
   // Re-renders when the beat changes, not on every frame.
@@ -20,10 +18,15 @@ export function Caption() {
   });
   const state = currentState();
   const chapter = state.chapter;
+  const live = usePlayback((s) => s.live !== null);
   if (!chapter) {
     return (
       <div className="caption">
-        <div className="step">Press play to watch a recorded run</div>
+        <div className="step">
+          {live
+            ? "Waiting for the app: use it, and what it does plays here"
+            : "Press play to watch a recorded run"}
+        </div>
       </div>
     );
   }
@@ -57,6 +60,9 @@ export function Chapters() {
     void s.time;
     return currentState().chapterIndex;
   });
+  // A live recording grows.
+  usePlayback((s) => s.version);
+  const live = usePlayback((s) => s.live !== null);
   const { setTime } = usePlayback.getState();
   return (
     <nav className="chapters panel">
@@ -66,7 +72,7 @@ export function Chapters() {
           <span> · {world.presentation.subtitle}</span>
         )}
       </h1>
-      {recordings.length > 1 && (
+      {!live && recordings.length > 1 && (
         <div className="recordings" role="group" aria-label="Recording">
           {recordings.map((r) => (
             <a
@@ -80,12 +86,13 @@ export function Chapters() {
         </div>
       )}
       <ol>
-        {timeline.chapters.map((c, i) => [
-          c.section && c.section !== timeline.chapters[i - 1]?.section && (
-            <li key={`s${i}`} className="section">
-              {c.section}
-            </li>
-          ),
+        {world.timeline.chapters.map((c, i) => [
+          c.section &&
+            c.section !== world.timeline.chapters[i - 1]?.section && (
+              <li key={`s${i}`} className="section">
+                {c.section}
+              </li>
+            ),
           <li
             key={c.run.id}
             className={i === current ? "current" : i < current ? "past" : ""}
@@ -106,8 +113,9 @@ export function Chapters() {
         ])}
       </ol>
       <p className="note">
-        A recording of {world.recording.runs.length} runs, slowed to human
-        speed; real durations at right. {world.graph.parts.length} parts and{" "}
+        {live ? "A live recording" : "A recording"} of{" "}
+        {world.recording.runs.length} runs, slowed to human speed; real
+        durations at right. {world.graph.parts.length} parts and{" "}
         {world.graph.links.length} dependencies on the map.
       </p>
       <p className="keys">
@@ -196,6 +204,7 @@ export function useShortcuts() {
       else if (e.key === "l" || e.key === "L") s.toggleOverlay("links");
       else if (e.key === "u" || e.key === "U") s.toggleOverlay("unresolved");
       else if (e.key === "Escape") s.select(null);
+      else if (e.key === "End" && s.live) s.skipToLive();
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);

@@ -7,7 +7,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import { checkFonts, frames, watchFirstFrame } from "./problems.ts";
-import { usePlayback, world } from "./store.ts";
+import { parseNdjson } from "./adapters/convexRecording.ts";
+import { summarize } from "./live.ts";
+import { worldFromEvents } from "./project.ts";
+import { liveTrace, project, usePlayback, world } from "./store.ts";
 import { configureTextBuilder } from "troika-three-text";
 
 // The page itself requests the fonts of 3D text. A request from troika's
@@ -26,7 +29,16 @@ if (selected) usePlayback.getState().select({ type: "part", id: selected });
 (window as unknown as { explorer: typeof usePlayback }).explorer = usePlayback;
 (window as unknown as { explorerFrames: typeof frames }).explorerFrames =
   frames;
-(window as unknown as { explorerWorld: typeof world }).explorerWorld = world;
+// The world as it is now: a live recording replaces it as it grows.
+Object.defineProperty(window, "explorerWorld", { get: () => world });
+// For the live check: when each event arrived and each rebuild was drawn,
+// and the summary of the world now and of a saved timeline, to compare.
+(window as unknown as { explorerLive: unknown }).explorerLive = {
+  trace: liveTrace,
+  summary: () => summarize(world),
+  summaryOf: (ndjson: string) =>
+    summarize(worldFromEvents(project, parseNdjson(ndjson), "live").world),
+};
 
 void checkFonts();
 watchFirstFrame();

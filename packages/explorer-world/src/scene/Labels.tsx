@@ -24,9 +24,6 @@ import { KeepSize, Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
 import { HEIGHT, nounOfPart, partOf, placementOf } from "./look.ts";
 
-const islands = world.layout.islands;
-const focus = world.presentation.focus;
-
 interface Entry {
   group: Group;
   /** Characters on the widest line, and the lines. */
@@ -70,7 +67,9 @@ function islandLabelSize(i: IslandPlacement) {
 
 function IslandLabel({ island }: { island: IslandPlacement }) {
   const text = partOf(island.id)?.label ?? island.id;
-  const children = islands.filter((i) => i.parentIsland === island.id).length;
+  const children = world.layout.islands.filter(
+    (i) => i.parentIsland === island.id,
+  ).length;
   const sub = `${nounOfPart(island.id).toUpperCase()}  ·  ${island.members.length + children}`;
   const size = islandLabelSize(island);
   const group = useDeclutter(`island:${island.id}`, {
@@ -79,7 +78,10 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
     size,
     grow: ISLAND_GROW,
     priority:
-      50 + (island.id === focus ? 40 : 0) + island.radius - island.depth * 4,
+      50 +
+      (island.id === world.presentation.focus ? 40 : 0) +
+      island.radius -
+      island.depth * 4,
     hideNear: island.radius * 1.3 + 8,
     important: () => {
       const h = highlightOf(usePlayback.getState().selected);
@@ -192,7 +194,7 @@ function useNearIslands(): Set<string> {
   useFrame(({ clock }) => {
     if (clock.elapsedTime - last.current.t < 0.3) return;
     last.current.t = clock.elapsedTime;
-    const ids = islands
+    const ids = world.layout.islands
       .filter((i) => {
         at.set(...i.position);
         return (
@@ -338,17 +340,17 @@ export function Labels() {
   }, [selected]);
   const nearMembers = useMemo(() => {
     const strong = new Set(ranked.map(([id]) => id));
-    return islands
+    return world.layout.islands
       .filter((i) => near.has(i.id))
       .flatMap((i) => i.members.filter((m) => !strong.has(m)));
   }, [near, ranked]);
   return (
     <>
       <Declutter />
-      {islands.map((i) => (
+      {world.layout.islands.map((i) => (
         <IslandLabel key={i.id} island={i} />
       ))}
-      {islands
+      {world.layout.islands
         .filter((i) => near.has(i.id))
         .map((i) => (
           <ClusterLabels key={i.id} island={i} />

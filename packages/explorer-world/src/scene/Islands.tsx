@@ -24,8 +24,6 @@ import { highlightOf } from "./highlight.ts";
 import { nounOfPart, partOf, placementOf } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
 
-const islands = world.layout.islands;
-
 const top = new CylinderGeometry(1, 1, 0.3, 64).translate(0, -0.15, 0);
 const plinth = new CylinderGeometry(1, 0.6, 1, 48, 1).translate(0, -0.5, 0);
 const rim = new TorusGeometry(1, 0.012, 6, 128).rotateX(Math.PI / 2);
@@ -84,13 +82,16 @@ export function Islands() {
   const plinths = useRef<InstancedMesh>(null);
   const rims = useRef<InstancedMesh>(null);
   const walls = useRef<InstancedMesh>(null);
-  const base = useMemo(() => islands.map((i) => new Color(i.color)), []);
-  const glow = useRef(islands.map(() => 0));
+  const base = useMemo(
+    () => world.layout.islands.map((i) => new Color(i.color)),
+    [],
+  );
+  const glow = useRef(world.layout.islands.map(() => 0));
   const select = usePlayback((st) => st.select);
   const focus = world.presentation.focus;
 
   useLayoutEffect(() => {
-    islands.forEach((i, k) => {
+    world.layout.islands.forEach((i, k) => {
       const [x, y, z] = i.position;
       const r = i.radius;
       q.identity();
@@ -130,7 +131,7 @@ export function Islands() {
           );
     const { selected } = usePlayback.getState();
     const h = highlightOf(selected);
-    islands.forEach((i, k) => {
+    world.layout.islands.forEach((i, k) => {
       const target = alarmed.has(i.id)
         ? 1.6
         : busy.has(i.id)
@@ -164,12 +165,12 @@ export function Islands() {
     onClick: (e: ThreeEvent<MouseEvent>) => {
       if (e.instanceId === undefined) return;
       e.stopPropagation();
-      select({ type: "part", id: islands[e.instanceId].id });
+      select({ type: "part", id: world.layout.islands[e.instanceId].id });
     },
     onPointerMove: (e: ThreeEvent<PointerEvent>) => {
       if (e.instanceId === undefined) return;
       e.stopPropagation();
-      const id = islands[e.instanceId].id;
+      const id = world.layout.islands[e.instanceId].id;
       hover.label = `${partOf(id)?.label ?? id} · ${nounOfPart(id)}`;
     },
     onPointerOut: () => (hover.label = ""),
@@ -179,7 +180,7 @@ export function Islands() {
     <>
       <instancedMesh
         ref={plinths}
-        args={[plinth, undefined, islands.length]}
+        args={[plinth, undefined, world.layout.islands.length]}
         {...handlers}
       >
         <meshStandardMaterial
@@ -190,7 +191,7 @@ export function Islands() {
       </instancedMesh>
       <instancedMesh
         ref={tops}
-        args={[top, undefined, islands.length]}
+        args={[top, undefined, world.layout.islands.length]}
         {...handlers}
       >
         <meshStandardMaterial
@@ -201,14 +202,14 @@ export function Islands() {
       </instancedMesh>
       <instancedMesh
         ref={rims}
-        args={[rim, undefined, islands.length]}
+        args={[rim, undefined, world.layout.islands.length]}
         raycast={() => null}
       >
         <meshBasicMaterial color="#ffffff" toneMapped={false} />
       </instancedMesh>
       <instancedMesh
         ref={walls}
-        args={[wall, wallMaterial, islands.length]}
+        args={[wall, wallMaterial, world.layout.islands.length]}
         raycast={() => null}
       />
     </>

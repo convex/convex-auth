@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { frames } from "../problems.ts";
-import { usePlayback, world } from "../store.ts";
+import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
 import { CameraRig } from "./CameraRig.tsx";
@@ -18,12 +18,15 @@ function Clock() {
     frames.count++;
     // For scripted checks: where the camera is.
     (globalThis as { explorerCamera?: unknown }).explorerCamera = camera;
+    const build = liveTrace.builds[liveTrace.builds.length - 1];
+    if (build && build.drawnAt === null) build.drawnAt = Date.now();
     const s = usePlayback.getState();
     if (!s.playing) return;
     const next = s.time + Math.min(delta, 0.1) * s.speed;
     if (next >= world.timeline.duration) {
       s.setTime(world.timeline.duration);
-      s.pause();
+      // A live recording that still grows waits at its end for what comes.
+      if (!s.live || s.live.connection === "ended") s.pause();
     } else {
       s.setTime(next);
     }

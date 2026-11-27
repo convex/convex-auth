@@ -11,6 +11,8 @@ const params = new URLSearchParams(location.search);
 
 export function App() {
   useShortcuts();
+  // A live recording can add parts to the map; the scene mounts afresh then.
+  const layoutVersion = usePlayback((s) => s.layoutVersion);
   return (
     <div className="app">
       <Canvas
@@ -35,7 +37,7 @@ export function App() {
         }
       >
         <SceneBoundary>
-          <World effects={!params.has("noeffects")} />
+          <World key={layoutVersion} effects={!params.has("noeffects")} />
         </SceneBoundary>
       </Canvas>
       <Problems />

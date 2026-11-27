@@ -7,10 +7,9 @@ import { colorOf, nounOfPart, partOf, placementOf } from "../scene/look.ts";
 import { DELETED_COLOR, TONE_COLORS } from "../scene/palette.ts";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
 
-const { timeline, presentation } = world;
 const labelOf = (id: string) => partOf(id)?.label ?? id;
 const chapterOf = (run: string) =>
-  timeline.chapters.find((c) => c.run.id === run);
+  world.timeline.chapters.find((c) => c.run.id === run);
 
 function Fields({ doc }: { doc: Doc }) {
   const entries = Object.entries(doc);
@@ -48,7 +47,7 @@ function StatePill({ table, state }: { table: string; state?: string }) {
   const color =
     state === "deleted"
       ? DELETED_COLOR
-      : (presentation.tables?.[table]?.states?.[state]?.color ?? "#555");
+      : (world.presentation.tables?.[table]?.states?.[state]?.color ?? "#555");
   return (
     <span className="pill" style={{ background: color }}>
       {state}
@@ -118,7 +117,7 @@ function Dependencies({ id, covered }: { id: string; covered: Set<string> }) {
         seen.add(`${dir}:${l.id}`);
         const other = dir === "out" ? l.to : l.from;
         if (covered.has(other)) continue;
-        const look = linkLook(presentation, l.kind);
+        const look = linkLook(world.presentation, l.kind);
         const key = `${dir === "out" ? look.verb : look.inverse}|${l.kind}`;
         groups.set(key, [...(groups.get(key) ?? []), { other, link: l }]);
       }
@@ -134,7 +133,7 @@ function Dependencies({ id, covered }: { id: string; covered: Set<string> }) {
             <summary>
               <span
                 className="swatch"
-                style={{ background: linkLook(presentation, kind).color }}
+                style={{ background: linkLook(world.presentation, kind).color }}
               />
               {phrase} <span className="dim">({items.length})</span>
             </summary>
@@ -169,7 +168,7 @@ function Dependencies({ id, covered }: { id: string; covered: Set<string> }) {
 }
 
 function rowTitle(table: string, r: RowState) {
-  const t = presentation.tables?.[table]?.title;
+  const t = world.presentation.tables?.[table]?.title;
   if (t) {
     const filled = t
       .replace(/\{(\w+)\}/g, (_, k: string) => String(r.doc[k] ?? ""))
@@ -209,7 +208,7 @@ function partBody(id: string, state: WorldState) {
     (c) => world.index.unresolvedFrom.get(c) ?? [],
   );
   const summary =
-    presentation.parts?.[id]?.summary ??
+    world.presentation.parts?.[id]?.summary ??
     part.facts.find(([k]) => k === "summary")?.[1];
   const byKind = new Map<string, number>();
   for (const m of island?.members ?? []) {
@@ -265,7 +264,7 @@ function partBody(id: string, state: WorldState) {
           <Section title={`On this island (${island.members.length})`}>
             {[...byKind].map(([k, n]) => (
               <div key={k}>
-                {n} {nounOf(presentation, k, n)}
+                {n} {nounOf(world.presentation, k, n)}
               </div>
             ))}
             {children.map((c) => (
@@ -415,7 +414,7 @@ function body(
       };
     }
     case "movement": {
-      const m = timeline.movements.find((x) => x.id === s.id);
+      const m = world.timeline.movements.find((x) => x.id === s.id);
       if (!m) return { kind: "movement", title: s.id, content: null };
       const flying = m.start <= state.time && state.time < m.end;
       return {
@@ -571,8 +570,9 @@ function body(
 /** What the selected thing is and its state at the current time. */
 export function Inspector() {
   const selected = usePlayback((s) => s.selected);
-  // The inspector shows the state at the current time.
+  // The inspector shows the state at the current time, of the current world.
   usePlayback((s) => s.time);
+  usePlayback((s) => s.version);
   const { select, flyTo } = usePlayback.getState();
   if (!selected) return null;
   const state = currentState();

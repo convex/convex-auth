@@ -13,7 +13,9 @@ import {
   parseNdjson,
   recordingFromTimeline,
   withObserved,
+  type Event,
 } from "./adapters/convexRecording.ts";
+import type { Graph } from "./model/graph.ts";
 import { createWorld, type World } from "./model/world.ts";
 import { PRESETS } from "./presets.ts";
 import { extendPresentation, type Presentation } from "./presentation.ts";
@@ -32,17 +34,35 @@ export function resolvePresentation(own: Presentation): Presentation {
   return extendPresentation(resolvePresentation(base), own);
 }
 
-/** Loads a project with one of its recordings, by name (the first by default). */
-export function loadProject(source: ProjectSource, chosen?: string): World {
-  const name =
-    chosen && chosen in source.timelines
-      ? chosen
-      : Object.keys(source.timelines)[0];
+/** A project's structure and presentation, ready to take recordings. */
+export interface PreparedProject {
+  source: ProjectSource;
+  structure: Graph;
+  presentation: Presentation;
+}
+
+export function prepareProject(source: ProjectSource): PreparedProject {
   const own = resolvePresentation(source.presentation);
   const structure = graphFromStructure(source.structure, own);
   const presentation = withKindLabels(own, structure.kinds?.parts ?? {});
+  return { source, structure, presentation };
+}
+
+/**
+ * The world of a recording given as its events. With `previous`, a world of
+ * the same project, the layout is reused when the recording adds no part to
+ * the map that `previous` lacks; `relaidOut` says whether it was laid out
+ * again.
+ */
+export function worldFromEvents(
+  project: PreparedProject,
+  events: Event[],
+  name: string,
+  previous?: World,
+): { world: World; relaidOut: boolean } {
+  const { source, structure, presentation } = project;
   const { recording, observed } = recordingFromTimeline(
-    parseNdjson(source.timelines[name] ?? ""),
+    events,
     structure,
     presentation,
     (app) =>
@@ -51,11 +71,33 @@ export function loadProject(source: ProjectSource, chosen?: string): World {
         app,
       ),
   );
-  return createWorld(
-    withObserved(structure, observed),
-    { ...recording, name },
-    presentation,
-  );
+  const graph = withObserved(structure, observed);
+  const same =
+    previous !== undefined &&
+    previous.graph.parts.length === graph.parts.length &&
+    observed.every((part) => previous.index.part.has(part.id));
+  return {
+    world: createWorld(
+      same ? previous.graph : graph,
+      { ...recording, name },
+      presentation,
+      same ? previous.layout : undefined,
+    ),
+    relaidOut: !same,
+  };
+}
+
+/** Loads a project with one of its recordings, by name (the first by default). */
+export function loadProject(source: ProjectSource, chosen?: string): World {
+  const name =
+    chosen && chosen in source.timelines
+      ? chosen
+      : Object.keys(source.timelines)[0];
+  return worldFromEvents(
+    prepareProject(source),
+    parseNdjson(source.timelines[name] ?? ""),
+    name,
+  ).world;
 }
 
 /**

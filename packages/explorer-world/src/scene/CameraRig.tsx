@@ -46,9 +46,14 @@ export function selectionFocus(s: Selection): {
 }
 
 const vec = (v: [number, number, number]) => new Vector3(...v);
+// Read from the world each time: a live recording can lay the map out again.
 const overview = {
-  position: vec(world.layout.overview.position),
-  target: vec(world.layout.overview.target),
+  get position() {
+    return vec(world.layout.overview.position);
+  },
+  get target() {
+    return vec(world.layout.overview.target);
+  },
 };
 
 const KEYS = new Set<string>();

@@ -79,7 +79,8 @@ interface WriteEvent {
   runId: string | null;
   snapshot: boolean;
 }
-type Event = { kind: string; time?: number } & Record<string, unknown>;
+/** One event of a recorder timeline, as parsed from its NDJSON. */
+export type Event = { kind: string; time?: number } & Record<string, unknown>;
 
 export function parseNdjson(text: string): Event[] {
   return text
