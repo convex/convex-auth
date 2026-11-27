@@ -335,7 +335,13 @@ function runLength(run: Run, rerun: Set<string>): number {
 }
 
 type Placed =
-  | { kind: "item"; real: number; item: Run["before"][number]; run: Run }
+  | {
+      kind: "item";
+      real: number;
+      item: Run["before"][number];
+      /** The run it plays with; none for what the page did before any run. */
+      run: Run | null;
+    }
   | { kind: "run"; real: number; run: Run };
 
 /**
@@ -358,6 +364,8 @@ function place(
   // The operations nobody asked for: their hops are brief.
   const briefOps = new Set<string>();
   const all: Placed[] = [];
+  for (const item of recording.early ?? [])
+    all.push({ kind: "item", real: item.time, item, run: null });
   for (const run of recording.runs) {
     for (const item of run.before)
       all.push({ kind: "item", real: item.time, item, run });
@@ -554,19 +562,21 @@ export function buildTimeline(
   }
 
   /** Something a page did outside the runs, at its shown time. */
-  const playItem = (run: Run, it: Run["before"][number], at: number) => {
+  const playItem = (run: Run | null, it: Run["before"][number], at: number) => {
+    // What the page did before any run plays under the id of what did it.
+    const id = run?.id ?? it.part;
     const end = at + LIT;
     beat(
       at,
       end,
-      run.id,
+      id,
       `${name(it.part)}: ${it.text}`,
       it.tone,
       it.part,
       it.lights ?? [it.part],
     );
     for (const node of it.lights ?? [])
-      tl.activations.push({ node, run: run.id, start: at, end, tone: it.tone });
+      tl.activations.push({ node, run: id, start: at, end, tone: it.tone });
     if (it.step)
       tl.clientSteps.push({
         start: at,

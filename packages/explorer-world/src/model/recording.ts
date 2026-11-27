@@ -204,6 +204,12 @@ export interface Recording {
    */
   app?: string;
   runs: Run[];
+  /**
+   * What the page did while no run had happened yet (a page that loads
+   * signed out calls nothing): played on its own, before the runs. With a
+   * run, it is that run's `before`.
+   */
+  early?: PageItem[];
   /** Rows that existed when the recording started. */
   snapshot: Write[];
   unplaced: Unplaced[];

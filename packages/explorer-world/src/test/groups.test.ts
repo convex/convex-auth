@@ -4,6 +4,7 @@
  */
 import { describe, expect, test } from "vitest";
 import { commonDir, dirOf } from "../layout/islands.ts";
+import { buildTimeline } from "../model/schedule.ts";
 import { takenPart } from "../model/takenPart.ts";
 import { loadProject, PROJECTS } from "../project.ts";
 
@@ -106,5 +107,35 @@ describe("what took part", () => {
     expect(facts.parts.has("module:methods/username-passkey/client")).toBe(
       false,
     );
+  });
+});
+
+describe("before any run", () => {
+  // The page as it loads signed out: it reports steps and calls nothing.
+  // In the saved recording that is what came before the sign-up's call.
+  const before = world.recording.runs[0].before;
+  const call = before.findIndex((it) => it.step === "signIn.call");
+  const early = before.slice(0, call).filter((it) => it.step);
+  const recording = { ...world.recording, runs: [], early };
+  const timeline = buildTimeline(world.index, recording);
+
+  test("the page's steps are placed, in order", () => {
+    expect(early.length).toBeGreaterThan(0);
+    expect(timeline.clientSteps.map((s) => s.step)).toEqual(
+      early.map((it) => it.step),
+    );
+    const starts = timeline.clientSteps.map((s) => s.start);
+    expect([...starts].sort((a, b) => a - b)).toEqual(starts);
+  });
+
+  test("what reported on load has taken part", () => {
+    const facts = takenPart(
+      world.index,
+      world.layout,
+      timeline,
+      world.presentation.focus,
+    );
+    expect(facts.groups.get("region:browser/browser")?.how).toBe("reported");
+    expect(facts.groups.has("method:username-password")).toBe(false);
   });
 });

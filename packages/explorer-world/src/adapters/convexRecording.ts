@@ -513,10 +513,12 @@ export function recordingFromTimeline(
       ? asked.seq < it.order.seq
       : r.startedAt <= it.time;
   };
+  const early: (typeof page.items)[number][] = [];
   for (const it of page.items) {
     const owner = [...runs].reverse().find((r) => before(r, it));
     if (owner) owner.after.push(it);
-    else runs[0]?.before.push(it);
+    else if (runs[0]) runs[0].before.push(it);
+    else early.push(it);
   }
   const fromData = page.counts.secret?.seen > 0;
 
@@ -559,6 +561,7 @@ export function recordingFromTimeline(
       startedAt: startedAt || (runs[0]?.startedAt ?? 0),
       app: app ?? undefined,
       runs,
+      ...(early.length ? { early } : {}),
       snapshot,
       unplaced,
       events: counts,
