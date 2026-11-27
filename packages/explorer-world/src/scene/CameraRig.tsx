@@ -250,12 +250,19 @@ export function CameraRig() {
     const move = (e: PointerEvent) => {
       const c = controls.current;
       if (!c || !pressed || e.pointerId !== id) return;
-      const now = groundUnder(c, camera, canvas, e.clientX, e.clientY);
+      const now = groundUnder(
+        c,
+        camera,
+        canvas,
+        e.clientX,
+        e.clientY,
+        pressed.y,
+      );
       if (!now) return;
+      // Exactly the way to the pressed point: a cap here would leave it
+      // behind the pointer close in. Near the horizon `groundUnder` finds
+      // no point, so the camera does not jump.
       const step = pressed.clone().sub(now);
-      // Near the horizon a pixel is far away: never jump.
-      const most = c.distance * 0.5;
-      if (step.length() > most) step.setLength(most);
       const t = c.getTarget(new Vector3(), true).add(step);
       void c.moveTo(t.x, t.y, t.z, false);
     };
@@ -397,8 +404,30 @@ const ndc = new Vector2();
 const ground = new Plane(new Vector3(0, 1, 0), 0);
 
 /**
- * The point of the ground (y = 0) under the pointer, seen from where the
- * controls will put the camera, or null when the pointer looks at the sky.
+ * The height of the surface a ray from the camera meets first: the top of
+ * the highest island whose disc it crosses, else the ground (y = 0). The
+ * islands stand at different heights (a client region above the ground).
+ */
+export function surfaceHeight(origin: Vector3, direction: Vector3): number {
+  let best = 0;
+  if (direction.y > -1e-3) return best;
+  for (const i of world.layout.islands) {
+    const h = i.position[1];
+    if (h <= best) continue;
+    const t = (h - origin.y) / direction.y;
+    if (t <= 0) continue;
+    const x = origin.x + direction.x * t - i.position[0];
+    const z = origin.z + direction.z * t - i.position[2];
+    if (x * x + z * z <= i.radius * i.radius) best = h;
+  }
+  return best;
+}
+
+/**
+ * The point of the surface under the pointer, seen from where the controls
+ * will put the camera, or null when the pointer looks at the sky. A drag
+ * keeps to the height it was pressed at (`height`); without one, the
+ * surface under the pointer.
  */
 function groundUnder(
   c: CameraControlsImpl,
@@ -406,6 +435,7 @@ function groundUnder(
   canvas: HTMLElement,
   x: number,
   y: number,
+  height?: number,
 ): Vector3 | null {
   const r = canvas.getBoundingClientRect();
   ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
@@ -414,6 +444,9 @@ function groundUnder(
   ray.setFromCamera(ndc, camera);
   c.getPosition(ray.ray.origin, true);
   if (ray.ray.direction.y > -1e-3) return null;
+  ground.constant = -(
+    height ?? surfaceHeight(ray.ray.origin, ray.ray.direction)
+  );
   const hit = ray.ray.intersectPlane(ground, new Vector3());
   if (!hit || hit.distanceTo(ray.ray.origin) > c.distance * 50) return null;
   return hit;

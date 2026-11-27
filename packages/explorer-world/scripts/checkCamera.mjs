@@ -1,6 +1,6 @@
 // Builds the world, serves it, and checks the camera in Chromium with the
 // pointer: a plain drag pans, keeping the point of the ground pressed under
-// the pointer, at the overview and at a flat tilt, and selects nothing even
+// the pointer, from Home, close in, at the overview and at a flat tilt, and selects nothing even
 // when pressed on an island; Cmd-drag orbits and selects nothing; a click in
 // place selects, and a click on empty space clears. Needs Playwright with a
 // Chromium (`require("playwright")`).
@@ -62,7 +62,8 @@ try {
     { timeout: 240000, polling: 1000 },
   );
   await page.waitForTimeout(3000);
-  // The ground point (y=0) under a screen point, and where a world point is on screen.
+  // The surface point under a screen point (the top of the highest island
+  // the ray crosses, else y=0), and where a world point is on screen.
   const ground = (x, y) =>
     page.evaluate(
       ([x, y, W, H]) => {
@@ -74,8 +75,18 @@ try {
           .unproject(cam)
           .sub(p)
           .normalize();
-        const t = -p.y / d.y;
-        return [p.x + d.x * t, 0, p.z + d.z * t];
+        let h = 0;
+        for (const i of explorerWorld.layout.islands) {
+          const y = i.position[1];
+          if (y <= h) continue;
+          const t = (y - p.y) / d.y;
+          if (t <= 0) continue;
+          const dx = p.x + d.x * t - i.position[0];
+          const dz = p.z + d.z * t - i.position[2];
+          if (dx * dx + dz * dz <= i.radius * i.radius) h = y;
+        }
+        const t = (h - p.y) / d.y;
+        return [p.x + d.x * t, h, p.z + d.z * t];
       },
       [x, y, W, H],
     );
@@ -139,17 +150,24 @@ try {
     await page.waitForTimeout(1500);
     return at;
   };
-  // The world opens at Home; these drags are checked from the overview.
-  await page.evaluate(() => {
-    const { position: P, target: T } = explorerWorld.layout.overview;
-    explorerControls.setLookAt(...P, ...T, false);
-  });
-  await page.waitForTimeout(1200);
-  for (const tilt of ["overview", "flat"]) {
-    if (tilt === "flat") {
-      await page.evaluate(() => explorerControls.rotatePolarTo(1.25, false));
-      await page.waitForTimeout(1500);
-    }
+  // From Home, where the world opens, from the overview, and at a flat tilt.
+  const view = (tilt) =>
+    page.evaluate((tilt) => {
+      if (tilt === "home") {
+        explorer.getState().flyTo("home");
+        return;
+      }
+      if (tilt === "close") {
+        // Close over the browser region, where one drag crosses most of it.
+        const p = explorerWorld.layout.home.region.center;
+        explorerControls.setLookAt(p[0], 18, p[2] + 14, p[0], 0, p[2], false);
+        return;
+      }
+      const { position: P, target: T } = explorerWorld.layout.overview;
+      explorerControls.setLookAt(...P, ...T, false);
+      if (tilt === "flat") explorerControls.rotatePolarTo(1.25, false);
+    }, tilt);
+  for (const tilt of ["home", "close", "overview", "flat"]) {
     for (const [name, rel] of [
       ["left 300", [[-300, 0]]],
       ["up 200", [[0, -200]]],
@@ -161,11 +179,8 @@ try {
         ],
       ],
     ]) {
-      await page.evaluate(() => {
-        const T = explorerWorld.layout.overview.target;
-        explorerControls.moveTo(T[0], T[1], T[2], false);
-      });
-      await page.waitForTimeout(1200);
+      await view(tilt);
+      await page.waitForTimeout(2000);
       const isl = await onScreenIsland();
       // Select something else first so a stray click would show.
       await page.evaluate(() => explorer.getState().select(null));
