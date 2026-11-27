@@ -5,6 +5,7 @@
  * project) and adds what only it has: its own part kinds, the state field of
  * a table, how to depict the rows a request carries, one-line descriptions.
  */
+import type { Bracket } from "./model/operations.ts";
 import type { Part } from "./model/graph.ts";
 import type { Tone } from "./model/recording.ts";
 
@@ -154,6 +155,12 @@ export interface Presentation {
     when?: Record<string, unknown>;
     state: PageState;
   }[];
+  /**
+   * The brackets an operation of the client makes its call in (see
+   * `model/operations.ts`): the one call between an operation's opening and
+   * closing step is its call, marked as matched by bracket.
+   */
+  brackets?: Bracket[];
   /** The id of the part the recording ran in (the app being replayed). */
   focus?: string;
   /** The name of the layout strategy (see `src/layout/index.ts`); "islands" by default. */

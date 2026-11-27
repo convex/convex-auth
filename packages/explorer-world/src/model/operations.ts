@@ -18,11 +18,10 @@
  * operation made a call, it goes out with the call to the way out of the
  * browser and comes back with the answer. The link from an operation to its
  * call is not recorded by an id. The one derivation allowed is the bracket
- * rule: when exactly one call of the function named by `signIn.call` left
- * the page between that operation's `signIn.call` and `signIn.return`, in
- * the page's own order of events, that is its call; likewise exactly one
- * call that is not a query between `refresh.start` and `refresh.end`. A
- * call matched so says so ({@link OpPath.matched}).
+ * rule: when exactly one call left the page between an operation's opening
+ * and closing step of a bracket the presentation lists ({@link Bracket}),
+ * in the page's own order of events, that is its call. A call matched so
+ * says so ({@link OpPath.matched}).
  *
  * A step with no operation is not part of one; it lights its module and
  * nothing travels.
@@ -76,15 +75,18 @@ export const BRACKET: Derivation = {
   note: "The recording does not link the operation to its call. It is the only call of that function the page made between the operation's opening and closing steps, in the page's own order of events (matched by bracket).",
 };
 
-/** The brackets an operation can make a call in: opening and closing step. */
-const BRACKETS: { open: string; close: string[]; queries: boolean }[] = [
-  {
-    open: "signIn.call",
-    close: ["signIn.return", "signIn.throw"],
-    queries: true,
-  },
-  { open: "refresh.start", close: ["refresh.end"], queries: false },
-];
+/**
+ * A bracket an operation can make a call in: its opening and closing
+ * steps, whether a query counts, and whether the call must be of the
+ * function the opening step names (its `fn`). The project's presentation
+ * lists them (`brackets`); the core names no step.
+ */
+export interface Bracket {
+  open: string;
+  close: string[];
+  queries: boolean;
+  sameFunction?: boolean;
+}
 
 /** Where a run's call leaves the page and comes back, in shown time. */
 export interface CallSpan {
@@ -104,6 +106,7 @@ export function operations(
   items: { item: PageItem; at: number }[],
   runs: Run[],
   calls: Map<string, CallSpan>,
+  brackets: Bracket[] = [],
 ): OpPath[] {
   const byOp = new Map<string, { item: PageItem; at: number }[]>();
   for (const x of items) {
@@ -120,7 +123,7 @@ export function operations(
         (a.item.order?.seq ?? 0) - (b.item.order?.seq ?? 0) || a.at - b.at,
     );
     const points: OpPoint[] = [];
-    const call = matchCall(steps, runs);
+    const call = matchCall(steps, runs, brackets);
     const span = call ? calls.get(call.id) : undefined;
     // The module of the key the body was last at, and when.
     let inKeyOf: string | null = null;
@@ -147,7 +150,7 @@ export function operations(
     };
     if (call && span) {
       const from = steps.find((s) =>
-        BRACKETS.some((b) => b.open === s.item.step),
+        brackets.some((b) => b.open === s.item.step),
       )!;
       path.run = call.id;
       path.matched = BRACKET;
@@ -170,13 +173,17 @@ export function operations(
 }
 
 /** The bracket rule: the one call inside an operation's bracket, or none. */
-function matchCall(steps: { item: PageItem }[], runs: Run[]): Run | null {
-  for (const b of BRACKETS) {
+function matchCall(
+  steps: { item: PageItem }[],
+  runs: Run[],
+  brackets: Bracket[],
+): Run | null {
+  for (const b of brackets) {
     const open = steps.find((s) => s.item.step === b.open)?.item;
     const close = steps.find((s) => b.close.includes(s.item.step ?? ""))?.item;
     if (!open?.order || !close?.order) continue;
     const page = open.order.page;
-    const fn = b.open === "signIn.call" ? functionOf(open) : null;
+    const fn = b.sameFunction ? functionOf(open) : null;
     const inside = runs.filter(
       (r) =>
         r.order?.page === page &&

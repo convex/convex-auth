@@ -30,7 +30,7 @@ export function createWorld(
 ): World {
   const index = indexGraph(graph);
   layout ??= layOut(graph, presentation);
-  const timeline = buildTimeline(index, recording);
+  const timeline = buildTimeline(index, recording, presentation.brackets);
   const stateFields = new Map(
     Object.entries(presentation.tables ?? {}).flatMap(([id, t]) =>
       t.stateField ? [[id, t.stateField] as const] : [],

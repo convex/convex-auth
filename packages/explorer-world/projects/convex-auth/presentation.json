@@ -198,5 +198,23 @@
       "step": "signIn.throw",
       "state": "error"
     }
+  ],
+  "brackets": [
+    {
+      "open": "signIn.call",
+      "close": ["signIn.return", "signIn.throw"],
+      "queries": true,
+      "sameFunction": true
+    },
+    {
+      "open": "refresh.start",
+      "close": ["refresh.end"],
+      "queries": false
+    },
+    {
+      "open": "signOut.start",
+      "close": ["signOut.end"],
+      "queries": false
+    }
   ]
 }

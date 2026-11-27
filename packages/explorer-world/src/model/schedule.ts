@@ -13,6 +13,7 @@ import {
   HOP_KEY,
   HOP_SAME,
   operations,
+  type Bracket,
   type CallSpan,
   type OpPath,
 } from "./operations.ts";
@@ -457,6 +458,7 @@ function place(recording: Recording, rerun: Set<string>) {
 export function buildTimeline(
   index: GraphIndex,
   recording: Recording,
+  brackets: Bracket[] = [],
 ): Timeline {
   const tl: Timeline = {
     duration: 0,
@@ -876,6 +878,7 @@ export function buildTimeline(
     ),
     recording.runs,
     calls,
+    brackets,
   );
 
   tl.duration = Math.max(

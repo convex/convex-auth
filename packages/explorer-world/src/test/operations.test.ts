@@ -68,6 +68,28 @@ describe("operations of the client", () => {
       expect(runOf(o.run)?.function).toMatch(/refreshSession/);
   });
 
+  test("a sign-out goes out with the one call in its bracket, then removes its keys", () => {
+    const signOuts = ops.filter((o) => o.kind === "signOut");
+    expect(signOuts).toHaveLength(1);
+    const [o] = signOuts;
+    expect(o.matched).toBe(BRACKET);
+    expect(runOf(o.run)?.type).not.toBe("Query");
+    const steps = o.points.map((p) => p.step);
+    const out = steps.indexOf("out");
+    expect(out).toBeGreaterThan(steps.indexOf("signOut.start"));
+    expect(steps.indexOf("storage.remove")).toBeGreaterThan(out);
+  });
+
+  test("the brackets come from the project's presentation; without them no call is matched", () => {
+    const project = prepareProject(PROJECTS["convex-auth"]);
+    const none = worldFromEvents(
+      { ...project, presentation: { ...project.presentation, brackets: [] } },
+      events,
+      "live",
+    ).world.timeline.ops;
+    expect(none.some((o) => o.run)).toBe(false);
+  });
+
   test("an operation's path is a function of time", () => {
     for (const o of ops)
       for (let i = 1; i < o.points.length; i++)
