@@ -118,6 +118,11 @@ describe("the client library in the browser", () => {
     expect(signUp.sender?.part).toBe("module:react/index");
     expect(signUp.sender?.derived.rule).toBe("sender-by-bracket");
     expect(signUp.via).toBe("exit:socket");
+    // Both sign-ins too, by the page's own order of events.
+    for (const r of runs.filter((r) =>
+      r.function.endsWith("signInWithUsernamePassword"),
+    ))
+      expect(r.sender?.part).toBe("module:react/index");
     const legs = world.timeline.movements.filter((m) => m.run === signUp.id);
     expect(legs[0]).toMatchObject({
       from: "module:react/index",
@@ -139,6 +144,35 @@ describe("the client library in the browser", () => {
       expect(s.lights?.[0]).toBe(s.part);
       if (s.step?.startsWith("storage."))
         expect(s.lights?.[1]).toMatch(/^storageKey:/);
+    }
+  });
+
+  test("each sign-in call is reported before its request leaves, and returns after its response", () => {
+    for (const run of runs.filter((r) => r.sender)) {
+      const legs = world.timeline.movements.filter((m) => m.run === run.id);
+      const leaves = legs.find((m) => m.kind === "request")!.start;
+      const back = legs.filter((m) => m.kind === "response").at(-1)!.end;
+      const steps = world.timeline.clientSteps.filter(
+        (s) => s.part === run.sender!.part,
+      );
+      const call = steps
+        .filter((s) => s.step === "signIn.call" && s.end <= leaves)
+        .at(-1);
+      const ret = steps.find(
+        (s) => s.step === "signIn.return" && s.start >= back,
+      );
+      expect(call, run.function).toBeDefined();
+      expect(ret, run.function).toBeDefined();
+      // Its own call: no sign-in returned between it and the request.
+      expect(
+        steps.some(
+          (s) =>
+            s.step === "signIn.return" &&
+            s.start > call!.start &&
+            s.start < leaves,
+        ),
+        run.function,
+      ).toBe(false);
     }
   });
 

@@ -87,6 +87,8 @@ export interface PageItem {
   tone: Tone;
   /** What the page starts or stops holding (a token it stores or removes). */
   hold?: { op: "gain" | "drop"; cargo: Cargo; where: string };
+  /** Where it stands in its page's own order of events, when recorded. */
+  order?: { page: string; seq: number };
   /** For an unlinked call: the runs it may be, one of which it is. */
   candidates?: string[];
   /** The parts it lights while it plays: the module that reported a step, the key it named. */

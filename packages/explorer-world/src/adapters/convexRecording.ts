@@ -485,7 +485,7 @@ export function recordingFromTimeline(
           part: call.sender,
           derived: {
             rule: "sender-by-bracket",
-            note: "The recording does not link the call to the module. It is the only call of this function the page made between the module's signIn.call and signIn.return.",
+            note: "The recording does not link the call to the module. It is the only call of this function the page made between the module's signIn.call and signIn.return, in the order the recorder numbered the page's events.",
           },
         };
       run.carriesIn = call.cargoIn;
@@ -499,8 +499,17 @@ export function recordingFromTimeline(
       .reverse()
       .find((s) => s.time <= run.startedAt)?.text;
   }
+  // What the page did plays after the run before it. Against a run the page
+  // called, that is decided by the page's own order of events (the backend's
+  // clock and the page's differ by milliseconds); against any other, by time.
+  const before = (r: Run, it: (typeof page.items)[number]) => {
+    const asked = page.calls.get(r.id)?.order;
+    return asked && it.order && asked.page === it.order.page
+      ? asked.seq < it.order.seq
+      : r.startedAt <= it.time;
+  };
   for (const it of page.items) {
-    const owner = [...runs].reverse().find((r) => r.startedAt <= it.time);
+    const owner = [...runs].reverse().find((r) => before(r, it));
     if (owner) owner.after.push(it);
     else runs[0]?.before.push(it);
   }

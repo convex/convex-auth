@@ -47,6 +47,8 @@ export interface PageFeed {
       link: string;
       cargoIn: Cargo[];
       cargoOut: Cargo[];
+      /** Where the request stands in its page's order of events. */
+      order?: { page: string; seq: number };
       /**
        * The module that sent it: the one that reported a `signIn.call` of
        * its function when this was the only call of that function from the
@@ -220,7 +222,16 @@ export function readPageFeed(
   const calls: PageFeed["calls"] = new Map();
   // Open sign-in calls, per page and function: who reported it, and the
   // calls of that function the page made since.
-  const brackets = new Map<string, { part: string; runs: string[] }[]>();
+  // The sign-in calls the client library reported, and the calls the page
+  // made, in the page's own order (the recorder numbers a page's events in
+  // one sequence: `p1#24`).
+  const signIns: {
+    key: string;
+    part: string;
+    open: number;
+    close: number | null;
+  }[] = [];
+  const pageCalls: { key: string; seq: number; run: string }[] = [];
   const items: PageItem[] = [];
   const sections: PageFeed["sections"] = [];
   const referenced = new Set<string>();
@@ -236,7 +247,15 @@ export function readPageFeed(
     // Repeats in a row (a page navigating to the same URL twice) show once.
     if (`${part}|${text}` === lastText && !extra.hold) return true;
     lastText = `${part}|${text}`;
-    items.push({ time: e.time, kind, part, text, tone, ...extra });
+    items.push({
+      time: e.time,
+      order: orderOf(e),
+      kind,
+      part,
+      text,
+      tone,
+      ...extra,
+    });
     return true;
   };
 
@@ -257,18 +276,21 @@ export function readPageFeed(
       const state = stateAfter(presentation, String(e.step), detail);
       if (typeof detail.function === "string") {
         const key = `${page}|${detail.function}`;
-        const open = brackets.get(key) ?? [];
-        if (e.step === "signIn.call") {
-          open.push({ part: reporter, runs: [] });
-          brackets.set(key, open);
-        } else if (e.step === "signIn.return" || e.step === "signIn.throw") {
-          const bracket = open.shift();
-          const call = bracket?.runs.length === 1 && calls.get(bracket.runs[0]);
-          if (call) call.sender = bracket.part;
+        if (e.step === "signIn.call")
+          signIns.push({
+            key,
+            part: reporter,
+            open: sequence(e.id),
+            close: null,
+          });
+        else if (e.step === "signIn.return" || e.step === "signIn.throw") {
+          const open = signIns.find((b) => b.key === key && b.close === null);
+          if (open) open.close = sequence(e.id);
         }
       }
       items.push({
         time: e.time,
+        order: orderOf(e),
         kind: "step",
         part: reporter,
         text: stepText(String(e.step), detail),
@@ -295,10 +317,15 @@ export function readPageFeed(
           typeof e.runId === "string" && runIds.has(e.runId) ? e.runId : null;
         if (runId) {
           count("call", true);
-          for (const b of brackets.get(`${page}|${String(e.identifier)}`) ?? [])
-            b.runs.push(runId);
+          if (request)
+            pageCalls.push({
+              key: `${page}|${String(e.identifier)}`,
+              seq: sequence(request.id),
+              run: runId,
+            });
           calls.set(runId, {
             page,
+            order: request ? { page, seq: sequence(request.id) } : undefined,
             transport: String(e.transport),
             link: String(e.link),
             cargoIn: cargoIn(
@@ -409,6 +436,7 @@ export function readPageFeed(
         if (drop)
           items.push({
             time: e.time,
+            order: orderOf(e),
             kind: "storage",
             part: key,
             text: `removes ${drop.label} from ${where}`,
@@ -419,6 +447,7 @@ export function readPageFeed(
         if (gain)
           items.push({
             time: e.time,
+            order: orderOf(e),
             kind: "storage",
             part: key,
             text: `stores ${gain.label} in ${where}`,
@@ -472,6 +501,17 @@ export function readPageFeed(
         break;
     }
   }
+  // A sign-in call was sent by the module that reported it when it is the
+  // only call of that function the page made between the module's
+  // signIn.call and signIn.return.
+  for (const b of signIns) {
+    if (b.close === null) continue;
+    const inside = pageCalls.filter(
+      (c) => c.key === b.key && c.seq > b.open && c.seq < b.close!,
+    );
+    const call = inside.length === 1 && calls.get(inside[0].run);
+    if (call) call.sender = b.part;
+  }
   // Messages and requests play as the calls that refer to them.
   for (const e of feed) {
     if (e.kind === "socket" || e.kind === "http")
@@ -490,6 +530,12 @@ export function readPageFeed(
     },
   };
 }
+
+/** Where an event stands in its page's order: the recorder numbers them `p1#24`. */
+const orderOf = (e: { id: string; pageId?: unknown }) =>
+  typeof e.pageId === "string" && String(e.id).includes("#")
+    ? { page: `page:${e.pageId}`, seq: sequence(e.id) }
+    : undefined;
 
 const sequence = (id: string) => Number(String(id).split("#").pop()) || 0;
 
