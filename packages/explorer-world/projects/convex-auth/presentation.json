@@ -160,6 +160,7 @@
     }
   },
   "client": "region:browser",
+  "namedAtRest": ["region"],
   "pageStates": [
     {
       "step": "state",

@@ -28,6 +28,7 @@ import { actingModules, haloRadius } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
 import type { OpPath } from "../model/operations.ts";
+import type { Timeline } from "../model/schedule.ts";
 import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
 import { runningNow } from "./Running.tsx";
 
@@ -46,6 +47,11 @@ interface Entry {
   hideFar?: number;
   /** Whether it relates to the selection or the current beat; else it fades with distance. */
   important?: () => boolean;
+  /**
+   * Named only once running code reached it: until `named()`, it shows
+   * only nearer than `far` (or when `important`).
+   */
+  quiet?: { far: number; named: () => boolean };
 }
 
 const registry = new Map<string, Entry>();
@@ -60,6 +66,38 @@ function useDeclutter(key: string, entry: Omit<Entry, "group">) {
     return () => void registry.delete(key);
   }, [key, entry.priority, entry.chars, entry.size]);
   return group;
+}
+
+const reachCache = new WeakMap<Timeline, Map<string, number>>();
+
+/**
+ * When running code first reached each island (shown time): an activation
+ * of a part on it, a write to a table on it, or a movement landing on it;
+ * an island inside another reaches its parents too.
+ */
+export function reachedAt(tl: Timeline): Map<string, number> {
+  const hit = reachCache.get(tl);
+  if (hit) return hit;
+  const out = new Map<string, number>();
+  const reach = (part: string, at: number) => {
+    const p = placementOf(part);
+    let island: string | null =
+      p?.shape === "island" ? part : (p?.island ?? null);
+    const seen = new Set<string>();
+    while (island && !seen.has(island)) {
+      seen.add(island);
+      const was = out.get(island);
+      if (was === undefined || at < was) out.set(island, at);
+      const q = placementOf(island);
+      island =
+        q && "parentIsland" in q ? (q.parentIsland as string | null) : null;
+    }
+  };
+  for (const a of tl.activations) reach(a.node, a.start);
+  for (const c of tl.rowChanges) reach(c.write.table, c.at);
+  for (const m of tl.movements) reach(m.to, m.end);
+  reachCache.set(tl, out);
+  return out;
 }
 
 const ISLAND_GROW = { distance: 40, max: 3.6 };
@@ -89,6 +127,22 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
       island.depth * 4,
     hideNear: island.radius * 1.3 + 8,
     hideFar: island.depth ? island.radius * 7 + 40 : undefined,
+    // Outside the client's region, an island of a kind not named at rest
+    // is named once running code has reached it; until then only close in
+    // (and on hover).
+    ...(world.presentation.namedAtRest &&
+    !world.presentation.namedAtRest.includes(partOf(island.id)?.kind ?? "") &&
+    topIsland(island.id) !== world.presentation.client
+      ? {
+          quiet: {
+            far: island.radius * 2.5 + 20,
+            named: () => {
+              const at = reachedAt(world.timeline).get(island.id);
+              return at !== undefined && at <= currentState().time;
+            },
+          },
+        }
+      : {}),
     important: () => {
       const h = highlightOf(usePlayback.getState().selected);
       if (h.covered.has(island.id) || h.linked.has(island.id)) return true;
@@ -147,6 +201,7 @@ function Declutter() {
         Math.abs(projected.y) > 1.2 ||
         (e.hideNear !== undefined && d < e.hideNear) ||
         (e.hideFar !== undefined && d > e.hideFar) ||
+        (e.quiet && d > e.quiet.far && !e.quiet.named() && !e.important?.()) ||
         // From inside the map, what is far and unrelated fades.
         (e.important &&
           d > Math.max(90, camera.position.y * 2.4) &&

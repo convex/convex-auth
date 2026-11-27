@@ -163,6 +163,12 @@ export interface Presentation {
   brackets?: Bracket[];
   /** The id of the part the recording ran in (the app being replayed). */
   focus?: string;
+  /**
+   * The kinds of island named at rest. An island of another kind, outside
+   * the client's region, is named once running code reaches it, else only
+   * close in and on hover. Without it every island is named.
+   */
+  namedAtRest?: string[];
   /** The name of the layout strategy (see `src/layout/index.ts`); "islands" by default. */
   layout?: string;
 }
