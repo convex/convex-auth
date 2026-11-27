@@ -16,6 +16,7 @@ import {
   type Event,
 } from "./adapters/convexRecording.ts";
 import type { Graph } from "./model/graph.ts";
+import type { ProjectInside } from "./model/inside.ts";
 import { createWorld, type World } from "./model/world.ts";
 import { PRESETS } from "./presets.ts";
 import { extendPresentation, type Presentation } from "./presentation.ts";
@@ -25,6 +26,11 @@ export interface ProjectSource {
   structure: StructureInput;
   /** The recorder's timelines (NDJSON), by name; the first is the default. */
   timelines: Record<string, string>;
+  /**
+   * What the project says of the insides of its parts (what a module
+   * exports and holds, where it reports steps), if it says anything.
+   */
+  inside?: ProjectInside;
 }
 
 export function resolvePresentation(own: Presentation): Presentation {

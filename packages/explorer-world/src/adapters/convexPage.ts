@@ -20,6 +20,7 @@ import type {
 } from "../model/recording.ts";
 import type { Presentation } from "../presentation.ts";
 import { PLACES } from "./browserPlaces.ts";
+import { scalars } from "../model/inside.ts";
 
 type Event = { kind: string; id: string; time: number } & Record<
   string,
@@ -371,6 +372,12 @@ export function readPageFeed(
         tone: state === "error" ? "error" : "normal",
         lights,
         step: String(e.step),
+        report: {
+          step: String(e.step),
+          runsIn: "browser",
+          part: String(e.part),
+          detail: scalars(detail),
+        },
         ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
         ...(typeof detail.function === "string" ? { fn: detail.function } : {}),
         ...(state === "error" && isCode(detail.error)

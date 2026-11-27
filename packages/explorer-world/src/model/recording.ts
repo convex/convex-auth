@@ -5,6 +5,8 @@
  * works out carries a `Derivation` that says how.
  */
 
+import type { Report } from "./inside.ts";
+
 export type Doc = Record<string, unknown>;
 
 export type Tone = "normal" | "warn" | "error";
@@ -116,6 +118,8 @@ export interface PageItem {
   lights?: string[];
   /** For a step the client library reported: its name. */
   step?: string;
+  /** For a step: the report as running code wrote it, to find the place in the source that wrote it. */
+  report?: Report;
   /** The sign-in state the page is in after it. */
   state?: { holder: string; state: PageState };
   /**

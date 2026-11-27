@@ -15,9 +15,11 @@ import type { Presentation } from "../../src/presentation.ts";
 import presentation from "./presentation.json";
 import page from "./recording-page.ndjson?raw";
 import cli from "./recording-cli.ndjson?raw";
+import { insideOf } from "./inside.ts";
 
 export const source: ProjectSource = {
   presentation: presentation as Presentation,
   structure,
   timelines: { page, cli },
+  inside: insideOf(structure),
 };
