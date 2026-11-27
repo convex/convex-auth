@@ -192,11 +192,14 @@ in-page` it starts no browser and prints a link to the app's page for your
 own browser instead, with no actions. Ctrl-C stops everything; the timeline
 is saved (its path is printed).
 
-What it needs: Node 20.6 or later, and `pnpm install` and `pnpm build` at the
-root, and Google Chrome, which the recorder drives through Playwright
-with nothing to download, or without Chrome, Playwright's Chromium (`npx
-playwright@1.63.0 install chromium`); `--browser` picks one. It runs no shell,
-so it does not need bash. See `--help` for the options.
+What it needs on a fresh machine: Node 20.6 or later, `pnpm install` and
+`pnpm build` at the root, and a browser for the recorder: Google Chrome if
+installed, else Playwright's headless Chromium, installed once with `pnpm
+--filter @convex-dev/explorer exec playwright-core install
+chromium-headless-shell` (`chromium` instead for `--headed` or `--view
+stage`); `--browser` picks one. The command checks the browser before
+anything else and says what to install; it downloads nothing. It runs no
+shell, so it does not need bash. See `--help` for the options.
 
 The deployment is local, with no Convex account: the command runs `convex dev`
 with `CONVEX_AGENT_MODE=anonymous`, which starts a local deployment even when
