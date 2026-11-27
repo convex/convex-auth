@@ -17,7 +17,7 @@ import {
   Vector3,
   type Group,
   type Mesh,
-  type MeshBasicMaterial,
+  MeshBasicMaterial,
 } from "three";
 import type { ClientStep } from "../model/schedule.ts";
 import type { PageState } from "../model/recording.ts";
@@ -66,6 +66,7 @@ export function Browser() {
     <>
       <Halos />
       <KeyPulses />
+      <LoadSweeps />
       {states.map((p) => (
         <StateShape key={p.id} id={p.id} />
       ))}
@@ -113,6 +114,74 @@ function KeyPulses() {
         <KeyPulse key={id} id={id} times={times} />
       ))}
     </>
+  );
+}
+
+/** How long the sweep of a document load takes (s of playback). */
+const SWEEP = 1.2;
+
+function LoadSweeps() {
+  const version = usePlayback((s) => s.version);
+  const pages = useMemo(() => {
+    void version;
+    const out = new Map<string, number[]>();
+    for (const l of world.timeline.loads)
+      if (placementOf(l.page))
+        out.set(l.page, [...(out.get(l.page) ?? []), l.at]);
+    return [...out];
+  }, [version]);
+  return (
+    <>
+      {pages.map(([id, times]) => (
+        <LoadSweep key={id} id={id} times={times} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * At each recorded `load` of a page's document, one arc sweeps once around
+ * the page's island: the page loaded again. What the client then does on
+ * start-up begins from there, as it reported.
+ */
+function LoadSweep({ id, times }: { id: string; times: number[] }) {
+  const p = placementOf(id)!;
+  const arc = useRef<Group>(null);
+  const mat = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        color: new Color("#dfe6ff").multiplyScalar(1.8),
+        toneMapped: false,
+        transparent: true,
+        depthWrite: false,
+      }),
+    [],
+  );
+  useFrame(() => {
+    const g = arc.current;
+    if (!g) return;
+    const t = currentState().time;
+    const since = t - Math.max(-Infinity, ...times.filter((x) => x <= t));
+    const k = since / SWEEP;
+    g.visible = k >= 0 && k < 1;
+    if (!g.visible) return;
+    g.rotation.z = -k * Math.PI * 2;
+    mat.opacity = 0.95 * Math.min(1, (1 - k) * 3);
+  });
+  const r = p.radius * 1.04;
+  return (
+    <group
+      position={[p.position[0], p.position[1] + 0.2, p.position[2]]}
+      rotation={[-Math.PI / 2, 0, 0]}
+    >
+      <group ref={arc} visible={false}>
+        <mesh material={mat} raycast={() => null}>
+          <torusGeometry
+            args={[r, Math.max(0.12, r * 0.025), 8, 64, Math.PI * 0.6]}
+          />
+        </mesh>
+      </group>
+    </group>
   );
 }
 

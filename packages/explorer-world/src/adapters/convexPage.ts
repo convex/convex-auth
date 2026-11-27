@@ -513,6 +513,8 @@ export function readPageFeed(
             e,
             "page",
             sentence[String(e.event)] ?? `${String(e.event)} ${path}`,
+            "normal",
+            e.event === "load" && !blank ? { loaded: true } : {},
           ),
         );
         break;

@@ -130,6 +130,8 @@ export interface PageItem {
    * gave one from its fixed list (`INVALID_CREDENTIALS`); never message text.
    */
   code?: string;
+  /** For a page event: the document finished loading (the recorded `load`). */
+  loaded?: true;
   /** For a step of the scenario (a pressed control): whether it starts or ends. */
   scenario?: "start" | "end";
   parentOp?: string;

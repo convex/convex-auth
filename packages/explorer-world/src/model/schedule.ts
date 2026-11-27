@@ -126,6 +126,8 @@ export interface Timeline {
   activations: Activation[];
   rowChanges: RowChange[];
   holdings: HoldingChange[];
+  /** When a page finished loading a document (its recorded `load`), by page part. */
+  loads: { at: number; page: string }[];
   alerts: Alert[];
   states: StateChange[];
   clientSteps: ClientStep[];
@@ -516,6 +518,7 @@ export function buildTimeline(
     activations: [],
     rowChanges: [],
     holdings: [],
+    loads: [],
     alerts: [],
     states: [],
     clientSteps: [],
@@ -576,6 +579,7 @@ export function buildTimeline(
         holder: it.state.holder,
         state: it.state.state,
       });
+    if (it.loaded) tl.loads.push({ at, page: it.part });
     if (it.hold)
       tl.holdings.push({
         at: at + 0.05,
