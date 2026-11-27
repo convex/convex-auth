@@ -7,6 +7,7 @@
     "check:declarations": "tsx scripts/checkDeclarations.ts",
     "check:jsdoc": "tsx scripts/checkJsdoc.ts",
     "check:structure": "pnpm --filter @convex-dev/explorer-structure check",
+    "explorer:live": "pnpm --filter @convex-dev/explorer-world live",
     "codegen": "tsx scripts/codegen.ts",
     "clean": "pnpm --filter @convex-dev/auth clean",
     "lint": "eslint .",

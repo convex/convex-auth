@@ -150,5 +150,8 @@ Use `pnpm install` at the root. Common tasks:
   (run `pnpm build` first). When an example uses a function or a component
   that the app does not have, add it to the app. See
   `packages/jsdoc-typecheck-fixture/README.md`.
+- `pnpm explorer:live <app directory>` — run a Convex app on a local
+  deployment and watch it in the explorer world as you use it (see
+  `packages/explorer-world/README.md`).
 - `pnpm lint` — ESLint, including the Convex ESLint plugin.
 - `pnpm format` — Prettier.

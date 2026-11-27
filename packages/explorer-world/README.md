@@ -16,6 +16,86 @@ picks one of its recordings; Convex Auth has `page` (a browser driven through
 the `react-username-password` scenario) and `cli` (`npx convex run` calls,
 including the reuse of a spent refresh token).
 
+## Live mode
+
+Run a Convex app and watch the world react as you use it:
+
+```sh
+pnpm explorer:live examples/react-username-password
+```
+
+It starts the app's local deployment, turns on the project's step reports,
+serves the app's page, opens it in a browser window for you to use, and opens
+the world in your default browser. The world shows what your clicks cause as
+they happen. Ctrl-C stops everything; the timeline is saved (its path is
+printed) and plays like any other recording.
+
+What it needs: Node 20.6 or later, `pnpm install` and `pnpm build` at the root,
+and Google Chrome, which the recorder drives through Playwright with nothing
+to download. Without Chrome it runs Playwright's Chromium (`npx
+playwright@1.63.0 install chromium`); `--browser` picks one. It runs no shell,
+so it does not need bash. See `--help` for the options.
+
+The deployment is local, with no Convex account: the command runs `convex dev`
+with `CONVEX_AGENT_MODE=anonymous`, which starts a local deployment even when
+you are logged in to Convex (a logged-in CLI would otherwise ask which project
+to use). It refuses an app whose `.env.local` names a cloud deployment, rather
+than switch it behind your back; `--cloud` records that deployment instead,
+with `CONVEX_DEPLOY_KEY`. If a deployment already answers at the app's URL,
+the command uses it and leaves it running.
+
+Each part runs in its own process group and is stopped as a whole: the
+recorder first (it saves the end of the timeline and closes its browser), then
+the page's server, then `convex dev` and its backend. When a part fails to
+start, the command says which, shows the end of its output (each part logs to
+the run directory it prints), and stops the rest. If the browser window is
+closed, the recording ends; the world keeps showing it until Ctrl-C.
+
+### How the world plays a live recording
+
+`?live=<url>` gives the world the recorder's stream (`record --serve`, see
+`packages/explorer`), which must be on this machine. The world keeps every
+event and, after each batch, builds the recording again from all of them, the
+way it builds a saved one (a rebuild takes a few ms; the layout is kept until
+the recording adds a part to the map, such as the first caller or the page).
+Thus once the recording ends, the world equals the world of its file.
+
+Real runs take milliseconds and the world plays at human speed, so the
+timeline grows ahead of the playhead: playback is a queue. The timeline bar
+says whether it is still recording, how many runs and seconds the playhead is
+behind the newest run, and **Skip to live** (End) plays the newest run. At
+the end the playhead waits for what comes next. Pause, scrub, step and inspect
+work as for a saved recording while events keep arriving.
+
+Events can arrive late or out of order. A rebuild never moves what is on
+screen: the playhead keeps its offset into the run it is in. A late run whose
+time falls before the playhead is placed where it belongs, in the past, and
+the bar counts it ("1 late"); scrub back to see it. A late write, step or link
+of a run already on screen joins that run; if the playhead is already past
+the point where it plays, it shows at once in its final state (a row appears
+rather than flies in), and scrubbing back plays it in full. The recorder holds
+a write until its run can have arrived, so this is rare.
+
+### The lag
+
+`check:live` (below) measures it on a local deployment. From the moment in
+question to the line leaving the recorder's stream: a person's input about 4
+ms, a run's end about 3 ms, a call's result in the page about 100 ms, a
+write's commit about 200 ms. The floors:
+
+- The browser and the log stream report at once: the page through the
+  DevTools protocol, the deployment's log stream through a long poll that
+  answers as soon as a run ends.
+- A write comes from the data sync, which has no push: the recorder polls it
+  every 100 ms here (`--poll`), then holds the write until the log stream is
+  known to be read past it, about 75 ms more, so that it names the right run.
+- A call of the page is held the same way, for the same reason.
+
+The world adds a rebuild (a few ms) and a frame. Here the world runs in a
+headless Chromium with software rendering, where a frame takes 200 to 350 ms
+and blocks the page, so the world shows an input about 0.5 s after it; with
+a GPU a frame takes milliseconds. That figure is not measured here.
+
 ## What you see
 
 - **Islands are trust boundaries.** Each app, component, region and sign-in
@@ -156,6 +236,18 @@ from npm) is added and marked **observed**.
   project.
 - `src/test/layout.test.ts`: another layout strategy plugs in; packing does
   not overlap.
+- `src/test/live.test.ts`: a recording fed batch by batch ends as the world
+  of its file; scrambled, it ends with the same content; a late run keeps the
+  playhead in its run; the behind-live measure; `?live=` takes only a local
+  URL.
+
+`pnpm --filter @convex-dev/explorer-world check:live` runs `explorer:live` on
+`examples/react-username-password` with the recorder's scenario in place of a
+person and a headless Chromium in place of the world's window, and checks
+that events show while the scenario runs (and the lag, as above), that pause,
+scrub back, resume and skip to live work mid-run, that the final world equals
+the world of the saved file and received every line, and that no process is
+left after Ctrl-C. About two minutes; needs Playwright with a Chromium.
 
 Everything the app needs is bundled, fonts included. Text in the 3D scene goes
 through `glyphSafe` so that troika never fetches a fallback font.

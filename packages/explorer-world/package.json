@@ -9,7 +9,9 @@
     "build": "tsc --noEmit && vite build --base ./",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "check:load-failures": "node scripts/checkLoadFailures.mjs"
+    "check:load-failures": "node scripts/checkLoadFailures.mjs",
+    "check:live": "node scripts/checkLive.mjs",
+    "live": "node scripts/live.mjs"
   },
   "dependencies": {
     "@convex-dev/explorer-structure": "workspace:*",
