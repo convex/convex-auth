@@ -46,7 +46,8 @@ Browser:
                          or a module whose default export is a Scenario
   --actions <name|file>  Perform the actions of a scenario when the viewer
                          asks for them, one at a time, in a headless browser
-                         unless --headed; needs --serve
+                         unless --headed; needs --serve and EXPLORER_STREAM_TOKEN
+                         (no token, no actions)
   --headed               Show the browser; without --scenario, you drive the page
   --stage <url>          Open this page instead, which shows the app's page in a
                          frame named explorer-screen, and record that frame only
