@@ -12,6 +12,7 @@
     "check:load-failures": "node scripts/checkLoadFailures.mjs",
     "check:rendering": "node scripts/checkRendering.mjs",
     "check:camera": "node scripts/checkCamera.mjs",
+    "check:looks": "node scripts/checkLooks.mjs",
     "check:live": "node scripts/checkLive.mjs",
     "live": "node scripts/live.mjs"
   },

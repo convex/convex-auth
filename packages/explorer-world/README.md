@@ -305,3 +305,18 @@ recorder with Ctrl-C and copy the file to
 the example with `npx vite --port 5173` and record with `--page
 http://localhost:5173 --scenario react-username-password` into
 `recording-page.ndjson`.
+
+## Looks
+
+`/looks.html` (served by `pnpm dev`) is a gallery of visual directions: one
+small hand-placed sample scene (a screen with the sign-in page, the page
+code, the Auth client, localStorage, cookies and an exit to Convex, and a
+six-second sample motion) drawn in several looks. Tabs or keys 1 to 9 pick a
+look, 0 shows the contact sheet, Space plays; the handle scrubs. The scene
+(`src/looks/SampleScene.tsx`) is written in a kit of parts (`kit.tsx`) and
+names no colour or material; each look under `src/looks/looks/` supplies the
+sky, light, materials, lines, movers, labels and effects. `?look=<id>`,
+`?sheet`, `?t=<s>` and `?capture` are for screenshots. `pnpm --filter
+@convex-dev/explorer-world check:looks` checks in Chromium that every look and
+the contact sheet draw a frame that is not black, with no non-finite pixel and
+no page error, and that the camera stays put when the look changes.

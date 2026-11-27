@@ -1,0 +1,138 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+  font-family: Inter, system-ui, sans-serif;
+}
+.looks {
+  position: relative;
+  height: 100%;
+  --fg: #e8ecf4;
+  --panel: rgba(12, 16, 26, 0.72);
+  --edge: rgba(255, 255, 255, 0.14);
+  --on: rgba(255, 255, 255, 0.92);
+  --on-fg: #111;
+}
+.looks.chrome-light {
+  --fg: #23262d;
+  --panel: rgba(255, 255, 255, 0.78);
+  --edge: rgba(0, 0, 0, 0.12);
+  --on: #23262d;
+  --on-fg: #fff;
+}
+.looks-single,
+.looks-canvas {
+  position: absolute;
+  inset: 0;
+}
+.looks-sheet {
+  position: absolute;
+  inset: 52px 8px 64px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 8px;
+}
+.looks-sheet figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.looks-sheet figcaption {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(12, 16, 26, 0.72);
+  color: #e8ecf4;
+  pointer-events: none;
+}
+.looks-tabs {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  backdrop-filter: blur(8px);
+}
+.looks button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.looks button[aria-pressed="true"] {
+  background: var(--on);
+  color: var(--on-fg);
+}
+.looks kbd {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  opacity: 0.6;
+}
+.looks-transport {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 32px));
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  color: var(--fg);
+  font-size: 13px;
+  backdrop-filter: blur(8px);
+}
+.looks-transport button {
+  background: var(--on);
+  color: var(--on-fg);
+  min-width: 64px;
+}
+.looks-transport input {
+  flex: 1;
+}
+.looks-time {
+  font-family: "JetBrains Mono", monospace;
+  width: 44px;
+}
+.looks-beat {
+  width: 270px;
+  opacity: 0.8;
+}
+.looks-summary {
+  position: absolute;
+  left: 16px;
+  top: 60px;
+  max-width: 420px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  color: var(--fg);
+}
