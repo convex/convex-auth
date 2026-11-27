@@ -280,9 +280,7 @@ export function buildConvexAuthModel(): ConvexAuthStructure {
       .join("/")
       .replace(/\.tsx?$/, "");
     const actualRunsIn =
-      runsIn === "ssr" && /^["']use client["']/.test(file.text.trimStart())
-        ? "browser"
-        : runsIn;
+      runsIn === "ssr" && hasUseClientDirective(file) ? "browser" : runsIn;
     const id = `module:${module}`;
     addPart({
       kind: "module",
@@ -596,4 +594,24 @@ function memberDefinition(
       : memberDefinition(checker, symbol, scope);
   }
   return null;
+}
+
+/**
+ * Whether the directive prologue of `file` holds `"use client"`. The prologue
+ * may follow comments, such as the doc comment of a module, so the text of the
+ * file need not start with it.
+ */
+function hasUseClientDirective(file: ts.SourceFile): boolean {
+  for (const statement of file.statements) {
+    if (
+      !ts.isExpressionStatement(statement) ||
+      !ts.isStringLiteral(statement.expression)
+    ) {
+      return false;
+    }
+    if (statement.expression.text === "use client") {
+      return true;
+    }
+  }
+  return false;
 }

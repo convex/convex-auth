@@ -14,14 +14,39 @@ import {
   type ClientStepPart,
 } from "../browser/steps.ts";
 
-/** The statuses of the library's sign-in results. */
-const STATUSES = new Set(["complete", "error", "pending", "redirect"]);
+// The values that the library's own code writes in the `status`, `kind`, and
+// `userError.error` fields of its results. `signInSteps.test.ts` checks that
+// each value the library's sources define is here.
 
-/** The kinds of the library's sign-in results. */
-const KINDS = new Set(["resend", "rotated", "noSession"]);
+/** The statuses of the library's results. */
+export const STATUSES: ReadonlySet<string> = new Set([
+  "active",
+  "complete",
+  "error",
+  "pending",
+  "redirect",
+]);
 
-/** The `userError` codes of the library's sign-in results. */
-const ERROR_CODES = new Set([
+/** The kinds of the library's results. */
+export const KINDS: ReadonlySet<string> = new Set([
+  "addEmail",
+  "authentication",
+  "changeEmail",
+  "custom",
+  "existingUser",
+  "idle",
+  "newUser",
+  "noSession",
+  "query",
+  "registration",
+  "resend",
+  "rotated",
+  "signUp",
+  "work",
+]);
+
+/** The `userError` codes of the library's results. */
+export const ERROR_CODES: ReadonlySet<string> = new Set([
   "ACCESS_DENIED",
   "ALREADY_PENDING",
   "CEREMONY_ABORTED",

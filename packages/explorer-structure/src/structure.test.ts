@@ -290,3 +290,12 @@ describe("the layers", () => {
     expect(structure.project).toBe("convex-auth");
   });
 });
+
+describe("where modules run", () => {
+  test('an SSR module with a "use client" directive after its doc comment runs in the browser', () => {
+    expect(part("module:ssr/nextjs/client")).toMatchObject({
+      runsIn: "browser",
+    });
+    expect(part("module:ssr/nextjs/index")).toMatchObject({ runsIn: "ssr" });
+  });
+});

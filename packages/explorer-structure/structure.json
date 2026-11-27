@@ -6252,7 +6252,7 @@
         "line": 1
       },
       "module": "ssr/nextjs/client",
-      "runsIn": "ssr"
+      "runsIn": "browser"
     },
     {
       "kind": "module",
