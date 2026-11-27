@@ -41,7 +41,7 @@
       "methodFunction": {
         "layer": "convex-auth",
         "label": "Method function",
-        "description": "An app function a setup… function returns, as the library defines it."
+        "description": "An app function a setup\u2026 function returns, as the library defines it."
       },
       "module": {
         "layer": "convex-auth",
@@ -56,7 +56,7 @@
       "setupFunction": {
         "layer": "convex-auth",
         "label": "Setup function",
-        "description": "A setup… function: the app calls it to get its auth functions."
+        "description": "A setup\u2026 function: the app calls it to get its auth functions."
       },
       "table": {
         "layer": "convex",
@@ -93,7 +93,7 @@
       "definedBy": {
         "layer": "convex-auth",
         "label": "defined by",
-        "description": "An app function is the one a sign-in method's setup… returns."
+        "description": "An app function is the one a sign-in method's setup\u2026 returns."
       },
       "fetches": {
         "layer": "convex",
@@ -143,7 +143,7 @@
       "usesMethod": {
         "layer": "convex-auth",
         "label": "uses method",
-        "description": "An app sets up a sign-in method by calling its setup… function."
+        "description": "An app sets up a sign-in method by calling its setup\u2026 function."
       },
       "writes": {
         "layer": "convex",
@@ -5057,7 +5057,7 @@
       "id": "hook:react/client.useAuth",
       "name": "useAuth",
       "parent": "module:react/client",
-      "source": { "file": "packages/core/src/react/client.tsx", "line": 104 },
+      "source": { "file": "packages/core/src/react/client.tsx", "line": 108 },
       "runsIn": "browser"
     },
     {
@@ -5065,7 +5065,7 @@
       "id": "hook:react/client.useAuthSignInApi",
       "name": "useAuthSignInApi",
       "parent": "module:react/client",
-      "source": { "file": "packages/core/src/react/client.tsx", "line": 38 },
+      "source": { "file": "packages/core/src/react/client.tsx", "line": 42 },
       "runsIn": "browser"
     },
     {
@@ -11803,7 +11803,7 @@
       "from": "app:react-apple",
       "to": "fn:app:react-apple:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-apple"
     },
@@ -11846,7 +11846,7 @@
       "from": "app:react-discord",
       "to": "fn:app:react-discord:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-discord"
     },
@@ -11891,7 +11891,7 @@
       "from": "app:react-email-magic-link",
       "to": "fn:app:react-email-magic-link:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-email-magic-link"
     },
@@ -11954,7 +11954,7 @@
       "from": "app:react-email-password",
       "to": "fn:app:react-email-password:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-email-password"
     },
@@ -12005,7 +12005,7 @@
       "from": "app:react-github",
       "to": "fn:app:react-github:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-github"
     },
@@ -12048,7 +12048,7 @@
       "from": "app:react-google",
       "to": "fn:app:react-google:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-google"
     },
@@ -12139,7 +12139,7 @@
       "from": "app:react-username-passkey",
       "to": "fn:app:react-username-passkey:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-username-passkey"
     },
@@ -12274,7 +12274,7 @@
       "from": "app:react-username-passkey-basic",
       "to": "fn:app:react-username-passkey-basic:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-username-passkey-basic"
     },
@@ -12337,7 +12337,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
-        { "file": "packages/core/src/react/client.tsx", "line": 139 }
+        { "file": "packages/core/src/react/client.tsx", "line": 143 }
       ],
       "app": "react-username-password"
     },
@@ -13435,7 +13435,7 @@
       "from": "module:browser/sessionManager",
       "to": "module:browser/storage",
       "evidence": [
-        { "file": "packages/core/src/browser/sessionManager.ts", "line": 15 }
+        { "file": "packages/core/src/browser/sessionManager.ts", "line": 21 }
       ]
     },
     {
@@ -20341,7 +20341,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 335
+        "line": 347
       },
       "code": "setup({ client: this, values: this.#ambientValues.forSignIn(id), storage: this.#storage.forSignIn...",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
@@ -20351,33 +20351,9 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 379
+        "line": 503
       },
-      "code": "callback()",
-      "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
-      "from": [
-        "app:react-apple",
-        "app:react-discord",
-        "app:react-email-magic-link",
-        "app:react-email-password",
-        "app:react-github",
-        "app:react-google",
-        "app:react-username-passkey",
-        "app:react-username-passkey-basic",
-        "app:react-username-password",
-        "module:browser/sessionManager",
-        "module:react/client",
-        "module:react/index",
-        "module:ssr/nextjs/client"
-      ]
-    },
-    {
-      "kind": "call",
-      "location": {
-        "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 464
-      },
-      "code": "this.#signOutInternal()",
+      "code": "this.#signOutInternal(op)",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
         "app:react-apple",
@@ -20399,9 +20375,9 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 529
+        "line": 577
       },
-      "code": "this.#refresh()",
+      "code": "this.#refresh(op)",
       "reason": "The callee is a value the analysis cannot trace",
       "from": [
         "app:react-apple",
@@ -20423,7 +20399,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 706
+        "line": 788
       },
       "code": "listener()",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20450,7 +20426,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 160
+        "line": 169
       },
       "code": "this.storage.getItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20484,7 +20460,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 171
+        "line": 184
       },
       "code": "this.storage.setItem(this.key(key), value)",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20518,7 +20494,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 178
+        "line": 193
       },
       "code": "this.storage.removeItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -21019,7 +20995,7 @@
       "writes": 144
     },
     "unresolved": {
-      "call": 51,
+      "call": 50,
       "clientCall": 6,
       "fetch": 2,
       "functionReference": 8
