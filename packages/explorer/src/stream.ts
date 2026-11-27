@@ -27,7 +27,8 @@
  *   with no `Origin`, which a browser sends with every cross-origin
  *   `EventSource` and `fetch`, is refused too. No answer carries a wildcard
  *   `Access-Control-Allow-Origin`;
- * - with a token, it carries the token: `?token=` on the stream (an
+ * - with a token, it carries the token (actions and the `actions` message
+ *   exist only with one): `?token=` on the stream (an
  *   `EventSource` cannot send a header), the `X-Explorer-Token` header on an
  *   action. The token is in the link the person opens, after `#`, which the
  *   browser sends to no server; a page of another tab does not have it.
@@ -132,13 +133,27 @@ export class TimelineServer {
     return this.clients.size;
   }
 
-  /** Takes the actions that `POST /action` asks for. */
+  /** Whether the server has a token, which actions need. */
+  get hasTokenSet(): boolean {
+    return this.token !== null;
+  }
+
+  /**
+   * Takes the actions that `POST /action` asks for. Throws without a token:
+   * Host and Origin alone do not let a request drive the page.
+   */
   handleActions(handler: ActionHandler): void {
+    if (this.token === null)
+      throw new Error("Actions need a token: start the server with one.");
     this.onAction = handler;
   }
 
-  /** Sends the state of the controls (any JSON value) to every client. */
+  /**
+   * Sends the state of the controls (any JSON value) to every client. Not
+   * without a token, as for actions.
+   */
   setControls(state: unknown): void {
+    if (this.token === null) return;
     this.controls = JSON.stringify(state);
     for (const client of this.clients) {
       client.write(`event: actions\ndata: ${this.controls}\n\n`);

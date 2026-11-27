@@ -172,6 +172,13 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
   } else if (values.actions !== undefined && values.serve === undefined) {
     throw new UsageError("--actions needs --serve: the viewer asks for them.");
   } else if (
+    values.actions !== undefined &&
+    !process.env.EXPLORER_STREAM_TOKEN
+  ) {
+    throw new UsageError(
+      "--actions needs EXPLORER_STREAM_TOKEN: a token every request must carry.",
+    );
+  } else if (
     values.scenario === undefined &&
     values.actions === undefined &&
     values.headed !== true

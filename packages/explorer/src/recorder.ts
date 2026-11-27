@@ -500,7 +500,7 @@ export async function record(
       } else if (browser.actions === true) {
         const screen = await session.screen();
         const page = session.page;
-        if (actions !== undefined && server !== null) {
+        if (actions !== undefined && server?.hasTokenSet) {
           const live = server;
           runner = new ActionRunner({
             actions,

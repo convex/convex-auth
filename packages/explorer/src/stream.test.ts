@@ -393,4 +393,23 @@ describe("TimelineServer with a token and actions", () => {
         'event: actions\ndata: {"busy":"signIn"}\n\n',
     );
   });
+
+  test("without a token there are no actions and no controls", async () => {
+    server = await TimelineServer.start({ port: 0, origins: [ORIGIN] });
+    expect(() => server!.handleActions(() => null)).toThrow("need a token");
+    server.setControls({ busy: null });
+    const port = server.port;
+    const post = await send(
+      port,
+      "POST",
+      "/action",
+      { ...allowed(port), "Content-Type": "application/json" },
+      '{"id":"signIn"}',
+    );
+    expect(post.status).toBe(404);
+    const reply = await get(port, allowed(port), (body) =>
+      body.includes("caughtup"),
+    );
+    expect(reply.body).not.toContain("event: actions");
+  });
 });
