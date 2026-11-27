@@ -25,7 +25,7 @@ pnpm explorer:live examples/react-username-password
 One browser window opens: the stage (`stage.html`). The app's page is on a
 screen the size of a building, a wall standing at the back of a vast open
 ground; you use it there (**Face the screen** brings you square in front of
-it; **Step back** returns). The page is laid out at 800 CSS pixels and
+it; **Home** returns). The page is laid out at 800 CSS pixels and
 scaled up, as a display shows it, so the form reads from the default view.
 
 In front of the screen and below it lies the browser: a large territory on

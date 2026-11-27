@@ -199,8 +199,7 @@ test("the modules the client library names are in the auth client district", asy
     "module:browser/retry",
     "module:react/index",
     "module:react/client",
-    // module:ssr/nextjs/client is not here: the structure map says it runs
-    // in "ssr". Its steps light the district as a whole.
+    "module:ssr/nextjs/client",
   ])
     expect(ids, id).toContain(id);
 });
