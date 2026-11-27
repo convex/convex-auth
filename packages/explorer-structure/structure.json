@@ -41,7 +41,7 @@
       "methodFunction": {
         "layer": "convex-auth",
         "label": "Method function",
-        "description": "An app function a setup\u2026 function returns, as the library defines it."
+        "description": "An app function a setup… function returns, as the library defines it."
       },
       "module": {
         "layer": "convex-auth",
@@ -56,7 +56,7 @@
       "setupFunction": {
         "layer": "convex-auth",
         "label": "Setup function",
-        "description": "A setup\u2026 function: the app calls it to get its auth functions."
+        "description": "A setup… function: the app calls it to get its auth functions."
       },
       "table": {
         "layer": "convex",
@@ -93,7 +93,7 @@
       "definedBy": {
         "layer": "convex-auth",
         "label": "defined by",
-        "description": "An app function is the one a sign-in method's setup\u2026 returns."
+        "description": "An app function is the one a sign-in method's setup… returns."
       },
       "fetches": {
         "layer": "convex",
@@ -143,7 +143,7 @@
       "usesMethod": {
         "layer": "convex-auth",
         "label": "uses method",
-        "description": "An app sets up a sign-in method by calling its setup\u2026 function."
+        "description": "An app sets up a sign-in method by calling its setup… function."
       },
       "writes": {
         "layer": "convex",
@@ -20960,6 +20960,3883 @@
       "from": ["module:ssr/signInProxy"]
     }
   ],
+  "modules": {
+    "module:browser/ambientSignInClient": {
+      "file": "packages/core/src/browser/ambientSignInClient.ts",
+      "summary": "The contract between the core client and ambient sign-ins.",
+      "description": "The contract between the core client and ambient sign-ins.",
+      "exports": [
+        {
+          "name": "SignInFunction",
+          "kind": "type",
+          "line": 52,
+          "summary": "A public function returning the shared `SignInEnvelope`, as the client sees it."
+        },
+        {
+          "name": "AuthSignInApi",
+          "kind": "interface",
+          "line": 78,
+          "summary": "How the sign-in functions of a method get executed."
+        },
+        {
+          "name": "ConvexMutationApi",
+          "kind": "interface",
+          "line": 94,
+          "summary": "How an ambient sign-in calls its public mutations that mint no session, like starting an OAuth flow."
+        },
+        {
+          "name": "AmbientSignInContext",
+          "kind": "type",
+          "line": 102,
+          "summary": "What an ambient sign-in's setup receives."
+        },
+        {
+          "name": "AmbientSignInClient",
+          "kind": "type",
+          "line": 132,
+          "summary": "An ambient sign-in's registration, passed via `ConvexAuthProvider`'s `ambientSignIns` prop and run by the `AuthClient` while it is constructed."
+        }
+      ],
+      "state": []
+    },
+    "module:browser/index": {
+      "file": "packages/core/src/browser/index.ts",
+      "summary": "Framework-agnostic browser building blocks for Convex Auth clients: a token storage abstraction, a cross-tab refresh mutex, and the session manager that ties them together.",
+      "description": "Framework-agnostic browser building blocks for Convex Auth clients: a token storage abstraction, a cross-tab refresh mutex, and the session manager that ties them together. The React bindings (`@convex-dev/auth/react`) build on these, and other client libraries can too.",
+      "exports": [
+        {
+          "name": "TokenStorage",
+          "kind": "interface",
+          "line": 11,
+          "summary": "Read/write/delete string values by key.",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "InMemoryStorage",
+          "kind": "class",
+          "line": 12,
+          "summary": "An in-memory TokenStorage, used as a fallback when no persistent storage is available (SSR, or a non-browser runtime).",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "defaultStorage",
+          "kind": "function",
+          "line": 13,
+          "summary": "The default storage: the browser's `localStorage` when available, otherwise an InMemoryStorage.",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "JWT_STORAGE_KEY",
+          "kind": "const",
+          "line": 14,
+          "summary": "Storage key for the current access token (a JWT).",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "REFRESH_TOKEN_STORAGE_KEY",
+          "kind": "const",
+          "line": 15,
+          "summary": "Storage key for the current (rotating) refresh token.",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "runWithMutex",
+          "kind": "function",
+          "line": 17,
+          "summary": "Run `callback` while holding the lock named `key`, resolving to its result.",
+          "from": "module:browser/mutex"
+        },
+        {
+          "name": "AuthClient",
+          "kind": "class",
+          "line": 19,
+          "summary": "Framework-agnostic owner of the auth session on the client.",
+          "from": "module:browser/sessionManager"
+        },
+        {
+          "name": "SpaAuthApi",
+          "kind": "interface",
+          "line": 20,
+          "summary": "The refresh and sign-out API for a **SPA** client, where JS holds the refresh token directly.",
+          "from": "module:browser/sessionManager"
+        },
+        {
+          "name": "SsrAuthApi",
+          "kind": "interface",
+          "line": 21,
+          "summary": "The refresh and sign-out API for an **SSR** client, where the refresh token lives in an httpOnly cookie that JS can't read.",
+          "from": "module:browser/sessionManager"
+        },
+        {
+          "name": "AuthClientConfig",
+          "kind": "type",
+          "line": 22,
+          "summary": "Configuration for the AuthClient, discriminated by session `mode`.",
+          "from": "module:browser/sessionManager"
+        },
+        {
+          "name": "AuthState",
+          "kind": "interface",
+          "line": 23,
+          "summary": "Auth state that can be subscribed to via AuthClient.subscribe",
+          "from": "module:browser/sessionManager"
+        }
+      ],
+      "state": []
+    },
+    "module:browser/keyedStore": {
+      "file": "packages/core/src/browser/keyedStore.ts",
+      "summary": "A keyed, subscribable value store scoped to one `AuthClient` instance.",
+      "description": "A keyed, subscribable value store scoped to one `AuthClient` instance.",
+      "exports": [
+        {
+          "name": "SignInValues",
+          "kind": "type",
+          "line": 17,
+          "summary": "A read/write view over a KeyedStore with every key prefixed, the shape handed to an ambient sign-in's setup."
+        },
+        {
+          "name": "SignInValuesReader",
+          "kind": "type",
+          "line": 29,
+          "summary": "A read-only view over a KeyedStore with every key prefixed, the shape hooks and other bindings read an ambient sign-in's values through."
+        },
+        {
+          "name": "KeyedStore",
+          "kind": "class",
+          "line": 44,
+          "members": [
+            {
+              "name": "get",
+              "kind": "method",
+              "line": 49,
+              "summary": "Read the value at `key`, or `undefined` when nothing is registered."
+            },
+            {
+              "name": "set",
+              "kind": "method",
+              "line": 54,
+              "summary": "Replace the value at `key` and notify that key's subscribers."
+            },
+            {
+              "name": "forSignIn",
+              "kind": "method",
+              "line": 65,
+              "summary": "A SignInValues over this store, mapping `key` to `${prefix}/${key}`."
+            },
+            {
+              "name": "forSignInReader",
+              "kind": "method",
+              "line": 79,
+              "summary": "A SignInValuesReader over this store, mapping `key` to `${prefix}/${key}`."
+            },
+            {
+              "name": "subscribe",
+              "kind": "method",
+              "line": 93,
+              "summary": "Subscribe to changes of the value at `key`."
+            }
+          ]
+        }
+      ],
+      "state": [
+        {
+          "name": "#values",
+          "kind": "field",
+          "line": 45,
+          "class": "KeyedStore",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#listeners",
+          "kind": "field",
+          "line": 46,
+          "class": "KeyedStore",
+          "readonly": true,
+          "private": true
+        }
+      ]
+    },
+    "module:browser/mutex": {
+      "file": "packages/core/src/browser/mutex.ts",
+      "summary": "A cross-context mutex used to serialize token refreshes so that concurrent callers (multiple tabs, or several components racing on mount) collapse to a single refresh instead of each rotating the refresh token and fighting over the result.",
+      "description": "A cross-context mutex used to serialize token refreshes so that concurrent callers (multiple tabs, or several components racing on mount) collapse to a single refresh instead of each rotating the refresh token and fighting over the result.",
+      "exports": [
+        {
+          "name": "runWithMutex",
+          "kind": "function",
+          "line": 24,
+          "summary": "Run `callback` while holding the lock named `key`, resolving to its result."
+        }
+      ],
+      "state": [{ "name": "mutexes", "kind": "collection", "line": 39 }]
+    },
+    "module:browser/retry": {
+      "file": "packages/core/src/browser/retry.ts",
+      "summary": "Retry policy for the client's auth calls (session refresh, OAuth code redemption).",
+      "description": "Retry policy for the client's auth calls (session refresh, OAuth code redemption). These calls commonly fail transiently on mobile when the app is backgrounded mid-request and succeed once it returns to the foreground, so a network error is worth a couple of retries before giving up.",
+      "exports": [
+        {
+          "name": "retryOnNetworkError",
+          "kind": "function",
+          "line": 30,
+          "summary": "Run `fn`, retrying with backoff when it throws a network error."
+        }
+      ],
+      "state": []
+    },
+    "module:browser/sessionManager": {
+      "file": "packages/core/src/browser/sessionManager.ts",
+      "exports": [
+        {
+          "name": "SpaAuthApi",
+          "kind": "interface",
+          "line": 35,
+          "summary": "The refresh and sign-out API for a **SPA** client, where JS holds the refresh token directly."
+        },
+        {
+          "name": "SsrAuthApi",
+          "kind": "interface",
+          "line": 48,
+          "summary": "The refresh and sign-out API for an **SSR** client, where the refresh token lives in an httpOnly cookie that JS can't read."
+        },
+        {
+          "name": "AuthClientConfig",
+          "kind": "type",
+          "line": 92,
+          "summary": "Configuration for the AuthClient, discriminated by session `mode`."
+        },
+        {
+          "name": "AuthState",
+          "kind": "interface",
+          "line": 97,
+          "summary": "Auth state that can be subscribed to via AuthClient.subscribe"
+        },
+        {
+          "name": "INITIAL_AUTH_STATE",
+          "kind": "const",
+          "line": 113,
+          "summary": "The state a fresh client reports until AuthClient.init has loaded the persisted session."
+        },
+        {
+          "name": "AuthClient",
+          "kind": "class",
+          "line": 186,
+          "summary": "Framework-agnostic owner of the auth session on the client.",
+          "members": [
+            {
+              "name": "subscribe",
+              "kind": "method",
+              "line": 283,
+              "summary": "Subscribe to be notified when the AuthState changes."
+            },
+            {
+              "name": "getSnapshot",
+              "kind": "method",
+              "line": 291,
+              "summary": "Returns the latest AuthState snapshot."
+            },
+            {
+              "name": "getAccessToken",
+              "kind": "method",
+              "line": 294,
+              "summary": "The current access token, or null."
+            },
+            { "name": "storage", "kind": "accessor", "line": 299 },
+            {
+              "name": "ambientSignInValues",
+              "kind": "method",
+              "line": 317,
+              "summary": "A read-only view of the values published under an ambient sign-in's id, for hooks and other bindings to read and subscribe to."
+            },
+            {
+              "name": "init",
+              "kind": "method",
+              "line": 372,
+              "summary": "Run ambient sign-in onInit callbacks, load any persisted session from storage, and start listening for cross-tab changes (if applicable)."
+            },
+            {
+              "name": "dispose",
+              "kind": "method",
+              "line": 442,
+              "summary": "Detach a registered cross-tab storage listener, if applicable."
+            },
+            {
+              "name": "setSession",
+              "kind": "method",
+              "line": 459,
+              "summary": "Adopt the session a method just established."
+            },
+            {
+              "name": "withSignInPending",
+              "kind": "method",
+              "line": 482,
+              "summary": "Run a sign-in completion while reporting `isLoading`."
+            },
+            {
+              "name": "signOut",
+              "kind": "method",
+              "line": 499,
+              "summary": "Revoke the current session on the server and clear it locally."
+            },
+            {
+              "name": "fetchAccessToken",
+              "kind": "method",
+              "line": 519,
+              "summary": "The function handed to Convex's `ConvexProviderWithAuth`."
+            }
+          ]
+        }
+      ],
+      "state": [
+        {
+          "name": "#storage",
+          "kind": "field",
+          "line": 194,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#verbose",
+          "kind": "field",
+          "line": 195,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#lockKey",
+          "kind": "field",
+          "line": 196,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#initialAccessToken",
+          "kind": "field",
+          "line": 197,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#mode",
+          "kind": "field",
+          "line": 202,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true,
+          "summary": "Which side owns the refresh token: this client (SPA) or an httpOnly cookie (SSR)."
+        },
+        {
+          "name": "#accessToken",
+          "kind": "field",
+          "line": 204,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#refreshToken",
+          "kind": "field",
+          "line": 209,
+          "class": "AuthClient",
+          "private": true,
+          "summary": "If the client code is running in SSR mode, this value will always be `null`."
+        },
+        {
+          "name": "#isLoading",
+          "kind": "field",
+          "line": 210,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#pendingSignIns",
+          "kind": "field",
+          "line": 211,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#initialized",
+          "kind": "field",
+          "line": 212,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#snapshot",
+          "kind": "field",
+          "line": 214,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#listeners",
+          "kind": "field",
+          "line": 215,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#storageListener",
+          "kind": "field",
+          "line": 216,
+          "class": "AuthClient",
+          "private": true
+        },
+        {
+          "name": "#ambientValues",
+          "kind": "field",
+          "line": 310,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true,
+          "summary": "What ambient sign-ins publish, keyed by sign-in id."
+        },
+        {
+          "name": "#initCallbacks",
+          "kind": "field",
+          "line": 322,
+          "class": "AuthClient",
+          "readonly": true,
+          "private": true,
+          "summary": "Ambient sign-in onInit callbacks, run once inside init."
+        }
+      ]
+    },
+    "module:browser/steps": {
+      "file": "packages/core/src/browser/steps.ts",
+      "summary": "Client step reports: when asked to, the client side of the library writes one console line for each step of a sign-in, a reload, a refresh, or a sign-out.",
+      "description": "Client step reports: when asked to, the client side of the library writes one console line for each step of a sign-in, a reload, a refresh, or a sign-out. A tool that shows these flows as they run reads the lines from the console of the page (`packages/explorer` is such a tool).",
+      "exports": [
+        {
+          "name": "CLIENT_STEP_REPORTS_GLOBAL",
+          "kind": "const",
+          "line": 73,
+          "summary": "The global of the page that turns the client step reports on."
+        },
+        {
+          "name": "ClientStepPart",
+          "kind": "type",
+          "line": 78,
+          "summary": "The modules that report steps, by their id in `packages/explorer-structure`."
+        },
+        {
+          "name": "ClientOpKind",
+          "kind": "type",
+          "line": 88,
+          "summary": "The kinds of the operations that client steps belong to."
+        },
+        {
+          "name": "ClientOp",
+          "kind": "interface",
+          "line": 104,
+          "summary": "An operation of the client (see the module comment)."
+        },
+        {
+          "name": "clientStepReportsEnabled",
+          "kind": "function",
+          "line": 123,
+          "summary": "Whether the page asked for client step reports."
+        },
+        {
+          "name": "startClientOp",
+          "kind": "function",
+          "line": 134,
+          "summary": "Start an operation, or return `null` when the reports are off."
+        },
+        {
+          "name": "withClientOp",
+          "kind": "function",
+          "line": 151,
+          "summary": "Run `fn` as part of `op`: the steps that run synchronously inside it, and the operations it starts synchronously, belong to `op` unless they are given another."
+        },
+        {
+          "name": "linkClientOp",
+          "kind": "function",
+          "line": 172,
+          "summary": "Record that `object` came out of `op`, so that the code later handed the same object can continue `op` (see linkedClientOp)."
+        },
+        {
+          "name": "linkedClientOp",
+          "kind": "function",
+          "line": 179,
+          "summary": "The operation that `object` came out of, if one was recorded."
+        },
+        {
+          "name": "reportClientStep",
+          "kind": "function",
+          "line": 193,
+          "summary": "Write one client step report to the console, if the page asked for them."
+        },
+        {
+          "name": "resetClientOpsForTests",
+          "kind": "function",
+          "line": 226,
+          "summary": "Exposed for tests: restart the counter of operations."
+        }
+      ],
+      "state": [
+        { "name": "lastOp", "kind": "let", "line": 110 },
+        {
+          "name": "currentOp",
+          "kind": "let",
+          "line": 113,
+          "summary": "The operation whose synchronous call is running, set by withClientOp."
+        },
+        {
+          "name": "opsByObject",
+          "kind": "collection",
+          "line": 120,
+          "summary": "Operations by an object that one of their steps returned, such as the token bundle of a sign-in result, for the code that is later handed that very object (see linkClientOp)."
+        }
+      ]
+    },
+    "module:browser/storage": {
+      "file": "packages/core/src/browser/storage.ts",
+      "summary": "A framework-agnostic storage abstraction for auth tokens (and any other client-side secrets a client library needs to persist).",
+      "description": "A framework-agnostic storage abstraction for auth tokens (and any other client-side secrets a client library needs to persist).",
+      "exports": [
+        {
+          "name": "TokenStorage",
+          "kind": "interface",
+          "line": 24,
+          "summary": "Read/write/delete string values by key."
+        },
+        {
+          "name": "JWT_STORAGE_KEY",
+          "kind": "const",
+          "line": 36,
+          "summary": "Storage key for the current access token (a JWT)."
+        },
+        {
+          "name": "REFRESH_TOKEN_STORAGE_KEY",
+          "kind": "const",
+          "line": 38,
+          "summary": "Storage key for the current (rotating) refresh token."
+        },
+        {
+          "name": "InMemoryStorage",
+          "kind": "class",
+          "line": 45,
+          "summary": "An in-memory TokenStorage, used as a fallback when no persistent storage is available (SSR, or a non-browser runtime).",
+          "members": [
+            { "name": "getItem", "kind": "method", "line": 47 },
+            { "name": "setItem", "kind": "method", "line": 50 },
+            { "name": "removeItem", "kind": "method", "line": 53 }
+          ]
+        },
+        {
+          "name": "resetInMemoryFallbackWarning",
+          "kind": "function",
+          "line": 92,
+          "summary": "Exposed for tests; the warning is otherwise once per process."
+        },
+        {
+          "name": "defaultStorage",
+          "kind": "function",
+          "line": 101,
+          "summary": "The default storage: the browser's `localStorage` when available, otherwise an InMemoryStorage."
+        },
+        {
+          "name": "SignInStorage",
+          "kind": "type",
+          "line": 129,
+          "summary": "A read/write view over a NamespacedStorage for one ambient sign-in, with every key prefixed by that sign-in's id."
+        },
+        {
+          "name": "NamespacedStorage",
+          "kind": "class",
+          "line": 148,
+          "summary": "A view over a TokenStorage that suffixes every key with a sanitized namespace.",
+          "members": [
+            {
+              "name": "storage",
+              "kind": "field",
+              "line": 151,
+              "summary": "The wrapped storage."
+            },
+            {
+              "name": "namespace",
+              "kind": "field",
+              "line": 153,
+              "summary": "The sanitized namespace that ends each stored key."
+            },
+            {
+              "name": "key",
+              "kind": "method",
+              "line": 162,
+              "summary": "The fully-qualified (namespaced) key for a logical key."
+            },
+            { "name": "get", "kind": "method", "line": 168 },
+            { "name": "set", "kind": "method", "line": 177 },
+            { "name": "remove", "kind": "method", "line": 186 },
+            {
+              "name": "forSignIn",
+              "kind": "method",
+              "line": 202,
+              "summary": "A SignInStorage for the ambient sign-in registered under `id`, mapping `key` to `__convexAuthProvider_<id>_<key>` before the namespace suffix."
+            }
+          ]
+        }
+      ],
+      "state": [
+        {
+          "name": "store",
+          "kind": "field",
+          "line": 46,
+          "class": "InMemoryStorage",
+          "private": true
+        },
+        { "name": "warnedAboutInMemoryFallback", "kind": "let", "line": 58 },
+        {
+          "name": "storage",
+          "kind": "field",
+          "line": 151,
+          "class": "NamespacedStorage",
+          "readonly": true,
+          "summary": "The wrapped storage."
+        },
+        {
+          "name": "namespace",
+          "kind": "field",
+          "line": 153,
+          "class": "NamespacedStorage",
+          "readonly": true,
+          "summary": "The sanitized namespace that ends each stored key."
+        }
+      ]
+    },
+    "module:methods/anonymous/react": {
+      "file": "packages/core/src/methods/anonymous/react.tsx",
+      "summary": "React client for the `anonymous` method, exported at `@convex-dev/auth/methods/anonymous/react`.",
+      "description": "React client for the `anonymous` method, exported at `@convex-dev/auth/methods/anonymous/react`.",
+      "exports": [
+        {
+          "name": "SignInAnonymouslyMutation",
+          "kind": "type",
+          "line": 31,
+          "summary": "The `signInAnonymously` mutation the anonymous method adds to the app's API."
+        },
+        {
+          "name": "useSignInAnonymously",
+          "kind": "function",
+          "line": 65,
+          "summary": "Client for the anonymous method: wire its sign-in mutation to the core client.",
+          "part": "hook:methods/anonymous/react.useSignInAnonymously"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/apple/react": {
+      "file": "packages/core/src/methods/apple/react.ts",
+      "summary": "React client for the Apple sign-in method, exported at `@convex-dev/auth/methods/apple/react`.",
+      "description": "React client for the Apple sign-in method, exported at `@convex-dev/auth/methods/apple/react`.",
+      "exports": [
+        {
+          "name": "useOauth",
+          "kind": "function",
+          "line": 21,
+          "summary": "Read OAuth state that isn't tied to one provider.",
+          "from": "module:methods/oauth/react",
+          "part": "hook:methods/oauth/react.useOauth"
+        },
+        {
+          "name": "UseOauthReturn",
+          "kind": "type",
+          "line": 21,
+          "summary": "What useOauth returns.",
+          "from": "module:methods/oauth/react"
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 23,
+          "summary": "What finishing a saved flow with a callback `code` resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 24,
+          "summary": "Why a flow failed after the identity provider sent the user back.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 25,
+          "summary": "What starting a flow resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 26,
+          "summary": "Options accepted by OauthActions.signIn.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "UseSignInWithAppleReturn",
+          "kind": "type",
+          "line": 30,
+          "summary": "What useSignInWithApple returns."
+        },
+        {
+          "name": "useSignInWithApple",
+          "kind": "function",
+          "line": 40,
+          "summary": "Sign in with Apple.",
+          "part": "hook:methods/apple/react.useSignInWithApple"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/discord/react": {
+      "file": "packages/core/src/methods/discord/react.ts",
+      "summary": "React client for the Discord sign-in method, exported at `@convex-dev/auth/methods/discord/react`.",
+      "description": "React client for the Discord sign-in method, exported at `@convex-dev/auth/methods/discord/react`.",
+      "exports": [
+        {
+          "name": "useOauth",
+          "kind": "function",
+          "line": 21,
+          "summary": "Read OAuth state that isn't tied to one provider.",
+          "from": "module:methods/oauth/react",
+          "part": "hook:methods/oauth/react.useOauth"
+        },
+        {
+          "name": "UseOauthReturn",
+          "kind": "type",
+          "line": 21,
+          "summary": "What useOauth returns.",
+          "from": "module:methods/oauth/react"
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 23,
+          "summary": "What finishing a saved flow with a callback `code` resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 24,
+          "summary": "Why a flow failed after the identity provider sent the user back.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 25,
+          "summary": "What starting a flow resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 26,
+          "summary": "Options accepted by OauthActions.signIn.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "UseSignInWithDiscordReturn",
+          "kind": "type",
+          "line": 30,
+          "summary": "What useSignInWithDiscord returns."
+        },
+        {
+          "name": "useSignInWithDiscord",
+          "kind": "function",
+          "line": 40,
+          "summary": "Sign in with Discord.",
+          "part": "hook:methods/discord/react.useSignInWithDiscord"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/email-magic-link/react": {
+      "file": "packages/core/src/methods/email-magic-link/react.tsx",
+      "summary": "React client for the `emailMagicLink` method, exported at `@convex-dev/auth/methods/email-magic-link/react`.",
+      "description": "React client for the `emailMagicLink` method, exported at `@convex-dev/auth/methods/email-magic-link/react`.",
+      "exports": [
+        {
+          "name": "SendResult",
+          "kind": "type",
+          "line": 53,
+          "summary": "The result of the `sendMagicLink` callback from useSendEmailMagicLink."
+        },
+        {
+          "name": "SignInState",
+          "kind": "type",
+          "line": 59,
+          "summary": "The state of useSignInWithEmailMagicLink."
+        },
+        {
+          "name": "useSendEmailMagicLink",
+          "kind": "function",
+          "line": 124,
+          "summary": "Client for the one form of the method: send a sign-in link to the address, and keep the returned secret for useSignInWithEmailMagicLink.",
+          "part": "hook:methods/email-magic-link/react.useSendEmailMagicLink"
+        },
+        {
+          "name": "useSignInWithEmailMagicLink",
+          "kind": "function",
+          "line": 178,
+          "summary": "Client for the landing page of the link: as soon as the page opens, present the code from the link with the secret stored by useSendEmailMagicLink, and adopt the minted session.",
+          "part": "hook:methods/email-magic-link/react.useSignInWithEmailMagicLink"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/email-password/react": {
+      "file": "packages/core/src/methods/email-password/react.tsx",
+      "summary": "React client for the `emailPassword` method, exported at `@convex-dev/auth/methods/email-password/react`.",
+      "description": "React client for the `emailPassword` method, exported at `@convex-dev/auth/methods/email-password/react`.",
+      "exports": [
+        {
+          "name": "PasswordRecoveryApi",
+          "kind": "type",
+          "line": 150,
+          "summary": "The functions that useCompletePasswordRecovery calls."
+        },
+        {
+          "name": "SignInResult",
+          "kind": "type",
+          "line": 156,
+          "summary": "The result of the `signIn` callback from useSignInWithEmailPassword."
+        },
+        {
+          "name": "SignUpResult",
+          "kind": "type",
+          "line": 160,
+          "summary": "The result of the `signUp` callback from useSignUpWithEmailPassword."
+        },
+        {
+          "name": "StartChangeEmailResult",
+          "kind": "type",
+          "line": 164,
+          "summary": "The result of the `startChangeEmail` callback from useStartChangeEmail."
+        },
+        {
+          "name": "StartPasswordRecoveryResult",
+          "kind": "type",
+          "line": 168,
+          "summary": "The result of the `startPasswordRecovery` callback from useStartPasswordRecovery."
+        },
+        {
+          "name": "CompletePasswordRecoveryResult",
+          "kind": "type",
+          "line": 175,
+          "summary": "The result of the `completePasswordRecovery` callback of the `ready` state of useCompletePasswordRecovery."
+        },
+        {
+          "name": "LinkFlowState",
+          "kind": "type",
+          "line": 182,
+          "summary": "The state of a landing page hook: `loading` until the link has been presented, then `complete` or `error`."
+        },
+        {
+          "name": "CompleteSignUpState",
+          "kind": "type",
+          "line": 188,
+          "summary": "The state of useCompleteSignUpWithEmailPassword."
+        },
+        {
+          "name": "CompleteChangeEmailState",
+          "kind": "type",
+          "line": 195,
+          "summary": "The state of useCompleteChangeEmail."
+        },
+        {
+          "name": "CompletePasswordRecoveryState",
+          "kind": "type",
+          "line": 223,
+          "summary": "The state of useCompletePasswordRecovery."
+        },
+        {
+          "name": "useSignInWithEmailPassword",
+          "kind": "function",
+          "line": 415,
+          "summary": "Client for the sign-in flow: run the `signInWithEmailPassword` mutation and, on success, establish an authenticated session.",
+          "part": "hook:methods/email-password/react.useSignInWithEmailPassword"
+        },
+        {
+          "name": "useSignUpWithEmailPassword",
+          "kind": "function",
+          "line": 516,
+          "summary": "Client for the sign-up flow: run the `signUpWithEmailPassword` mutation and keep the returned secret for useCompleteSignUpWithEmailPassword.",
+          "part": "hook:methods/email-password/react.useSignUpWithEmailPassword"
+        },
+        {
+          "name": "useCompleteSignUpWithEmailPassword",
+          "kind": "function",
+          "line": 569,
+          "summary": "Client for the landing page of the validation link: as soon as the page opens, present the code from the link with the secret stored by useSignUpWithEmailPassword, and adopt the minted session.",
+          "part": "hook:methods/email-password/react.useCompleteSignUpWithEmailPassword"
+        },
+        {
+          "name": "useStartPasswordRecovery",
+          "kind": "function",
+          "line": 624,
+          "summary": "Client for starting a password recovery: run the backend's `startPasswordRecovery` mutation and keep the returned secret for useCompletePasswordRecovery.",
+          "part": "hook:methods/email-password/react.useStartPasswordRecovery"
+        },
+        {
+          "name": "useCompletePasswordRecovery",
+          "kind": "function",
+          "line": 721,
+          "summary": "Client for the landing page of the password-reset link.",
+          "part": "hook:methods/email-password/react.useCompletePasswordRecovery"
+        },
+        {
+          "name": "useStartChangeEmail",
+          "kind": "function",
+          "line": 830,
+          "summary": "Client for starting an email change: run the backend's `startChangeEmail` mutation and keep the returned secret for useCompleteChangeEmail.",
+          "part": "hook:methods/email-password/react.useStartChangeEmail"
+        },
+        {
+          "name": "useCompleteChangeEmail",
+          "kind": "function",
+          "line": 873,
+          "summary": "Client for the landing page of the email-change confirmation link: as soon as the page opens, present the code from the link with the secret stored by useStartChangeEmail.",
+          "part": "hook:methods/email-password/react.useCompleteChangeEmail"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/github/react": {
+      "file": "packages/core/src/methods/github/react.ts",
+      "summary": "React client for the GitHub sign-in method, exported at `@convex-dev/auth/methods/github/react`.",
+      "description": "React client for the GitHub sign-in method, exported at `@convex-dev/auth/methods/github/react`.",
+      "exports": [
+        {
+          "name": "useOauth",
+          "kind": "function",
+          "line": 21,
+          "summary": "Read OAuth state that isn't tied to one provider.",
+          "from": "module:methods/oauth/react",
+          "part": "hook:methods/oauth/react.useOauth"
+        },
+        {
+          "name": "UseOauthReturn",
+          "kind": "type",
+          "line": 21,
+          "summary": "What useOauth returns.",
+          "from": "module:methods/oauth/react"
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 23,
+          "summary": "What finishing a saved flow with a callback `code` resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 24,
+          "summary": "Why a flow failed after the identity provider sent the user back.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 25,
+          "summary": "What starting a flow resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 26,
+          "summary": "Options accepted by OauthActions.signIn.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "UseSignInWithGithubReturn",
+          "kind": "type",
+          "line": 30,
+          "summary": "What useSignInWithGithub returns."
+        },
+        {
+          "name": "useSignInWithGithub",
+          "kind": "function",
+          "line": 40,
+          "summary": "Sign in with GitHub.",
+          "part": "hook:methods/github/react.useSignInWithGithub"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/google/react": {
+      "file": "packages/core/src/methods/google/react.ts",
+      "summary": "React client for the Google sign-in method, exported at `@convex-dev/auth/methods/google/react`.",
+      "description": "React client for the Google sign-in method, exported at `@convex-dev/auth/methods/google/react`.",
+      "exports": [
+        {
+          "name": "useOauth",
+          "kind": "function",
+          "line": 21,
+          "summary": "Read OAuth state that isn't tied to one provider.",
+          "from": "module:methods/oauth/react",
+          "part": "hook:methods/oauth/react.useOauth"
+        },
+        {
+          "name": "UseOauthReturn",
+          "kind": "type",
+          "line": 21,
+          "summary": "What useOauth returns.",
+          "from": "module:methods/oauth/react"
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 23,
+          "summary": "What finishing a saved flow with a callback `code` resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 24,
+          "summary": "Why a flow failed after the identity provider sent the user back.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 25,
+          "summary": "What starting a flow resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 26,
+          "summary": "Options accepted by OauthActions.signIn.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "UseSignInWithGoogleReturn",
+          "kind": "type",
+          "line": 30,
+          "summary": "What useSignInWithGoogle returns."
+        },
+        {
+          "name": "useSignInWithGoogle",
+          "kind": "function",
+          "line": 40,
+          "summary": "Sign in with Google.",
+          "part": "hook:methods/google/react.useSignInWithGoogle"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/oauth/client": {
+      "file": "packages/core/src/methods/oauth/client.ts",
+      "summary": "Framework-agnostic client for the OAuth providers.",
+      "description": "Framework-agnostic client for the OAuth providers.",
+      "exports": [
+        {
+          "name": "OauthProviderApi",
+          "kind": "type",
+          "line": 32,
+          "summary": "The mutations that the method of an OAuth provider adds to the app's API."
+        },
+        {
+          "name": "OauthProviderRefs",
+          "kind": "type",
+          "line": 50,
+          "summary": "One provider's mutations plus its name."
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 71,
+          "summary": "Why a flow failed after the identity provider sent the user back."
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 87,
+          "summary": "What starting a flow resolves to."
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 95,
+          "summary": "What finishing a saved flow with a callback `code` resolves to."
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 99,
+          "summary": "Options accepted by OauthActions.signIn."
+        },
+        {
+          "name": "OauthActions",
+          "kind": "type",
+          "line": 112,
+          "summary": "The sign-in actions oauth publishes for its hooks to read."
+        },
+        {
+          "name": "OAUTH_SETUP_ID",
+          "kind": "const",
+          "line": 126,
+          "summary": "The id oauth registers under."
+        },
+        {
+          "name": "OAUTH_ACTIONS_KEY",
+          "kind": "const",
+          "line": 129,
+          "summary": "Key oauth publishes its OauthActions under."
+        },
+        {
+          "name": "OAUTH_FLOW_ERROR_KEY",
+          "kind": "const",
+          "line": 136,
+          "summary": "Key holding the current OauthFlowError, or `null` when the last attempt was fine."
+        },
+        {
+          "name": "PendingFlow",
+          "kind": "type",
+          "line": 158,
+          "summary": "What `signIn` saves before it navigates to the identity provider."
+        },
+        {
+          "name": "oauth",
+          "kind": "function",
+          "line": 243,
+          "summary": "Client setup for the OAuth providers."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/oauth/react": {
+      "file": "packages/core/src/methods/oauth/react.ts",
+      "summary": "React client for the shared OAuth state, exported at `@convex-dev/auth/methods/oauth/react`.",
+      "description": "React client for the shared OAuth state, exported at `@convex-dev/auth/methods/oauth/react`.",
+      "exports": [
+        {
+          "name": "oauth",
+          "kind": "function",
+          "line": 42,
+          "summary": "Client setup for the OAuth providers.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthActions",
+          "kind": "type",
+          "line": 44,
+          "summary": "The sign-in actions oauth publishes for its hooks to read.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthCompleteResult",
+          "kind": "type",
+          "line": 45,
+          "summary": "What finishing a saved flow with a callback `code` resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthFlowError",
+          "kind": "type",
+          "line": 46,
+          "summary": "Why a flow failed after the identity provider sent the user back.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthProviderApi",
+          "kind": "type",
+          "line": 47,
+          "summary": "The mutations that the method of an OAuth provider adds to the app's API.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthProviderRefs",
+          "kind": "type",
+          "line": 48,
+          "summary": "One provider's mutations plus its name.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "OauthStartResult",
+          "kind": "type",
+          "line": 49,
+          "summary": "What starting a flow resolves to.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "SignInOptions",
+          "kind": "type",
+          "line": 50,
+          "summary": "Options accepted by OauthActions.signIn.",
+          "from": "module:methods/oauth/client"
+        },
+        {
+          "name": "UseOauthReturn",
+          "kind": "type",
+          "line": 61,
+          "summary": "What useOauth returns."
+        },
+        {
+          "name": "useOauth",
+          "kind": "function",
+          "line": 75,
+          "summary": "Read OAuth state that isn't tied to one provider.",
+          "part": "hook:methods/oauth/react.useOauth"
+        },
+        {
+          "name": "UseOauthSignInReturn",
+          "kind": "type",
+          "line": 89,
+          "summary": "What the sign-in hooks of the OAuth providers return."
+        },
+        {
+          "name": "useOauthSignIn",
+          "kind": "function",
+          "line": 134,
+          "summary": "Run one OAuth provider's sign-in flow from its function references.",
+          "part": "hook:methods/oauth/react.useOauthSignIn"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/aaguids": {
+      "file": "packages/core/src/methods/username-passkey/aaguids.ts",
+      "summary": "Default display names for new passkeys, from the AAGUID of the authenticator.",
+      "description": "Default display names for new passkeys, from the AAGUID of the authenticator.",
+      "exports": [
+        {
+          "name": "defaultPasskeyName",
+          "kind": "function",
+          "line": 84,
+          "summary": "The display name for a new passkey, from the authenticator model that the attestation of the ceremony reports."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/base64url": {
+      "file": "packages/core/src/methods/username-passkey/base64url.ts",
+      "summary": "base64url encoding of the binary fields of the WebAuthn wire.",
+      "description": "base64url encoding of the binary fields of the WebAuthn wire.",
+      "exports": [
+        {
+          "name": "toBase64URL",
+          "kind": "function",
+          "line": 11,
+          "summary": "Encode bytes as an unpadded base64url string, the form that every binary field of the WebAuthn JSON wire takes."
+        },
+        {
+          "name": "fromBase64URL",
+          "kind": "function",
+          "line": 27,
+          "summary": "Decode an unpadded base64url string back to bytes."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/ceremonies": {
+      "file": "packages/core/src/methods/username-passkey/ceremonies.ts",
+      "summary": "The platform-neutral part of the passkey clients: the result shapes of a ceremony, the ResolvedPasskeyCeremonies that the flows and hooks run, and the helpers that the implementations share.",
+      "description": "The platform-neutral part of the passkey clients: the result shapes of a ceremony, the ResolvedPasskeyCeremonies that the flows and hooks run, and the helpers that the implementations share. An app implements the looser PasskeyCeremonies, which resolveCeremonies turns into the former. The flows and hooks hold no platform code.",
+      "exports": [
+        {
+          "name": "PasskeyClientError",
+          "kind": "type",
+          "line": 34,
+          "summary": "The failures the client side produces (the server never returns these):"
+        },
+        {
+          "name": "PasskeyClientFailure",
+          "kind": "type",
+          "line": 45,
+          "summary": "A failed result with a client-side `userError`."
+        },
+        {
+          "name": "PasskeyRegistrationResult",
+          "kind": "type",
+          "line": 54,
+          "summary": "The result of a registration ceremony: the response to send to the finish mutation, or a user-facing `userError`."
+        },
+        {
+          "name": "PasskeyAuthenticationResult",
+          "kind": "type",
+          "line": 61,
+          "summary": "The result of an authentication ceremony: the response to send to the finish mutation, or a user-facing `userError`."
+        },
+        {
+          "name": "ResolvedPasskeyCeremonies",
+          "kind": "type",
+          "line": 72,
+          "summary": "The ceremonies of one platform."
+        },
+        {
+          "name": "foldClientError",
+          "kind": "function",
+          "line": 125,
+          "summary": "Fold a thrown value into the PasskeyClientError shape, so callers handle every failure through one `userError` switch."
+        },
+        {
+          "name": "PasskeyRegistrationResponse",
+          "kind": "type",
+          "line": 137,
+          "summary": "A registration response in the WebAuthn JSON encoding, as the passkey libraries return it."
+        },
+        {
+          "name": "PasskeyAuthenticationResponse",
+          "kind": "type",
+          "line": 150,
+          "summary": "An authentication response in the WebAuthn JSON encoding, as the passkey libraries return it."
+        },
+        {
+          "name": "pruneRegistrationResponse",
+          "kind": "function",
+          "line": 171,
+          "summary": "Keep only the fields of a registration response that the finish mutations accept."
+        },
+        {
+          "name": "pruneAuthenticationResponse",
+          "kind": "function",
+          "line": 192,
+          "summary": "Keep only the fields of an authentication response that the finish mutations accept (see pruneRegistrationResponse)."
+        },
+        {
+          "name": "PasskeyCeremonies",
+          "kind": "type",
+          "line": 221,
+          "summary": "The passkey ceremonies of a platform, which an app implements to run the passkey hooks outside a browser."
+        },
+        {
+          "name": "resolveCeremonies",
+          "kind": "function",
+          "line": 254,
+          "summary": "Turn the ceremonies of an app into the ones the flows run: prune the responses, fold thrown values, and default autofill to unavailable."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/client": {
+      "file": "packages/core/src/methods/username-passkey/client.ts",
+      "summary": "Framework-agnostic browser client for the username-passkey method.",
+      "description": "Framework-agnostic browser client for the username-passkey method.",
+      "exports": [
+        {
+          "name": "foldClientError",
+          "kind": "function",
+          "line": 54,
+          "summary": "Fold a thrown value into the PasskeyClientError shape, so callers handle every failure through one `userError` switch.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyAuthenticationResult",
+          "kind": "type",
+          "line": 55,
+          "summary": "The result of an authentication ceremony: the response to send to the finish mutation, or a user-facing `userError`.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "ResolvedPasskeyCeremonies",
+          "kind": "type",
+          "line": 56,
+          "summary": "The ceremonies of one platform.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyClientError",
+          "kind": "type",
+          "line": 57,
+          "summary": "The failures the client side produces (the server never returns these):",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyClientFailure",
+          "kind": "type",
+          "line": 58,
+          "summary": "A failed result with a client-side `userError`.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyRegistrationResult",
+          "kind": "type",
+          "line": 59,
+          "summary": "The result of a registration ceremony: the response to send to the finish mutation, or a user-facing `userError`.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "AuthenticationResponseJSON",
+          "kind": "interface",
+          "line": 66,
+          "summary": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that are Base64URL-encoded in the browser so that they can be sent as JSON to the server.",
+          "from": "@simplewebauthn/browser"
+        },
+        {
+          "name": "PublicKeyCredentialCreationOptionsJSON",
+          "kind": "interface",
+          "line": 67,
+          "summary": "A variant of PublicKeyCredentialCreationOptions suitable for JSON transmission to the browser to (eventually) get passed into navigator.credentials.create(...) in the browser.",
+          "from": "@simplewebauthn/browser"
+        },
+        {
+          "name": "PublicKeyCredentialRequestOptionsJSON",
+          "kind": "interface",
+          "line": 68,
+          "summary": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to (eventually) get passed into navigator.credentials.get(...) in the browser.",
+          "from": "@simplewebauthn/browser"
+        },
+        {
+          "name": "RegistrationResponseJSON",
+          "kind": "interface",
+          "line": 69,
+          "summary": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that are Base64URL-encoded in the browser so that they can be sent as JSON to the server.",
+          "from": "@simplewebauthn/browser"
+        },
+        {
+          "name": "WireAuthenticationResponse",
+          "kind": "type",
+          "line": 72,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "WireCreationOptions",
+          "kind": "type",
+          "line": 73,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "WireRegistrationResponse",
+          "kind": "type",
+          "line": 74,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "WireRequestOptions",
+          "kind": "type",
+          "line": 75,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "supportsWebAuthn",
+          "kind": "function",
+          "line": 83,
+          "summary": "Whether this browser can run WebAuthn ceremonies on this page."
+        },
+        {
+          "name": "register",
+          "kind": "function",
+          "line": 116,
+          "summary": "Run a modal registration ceremony (a WebAuthn `create()` call)."
+        },
+        {
+          "name": "authenticate",
+          "kind": "function",
+          "line": 149,
+          "summary": "Run a modal authentication ceremony (a WebAuthn `navigator.credentials.get()` call)."
+        },
+        {
+          "name": "authenticateWithAutofill",
+          "kind": "function",
+          "line": 178,
+          "summary": "Run a conditional-mediation ceremony: the request stays pending until the user picks a passkey in the autocompletion list of an `<input autoComplete=\"… webauthn\">`."
+        },
+        {
+          "name": "isConditionalMediationAvailable",
+          "kind": "function",
+          "line": 241,
+          "summary": "Whether this browser can offer passkeys in the autocompletion list of an `<input autoComplete=\"… webauthn\">`."
+        },
+        {
+          "name": "browserCeremonies",
+          "kind": "const",
+          "line": 287,
+          "summary": "The browser ceremonies, which the hooks of `react.tsx` run."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/flows": {
+      "file": "packages/core/src/methods/username-passkey/flows.ts",
+      "summary": "The client code that orchestrates the “standard” (non-autofill) passkey sign-in flow, i.e. the code that runs whenever the user enters a username to sign in or sign up.",
+      "description": "The client code that orchestrates the “standard” (non-autofill) passkey sign-in flow, i.e. the code that runs whenever the user enters a username to sign in or sign up.",
+      "exports": [
+        {
+          "name": "UsernamePasskeyApi",
+          "kind": "type",
+          "line": 61,
+          "summary": "The mutation references the sign-in flows drive."
+        },
+        {
+          "name": "SignInFlowContext",
+          "kind": "type",
+          "line": 69,
+          "summary": "What the sign-in flows need from the surrounding React tree."
+        },
+        {
+          "name": "SignInFlowResult",
+          "kind": "type",
+          "line": 103,
+          "summary": "The result of runSignInOrSignUpFlow."
+        },
+        {
+          "name": "UsernamePasskeyAutofillError",
+          "kind": "type",
+          "line": 115,
+          "summary": "The errors the autofill sign-in flow reports."
+        },
+        {
+          "name": "runSignInOrSignUpFlow",
+          "kind": "function",
+          "line": 123,
+          "summary": "The identifier-first sign-in flow: the start mutation tells whether the username is new, then one ceremony makes a passkey or uses one."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/hooks": {
+      "file": "packages/core/src/methods/username-passkey/hooks.tsx",
+      "summary": "The shared body of the passkey sign-in hook.",
+      "description": "The shared body of the passkey sign-in hook. Each entry point binds it to the ResolvedPasskeyCeremonies of its platform.",
+      "exports": [
+        {
+          "name": "SignInWithUsernamePasskeyResult",
+          "kind": "type",
+          "line": 41,
+          "summary": "The result of the `signIn` callback from `useSignInWithUsernamePasskey`."
+        },
+        {
+          "name": "useSignInWithUsernamePasskeyImpl",
+          "kind": "function",
+          "line": 51,
+          "summary": "The body of `useSignInWithUsernamePasskey`, for the given platform.",
+          "part": "hook:methods/username-passkey/hooks.useSignInWithUsernamePasskeyImpl"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/add": {
+      "file": "packages/core/src/methods/username-passkey/management/add.ts",
+      "summary": "The flow that adds a passkey to a signed-in account.",
+      "description": "The flow that adds a passkey to a signed-in account.",
+      "exports": [
+        {
+          "name": "MAX_PASSKEYS_PER_USER",
+          "kind": "const",
+          "line": 62,
+          "summary": "The largest number of passkeys that one user can hold."
+        },
+        { "name": "StartAddPasskeyResult", "kind": "type", "line": 84 },
+        { "name": "VerifyAddPasskeyResult", "kind": "type", "line": 99 },
+        { "name": "FinishAddPasskeyResult", "kind": "type", "line": 113 },
+        { "name": "startAddPasskey", "kind": "function", "line": 115 },
+        { "name": "verifyAddPasskey", "kind": "function", "line": 155 },
+        { "name": "finishAddPasskey", "kind": "function", "line": 231 }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/flows": {
+      "file": "packages/core/src/methods/username-passkey/management/flows.ts",
+      "summary": "The passkey management flows: adding and removing a passkey.",
+      "description": "The passkey management flows: adding and removing a passkey.",
+      "exports": [
+        { "name": "AddPasskeyApi", "kind": "type", "line": 62 },
+        { "name": "RemovePasskeyApi", "kind": "type", "line": 68 },
+        { "name": "ManagementFlowContext", "kind": "type", "line": 73 },
+        { "name": "AddPasskeyFlowResult", "kind": "type", "line": 80 },
+        { "name": "RemovePasskeyFlowResult", "kind": "type", "line": 86 },
+        {
+          "name": "runAddPasskeyFlow",
+          "kind": "function",
+          "line": 97,
+          "summary": "Adds a passkey to the account of the signed-in user."
+        },
+        {
+          "name": "runRemovePasskeyFlow",
+          "kind": "function",
+          "line": 134,
+          "summary": "Removes a passkey from the account of the signed-in user."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/list": {
+      "file": "packages/core/src/methods/username-passkey/management/list.ts",
+      "summary": "Allows logged-in users to see the passkeys set up on their account.",
+      "description": "Allows logged-in users to see the passkeys set up on their account.",
+      "exports": [
+        { "name": "ListPasskeysResult", "kind": "type", "line": 28 },
+        { "name": "listPasskeys", "kind": "function", "line": 30 }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/react": {
+      "file": "packages/core/src/methods/username-passkey/management/react.tsx",
+      "summary": "The shared bodies of the passkey-management hooks, `useAddPasskey` and `useRemovePasskey`.",
+      "description": "The shared bodies of the passkey-management hooks, `useAddPasskey` and `useRemovePasskey`. Each entry point binds them to the ceremonies of its platform.",
+      "exports": [
+        {
+          "name": "AlreadyPendingFailure",
+          "kind": "type",
+          "line": 30,
+          "summary": "Failure shape for AlreadyPendingError.",
+          "from": "module:methods/username-passkey/react_impl"
+        },
+        {
+          "name": "AddPasskeyApi",
+          "kind": "type",
+          "line": 31,
+          "from": "module:methods/username-passkey/management/flows"
+        },
+        {
+          "name": "RemovePasskeyApi",
+          "kind": "type",
+          "line": 31,
+          "from": "module:methods/username-passkey/management/flows"
+        },
+        { "name": "AddPasskeyResult", "kind": "type", "line": 33 },
+        { "name": "RemovePasskeyResult", "kind": "type", "line": 35 },
+        {
+          "name": "useAddPasskeyImpl",
+          "kind": "function",
+          "line": 45,
+          "summary": "The body of `useAddPasskey`, for the given platform.",
+          "part": "hook:methods/username-passkey/management/react.useAddPasskeyImpl"
+        },
+        {
+          "name": "useRemovePasskeyImpl",
+          "kind": "function",
+          "line": 99,
+          "summary": "The body of `useRemovePasskey`, for the given platform.",
+          "part": "hook:methods/username-passkey/management/react.useRemovePasskeyImpl"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/remove": {
+      "file": "packages/core/src/methods/username-passkey/management/remove.ts",
+      "summary": "The flow that removes a passkey from a signed-in account.",
+      "description": "The flow that removes a passkey from a signed-in account.",
+      "exports": [
+        { "name": "StartRemovePasskeyResult", "kind": "type", "line": 69 },
+        { "name": "FinishRemovePasskeyResult", "kind": "type", "line": 83 },
+        { "name": "startRemovePasskey", "kind": "function", "line": 85 },
+        { "name": "finishRemovePasskey", "kind": "function", "line": 136 }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/management/rename": {
+      "file": "packages/core/src/methods/username-passkey/management/rename.ts",
+      "summary": "Renaming a passkey of a signed-in account.",
+      "description": "Renaming a passkey of a signed-in account.",
+      "exports": [
+        { "name": "RenamePasskeyResult", "kind": "type", "line": 27 },
+        { "name": "renamePasskey", "kind": "function", "line": 29 }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/options": {
+      "file": "packages/core/src/methods/username-passkey/options.ts",
+      "summary": "Assembly of the WebAuthn options objects that the start mutations of the method return.",
+      "description": "Assembly of the WebAuthn options objects that the start mutations of the method return.",
+      "exports": [
+        {
+          "name": "buildRegistrationOptions",
+          "kind": "function",
+          "line": 73,
+          "summary": "Build the `PublicKeyCredentialCreationOptionsJSON` for a registration ceremony from the output of a component start function."
+        },
+        {
+          "name": "buildAuthenticationOptions",
+          "kind": "function",
+          "line": 114,
+          "summary": "Build the `PublicKeyCredentialRequestOptionsJSON` for an authentication ceremony from the output of the component's `startAuthentication`."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/purposes": {
+      "file": "packages/core/src/methods/username-passkey/purposes.ts",
+      "exports": [
+        {
+          "name": "SIGN_IN_PURPOSE",
+          "kind": "const",
+          "line": 2,
+          "summary": "The re-authentication that signs a user in."
+        },
+        {
+          "name": "ADD_PASSKEY_PURPOSE",
+          "kind": "const",
+          "line": 5,
+          "summary": "The re-authentication that comes before a user adds a passkey."
+        },
+        {
+          "name": "REMOVE_PASSKEY_PURPOSE",
+          "kind": "const",
+          "line": 8,
+          "summary": "The re-authentication that authorizes the removal of a passkey."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/react": {
+      "file": "packages/core/src/methods/username-passkey/react.tsx",
+      "summary": "React client for the `usernamePasskey` method, exported at `@convex-dev/auth/methods/username-passkey/react`.",
+      "description": "React client for the `usernamePasskey` method, exported at `@convex-dev/auth/methods/username-passkey/react`.",
+      "exports": [
+        {
+          "name": "SignInWithUsernamePasskeyResult",
+          "kind": "type",
+          "line": 31,
+          "summary": "The result of the `signIn` callback from `useSignInWithUsernamePasskey`.",
+          "from": "module:methods/username-passkey/hooks"
+        },
+        {
+          "name": "RenamePasskeyResult",
+          "kind": "type",
+          "line": 32,
+          "from": "module:methods/username-passkey/management/rename"
+        },
+        {
+          "name": "AddPasskeyApi",
+          "kind": "type",
+          "line": 34,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "AddPasskeyResult",
+          "kind": "type",
+          "line": 35,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "RemovePasskeyApi",
+          "kind": "type",
+          "line": 36,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "RemovePasskeyResult",
+          "kind": "type",
+          "line": 37,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "AuthenticationResponseJSON",
+          "kind": "interface",
+          "line": 42,
+          "summary": "A slightly-modified AuthenticationCredential to simplify working with ArrayBuffers that are Base64URL-encoded in the browser so that they can be sent as JSON to the server.",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "PasskeyClientError",
+          "kind": "type",
+          "line": 43,
+          "summary": "The failures the client side produces (the server never returns these):",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "PasskeyClientFailure",
+          "kind": "type",
+          "line": 44,
+          "summary": "A failed result with a client-side `userError`.",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "PublicKeyCredentialCreationOptionsJSON",
+          "kind": "interface",
+          "line": 45,
+          "summary": "A variant of PublicKeyCredentialCreationOptions suitable for JSON transmission to the browser to (eventually) get passed into navigator.credentials.create(...) in the browser.",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "PublicKeyCredentialRequestOptionsJSON",
+          "kind": "interface",
+          "line": 46,
+          "summary": "A variant of PublicKeyCredentialRequestOptions suitable for JSON transmission to the browser to (eventually) get passed into navigator.credentials.get(...) in the browser.",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "RegistrationResponseJSON",
+          "kind": "interface",
+          "line": 47,
+          "summary": "A slightly-modified RegistrationCredential to simplify working with ArrayBuffers that are Base64URL-encoded in the browser so that they can be sent as JSON to the server.",
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "WireAuthenticationResponse",
+          "kind": "type",
+          "line": 48,
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "WireCreationOptions",
+          "kind": "type",
+          "line": 49,
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "WireRegistrationResponse",
+          "kind": "type",
+          "line": 50,
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "WireRequestOptions",
+          "kind": "type",
+          "line": 51,
+          "from": "module:methods/username-passkey/client"
+        },
+        {
+          "name": "UsernamePasskeyApi",
+          "kind": "type",
+          "line": 54,
+          "summary": "The mutation references the sign-in flows drive.",
+          "from": "module:methods/username-passkey/flows"
+        },
+        {
+          "name": "UsernamePasskeyAutofillError",
+          "kind": "type",
+          "line": 55,
+          "summary": "The errors the autofill sign-in flow reports.",
+          "from": "module:methods/username-passkey/flows"
+        },
+        {
+          "name": "AlreadyPendingFailure",
+          "kind": "type",
+          "line": 58,
+          "summary": "Failure shape for AlreadyPendingError.",
+          "from": "module:methods/username-passkey/react_impl"
+        },
+        {
+          "name": "PasskeyAutofillStatus",
+          "kind": "type",
+          "line": 59,
+          "summary": "The states of usePasskeyAutofill:",
+          "from": "module:methods/username-passkey/react_impl"
+        },
+        {
+          "name": "useSignInWithUsernamePasskey",
+          "kind": "function",
+          "line": 117,
+          "summary": "Client for the log in page in the “username + passkey” auth flow.",
+          "part": "hook:methods/username-passkey/react.useSignInWithUsernamePasskey"
+        },
+        {
+          "name": "useAddPasskey",
+          "kind": "function",
+          "line": 157,
+          "summary": "Hook for the \"Add a passkey\" button of a settings page.",
+          "part": "hook:methods/username-passkey/react.useAddPasskey"
+        },
+        {
+          "name": "useRemovePasskey",
+          "kind": "function",
+          "line": 192,
+          "summary": "Hook for the \"Remove\" button of a passkey list.",
+          "part": "hook:methods/username-passkey/react.useRemovePasskey"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/react_impl": {
+      "file": "packages/core/src/methods/username-passkey/react_impl.tsx",
+      "summary": "Internal building blocks of the passkey React hooks (see `./react.tsx`): the autofill request loop, and the modal ceremony slot of a page.",
+      "description": "Internal building blocks of the passkey React hooks (see `./react.tsx`): the autofill request loop, and the modal ceremony slot of a page. They are not part of the public API (at least for now — we might export them later to make it easier to implement custom flows).",
+      "exports": [
+        {
+          "name": "PasskeyAutofillStatus",
+          "kind": "type",
+          "line": 39,
+          "summary": "The states of usePasskeyAutofill:"
+        },
+        {
+          "name": "PasskeyAutofillGates",
+          "kind": "type",
+          "line": 61,
+          "summary": "The gates of an autofill flow, which usePasskeyAutofill returns among its fields."
+        },
+        {
+          "name": "usePasskeyAutofill",
+          "kind": "function",
+          "line": 123,
+          "summary": "Handles passkey autofill (i.e. conditional mediation) on a page.",
+          "part": "hook:methods/username-passkey/react_impl.usePasskeyAutofill"
+        },
+        {
+          "name": "AlreadyPendingError",
+          "kind": "type",
+          "line": 436,
+          "summary": "A call on a flow whose previous call still runs."
+        },
+        {
+          "name": "AlreadyPendingFailure",
+          "kind": "type",
+          "line": 441,
+          "summary": "Failure shape for AlreadyPendingError."
+        },
+        {
+          "name": "usePasskeyCeremonySlot",
+          "kind": "function",
+          "line": 474,
+          "summary": "Building block for modal passkey flows: a `run` callback that runs one modal ceremony at a time, plus its `pending` state.",
+          "part": "hook:methods/username-passkey/react_impl.usePasskeyCeremonySlot"
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-passkey/react-custom": {
+      "file": "packages/core/src/methods/username-passkey/react-custom.tsx",
+      "summary": "The passkey hooks on ceremonies that the app provides, for example on a React Native passkey library.",
+      "description": "The passkey hooks on ceremonies that the app provides, for example on a React Native passkey library. Exported at `@convex-dev/auth/methods/username-passkey/react-custom`.",
+      "exports": [
+        {
+          "name": "SignInWithUsernamePasskeyResult",
+          "kind": "type",
+          "line": 20,
+          "summary": "The result of the `signIn` callback from `useSignInWithUsernamePasskey`.",
+          "from": "module:methods/username-passkey/hooks"
+        },
+        {
+          "name": "RenamePasskeyResult",
+          "kind": "type",
+          "line": 21,
+          "from": "module:methods/username-passkey/management/rename"
+        },
+        {
+          "name": "AddPasskeyApi",
+          "kind": "type",
+          "line": 23,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "AddPasskeyResult",
+          "kind": "type",
+          "line": 24,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "RemovePasskeyApi",
+          "kind": "type",
+          "line": 25,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "RemovePasskeyResult",
+          "kind": "type",
+          "line": 26,
+          "from": "module:methods/username-passkey/management/react"
+        },
+        {
+          "name": "PasskeyAuthenticationResponse",
+          "kind": "type",
+          "line": 29,
+          "summary": "An authentication response in the WebAuthn JSON encoding, as the passkey libraries return it.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyCeremonies",
+          "kind": "type",
+          "line": 30,
+          "summary": "The passkey ceremonies of a platform, which an app implements to run the passkey hooks outside a browser.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyClientError",
+          "kind": "type",
+          "line": 31,
+          "summary": "The failures the client side produces (the server never returns these):",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyClientFailure",
+          "kind": "type",
+          "line": 32,
+          "summary": "A failed result with a client-side `userError`.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "PasskeyRegistrationResponse",
+          "kind": "type",
+          "line": 33,
+          "summary": "A registration response in the WebAuthn JSON encoding, as the passkey libraries return it.",
+          "from": "module:methods/username-passkey/ceremonies"
+        },
+        {
+          "name": "WireCreationOptions",
+          "kind": "type",
+          "line": 36,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "WireRequestOptions",
+          "kind": "type",
+          "line": 37,
+          "from": "packages/core/src/components/passkey/validation.ts"
+        },
+        {
+          "name": "UsernamePasskeyApi",
+          "kind": "type",
+          "line": 40,
+          "summary": "The mutation references the sign-in flows drive.",
+          "from": "module:methods/username-passkey/flows"
+        },
+        {
+          "name": "UsernamePasskeyAutofillError",
+          "kind": "type",
+          "line": 41,
+          "summary": "The errors the autofill sign-in flow reports.",
+          "from": "module:methods/username-passkey/flows"
+        },
+        {
+          "name": "AlreadyPendingFailure",
+          "kind": "type",
+          "line": 44,
+          "summary": "Failure shape for AlreadyPendingError.",
+          "from": "module:methods/username-passkey/react_impl"
+        },
+        {
+          "name": "PasskeyAutofillStatus",
+          "kind": "type",
+          "line": 45,
+          "summary": "The states of usePasskeyAutofill:",
+          "from": "module:methods/username-passkey/react_impl"
+        },
+        {
+          "name": "createUsernamePasskeyHooks",
+          "kind": "function",
+          "line": 60,
+          "summary": "Make the passkey hooks on the given ceremonies."
+        }
+      ],
+      "state": []
+    },
+    "module:methods/username-password/react": {
+      "file": "packages/core/src/methods/username-password/react.tsx",
+      "summary": "React client for the `usernamePassword` method, exported at `@convex-dev/auth/methods/username-password/react`.",
+      "description": "React client for the `usernamePassword` method, exported at `@convex-dev/auth/methods/username-password/react`.",
+      "exports": [
+        {
+          "name": "Credentials",
+          "kind": "type",
+          "line": 29,
+          "summary": "The `(username, password)` pair both flows accept."
+        },
+        {
+          "name": "SignInWithUsernamePasswordResult",
+          "kind": "type",
+          "line": 69,
+          "summary": "The result of the `signIn` callback from useSignInWithUsernamePassword."
+        },
+        {
+          "name": "SignUpWithUsernamePasswordResult",
+          "kind": "type",
+          "line": 73,
+          "summary": "The result of the `signUp` callback from useSignUpWithUsernamePassword."
+        },
+        {
+          "name": "useSignInWithUsernamePassword",
+          "kind": "function",
+          "line": 145,
+          "summary": "Client for the sign-in flow of the `usernamePassword` method: wire the backend's `signInWithUsernamePassword` mutation to the core client.",
+          "part": "hook:methods/username-password/react.useSignInWithUsernamePassword"
+        },
+        {
+          "name": "useSignUpWithUsernamePassword",
+          "kind": "function",
+          "line": 195,
+          "summary": "Client for the sign-up flow of the `usernamePassword` method: wire the backend's `signUpWithUsernamePassword` mutation to the core client.",
+          "part": "hook:methods/username-password/react.useSignUpWithUsernamePassword"
+        }
+      ],
+      "state": []
+    },
+    "module:react/client": {
+      "file": "packages/core/src/react/client.tsx",
+      "exports": [
+        {
+          "name": "AuthSignInApi",
+          "kind": "interface",
+          "line": 29,
+          "summary": "How the sign-in functions of a method get executed.",
+          "from": "module:browser/ambientSignInClient"
+        },
+        {
+          "name": "useAuthSignInApi",
+          "kind": "function",
+          "line": 42,
+          "summary": "The AuthSignInApi for the surrounding auth provider.",
+          "part": "hook:react/client.useAuthSignInApi"
+        },
+        {
+          "name": "ConvexAuthActionsContextType",
+          "kind": "type",
+          "line": 59,
+          "summary": "The value exposed by useAuthActions."
+        },
+        { "name": "ConvexAuthActionsContext", "kind": "const", "line": 73 },
+        {
+          "name": "AuthClientContext",
+          "kind": "const",
+          "line": 81,
+          "summary": "The bound AuthClient."
+        },
+        {
+          "name": "ConvexAuthTokenContext",
+          "kind": "const",
+          "line": 86,
+          "summary": "The current access token (a JWT), or null when signed out."
+        },
+        {
+          "name": "useAuth",
+          "kind": "function",
+          "line": 108,
+          "summary": "The `useAuth` hook passed to `ConvexProviderWithAuth`.",
+          "part": "hook:react/client.useAuth"
+        },
+        {
+          "name": "SessionWatcher",
+          "kind": "function",
+          "line": 133,
+          "summary": "Watches the app's `isAuthenticated` query and signs the client out when its session is revoked server-side."
+        },
+        {
+          "name": "AuthProvider",
+          "kind": "function",
+          "line": 164,
+          "summary": "Binds an AuthClient to React and provides the auth, actions, and token contexts."
+        }
+      ],
+      "state": []
+    },
+    "module:react/functionReference": {
+      "file": "packages/core/src/react/functionReference.ts",
+      "exports": [
+        {
+          "name": "useStableFunctionReference",
+          "kind": "function",
+          "line": 22,
+          "summary": "Return a function reference that keeps its identity while it names the same function.",
+          "part": "hook:react/functionReference.useStableFunctionReference"
+        }
+      ],
+      "state": []
+    },
+    "module:react/index": {
+      "file": "packages/core/src/react/index.tsx",
+      "summary": "React bindings for Convex Auth.",
+      "description": "React bindings for Convex Auth.",
+      "exports": [
+        {
+          "name": "TokenStorage",
+          "kind": "interface",
+          "line": 38,
+          "summary": "Read/write/delete string values by key.",
+          "from": "module:browser/storage"
+        },
+        {
+          "name": "ConvexAuthApi",
+          "kind": "type",
+          "line": 39,
+          "summary": "The auth functions the app exports from `setupConvexAuth`.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "TokenBundle",
+          "kind": "type",
+          "line": 39,
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "ConvexAuthActionsContextType",
+          "kind": "type",
+          "line": 40,
+          "summary": "The value exposed by useAuthActions.",
+          "from": "module:react/client"
+        },
+        {
+          "name": "ConvexAuthProvider",
+          "kind": "function",
+          "line": 68,
+          "summary": "Replace your `ConvexProvider` with this to enable authentication."
+        },
+        {
+          "name": "useAuthActions",
+          "kind": "function",
+          "line": 192,
+          "summary": "Access the auth actions:",
+          "part": "hook:react/index.useAuthActions"
+        },
+        {
+          "name": "useAuthToken",
+          "kind": "function",
+          "line": 209,
+          "summary": "The current access token (a JWT), or null when signed out.",
+          "part": "hook:react/index.useAuthToken"
+        }
+      ],
+      "state": []
+    },
+    "module:react/methods": {
+      "file": "packages/core/src/react/methods.ts",
+      "summary": "React building blocks that the sign-in methods use to expose their state as hooks.",
+      "description": "React building blocks that the sign-in methods use to expose their state as hooks. This module is internal: it is not a public entry point, and apps do not use it.",
+      "exports": [
+        {
+          "name": "AmbientSignInClient",
+          "kind": "type",
+          "line": 23,
+          "summary": "An ambient sign-in's registration, passed via `ConvexAuthProvider`'s `ambientSignIns` prop and run by the `AuthClient` while it is constructed.",
+          "from": "module:browser/ambientSignInClient"
+        },
+        {
+          "name": "AmbientSignInContext",
+          "kind": "type",
+          "line": 24,
+          "summary": "What an ambient sign-in's setup receives.",
+          "from": "module:browser/ambientSignInClient"
+        },
+        {
+          "name": "AuthSignInApi",
+          "kind": "interface",
+          "line": 25,
+          "summary": "How the sign-in functions of a method get executed.",
+          "from": "module:browser/ambientSignInClient"
+        },
+        {
+          "name": "useAmbientSignInValue",
+          "kind": "function",
+          "line": 35,
+          "summary": "Subscribe to a value published by the ambient sign-in registered as `id` (the same scope its setup writes through).",
+          "part": "hook:react/methods.useAmbientSignInValue"
+        }
+      ],
+      "state": []
+    },
+    "module:react/signInSteps": {
+      "file": "packages/core/src/react/signInSteps.ts",
+      "summary": "The step reports of sign-in calls (see `browser/steps.ts`): `signIn.call` before a call to a sign-in function, and `signIn.return` or `signIn.throw` after it.",
+      "description": "The step reports of sign-in calls (see `browser/steps.ts`): `signIn.call` before a call to a sign-in function, and `signIn.return` or `signIn.throw` after it. Kept apart from `browser/steps.ts` because it reads the names of function references through `convex/server`.",
+      "exports": [
+        {
+          "name": "STATUSES",
+          "kind": "const",
+          "line": 24,
+          "summary": "The statuses of the library's results."
+        },
+        {
+          "name": "KINDS",
+          "kind": "const",
+          "line": 33,
+          "summary": "The kinds of the library's results."
+        },
+        {
+          "name": "ERROR_CODES",
+          "kind": "const",
+          "line": 51,
+          "summary": "The `userError` codes of the library's results."
+        },
+        {
+          "name": "signInOutcomeOf",
+          "kind": "function",
+          "line": 108,
+          "summary": "The outcome of a sign-in call, from its result: `status`, `success`, `kind`, and the code of the `userError`."
+        },
+        {
+          "name": "reportedSignInCall",
+          "kind": "function",
+          "line": 158,
+          "summary": "Run a call to a sign-in function, reporting `signIn.call` before it and `signIn.return` or `signIn.throw` after it."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/cookies": {
+      "file": "packages/core/src/ssr/cookies.ts",
+      "summary": "A framework-agnostic cookie abstraction for server-side (SSR) auth.",
+      "description": "A framework-agnostic cookie abstraction for server-side (SSR) auth.",
+      "exports": [
+        {
+          "name": "AUTH_JWT_COOKIE",
+          "kind": "const",
+          "line": 22,
+          "summary": "The cookie holding the current access token (a JWT)."
+        },
+        {
+          "name": "AUTH_REFRESH_COOKIE",
+          "kind": "const",
+          "line": 24,
+          "summary": "The cookie holding the current (rotating) refresh token."
+        },
+        {
+          "name": "CookieOptions",
+          "kind": "interface",
+          "line": 27,
+          "summary": "Attributes applied when writing a cookie."
+        },
+        {
+          "name": "CookieDeleteOptions",
+          "kind": "type",
+          "line": 49,
+          "summary": "The attributes that identify which cookie a deletion targets: browsers only remove a cookie when the deletion's `path` and `domain` match the ones it was written with."
+        },
+        {
+          "name": "AuthCookieOptions",
+          "kind": "type",
+          "line": 65,
+          "summary": "The cookie options a framework integration may supply for auth cookies: only the attributes that legitimately vary by deployment."
+        },
+        {
+          "name": "CookieStore",
+          "kind": "interface",
+          "line": 74,
+          "summary": "Read/write/delete cookies."
+        },
+        {
+          "name": "writeAuthCookies",
+          "kind": "function",
+          "line": 139,
+          "summary": "Write the tokens in a `bundle` as cookies."
+        },
+        {
+          "name": "clearAuthCookies",
+          "kind": "function",
+          "line": 154,
+          "summary": "Delete both auth cookies."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/handlers": {
+      "file": "packages/core/src/ssr/handlers.ts",
+      "summary": "Framework-agnostic `(Request) => Response` auth handlers.",
+      "description": "Framework-agnostic `(Request) => Response` auth handlers.",
+      "exports": [
+        {
+          "name": "RequestHandler",
+          "kind": "type",
+          "line": 40,
+          "summary": "A WHATWG request handler."
+        },
+        {
+          "name": "RefreshHandlerConfig",
+          "kind": "interface",
+          "line": 43,
+          "summary": "Configuration for refreshHandler."
+        },
+        {
+          "name": "refreshHandler",
+          "kind": "function",
+          "line": 62,
+          "summary": "A handler that refreshes the session from the httpOnly refresh-token cookie, replying with an AuthSessionResponse carrying the fresh access token."
+        },
+        {
+          "name": "SignOutHandlerConfig",
+          "kind": "interface",
+          "line": 90,
+          "summary": "Configuration for signOutHandler."
+        },
+        {
+          "name": "signOutHandler",
+          "kind": "function",
+          "line": 108,
+          "summary": "A handler that revokes the session from the httpOnly refresh-token cookie (best effort) and clears both cookies, replying with an AuthSessionResponse carrying `tokens: null`."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/httpCookies": {
+      "file": "packages/core/src/ssr/httpCookies.ts",
+      "exports": [
+        {
+          "name": "serializeCookie",
+          "kind": "function",
+          "line": 13,
+          "summary": "Serialize a cookie into a `Set-Cookie` header value."
+        },
+        {
+          "name": "HttpCookies",
+          "kind": "interface",
+          "line": 36,
+          "summary": "A CookieStore that also knows how to write its buffered mutations onto a response's headers."
+        },
+        {
+          "name": "httpCookies",
+          "kind": "function",
+          "line": 68,
+          "summary": "Adapt an incoming Request's cookies to a CookieStore."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/index": {
+      "file": "packages/core/src/ssr/index.ts",
+      "summary": "Framework-agnostic server (SSR) building blocks for Convex Auth: a cookie abstraction, a WHATWG `Request`/`Response` cookie adapter, access-token inspection, the ServerAuthSession that owns the refresh lifecycle, the createServerAuthChecker that verifies an access token against the backend, the method-agnostic `(Request) => Response` refresh/sign-out handlers, the convexProxyHandler that serves sign-in, and the setupConvexAuthServer factory that configures them all once.",
+      "description": "Framework-agnostic server (SSR) building blocks for Convex Auth: a cookie abstraction, a WHATWG `Request`/`Response` cookie adapter, access-token inspection, the ServerAuthSession that owns the refresh lifecycle, the createServerAuthChecker that verifies an access token against the backend, the method-agnostic `(Request) => Response` refresh/sign-out handlers, the convexProxyHandler that serves sign-in, and the setupConvexAuthServer factory that configures them all once.",
+      "exports": [
+        {
+          "name": "AuthCookieOptions",
+          "kind": "type",
+          "line": 14,
+          "summary": "The cookie options a framework integration may supply for auth cookies: only the attributes that legitimately vary by deployment.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "CookieDeleteOptions",
+          "kind": "type",
+          "line": 15,
+          "summary": "The attributes that identify which cookie a deletion targets: browsers only remove a cookie when the deletion's `path` and `domain` match the ones it was written with.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "CookieOptions",
+          "kind": "interface",
+          "line": 16,
+          "summary": "Attributes applied when writing a cookie.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "CookieStore",
+          "kind": "interface",
+          "line": 17,
+          "summary": "Read/write/delete cookies.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "AUTH_JWT_COOKIE",
+          "kind": "const",
+          "line": 18,
+          "summary": "The cookie holding the current access token (a JWT).",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "AUTH_REFRESH_COOKIE",
+          "kind": "const",
+          "line": 19,
+          "summary": "The cookie holding the current (rotating) refresh token.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "clearAuthCookies",
+          "kind": "function",
+          "line": 20,
+          "summary": "Delete both auth cookies.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "writeAuthCookies",
+          "kind": "function",
+          "line": 21,
+          "summary": "Write the tokens in a `bundle` as cookies.",
+          "from": "module:ssr/cookies"
+        },
+        {
+          "name": "HttpCookies",
+          "kind": "interface",
+          "line": 24,
+          "summary": "A CookieStore that also knows how to write its buffered mutations onto a response's headers.",
+          "from": "module:ssr/httpCookies"
+        },
+        {
+          "name": "httpCookies",
+          "kind": "function",
+          "line": 25,
+          "summary": "Adapt an incoming Request's cookies to a CookieStore.",
+          "from": "module:ssr/httpCookies"
+        },
+        {
+          "name": "serializeCookie",
+          "kind": "function",
+          "line": 26,
+          "summary": "Serialize a cookie into a `Set-Cookie` header value.",
+          "from": "module:ssr/httpCookies"
+        },
+        {
+          "name": "isTrustedOrigin",
+          "kind": "function",
+          "line": 28,
+          "summary": "Whether a request may be served by a state-changing auth handler.",
+          "from": "module:ssr/origin"
+        },
+        {
+          "name": "RefreshHandlerConfig",
+          "kind": "interface",
+          "line": 30,
+          "summary": "Configuration for refreshHandler.",
+          "from": "module:ssr/handlers"
+        },
+        {
+          "name": "RequestHandler",
+          "kind": "type",
+          "line": 31,
+          "summary": "A WHATWG request handler.",
+          "from": "module:ssr/handlers"
+        },
+        {
+          "name": "SignOutHandlerConfig",
+          "kind": "interface",
+          "line": 32,
+          "summary": "Configuration for signOutHandler.",
+          "from": "module:ssr/handlers"
+        },
+        {
+          "name": "refreshHandler",
+          "kind": "function",
+          "line": 33,
+          "summary": "A handler that refreshes the session from the httpOnly refresh-token cookie, replying with an AuthSessionResponse carrying the fresh access token.",
+          "from": "module:ssr/handlers"
+        },
+        {
+          "name": "signOutHandler",
+          "kind": "function",
+          "line": 34,
+          "summary": "A handler that revokes the session from the httpOnly refresh-token cookie (best effort) and clears both cookies, replying with an AuthSessionResponse carrying `tokens: null`.",
+          "from": "module:ssr/handlers"
+        },
+        {
+          "name": "ConvexAuthServerConfig",
+          "kind": "interface",
+          "line": 36,
+          "summary": "Configuration for setupConvexAuthServer.",
+          "from": "module:ssr/setup"
+        },
+        {
+          "name": "setupConvexAuthServer",
+          "kind": "function",
+          "line": 36,
+          "summary": "Configure the auth handlers once and get back the routes to mount.",
+          "from": "module:ssr/setup"
+        },
+        {
+          "name": "ConvexProxyConfig",
+          "kind": "interface",
+          "line": 38,
+          "summary": "Configuration for convexProxyHandler.",
+          "from": "module:ssr/signInProxy"
+        },
+        {
+          "name": "ExposedSignInFn",
+          "kind": "type",
+          "line": 39,
+          "summary": "A sign-in function exposed through the proxy.",
+          "from": "module:ssr/signInProxy"
+        },
+        {
+          "name": "convexProxyHandler",
+          "kind": "function",
+          "line": 40,
+          "summary": "Build the route that serves every allowlisted sign-in function.",
+          "from": "module:ssr/signInProxy"
+        },
+        {
+          "name": "DecodedAccessToken",
+          "kind": "interface",
+          "line": 43,
+          "summary": "The claims the server cares about from an access token.",
+          "from": "module:ssr/jwt"
+        },
+        {
+          "name": "decodeAccessToken",
+          "kind": "function",
+          "line": 44,
+          "summary": "Decode an access token's claims without verifying its signature.",
+          "from": "module:ssr/jwt"
+        },
+        {
+          "name": "isTokenExpiring",
+          "kind": "function",
+          "line": 45,
+          "summary": "Whether a token is expired or within `skewSeconds` of expiry (so the caller should refresh).",
+          "from": "module:ssr/jwt"
+        },
+        {
+          "name": "ServerAuthSession",
+          "kind": "class",
+          "line": 48,
+          "from": "module:ssr/session"
+        },
+        {
+          "name": "RefreshSession",
+          "kind": "type",
+          "line": 49,
+          "summary": "Exchange a refresh token for a fresh session, resolving to one of the RefreshResult outcomes.",
+          "from": "module:ssr/session"
+        },
+        {
+          "name": "ServerAuthSessionConfig",
+          "kind": "interface",
+          "line": 50,
+          "summary": "Configuration for a ServerAuthSession.",
+          "from": "module:ssr/session"
+        },
+        {
+          "name": "createServerAuthChecker",
+          "kind": "function",
+          "line": 53,
+          "summary": "Build a ServerAuthChecker that verifies a JWT access token against the backend.",
+          "from": "module:ssr/isAuthenticated"
+        },
+        {
+          "name": "ServerAuthChecker",
+          "kind": "type",
+          "line": 54,
+          "summary": "Reports whether a JWT `accessToken` is a valid, signed-in session (`null` = no token = not signed in).",
+          "from": "module:ssr/isAuthenticated"
+        },
+        {
+          "name": "ServerAuthCheckerConfig",
+          "kind": "interface",
+          "line": 55,
+          "summary": "Configuration for createServerAuthChecker.",
+          "from": "module:ssr/isAuthenticated"
+        },
+        {
+          "name": "AuthSessionResponse",
+          "kind": "type",
+          "line": 58,
+          "summary": "The JSON body of every SSR auth session response: the refresh handler, the sign-out handler, and the cross-site refusal all reply with this shape, and the client parses it without looking at the status.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "ClientView",
+          "kind": "type",
+          "line": 59,
+          "summary": "A sign-in result as clients see it, with the token bundle narrowed to what every session model delivers.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "ConvexAuthApi",
+          "kind": "type",
+          "line": 60,
+          "summary": "The auth functions the app exports from `setupConvexAuth`.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "IsAuthenticatedFn",
+          "kind": "type",
+          "line": 61,
+          "summary": "The app's `isAuthenticated` query reference: reports whether the access token the query is called with identifies a signed-in user.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "RefreshResult",
+          "kind": "type",
+          "line": 62,
+          "summary": "The result of refreshing a session, returned by the app's `refreshSession` mutation and by `ServerAuthSession.refresh()`.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "RefreshSessionFn",
+          "kind": "type",
+          "line": 63,
+          "summary": "The app's `refreshSession` mutation reference: exchange a refresh token for a fresh session.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SignInComplete",
+          "kind": "type",
+          "line": 64,
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SignInEnvelope",
+          "kind": "type",
+          "line": 65,
+          "summary": "The full shared sign-in envelope.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SignInError",
+          "kind": "type",
+          "line": 66,
+          "summary": "The inferred shape of a vSignInError arm.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SignInStatus",
+          "kind": "type",
+          "line": 67,
+          "summary": "The `status` discriminant of every SignInEnvelope.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SignOutFn",
+          "kind": "type",
+          "line": 68,
+          "summary": "The app's `signOut` mutation reference: revoke the session for a refresh token.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "SlimTokenBundle",
+          "kind": "type",
+          "line": 69,
+          "summary": "The token bundle that an SSR route hands back to the client.",
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "TokenBundle",
+          "kind": "type",
+          "line": 70,
+          "from": "packages/core/src/lib/types.ts"
+        },
+        {
+          "name": "makeSlimBundle",
+          "kind": "function",
+          "line": 72,
+          "summary": "Strip down a TokenBundle down to a SlimTokenBundle, dropping the refresh token so it is never sent to the browser.",
+          "from": "packages/core/src/lib/types.ts"
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/isAuthenticated": {
+      "file": "packages/core/src/ssr/isAuthenticated.ts",
+      "summary": "The framework-agnostic server-side authentication check.",
+      "description": "The framework-agnostic server-side authentication check.",
+      "exports": [
+        {
+          "name": "ServerAuthCheckerConfig",
+          "kind": "interface",
+          "line": 16,
+          "summary": "Configuration for createServerAuthChecker."
+        },
+        {
+          "name": "ServerAuthChecker",
+          "kind": "type",
+          "line": 26,
+          "summary": "Reports whether a JWT `accessToken` is a valid, signed-in session (`null` = no token = not signed in)."
+        },
+        {
+          "name": "createServerAuthChecker",
+          "kind": "function",
+          "line": 39,
+          "summary": "Build a ServerAuthChecker that verifies a JWT access token against the backend."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/jwt": {
+      "file": "packages/core/src/ssr/jwt.ts",
+      "summary": "Access-token (JWT) inspection helpers for the server layer.",
+      "description": "Access-token (JWT) inspection helpers for the server layer. These only *decode* the token to read its claims — they never verify the signature (Convex verifies it against the JWKS). Decoding is enough to decide whether a cached access token is still usable or should be refreshed.",
+      "exports": [
+        {
+          "name": "DecodedAccessToken",
+          "kind": "interface",
+          "line": 13,
+          "summary": "The claims the server cares about from an access token."
+        },
+        {
+          "name": "decodeAccessToken",
+          "kind": "function",
+          "line": 24,
+          "summary": "Decode an access token's claims without verifying its signature."
+        },
+        {
+          "name": "isTokenExpiring",
+          "kind": "function",
+          "line": 40,
+          "summary": "Whether a token is expired or within `skewSeconds` of expiry (so the caller should refresh)."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/nextjs/client": {
+      "file": "packages/core/src/ssr/nextjs/client.tsx",
+      "summary": "Client bindings for Convex Auth on Next.js (App Router).",
+      "description": "Client bindings for Convex Auth on Next.js (App Router). This module is not an entry point: the `ConvexAuthNextjsServerProvider` of `@convex-dev/auth/ssr/nextjs` renders its provider, and Client Components import the hooks from `@convex-dev/auth/react`.",
+      "exports": [
+        {
+          "name": "ConvexAuthNextjsProvider",
+          "kind": "function",
+          "line": 80,
+          "summary": "Wrap your app in this (in a Client Component, typically rendered by the server-side `ConvexAuthNextjsServerProvider`) to enable authentication under SSR."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/nextjs/index": {
+      "file": "packages/core/src/ssr/nextjs/index.tsx",
+      "summary": "Server bindings for Convex Auth on Next.js (App Router), exported at `@convex-dev/auth/ssr/nextjs`.",
+      "description": "Server bindings for Convex Auth on Next.js (App Router), exported at `@convex-dev/auth/ssr/nextjs`.",
+      "exports": [
+        {
+          "name": "ConvexAuthNextjsConfig",
+          "kind": "interface",
+          "line": 34,
+          "summary": "Configuration for setupConvexAuthNextjs."
+        },
+        {
+          "name": "ConvexAuthNextjsProxyCtx",
+          "kind": "interface",
+          "line": 53,
+          "summary": "Context handed to a proxy handler."
+        },
+        {
+          "name": "ConvexAuthNextjsProxyHandler",
+          "kind": "type",
+          "line": 62,
+          "summary": "A proxy handler: inspect the request, optionally return a response (e.g. a redirect) to short-circuit."
+        },
+        {
+          "name": "setupConvexAuthNextjs",
+          "kind": "function",
+          "line": 135,
+          "summary": "Build the Next.js server helpers from one config."
+        }
+      ],
+      "state": [
+        {
+          "name": "#request",
+          "kind": "field",
+          "line": 83,
+          "class": "ProxyCookieStore",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#overlay",
+          "kind": "field",
+          "line": 84,
+          "class": "ProxyCookieStore",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#ops",
+          "kind": "field",
+          "line": 85,
+          "class": "ProxyCookieStore",
+          "readonly": true,
+          "private": true
+        }
+      ]
+    },
+    "module:ssr/origin": {
+      "file": "packages/core/src/ssr/origin.ts",
+      "summary": "CSRF protection for the auth handlers, by checking the `Origin` header.",
+      "description": "CSRF protection for the auth handlers, by checking the `Origin` header.",
+      "exports": [
+        {
+          "name": "isTrustedOrigin",
+          "kind": "function",
+          "line": 49,
+          "summary": "Whether a request may be served by a state-changing auth handler."
+        },
+        {
+          "name": "forbiddenOriginResponse",
+          "kind": "function",
+          "line": 69,
+          "summary": "The uniform reply for a refused cross-site request: 403, an AuthSessionResponse carrying `tokens: null`, and no cookie headers."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/session": {
+      "file": "packages/core/src/ssr/session.ts",
+      "summary": "The framework-agnostic owner of an auth session on the server (SSR).",
+      "description": "The framework-agnostic owner of an auth session on the server (SSR).",
+      "exports": [
+        {
+          "name": "RefreshSession",
+          "kind": "type",
+          "line": 40,
+          "summary": "Exchange a refresh token for a fresh session, resolving to one of the RefreshResult outcomes."
+        },
+        {
+          "name": "ServerAuthSessionConfig",
+          "kind": "interface",
+          "line": 43,
+          "summary": "Configuration for a ServerAuthSession."
+        },
+        {
+          "name": "ServerAuthSession",
+          "kind": "class",
+          "line": 61,
+          "members": [
+            {
+              "name": "getToken",
+              "kind": "method",
+              "line": 79,
+              "summary": "The access token to authenticate SSR requests with."
+            },
+            {
+              "name": "refresh",
+              "kind": "method",
+              "line": 95,
+              "summary": "Force a refresh from the refresh-token cookie, updating the cookies to match the outcome:"
+            },
+            {
+              "name": "setTokens",
+              "kind": "method",
+              "line": 118,
+              "summary": "Persist a token bundle as cookies."
+            }
+          ]
+        }
+      ],
+      "state": [
+        {
+          "name": "#refreshSession",
+          "kind": "field",
+          "line": 62,
+          "class": "ServerAuthSession",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#cookies",
+          "kind": "field",
+          "line": 63,
+          "class": "ServerAuthSession",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#refreshSkewSeconds",
+          "kind": "field",
+          "line": 64,
+          "class": "ServerAuthSession",
+          "readonly": true,
+          "private": true
+        },
+        {
+          "name": "#cookieOptions",
+          "kind": "field",
+          "line": 65,
+          "class": "ServerAuthSession",
+          "readonly": true,
+          "private": true
+        }
+      ]
+    },
+    "module:ssr/setup": {
+      "file": "packages/core/src/ssr/setup.ts",
+      "summary": "The framework-agnostic auth server factory, exported at `@convex-dev/auth/ssr`.",
+      "description": "The framework-agnostic auth server factory, exported at `@convex-dev/auth/ssr`.",
+      "exports": [
+        {
+          "name": "ConvexAuthServerConfig",
+          "kind": "interface",
+          "line": 23,
+          "summary": "Configuration for setupConvexAuthServer."
+        },
+        {
+          "name": "setupConvexAuthServer",
+          "kind": "function",
+          "line": 73,
+          "summary": "Configure the auth handlers once and get back the routes to mount."
+        }
+      ],
+      "state": []
+    },
+    "module:ssr/signInProxy": {
+      "file": "packages/core/src/ssr/signInProxy.ts",
+      "summary": "The SSR auth proxy: a `(Request) => Response` handler that speaks the same HTTP interface as `ConvexHttpClient` and forwards calls to the deployment.",
+      "description": "The SSR auth proxy: a `(Request) => Response` handler that speaks the same HTTP interface as `ConvexHttpClient` and forwards calls to the deployment.",
+      "exports": [
+        {
+          "name": "ExposedSignInFn",
+          "kind": "type",
+          "line": 50,
+          "summary": "A sign-in function exposed through the proxy."
+        },
+        {
+          "name": "ConvexProxyConfig",
+          "kind": "interface",
+          "line": 58,
+          "summary": "Configuration for convexProxyHandler."
+        },
+        {
+          "name": "convexProxyHandler",
+          "kind": "function",
+          "line": 185,
+          "summary": "Build the route that serves every allowlisted sign-in function."
+        }
+      ],
+      "state": []
+    }
+  },
+  "steps": [
+    {
+      "step": "retry",
+      "runsIn": "browser",
+      "location": { "file": "packages/core/src/browser/retry.ts", "line": 44 },
+      "part": "module:browser/retry",
+      "export": "retryOnNetworkError",
+      "within": ["retryOnNetworkError"],
+      "reportsAs": "module:browser/retry",
+      "detailKeys": ["attempt", "waitMs"]
+    },
+    {
+      "step": "signOut.revoke",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 245
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "constructor", "#signOutInternal"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["skipped"]
+    },
+    {
+      "step": "signOut.revoke",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 265
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "constructor", "#signOutInternal"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["skipped"]
+    },
+    {
+      "step": "init",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 380
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "init"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["mode", "hasInitialAccessToken"]
+    },
+    {
+      "step": "state",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 391
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "init"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged", "initial"]
+    },
+    {
+      "step": "ambientSignIn.init",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 408
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "init"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["id"]
+    },
+    {
+      "step": "dispose",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 443
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "dispose"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "session.set",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 465
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "setSession"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["hasRefreshToken"]
+    },
+    {
+      "step": "signIn.pending.start",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 485
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "withSignInPending"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "signIn.pending.end",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 491
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "withSignInPending"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "signOut.start",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 501
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "signOut"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "signOut.revokeFailed",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 506
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "signOut"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "signOut.end",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 510
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "signOut"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "token.fetch",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 525
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "fetchAccessToken"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["forceRefresh", "hasToken"]
+    },
+    {
+      "step": "lock.request",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 542
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "fetchAccessToken"],
+      "reportsAs": "module:browser/mutex",
+      "detailKeys": ["lock", "namespace"]
+    },
+    {
+      "step": "lock.acquired",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 544
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "fetchAccessToken"],
+      "reportsAs": "module:browser/mutex",
+      "detailKeys": ["lock", "namespace"]
+    },
+    {
+      "step": "lock.released",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 548
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "fetchAccessToken"],
+      "reportsAs": "module:browser/mutex",
+      "detailKeys": ["lock", "namespace"]
+    },
+    {
+      "step": "refresh.skipped",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 562
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#refreshHoldingLock"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["reason", "hasToken"]
+    },
+    {
+      "step": "refresh.start",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 573
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#refreshHoldingLock"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["mode"]
+    },
+    {
+      "step": "refresh.throw",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 582
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#refreshHoldingLock"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "refresh.end",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 586
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#refreshHoldingLock"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["outcome", "hasToken"]
+    },
+    {
+      "step": "crossTab.change",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 729
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#attachStorageListener", "listener"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["key", "namespace", "cleared"]
+    },
+    {
+      "step": "crossTab.change",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 744
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#attachStorageListener", "listener"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["key", "namespace", "cleared"]
+    },
+    {
+      "step": "crossTab.listen",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 759
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#attachStorageListener"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": []
+    },
+    {
+      "step": "state",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/sessionManager.ts",
+        "line": 777
+      },
+      "part": "module:browser/sessionManager",
+      "export": "AuthClient",
+      "within": ["AuthClient", "#notify"],
+      "reportsAs": "module:browser/sessionManager",
+      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged"]
+    },
+    {
+      "step": "storage.read",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/storage.ts",
+        "line": 78
+      },
+      "part": "module:browser/storage",
+      "export": null,
+      "reachedFrom": ["NamespacedStorage"],
+      "within": ["reportRead", "report"],
+      "reportsAs": "module:browser/storage",
+      "detailKeys": ["key", "namespace", "found"]
+    },
+    {
+      "step": "storage.write",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/storage.ts",
+        "line": 178
+      },
+      "part": "module:browser/storage",
+      "export": "NamespacedStorage",
+      "within": ["NamespacedStorage", "set"],
+      "reportsAs": "module:browser/storage",
+      "detailKeys": ["key", "namespace"]
+    },
+    {
+      "step": "storage.remove",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/browser/storage.ts",
+        "line": 187
+      },
+      "part": "module:browser/storage",
+      "export": "NamespacedStorage",
+      "within": ["NamespacedStorage", "remove"],
+      "reportsAs": "module:browser/storage",
+      "detailKeys": ["key", "namespace"]
+    },
+    {
+      "step": "call",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/lib/steps.ts", "line": 156 },
+      "part": null,
+      "export": null,
+      "reachedFrom": ["withCallReports"],
+      "within": ["reportedCall"],
+      "detailKeys": ["kind", "target"]
+    },
+    {
+      "step": "throw",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/lib/steps.ts", "line": 161 },
+      "part": null,
+      "export": null,
+      "reachedFrom": ["withCallReports"],
+      "within": ["reportedCall"],
+      "detailKeys": ["target"]
+    },
+    {
+      "step": "return",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/lib/steps.ts", "line": 164 },
+      "part": null,
+      "export": null,
+      "reachedFrom": ["withCallReports"],
+      "within": ["reportedCall"],
+      "detailKeys": ["target"]
+    },
+    {
+      "step": "session.revoked",
+      "runsIn": "browser",
+      "location": { "file": "packages/core/src/react/client.tsx", "line": 152 },
+      "part": "module:react/client",
+      "export": "SessionWatcher",
+      "within": ["SessionWatcher"],
+      "reportsAs": "module:react/client",
+      "detailKeys": []
+    },
+    {
+      "step": "signIn.call",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/react/signInSteps.ts",
+        "line": 178
+      },
+      "part": "module:react/signInSteps",
+      "export": null,
+      "reachedFrom": ["reportedSignInCall"],
+      "within": ["reportedCall"],
+      "reportsAsPassedIn": {
+        "parameter": "part",
+        "values": [
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 140
+            }
+          },
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 144
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 165
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 169
+            }
+          }
+        ]
+      },
+      "detailKeys": ["kind", "function"]
+    },
+    {
+      "step": "signIn.throw",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/react/signInSteps.ts",
+        "line": 183
+      },
+      "part": "module:react/signInSteps",
+      "export": null,
+      "reachedFrom": ["reportedSignInCall"],
+      "within": ["reportedCall"],
+      "reportsAsPassedIn": {
+        "parameter": "part",
+        "values": [
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 140
+            }
+          },
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 144
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 165
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 169
+            }
+          }
+        ]
+      },
+      "detailKeys": ["function"]
+    },
+    {
+      "step": "signIn.return",
+      "runsIn": "browser",
+      "location": {
+        "file": "packages/core/src/react/signInSteps.ts",
+        "line": 186
+      },
+      "part": "module:react/signInSteps",
+      "export": null,
+      "reachedFrom": ["reportedSignInCall"],
+      "within": ["reportedCall"],
+      "reportsAsPassedIn": {
+        "parameter": "part",
+        "values": [
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 140
+            }
+          },
+          {
+            "part": "module:react/index",
+            "location": {
+              "file": "packages/core/src/react/index.tsx",
+              "line": 144
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 165
+            }
+          },
+          {
+            "part": "module:ssr/nextjs/client",
+            "location": {
+              "file": "packages/core/src/ssr/nextjs/client.tsx",
+              "line": 169
+            }
+          }
+        ]
+      },
+      "detailKeys": ["function"],
+      "detailOpen": ["signInOutcomeOf(result)"]
+    },
+    {
+      "step": "refresh.result",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 273 },
+      "part": "methodFn:core.refreshSession",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "refreshSession", "handler"],
+      "detailKeys": [],
+      "detailOpen": ["outcomeOf(result)"]
+    },
+    {
+      "step": "signOut.done",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 291 },
+      "part": "methodFn:core.signOut",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "signOut", "handler"],
+      "detailKeys": []
+    },
+    {
+      "step": "isAuthenticated.result",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 313 },
+      "part": "methodFn:core.isAuthenticated",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "isAuthenticated", "handler"],
+      "detailKeys": ["tokenAccepted", "sessionLive"]
+    },
+    {
+      "step": "session.issued",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 406 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": [
+        "setupConvexAuth",
+        "bindMethod",
+        "makeHelpers",
+        "completeSignUp"
+      ],
+      "detailKeys": ["via", "method", "authenticatedBy", "userId"]
+    },
+    {
+      "step": "session.issued",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 435 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": [
+        "setupConvexAuth",
+        "bindMethod",
+        "makeHelpers",
+        "completeSignIn"
+      ],
+      "detailKeys": ["via", "method", "authenticatedBy", "userId"]
+    },
+    {
+      "step": "user.created",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 458 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": [
+        "setupConvexAuth",
+        "bindMethod",
+        "makeHelpers",
+        "signUpWithoutSession"
+      ],
+      "detailKeys": ["method", "userId"]
+    },
+    {
+      "step": "sessions.revoked",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 483 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": [
+        "setupConvexAuth",
+        "bindMethod",
+        "makeHelpers",
+        "revokeOtherSessions"
+      ],
+      "detailKeys": ["scope", "count"]
+    },
+    {
+      "step": "sessions.revoked",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 493 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": [
+        "setupConvexAuth",
+        "bindMethod",
+        "makeHelpers",
+        "revokeAllSessions"
+      ],
+      "detailKeys": ["scope", "count"]
+    },
+    {
+      "step": "method.start",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 511 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "bindMethod", "runWithStepReports"],
+      "detailKeys": ["method", "authenticated"]
+    },
+    {
+      "step": "method.throw",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 516 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "bindMethod", "runWithStepReports"],
+      "detailKeys": ["method"]
+    },
+    {
+      "step": "method.result",
+      "runsIn": "server",
+      "location": { "file": "packages/core/src/server/setup.ts", "line": 519 },
+      "part": "setup:core.setupConvexAuth",
+      "export": "setupConvexAuth",
+      "within": ["setupConvexAuth", "bindMethod", "runWithStepReports"],
+      "detailKeys": ["method"],
+      "detailOpen": ["outcomeOf(result)"]
+    }
+  ],
+  "holds": {
+    "module:browser/sessionManager": {
+      "storage": [
+        {
+          "key": "__convexAuthJWT",
+          "store": "NamespacedStorage",
+          "ops": ["get", "key", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 422
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 425
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 678
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 683
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 709
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 719
+            }
+          ]
+        },
+        {
+          "key": "__convexAuthRefreshToken",
+          "store": "NamespacedStorage",
+          "ops": ["get", "key", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 224
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 426
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 600
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 679
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 684
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 706
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 720
+            }
+          ]
+        }
+      ],
+      "unresolvedStorage": [],
+      "locks": [
+        {
+          "storageKey": "__convexAuthRefreshToken",
+          "code": "this.#lockKey",
+          "location": {
+            "file": "packages/core/src/browser/sessionManager.ts",
+            "line": 543
+          }
+        }
+      ]
+    },
+    "module:methods/email-magic-link/react": {
+      "storage": [
+        {
+          "key": "__convexAuthEmailMagicLinkSecret",
+          "store": "NamespacedStorage",
+          "ops": ["get", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/methods/email-magic-link/react.tsx",
+              "line": 143
+            },
+            {
+              "file": "packages/core/src/methods/email-magic-link/react.tsx",
+              "line": 201
+            },
+            {
+              "file": "packages/core/src/methods/email-magic-link/react.tsx",
+              "line": 219
+            }
+          ]
+        }
+      ],
+      "unresolvedStorage": [],
+      "locks": []
+    },
+    "module:methods/email-password/react": {
+      "storage": [
+        {
+          "key": "__convexAuthEmailPasswordChangeEmailSecret",
+          "store": "NamespacedStorage",
+          "ops": ["get", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 334
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 341
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 847
+            }
+          ]
+        },
+        {
+          "key": "__convexAuthEmailPasswordRecoverySecret",
+          "store": "NamespacedStorage",
+          "ops": ["get", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 334
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 341
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 638
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 750
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 781
+            }
+          ]
+        },
+        {
+          "key": "__convexAuthEmailPasswordSignUpSecret",
+          "store": "NamespacedStorage",
+          "ops": ["get", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 334
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 341
+            },
+            {
+              "file": "packages/core/src/methods/email-password/react.tsx",
+              "line": 536
+            }
+          ]
+        }
+      ],
+      "unresolvedStorage": [],
+      "locks": []
+    },
+    "module:methods/oauth/client": {
+      "storage": [
+        {
+          "key": "flow",
+          "store": "SignInStorage",
+          "ops": ["get", "remove", "set"],
+          "evidence": [
+            {
+              "file": "packages/core/src/methods/oauth/client.ts",
+              "line": 197
+            },
+            {
+              "file": "packages/core/src/methods/oauth/client.ts",
+              "line": 198
+            },
+            {
+              "file": "packages/core/src/methods/oauth/client.ts",
+              "line": 232
+            },
+            { "file": "packages/core/src/methods/oauth/client.ts", "line": 362 }
+          ]
+        }
+      ],
+      "unresolvedStorage": [],
+      "locks": []
+    }
+  },
   "counts": {
     "parts": {
       "app": 10,

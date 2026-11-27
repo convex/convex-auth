@@ -127,4 +127,9 @@ export type ModuleHolds = {
 export type ConvexAuthStructure = StructureModel<
   ConvexAuthPart,
   ConvexAuthDependencyKind
->;
+> & {
+  /** Every call that reports a step, in the order of file and line. */
+  steps: StepSite[];
+  /** What the client modules hold, by part id; only modules that hold something. */
+  holds: Record<string, ModuleHolds>;
+};

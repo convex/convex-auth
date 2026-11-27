@@ -18,8 +18,9 @@ import type {
   ConvexAuthPart,
   ConvexAuthStructure,
 } from "../../convex-auth/model.ts";
-import type { FunctionType, Visibility } from "../../model.ts";
+import type { FunctionType, ModuleInside, Visibility } from "../../model.ts";
 import { isFunctionLike, propertyNameText } from "../convex/analyzer.ts";
+import { readModuleInside } from "../convex/inside.ts";
 import {
   componentSourceFiles,
   createProgram,
@@ -35,6 +36,8 @@ import {
   registeredKind,
   type ThirdParty,
 } from "../convex/project.ts";
+import { scanHolds } from "./holds.ts";
+import { scanStepSites, type StepReporter } from "./steps.ts";
 
 export const repoRoot = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -64,6 +67,22 @@ const THIRD_PARTIES: ThirdParty[] = [
     name: "Passkey authenticator",
     domains: [],
     libraries: ["@simplewebauthn/browser"],
+  },
+];
+
+/** The functions that report steps: on the client and on the server. */
+const STEP_REPORTERS: StepReporter[] = [
+  {
+    file: join(coreSrc, "browser", "steps.ts"),
+    name: "reportClientStep",
+    runsIn: "browser",
+    args: { part: 0, step: 1, detail: 2 },
+  },
+  {
+    file: join(coreSrc, "lib", "steps.ts"),
+    name: "reportStep",
+    runsIn: "server",
+    args: { step: 0, detail: 1 },
   },
 ];
 
@@ -482,48 +501,100 @@ export function buildConvexAuthModel(): ConvexAuthStructure {
   }
   project.scanPackageFetches();
 
-  return project.model<ConvexAuthPart, ConvexAuthDependencyKind>(
-    "convex-auth",
-    {
-      parts: {
-        method: {
-          label: "Sign-in method",
-          description: "A sign-in method of Convex Auth (methods/<name>).",
-        },
-        setupFunction: {
-          label: "Setup function",
-          description:
-            "A setup… function: the app calls it to get its auth functions.",
-        },
-        methodFunction: {
-          label: "Method function",
-          description:
-            "An app function a setup… function returns, as the library defines it.",
-        },
-        hook: {
-          label: "React hook",
-          description: "A React hook of the core or of a sign-in method.",
-        },
-        module: {
-          label: "Client module",
-          description: "A module of the browser or SSR code.",
-        },
+  // ------------------------------------------- insides of the modules
+
+  const moduleOfFile = (fileName: string) => moduleByFile.get(fileName) ?? null;
+  const modules: Record<string, ModuleInside> = {};
+  for (const { file, id } of [...moduleFiles].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  )) {
+    modules[id] = readModuleInside(file, {
+      checker,
+      path: (p) => project.path(p),
+      moduleOfFile,
+      partOf: (node) => hookByNode.get(node) ?? null,
+    });
+  }
+
+  // The library's own files, where its step reports are.
+  const libraryFiles = program
+    .getSourceFiles()
+    .filter(
+      (f) => f.fileName.startsWith(coreSrc + sep) && !isInRepoOnly(f.fileName),
+    )
+    .sort((a, b) => a.fileName.localeCompare(b.fileName));
+  const steps = scanStepSites(STEP_REPORTERS, {
+    program,
+    checker,
+    files: libraryFiles,
+    location: loc,
+    partAt: (node) => {
+      const module = moduleOfFile(node.getSourceFile().fileName);
+      if (module !== null) {
+        return module;
+      }
+      for (let n: ts.Node | undefined = node; n !== undefined; n = n.parent) {
+        const id = methodFunctionByNode.get(n) ?? setupFunctions.get(n);
+        if (id !== undefined) {
+          return id;
+        }
+      }
+      return null;
+    },
+  });
+  const holds = scanHolds({
+    program,
+    checker,
+    files: libraryFiles,
+    location: loc,
+    storageFile: join(coreSrc, "browser", "storage.ts"),
+    mutexFile: join(coreSrc, "browser", "mutex.ts"),
+    moduleOfFile,
+  });
+
+  const { counts, ...model } = project.model<
+    ConvexAuthPart,
+    ConvexAuthDependencyKind
+  >("convex-auth", {
+    parts: {
+      method: {
+        label: "Sign-in method",
+        description: "A sign-in method of Convex Auth (methods/<name>).",
       },
-      dependencies: {
-        usesMethod: {
-          label: "uses method",
-          description:
-            "An app sets up a sign-in method by calling its setup… function.",
-        },
-        definedBy: {
-          label: "defined by",
-          description:
-            "An app function is the one a sign-in method's setup… returns.",
-        },
-        imports: { label: "imports", description: "A module imports another." },
+      setupFunction: {
+        label: "Setup function",
+        description:
+          "A setup… function: the app calls it to get its auth functions.",
+      },
+      methodFunction: {
+        label: "Method function",
+        description:
+          "An app function a setup… function returns, as the library defines it.",
+      },
+      hook: {
+        label: "React hook",
+        description: "A React hook of the core or of a sign-in method.",
+      },
+      module: {
+        label: "Client module",
+        description: "A module of the browser or SSR code.",
       },
     },
-  );
+    dependencies: {
+      usesMethod: {
+        label: "uses method",
+        description:
+          "An app sets up a sign-in method by calling its setup… function.",
+      },
+      definedBy: {
+        label: "defined by",
+        description:
+          "An app function is the one a sign-in method's setup… returns.",
+      },
+      imports: { label: "imports", description: "A module imports another." },
+    },
+  });
+  return { ...model, modules, steps, holds, counts };
 }
 
 /**
