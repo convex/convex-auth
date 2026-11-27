@@ -63,15 +63,25 @@ export function running(tl: Timeline): Running {
         .filter((a) => a.start <= from && a.end >= to)
         .sort((a, b) => b.start - a.start)[0];
       if (!inner) continue;
+      // A run that failed is in the error colour from its last stretch,
+      // once what it called has returned: not from its start.
+      const tone =
+        inner.tone === "error" && to < inner.end ? "normal" : inner.tone;
       const prev = list.at(-1);
-      if (prev && prev.part === inner.node && prev.end === from) prev.end = to;
+      if (
+        prev &&
+        prev.part === inner.node &&
+        prev.end === from &&
+        prev.tone === tone
+      )
+        prev.end = to;
       else
         list.push({
           start: from,
           end: to,
           part: inner.node,
           step: "run",
-          tone: inner.tone,
+          tone,
           entry: entry ?? inner.node,
         });
     }

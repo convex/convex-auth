@@ -25,7 +25,7 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
 import { Lod } from "./Lod.tsx";
 import { anchorPosition, placementOf } from "./look.ts";
-import { STATE_COLORS } from "./palette.ts";
+import { STATE_COLORS, TONE_COLORS } from "./palette.ts";
 
 /** Each state as arcs of one ring: [start, length] in turns. */
 const ARCS: Record<PageState, [number, number][]> = {
@@ -338,6 +338,7 @@ export function Halo({
     () => new Color(p.color).lerp(new Color("#ffffff"), 0.35),
     [p.color],
   );
+  const failed = useMemo(() => new Color(TONE_COLORS.error), []);
   const at = useMemo(() => anchorPosition(part, new Vector3()), [part]);
   useFrame(({ camera }) => {
     const g = group.current;
@@ -366,6 +367,15 @@ export function Halo({
     );
     const k = Math.min(1, since / 0.5);
     set(ripple.current, 0.6 * (1 - k) * on, 1 + 1.4 * k);
+    // A step that reported an error has the halo in the error colour.
+    const now = last?.tone === "error" ? failed : color;
+    for (const [m, x] of [
+      [disc.current, 1],
+      [ring.current, 2],
+      [ripple.current, 1],
+    ] as const)
+      if (m)
+        (m.material as MeshBasicMaterial).color.copy(now).multiplyScalar(x);
   });
   return (
     <group ref={group}>
