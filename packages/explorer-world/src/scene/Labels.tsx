@@ -15,6 +15,7 @@ import { Billboard } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  type Camera,
   MeshBasicMaterial,
   PerspectiveCamera,
   Vector3,
@@ -52,6 +53,8 @@ interface Entry {
    * only nearer than `far` (or when `important`).
    */
   quiet?: { far: number; named: () => boolean };
+  /** A name beside a halo: placed beside it, else below it, else hidden. */
+  beside?: Beside;
 }
 
 const registry = new Map<string, Entry>();
@@ -64,7 +67,7 @@ function useDeclutter(key: string, entry: Omit<Entry, "group">) {
     if (!group.current) return;
     registry.set(key, { ...latest.current, group: group.current });
     return () => void registry.delete(key);
-  }, [key, entry.priority, entry.chars, entry.size]);
+  }, [key, entry.priority, entry.chars, entry.size, entry.beside]);
   return group;
 }
 
@@ -213,6 +216,19 @@ function Declutter() {
         e.group.visible = false;
         continue;
       }
+      if (e.beside) {
+        const free = (r: [number, number, number, number]) =>
+          !shown.some(
+            (q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1],
+          );
+        const side = e.beside.rect(camera, size, "side");
+        const below = e.beside.rect(camera, size, "below");
+        const rect = free(side) ? side : free(below) ? below : null;
+        e.beside.mode = rect === below ? "below" : "side";
+        e.group.visible = !!rect;
+        if (rect) shown.push(rect);
+        continue;
+      }
       const k = e.grow
         ? Math.min(e.grow.max, Math.max(1, d / e.grow.distance))
         : 1;
@@ -327,16 +343,30 @@ function PartLabel({
   const part = partOf(id);
   const size = rank === 2 ? 0.36 : reporting ? 0.42 : 0.32;
   const grow = reporting ? REPORT_GROW : PART_GROW;
+  const h = p ? HEIGHT[p.shape] * (p.radius / FOOTPRINT[p.shape]) + 0.4 : 0;
+  const beside = useMemo(
+    () =>
+      reporting && p
+        ? new Beside(
+            new Vector3(p.position[0], p.position[1] + h, p.position[2]),
+            p.radius,
+            grow,
+            part?.label.length ?? 4,
+            size,
+          )
+        : undefined,
+    [reporting, p, h, grow, part, size],
+  );
   const group = useDeclutter(`part:${id}`, {
     chars: part?.label.length ?? 4,
     lines: 1,
     size,
     grow,
     priority: rank === 2 ? 200 : reporting ? 250 : 120,
+    beside,
   });
   if (!p || !part) return null;
   const [x, y, z] = p.position;
-  const h = HEIGHT[p.shape] * (p.radius / FOOTPRINT[p.shape]) + 0.4;
   return (
     <group position={[x, y, z]}>
       <group ref={group} position={[0, h, 0]}>
@@ -346,14 +376,7 @@ function PartLabel({
           <Lod far={id.startsWith("storageKey:") ? KEY_NAME_FAR : Infinity}>
             <Billboard>
               {reporting ? (
-                <BesideHalo
-                  part={id}
-                  radius={p.radius}
-                  lift={h}
-                  grow={grow}
-                  chars={part.label.length}
-                  size={size}
-                >
+                <BesideHalo beside={beside!}>
                   <Label
                     fontSize={size}
                     color="#ffffff"
@@ -392,6 +415,7 @@ function PartLabel({
 /** How far right on the window (device coordinates) a name may end. */
 const EDGE = 0.97;
 const right = new Vector3();
+const up = new Vector3();
 const end = new Vector3();
 
 /** The material of a name drawn over everything: it is not hidden by depth. */
@@ -403,48 +427,91 @@ const ON_TOP = new MeshBasicMaterial({
 });
 
 /**
- * Puts what it holds just right of the halo of a part (`haloRadius`), in
- * the units of a `KeepSize` group of `grow` at `lift` over the part; just
- * left of it when the name would cross the window's right edge.
+ * Where the name of a part reporting a step goes: just right of its halo
+ * (`haloRadius`); just left of it when the name would cross the window's
+ * right edge; below the halo when the declutter pass finds either side
+ * covering a more important name.
  */
-function BesideHalo({
-  part,
-  radius,
-  lift,
-  grow,
-  chars,
-  size,
-  children,
-}: {
-  part: string;
-  radius: number;
-  lift: number;
-  grow: { distance: number; max: number };
-  /** The length of the name and its font size, to keep it on the window. */
-  chars: number;
-  size: number;
-  children: ReactNode;
-}) {
-  const ref = useRef<Group>(null);
-  const at = useMemo(() => {
-    const [x, y, z] = placementOf(part)!.position;
-    return new Vector3(x, y + lift, z);
-  }, [part, lift]);
-  useFrame(({ camera }) => {
-    const g = ref.current;
-    if (!g) return;
-    const d = camera.position.distanceTo(at);
-    const scale = Math.min(grow.max, Math.max(1, d / grow.distance));
-    const beside = haloRadius(radius, d) * 1.15;
-    // Where the name would end on the window, read to the right.
-    const across = (chars * 0.5 * size + 0.1) * scale;
+export class Beside {
+  mode: "side" | "below" = "side";
+  constructor(
+    readonly at: Vector3,
+    readonly radius: number,
+    readonly grow: { distance: number; max: number },
+    readonly chars: number,
+    readonly size: number,
+  ) {}
+  /**
+   * The name's left end, along the camera's right and up from `at` (world
+   * units), its length, and the scale of its `KeepSize` group.
+   */
+  offset(camera: Camera, mode = this.mode) {
+    const d = camera.position.distanceTo(this.at);
+    const scale = Math.min(this.grow.max, Math.max(1, d / this.grow.distance));
+    const beside = haloRadius(this.radius, d) * 1.15;
+    const across = (this.chars * 0.5 * this.size + 0.1) * scale;
+    if (mode === "below")
+      return { x: -across / 2, y: -beside * 0.8, across, scale };
     right.setFromMatrixColumn(camera.matrixWorld, 0);
     end
-      .copy(at)
+      .copy(this.at)
       .addScaledVector(right, beside + across)
       .project(camera);
     // Past the window's right edge: on the left of the halo instead.
-    g.position.x = end.x > EDGE ? -(beside + across) / scale : beside / scale;
+    return {
+      x: end.x > EDGE ? -(beside + across) : beside,
+      y: 0,
+      across,
+      scale,
+    };
+  }
+  /** The name's box on the window, in pixels, placed by `mode`. */
+  rect(
+    camera: Camera,
+    view: { width: number; height: number },
+    mode: "side" | "below",
+  ): [number, number, number, number] {
+    const o = this.offset(camera, mode);
+    right.setFromMatrixColumn(camera.matrixWorld, 0);
+    up.setFromMatrixColumn(camera.matrixWorld, 1);
+    const half = this.size * o.scale * 0.6;
+    const px = (v: Vector3) => [
+      (v.x * 0.5 + 0.5) * view.width,
+      (-v.y * 0.5 + 0.5) * view.height,
+    ];
+    const corner = (dx: number, dy: number) =>
+      px(
+        end
+          .copy(this.at)
+          .addScaledVector(right, o.x + dx)
+          .addScaledVector(up, o.y - 0.2 * o.scale + dy)
+          .project(camera),
+      );
+    const [x0, y0] = corner(0, half);
+    const [x1, y1] = corner(o.across, -half);
+    return [
+      Math.min(x0, x1),
+      Math.min(y0, y1),
+      Math.max(x0, x1),
+      Math.max(y0, y1),
+    ];
+  }
+}
+
+/** Puts what it holds where its {@link Beside} says. */
+function BesideHalo({
+  beside,
+  children,
+}: {
+  beside: Beside;
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  useFrame(({ camera }) => {
+    const g = ref.current;
+    if (!g) return;
+    const o = beside.offset(camera);
+    g.position.set(o.x / o.scale, o.y / o.scale, 0);
   });
   return <group ref={ref}>{children}</group>;
 }
