@@ -139,7 +139,8 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   held: false,
   speed: 1,
   selected: null,
-  director: true,
+  // The camera stays where the viewer put it; it follows only when asked (F).
+  director: false,
   flight: null,
   overlays: { links: false, relations: true, unresolved: false },
   version: 0,

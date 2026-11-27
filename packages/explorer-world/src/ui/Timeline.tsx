@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { behindLive } from "../live.ts";
 import { currentState, usePlayback, world } from "../store.ts";
 
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
@@ -85,7 +84,6 @@ export function Timeline() {
           {format(time)}{" "}
           <span className="dim">/ {format(world.timeline.duration)}</span>
         </span>
-        <LiveControl />
         <div className="speeds" role="group" aria-label="Speed">
           {SPEEDS.map((s) => (
             <button
@@ -132,50 +130,85 @@ export function Timeline() {
 }
 
 /**
- * For a live recording: whether it is still recording, how far the playhead
- * is behind the newest run, and a button that skips to it.
+ * The time line of live mode: a thin line over this session with a handle.
+ * Dragging the handle goes back in time and holds there; "Back to live"
+ * returns to the newest action and plays on. While it follows live, it says
+ * so with a dot.
  */
-function LiveControl() {
-  const live = usePlayback((s) => s.live);
+export function LiveLine() {
   const time = usePlayback((s) => s.time);
+  const held = usePlayback((s) => s.held);
+  const live = usePlayback((s) => s.live);
   usePlayback((s) => s.version);
+  const { setTime, pause, skipToLive } = usePlayback.getState();
+  const bar = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const span = Math.max(world.timeline.duration, 1e-6);
+  const seek = (clientX: number) => {
+    const el = bar.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setTime(((clientX - rect.left) / rect.width) * span);
+  };
+  useEffect(() => {
+    const move = (e: PointerEvent) => dragging.current && seek(e.clientX);
+    const up = () => (dragging.current = false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  });
   if (!live) return null;
-  const behind = behindLive(world.timeline, time);
-  const atEdge = behind.runs === 0;
   const state =
-    live.connection === "ended"
-      ? "ended"
-      : live.connection === "open"
-        ? "recording"
+    live.connection === "open"
+      ? "live"
+      : live.connection === "ended"
+        ? "ended"
         : live.connection === "lost"
           ? "lost"
           : "connecting";
   return (
-    <div className={`live ${state} ${atEdge ? "at-edge" : "behind"}`}>
-      <span className="dot" aria-hidden />
-      <span className="status" title={live.url}>
-        {state === "recording" ? "Live" : state}
-      </span>
-      <span className="lag" data-runs={behind.runs}>
-        {atEdge
-          ? "up to date"
-          : `${behind.runs} run${behind.runs === 1 ? "" : "s"} · ${Math.round(behind.seconds)} s behind`}
-      </span>
-      {live.placedBehind > 0 && (
-        <span
-          className="late"
-          title="Runs that reached the world after the playhead had passed their place in time; scrub back to see them"
+    <div
+      className="liveline"
+      data-following={held ? "no" : "yes"}
+      data-connection={state}
+    >
+      <div
+        className="track"
+        ref={bar}
+        onPointerDown={(e) => {
+          dragging.current = true;
+          pause();
+          seek(e.clientX);
+        }}
+      >
+        {world.timeline.actions.map((a, i) => (
+          <i
+            key={i}
+            className="press"
+            style={{ left: `${(a / span) * 100}%` }}
+          />
+        ))}
+        <div className="fill" style={{ width: `${(time / span) * 100}%` }} />
+        <div className="handle" style={{ left: `${(time / span) * 100}%` }} />
+      </div>
+      {held ? (
+        <button
+          type="button"
+          className="back"
+          onClick={skipToLive}
+          title="Back to live (End)"
         >
-          {live.placedBehind} late
+          Back to live
+        </button>
+      ) : (
+        <span className="state" title={live.url}>
+          <span className="dot" aria-hidden />
+          {state}
         </span>
       )}
-      <button
-        onClick={() => usePlayback.getState().skipToLive()}
-        disabled={atEdge}
-        title="Play the newest run (End)"
-      >
-        Skip to live
-      </button>
     </div>
   );
 }

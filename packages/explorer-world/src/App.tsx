@@ -8,9 +8,15 @@ import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
 import { DiagPanel } from "./ui/DiagPanel.tsx";
 import { Inspector } from "./ui/Inspector.tsx";
 import { Problems, SceneBoundary } from "./ui/Problems.tsx";
-import { Timeline } from "./ui/Timeline.tsx";
+import { LiveLine, Timeline } from "./ui/Timeline.tsx";
 
 const params = new URLSearchParams(location.search);
+/**
+ * A saved recording asked for by name (`?recording=`): the replay's run
+ * list, captions and transport show. Live, or with nothing to show, the
+ * world has only a thin time line, the controls and Home.
+ */
+const replay = params.has("recording");
 
 export function App() {
   useShortcuts();
@@ -46,11 +52,11 @@ export function App() {
         </SceneBoundary>
       </Canvas>
       <Problems />
-      <Chapters />
-      <Caption />
-      <CameraHud />
+      {replay && <Chapters />}
+      {replay && <Caption />}
+      <CameraHud full={replay} />
       <Inspector />
-      <Timeline />
+      {replay ? <Timeline /> : <LiveLine />}
       <Controls />
       <DiagPanel />
     </div>

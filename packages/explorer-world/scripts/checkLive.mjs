@@ -18,7 +18,7 @@
 //
 //   pnpm --filter @convex-dev/explorer-world check:live
 /* global setTimeout, URL, URLSearchParams -- Node globals. */
-/* global window -- runs in the page. */
+/* global window, document -- run in the page. */
 import { spawn, spawnSync } from "node:child_process";
 import { request } from "node:http";
 import { readFileSync } from "node:fs";
@@ -247,6 +247,25 @@ try {
     `the world connected to the stream (${opened.received} events so far)`,
   );
 
+  // At rest there is only the world, the time line, the controls and Home.
+  const furniture = await page.evaluate(() => ({
+    replay: [".chapters", ".caption", ".speeds", ".transport", ".timeline"]
+      .filter((sel) => document.querySelector(sel))
+      .join(", "),
+    camera: [...document.querySelectorAll(".camera button")].map(
+      (b) => b.textContent,
+    ),
+    line: Boolean(document.querySelector(".liveline .handle")),
+    follow: window.explorer.getState().director,
+  }));
+  check(
+    furniture.replay === "" &&
+      furniture.camera.join() === "Home" &&
+      furniture.line,
+    `live shows no replay furniture (${furniture.replay || "none"}), only Home (${furniture.camera.join(", ")}) and a time line with a handle`,
+  );
+  check(!furniture.follow, "Follow is off on load");
+
   // Wait for a few runs while the scenario still runs.
   const midRun = await until("Six runs in the world", 120_000, async () => {
     const s = await state();
@@ -281,8 +300,24 @@ try {
     `resume plays on from there (${scrubbed.time.toFixed(1)} s -> ${resumed.time.toFixed(1)} s)`,
   );
 
+  // Dragging the handle back holds there and offers the way back to live.
+  const track = await page.locator(".liveline .track").boundingBox();
+  await page.mouse.click(
+    track.x + track.width * 0.3,
+    track.y + track.height / 2,
+  );
+  await sleep(300);
+  const dragged = await state();
+  check(
+    !dragged.playing &&
+      Math.abs(dragged.time - dragged.duration * 0.3) <
+        dragged.duration * 0.05 &&
+      (await page.locator(".liveline .back").count()) === 1,
+    `pressing the time line goes back there and holds (${dragged.time.toFixed(1)} s of ${dragged.duration.toFixed(1)}), with "Back to live"`,
+  );
+
   // Back to live.
-  await page.evaluate(() => window.explorer.getState().skipToLive());
+  await page.locator(".liveline .back").click();
   const skipped = await state();
   check(
     skipped.playing &&
@@ -290,6 +325,11 @@ try {
       skipped.time >= skipped.edge - 0.01 &&
       skipped.time - skipped.edge < 2,
     `back to live plays from the newest action or run (${skipped.time.toFixed(1)} s, edge ${skipped.edge.toFixed(1)} s)`,
+  );
+  check(
+    (await page.locator(".liveline .back").count()) === 0 &&
+      (await page.locator(".liveline .state").count()) === 1,
+    "following live, the time line says so instead of offering the way back",
   );
 
   check(

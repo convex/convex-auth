@@ -92,8 +92,12 @@ export function Chapters() {
   );
 }
 
-/** Camera controls and the name of what is under the pointer. */
-export function CameraHud() {
+/**
+ * Home, and the name of what is under the pointer. With `full` (a saved
+ * replay), also Overview, Follow and the overlays; live, those stay on
+ * their keys (O, F, R, L, U).
+ */
+export function CameraHud({ full }: { full: boolean }) {
   const director = usePlayback((s) => s.director);
   const overlays = usePlayback((s) => s.overlays);
   const { setDirector, flyTo, toggleOverlay } = usePlayback.getState();
@@ -116,43 +120,47 @@ export function CameraHud() {
         <button onClick={() => flyTo("home")} title="Home (H)">
           Home
         </button>
-        <button
-          onClick={() => flyTo("overview")}
-          title="Back to the overview (O)"
-        >
-          Overview
-        </button>
-        <button
-          className={director ? "on" : ""}
-          onClick={() => setDirector(!director)}
-          title="Follow the action (F)"
-        >
-          Follow
-        </button>
-        <details className="layers">
-          <summary title="Overlays">Layers</summary>
-          <button
-            className={overlays.relations ? "on" : ""}
-            onClick={() => toggleOverlay("relations")}
-            title="Arcs between related islands (R)"
-          >
-            Relations
-          </button>
-          <button
-            className={overlays.links ? "on" : ""}
-            onClick={() => toggleOverlay("links")}
-            title={`Every dependency: ${world.graph.links.length} (L)`}
-          >
-            All links
-          </button>
-          <button
-            className={overlays.unresolved ? "on" : ""}
-            onClick={() => toggleOverlay("unresolved")}
-            title={`Every unresolved dependency: ${world.graph.unresolved.length} (U)`}
-          >
-            Unresolved
-          </button>
-        </details>
+        {full && (
+          <>
+            <button
+              onClick={() => flyTo("overview")}
+              title="Back to the overview (O)"
+            >
+              Overview
+            </button>
+            <button
+              className={director ? "on" : ""}
+              onClick={() => setDirector(!director)}
+              title="Follow the action (F)"
+            >
+              Follow
+            </button>
+            <details className="layers">
+              <summary title="Overlays">Layers</summary>
+              <button
+                className={overlays.relations ? "on" : ""}
+                onClick={() => toggleOverlay("relations")}
+                title="Arcs between related islands (R)"
+              >
+                Relations
+              </button>
+              <button
+                className={overlays.links ? "on" : ""}
+                onClick={() => toggleOverlay("links")}
+                title={`Every dependency: ${world.graph.links.length} (L)`}
+              >
+                All links
+              </button>
+              <button
+                className={overlays.unresolved ? "on" : ""}
+                onClick={() => toggleOverlay("unresolved")}
+                title={`Every unresolved dependency: ${world.graph.unresolved.length} (U)`}
+              >
+                Unresolved
+              </button>
+            </details>
+          </>
+        )}
       </div>
       <div className="tip" ref={tip} />
     </>

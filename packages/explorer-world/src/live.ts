@@ -53,8 +53,8 @@ export class LiveFeed {
  * Where the playhead goes when `before` is rebuilt as `after`: the same
  * moment of real time. Shown time is a function of real time; what arrives
  * late lands where it happened, behind the playhead or ahead of it, and
- * does not move what is on screen. Past the last moment `before` knew, the
- * same distance past it.
+ * does not move what is on screen. Past the last thing that happened, a
+ * second of shown time is a second of real time.
  */
 export function anchorTime(
   before: Timeline,
@@ -63,16 +63,15 @@ export function anchorTime(
 ): number {
   if (!before.warp.real.length || !after.warp.real.length)
     return Math.min(time, after.duration);
-  const n = before.warp.shown.length;
-  const last = before.warp.shown[n - 1];
-  if (time > last) {
-    const was = shownAt(after.warp, before.warp.real[n - 1]);
-    return Math.min(was + (time - last), after.duration);
-  }
-  return Math.min(
-    shownAt(after.warp, realAt(before.warp, time)),
-    after.duration,
-  );
+  const real = realAt(before.warp, time);
+  const { real: r, shown } = after.warp;
+  const n = r.length;
+  // Past the last moment `after` knows: a second of shown time per second.
+  const moved =
+    real > r[n - 1]
+      ? shown[n - 1] + (real - r[n - 1]) / 1000
+      : shownAt(after.warp, real);
+  return Math.min(Math.max(moved, 0), after.duration);
 }
 
 /** How many runs new in `after` fall before the run the playhead is in. */

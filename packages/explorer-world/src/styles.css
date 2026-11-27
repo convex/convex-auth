@@ -698,14 +698,14 @@ button {
    plain on purpose; restyle freely. */
 .controls {
   left: 18px;
-  bottom: 136px;
-  width: 250px;
-  padding: 10px 12px;
+  bottom: 52px;
+  width: 300px;
+  padding: 12px 14px;
   font-size: 12px;
 }
 .controls .who {
   color: var(--dim);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .controls .who .mono {
   color: var(--text);
@@ -715,20 +715,23 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
+/* The button and, beside it, why it is off: one line each, never wrapped. */
 .controls li {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 .controls button {
   font: inherit;
   color: var(--text);
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 3px 8px;
+  border-radius: 6px;
+  padding: 4px 10px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -746,6 +749,10 @@ button {
 .controls .reason {
   color: var(--dim);
   font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .controls .hint {
   margin: 0;
@@ -754,4 +761,88 @@ button {
 .controls .hint.error {
   color: var(--warn);
   margin-top: 6px;
+}
+
+/* Live: a thin time line along the bottom, with a handle. */
+.liveline {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 14px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.liveline .track {
+  position: relative;
+  flex: 1;
+  height: 26px;
+  cursor: pointer;
+  touch-action: none;
+}
+.liveline .track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--line);
+}
+.liveline .fill {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(207, 230, 255, 0.45);
+}
+.liveline .press {
+  position: absolute;
+  top: 8px;
+  width: 1px;
+  height: 10px;
+  background: rgba(207, 230, 255, 0.35);
+}
+.liveline .handle {
+  position: absolute;
+  top: 7px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(207, 230, 255, 0.5);
+}
+.liveline .state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: lowercase;
+}
+.liveline .state .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.liveline[data-connection="live"] .state .dot {
+  background: var(--error);
+  box-shadow: 0 0 8px var(--error);
+}
+.liveline[data-connection="lost"] .state .dot {
+  background: var(--warn);
+}
+.liveline .back {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--live);
+  color: var(--live);
+  background: var(--panel);
+  white-space: nowrap;
 }
