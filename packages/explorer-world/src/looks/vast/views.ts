@@ -20,8 +20,8 @@ export const VIEWS: View[] = [
     id: "far",
     name: "Far out",
     key: "f",
-    position: [-1150, 620, 1350],
-    target: [-40, 80, -220],
+    position: [-1500, 1050, 2600],
+    target: [0, 40, 60],
   },
   {
     id: "browser",

@@ -10,12 +10,14 @@
  */
 import { Line, RoundedBox } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useMemo, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import {
   BackSide,
   BufferAttribute,
   CanvasTexture,
   Color,
+  Object3D,
+  type InstancedMesh,
   SphereGeometry,
   NoToneMapping,
   SRGBColorSpace,
@@ -44,6 +46,7 @@ const HORIZON = "#f4cfaa";
 const GROUND = "#eebc8c";
 const GROUND_POOL = "#f6cfa4";
 const FIELD = "#fbe2c6";
+const DOT = "#e9bf98";
 const INK = "#4e3326";
 const INK_SOFT = "#8a6450";
 const SHADOW = "#9c5a3c";
@@ -303,7 +306,7 @@ function Ground() {
     <>
       {/* Drawn first, writing no depth: whatever stands on it is in front. */}
       <mesh rotation-x={-Math.PI / 2} renderOrder={-2}>
-        <circleGeometry args={[9000, 64]} />
+        <circleGeometry args={[15000, 64]} />
         <meshBasicMaterial color={GROUND} depthWrite={false} />
       </mesh>
       {/* A warm pool of light under the browser. */}
@@ -371,16 +374,48 @@ function Land({ w, h, d }: { w: number; h: number; d: number }) {
     g.fill();
     return new CanvasTexture(canvas);
   }, []);
+  // A dot every 40 m: the measure that gives everything its size.
+  const dots = useMemo(() => {
+    const step = 40;
+    const out: [number, number][] = [];
+    for (let x = -w / 2 + step; x < w / 2; x += step)
+      for (let z = -d / 2 + step; z < d / 2; z += step) out.push([x, z]);
+    return out;
+  }, [w, d]);
+  const inst = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const m = inst.current;
+    if (!m) return;
+    const o = new Object3D();
+    dots.forEach(([x, z], i) => {
+      o.position.set(x, h + 0.02, z);
+      o.rotation.set(-Math.PI / 2, 0, 0);
+      o.updateMatrix();
+      m.setMatrixAt(i, o.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  }, [dots, h]);
   return (
-    <mesh rotation-x={-Math.PI / 2} position={[0, h, 0]} renderOrder={-1}>
-      <planeGeometry args={[w * 1.12, d * 1.16]} />
-      <meshBasicMaterial
-        color={FIELD}
-        alphaMap={texture}
-        transparent
-        depthWrite={false}
-      />
-    </mesh>
+    <>
+      <mesh rotation-x={-Math.PI / 2} position={[0, h, 0]} renderOrder={-1}>
+        <planeGeometry args={[w * 1.06, d * 1.08]} />
+        <meshBasicMaterial
+          color={FIELD}
+          alphaMap={texture}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
+      <instancedMesh ref={inst} args={[undefined, undefined, dots.length]}>
+        <circleGeometry args={[1.3, 8]} />
+        <meshBasicMaterial
+          color={DOT}
+          transparent
+          opacity={0.7}
+          depthWrite={false}
+        />
+      </instancedMesh>
+    </>
   );
 }
 
@@ -691,7 +726,7 @@ export const clay: WorldLook = {
   Stage: () => (
     <>
       <Sky />
-      <fog attach="fog" args={[HORIZON, 2200, 7500]} />
+      <fog attach="fog" args={[HORIZON, 3500, 12000]} />
     </>
   ),
   Effects: null,

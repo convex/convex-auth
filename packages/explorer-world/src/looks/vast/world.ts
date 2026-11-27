@@ -60,8 +60,12 @@ export const TERRITORY = {
   label: "Browser",
   note: "http://localhost:5173/login",
   /** The base: the center of its footprint on the ground. */
-  position: [0, 0, -120] as V3,
-  size: [760, PLATE_TOP, 440] as V3,
+  /**
+   * Several times as wide as the screen and reaching far forward of it:
+   * the browser is a place on the ground, not a base under the screen.
+   */
+  position: [0, 0, 210] as V3,
+  size: [1900, PLATE_TOP, 1100] as V3,
 };
 
 export type Piece = {
@@ -404,7 +408,7 @@ export const CONVEX_CLIENT = codeDistrict(
 );
 
 /** The connections out: long channels running forward to the front edge. */
-const CHANNEL = { z0: -210, z1: 84 };
+const CHANNEL = { z0: -210, z1: 740 };
 const channel = (x: number) => ({
   position: [x, DISTRICT_TOP - SLAB, (CHANNEL.z0 + CHANNEL.z1) / 2] as V3,
   size: [18, SLAB, CHANNEL.z1 - CHANNEL.z0] as V3,

@@ -73,7 +73,14 @@ export const useGallery = create<State>((set) => ({
   view: initial(),
   time: Math.min(
     durationOf(initial()),
-    Math.max(0, Number(params.get("t") ?? 0) || 0),
+    Math.max(
+      0,
+      Number(params.get("t") ?? 0) || 0,
+      // A level that shows what the motion leaves opens with it left there.
+      isWorldLook(LOOKS[Math.max(0, initial())]) && params.has("view")
+        ? (startView.atLeast ?? 0)
+        : 0,
+    ),
   ),
   playing: false,
   show: (view) =>
@@ -141,7 +148,7 @@ function LookCanvas({ look, main }: { look: Look; main: boolean }) {
       gl={{ antialias: true, preserveDrawingBuffer: true }}
       camera={
         world
-          ? { fov: 42, near: 1, far: 9000, position: startView.position }
+          ? { fov: 42, near: 1, far: 16000, position: startView.position }
           : { fov: 42, near: 0.5, far: 600, position: START_VIEW.position }
       }
     >
@@ -159,7 +166,7 @@ function LookCanvas({ look, main }: { look: Look; main: boolean }) {
           key="vast"
           pose={useVastPose}
           minDistance={2}
-          maxDistance={2800}
+          maxDistance={4800}
           vast
         />
       ) : (

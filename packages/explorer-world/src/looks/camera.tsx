@@ -103,7 +103,7 @@ export function GalleryCamera({
     if (!c || !ready.current) return;
     if (vast) {
       const near = Math.min(40, Math.max(0.05, c.distance * 0.02));
-      const far = Math.max(9000, c.distance * 8);
+      const far = Math.max(16000, c.distance * 8);
       if (
         Math.abs(camera.near - near) > near * 0.05 ||
         Math.abs(camera.far - far) > far * 0.05

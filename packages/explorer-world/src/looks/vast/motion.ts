@@ -156,15 +156,15 @@ const LEGS: Leg[] = [
   {
     route: "out",
     start: 5.0,
-    end: 6.2,
+    end: 6.6,
     kind: "request",
     to: "convexBackend",
     beat: "The mutation goes out on the WebSocket",
   },
   {
     route: "back",
-    start: 6.5,
-    end: 8.0,
+    start: 6.7,
+    end: 8.1,
     kind: "response",
     to: "authClient:browser/sessionManager.ts#AuthClient.setSession",
     beat: "The backend answers with the tokens: AuthClient.setSession (session.set)",
