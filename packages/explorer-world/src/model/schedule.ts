@@ -85,6 +85,8 @@ export interface ClientStep {
   part: string;
   step: string;
   tone: Tone;
+  /** The function the step names, as the page reported it (`auth:signIn`). */
+  fn?: string;
 }
 
 export interface Beat {
@@ -572,6 +574,7 @@ export function buildTimeline(
         part: it.part,
         step: it.step,
         tone: it.tone,
+        ...(it.fn ? { fn: it.fn } : {}),
       });
     if (it.state)
       tl.states.push({

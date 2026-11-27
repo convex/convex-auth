@@ -1,0 +1,110 @@
+/**
+ * Groups of parts and what took part, on Convex Auth's saved page
+ * recording (a sign-up with username and password, then more).
+ */
+import { describe, expect, test } from "vitest";
+import { commonDir, dirOf } from "../layout/islands.ts";
+import { takenPart } from "../model/takenPart.ts";
+import { loadProject, PROJECTS } from "../project.ts";
+
+const world = loadProject(PROJECTS["convex-auth"], "page");
+const district = world.layout.islands.find((i) => i.clusters.length > 5)!;
+const group = (id: string) => district.clusters.find((c) => c.id === id)!;
+
+describe("groups", () => {
+  test("directories", () => {
+    expect(dirOf("methods/oauth/react")).toBe("methods/oauth");
+    expect(dirOf("index")).toBe("");
+    expect(commonDir(["browser", "react"])).toBe("");
+    expect(
+      commonDir(["methods/username-passkey", "methods/username-passkey/x"]),
+    ).toBe("methods/username-passkey");
+  });
+
+  test("every part of the client district is in exactly one group", () => {
+    const seen = district.clusters.flatMap((c) => c.members);
+    expect(new Set(seen).size).toBe(seen.length);
+    expect(seen.sort()).toEqual([...district.members].sort());
+  });
+
+  test("an owner that holds no more specific one splits by directory", () => {
+    const ids = district.clusters.map((c) => c.id).sort();
+    expect(ids).toContain("region:browser/browser");
+    expect(ids).toContain("region:browser/react");
+    expect(ids).not.toContain("region:browser");
+    expect(group("region:browser/browser").label).toBe("browser");
+    expect(group("region:browser/browser").prefix).toBe("browser");
+    // A method's modules stay one group, deeper directories included.
+    const passkey = group("method:username-passkey");
+    expect(passkey.label).toBe("username-passkey");
+    expect(passkey.prefix).toBe("methods/username-passkey");
+    expect(passkey.members).toContain(
+      "module:methods/username-passkey/management/add",
+    );
+    // A module's hooks are in its group.
+    expect(group("region:browser/react").members).toContain(
+      "hook:react/index.useAuthActions",
+    );
+  });
+
+  test("the project names groups the data names poorly", () => {
+    expect(world.presentation.groups?.["region:browser/browser"]?.label).toBe(
+      "session core",
+    );
+  });
+});
+
+describe("what took part", () => {
+  const facts = takenPart(
+    world.index,
+    world.layout,
+    world.timeline,
+    world.presentation.focus,
+  );
+  const at = (id: string) => facts.groups.get(id)?.at ?? Infinity;
+
+  test("the session core reports first, on load", () => {
+    const firstLoad = Math.min(...world.timeline.loads.map((l) => l.at));
+    expect(at("region:browser/browser")).toBeLessThan(
+      Math.min(at("region:browser/react"), at("method:username-password")),
+    );
+    expect(at("region:browser/browser")).toBeGreaterThanOrEqual(firstLoad);
+    expect(facts.groups.get("region:browser/browser")?.how).toBe("reported");
+  });
+
+  test("the sign-up's call names a function of the username-password method", () => {
+    const e = facts.groups.get("method:username-password");
+    expect(e?.how).toBe("called");
+    expect(e?.part).toMatch(/:auth\.signUpWithUsernamePassword$/);
+    const call = world.timeline.clientSteps.find(
+      (s) => s.step === "signIn.call",
+    );
+    expect(e?.at).toBe(call?.start);
+  });
+
+  test("no other sign-in method took part", () => {
+    const methods = district.clusters
+      .map((c) => c.id)
+      .filter((id) => id.startsWith("method:"));
+    expect(methods.filter((id) => facts.groups.has(id))).toEqual([
+      "method:username-password",
+    ]);
+  });
+
+  test("the app is wired to the username-password method by its source", () => {
+    expect([...facts.wired.keys()]).toEqual(["method:username-password"]);
+    const link = facts.wired.get("method:username-password")!;
+    expect(link.kind).toBe("usesMethod");
+    expect(link.evidence.length).toBeGreaterThan(0);
+  });
+
+  test("a part counts from its first report, not before", () => {
+    const first = world.timeline.clientSteps.find(
+      (s) => s.part === "module:browser/storage",
+    )!;
+    expect(facts.parts.get("module:browser/storage")).toBe(first.start);
+    expect(facts.parts.has("module:methods/username-passkey/client")).toBe(
+      false,
+    );
+  });
+});
