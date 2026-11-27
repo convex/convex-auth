@@ -20,10 +20,13 @@ import { placementOf, topIsland } from "./look.ts";
 /** How dim the halo of a call nobody asked for is. */
 const QUIET = 0.45;
 
+/** A stretch of a call in one part, with the part the call entered first. */
+export type Stretch = ClientStep & { entry: string };
+
 export interface Running {
   /** Per call: a stretch per part it was in, the innermost part active then. */
-  asked: ClientStep[];
-  unasked: ClientStep[];
+  asked: Stretch[];
+  unasked: Stretch[];
 }
 
 const cache = new WeakMap<Timeline["ops"], Running>();
@@ -53,6 +56,7 @@ export function running(tl: Timeline): Running {
       (a, b) => a - b,
     );
     const list = op.unasked ? out.unasked : out.asked;
+    const entry = [...acts].sort((a, b) => a.start - b.start)[0]?.node;
     for (let i = 0; i < times.length - 1; i++) {
       const [from, to] = [times[i], times[i + 1]];
       const inner = acts
@@ -68,6 +72,7 @@ export function running(tl: Timeline): Running {
           part: inner.node,
           step: "run",
           tone: inner.tone,
+          entry: entry ?? inner.node,
         });
     }
   }
@@ -80,6 +85,22 @@ export function running(tl: Timeline): Running {
 /** The part of the backend an asked call is in now, if any: the one to name. */
 export function runningNow(tl: Timeline, t: number): string | null {
   return actingModules(running(tl).asked, t).now;
+}
+
+/**
+ * Where the asked call under way at `t` entered the backend and where it is
+ * now, if any.
+ */
+export function callNow(
+  tl: Timeline,
+  t: number,
+): { entry: string; now: string } | null {
+  const now = runningNow(tl, t);
+  if (!now) return null;
+  const s = running(tl).asked.find(
+    (x) => x.part === now && x.start <= t && x.end >= t,
+  );
+  return s ? { entry: s.entry, now } : null;
 }
 
 export function RunningHalos() {

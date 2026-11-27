@@ -11,7 +11,8 @@ import { useMemo } from "react";
 import { Color, QuadraticBezierCurve3, Vector3 } from "three";
 import { usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
-import { anchorPosition, linkColor, topIsland } from "./look.ts";
+import { callNow } from "./Running.tsx";
+import { anchorPosition, linkColor, placementOf, topIsland } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
 import { Tag } from "./Tag.tsx";
 
@@ -62,32 +63,98 @@ function Segments({
   );
 }
 
-/** One arc per pair of related top-level islands. */
+/** How bright the arcs between islands are at rest: quiet, under what acts. */
+const AT_REST = 0.16;
+
+/** The pair of top-level islands of two parts, as a key, if they differ. */
+function pairOf(a: string, b: string): string | null {
+  const x = topIsland(a);
+  const y = topIsland(b);
+  if (!x || !y || x === y) return null;
+  return x < y ? `${x}|${y}` : `${y}|${x}`;
+}
+
+const relationCache = new WeakMap<
+  typeof world.graph,
+  Map<string, { points: Vector3[]; color: Color }>
+>();
+
+/** One arc per pair of related top-level islands, brighter the more links. */
+function relations() {
+  const hit = relationCache.get(world.graph);
+  if (hit) return hit;
+  const counts = new Map<string, number>();
+  for (const l of world.graph.links) {
+    const key = pairOf(l.from, l.to);
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const max = Math.max(1, ...counts.values());
+  const out = new Map<string, { points: Vector3[]; color: Color }>();
+  for (const [key, n] of counts) {
+    const [a, b] = key.split("|");
+    const points: Vector3[] = [];
+    arc(anchorPosition(a), anchorPosition(b), points, 0.16);
+    const k = 0.25 + 0.9 * Math.sqrt(n / max);
+    out.set(key, { points, color: new Color("#8fa6ff").multiplyScalar(k) });
+  }
+  relationCache.set(world.graph, out);
+  return out;
+}
+
+/**
+ * The arcs between islands, quiet at rest. While an asked call runs in
+ * another top-level island than the one it entered the backend on, an arc
+ * from the island it entered on to the island it is in now (both from the
+ * run's activations) shows clearly; the others stay quiet.
+ */
 function Relations() {
-  const { points, colors } = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const l of world.graph.links) {
-      const a = topIsland(l.from);
-      const b = topIsland(l.to);
-      if (!a || !b || a === b) continue;
-      const key = a < b ? `${a}|${b}` : `${b}|${a}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
+  const all = useMemo(() => {
     const points: Vector3[] = [];
     const colors: Color[] = [];
-    const max = Math.max(1, ...counts.values());
-    for (const [key, n] of counts) {
-      const [a, b] = key.split("|");
-      const before = points.length;
-      arc(anchorPosition(a), anchorPosition(b), points, 0.16);
-      const k = 0.25 + 0.9 * Math.sqrt(n / max);
-      const color = new Color("#8fa6ff").multiplyScalar(k);
-      for (let i = before; i < points.length; i++) colors.push(color);
+    for (const r of relations().values()) {
+      points.push(...r.points);
+      for (let i = 0; i < r.points.length; i++) colors.push(r.color);
     }
     return { points, colors };
   }, []);
+  const version = usePlayback((s) => s.version);
+  // The islands the call entered on and is on now: their own islands, not
+  // the top-level ones, so the arc ends where the halos are.
+  const acting = usePlayback((s) => {
+    void version;
+    const c = callNow(world.timeline, s.time);
+    if (!c) return null;
+    const from = placementOf(c.entry)?.island;
+    const to = placementOf(c.now)?.island;
+    return from && to && from !== to && pairOf(c.entry, c.now)
+      ? `${from}|${to}`
+      : null;
+  });
+  const lit = useMemo(() => {
+    if (!acting) return null;
+    const [a, b] = acting.split("|");
+    const points: Vector3[] = [];
+    arc(anchorPosition(a), anchorPosition(b), points, 0.16);
+    const color = new Color("#c9d4ff").multiplyScalar(1.4);
+    return { points, colors: points.map(() => color) };
+  }, [acting]);
   return (
-    <Segments points={points} colors={colors} width={1.4} opacity={0.55} />
+    <>
+      <Segments
+        points={all.points}
+        colors={all.colors}
+        width={1.2}
+        opacity={AT_REST}
+      />
+      {lit && (
+        <Segments
+          points={lit.points}
+          colors={lit.colors}
+          width={2.4}
+          opacity={0.9}
+        />
+      )}
+    </>
   );
 }
 
