@@ -14,6 +14,7 @@ import { appendFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { checkBrowser } from "./browserCheck.ts";
 import { keyMismatchWarning, resolveTarget, TargetError } from "./config.ts";
 import { readAppVariables, readLocalAdminKey } from "./appFiles.ts";
 import { defaultAppName } from "./header.ts";
@@ -51,6 +52,8 @@ Browser:
   --headed               Show the browser; without --scenario, you drive the page
   --stage <url>          Open this page instead, which shows the app's page in a
                          frame named explorer-screen, and record that frame only
+  --check-browser        Only check that the browser starts (with --headed,
+                         --chromium, --browser-channel as for a recording), then exit
   --debug-port <port>    Open the browser's DevTools port on 127.0.0.1, for a
                          scripted check to look at the window and use it
                          and close the browser (or press Ctrl-C) to stop
@@ -339,6 +342,39 @@ function number(flag: string, value: string | undefined, fallback: number) {
     throw new UsageError(`${flag} takes a whole number, not "${value}".`);
   }
   return parsed;
+}
+
+/**
+ * `--check-browser [--headed] [--chromium <path> | --browser-channel <name>]`:
+ * launches the browser a recording would run and closes it; exits 0, or 3
+ * with one line saying what is missing and how to install it.
+ */
+async function checkBrowserOnly(argv: string[]): Promise<never> {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      "check-browser": { type: "boolean" },
+      headed: { type: "boolean" },
+      chromium: { type: "string" },
+      "browser-channel": { type: "string" },
+    },
+  });
+  const problem = await checkBrowser({
+    headed: values.headed === true,
+    executablePath:
+      values.chromium ?? (process.env.EXPLORER_CHROMIUM || undefined),
+    channel: values["browser-channel"],
+  });
+  if (problem !== null) {
+    console.error(problem);
+    process.exit(3);
+  }
+  console.log("The browser starts.");
+  process.exit(0);
+}
+
+if (process.argv.includes("--check-browser")) {
+  await checkBrowserOnly(process.argv.slice(2));
 }
 
 try {

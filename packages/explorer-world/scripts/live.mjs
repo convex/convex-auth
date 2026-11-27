@@ -374,6 +374,22 @@ async function stopAll() {
 
 // ---------------------------------------------------------------- helpers --
 
+// The recorder runs through tsx, from its own package.
+const tsxLoader = pathToFileURL(
+  join(
+    dirname(
+      createRequire(join(recorderRoot, "package.json")).resolve(
+        "tsx/package.json",
+      ),
+    ),
+    "dist/esm/index.mjs",
+  ),
+).href;
+
+/** Whether the recorder's browser shows a window: the stage is one. */
+const recorderHeaded =
+  values.headed || (values.view === "stage" && !values.scenario);
+
 /**
  * The process that listens on the port of `url` on this machine, or null
  * when it cannot tell (no lsof, no ss).
@@ -555,6 +571,30 @@ function openInBrowser(url) {
 
 async function main() {
   say(`logs and the timeline go to ${runDir}`);
+
+  // The browser first: a missing one is found in seconds, before the deploy.
+  if (!inPage) {
+    say("checking the browser...");
+    const check = startPart("browser-check", [
+      "--import",
+      tsxLoader,
+      join(recorderRoot, "src/cli.ts"),
+      "--check-browser",
+      ...(recorderHeaded ? ["--headed"] : []),
+      ...browserArgs(),
+    ]);
+    const { code } = await check.done;
+    parts.splice(parts.indexOf(check), 1);
+    if (code !== 0) {
+      // The check's own one line says what is missing and how to install it.
+      const reason = check.tail.filter((line) => line.trim()).at(-1);
+      throw new StartError(
+        null,
+        reason ?? `the browser check failed (exit code ${code}).`,
+      );
+    }
+  }
+
   const convexBin = appBin("convex", "convex");
   if (!convexBin) {
     throw new StartError(
@@ -751,12 +791,6 @@ async function main() {
   }
 
   // The recorder, streaming to the world.
-  const tsx = createRequire(join(recorderRoot, "package.json")).resolve(
-    "tsx/package.json",
-  );
-  const tsxLoader = pathToFileURL(
-    join(dirname(tsx), "dist/esm/index.mjs"),
-  ).href;
   let streaming = null;
   let recording = false;
   const recorder = startPart(
@@ -806,9 +840,7 @@ async function main() {
                 ? []
                 : ["--actions", values.actions ?? basename(appDir)]),
             // The stage is a window for a person; the islands view has none.
-            ...(values.headed || (stageView && !values.scenario)
-              ? ["--headed"]
-              : []),
+            ...(recorderHeaded ? ["--headed"] : []),
           ]),
     ],
     {

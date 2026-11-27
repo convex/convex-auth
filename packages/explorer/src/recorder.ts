@@ -10,6 +10,7 @@
 import { appendFileSync, writeFileSync } from "node:fs";
 import { ActionRunner } from "./actions.ts";
 import { BrowserRedactor } from "./browser.ts";
+import { isMissingBrowser, missingBrowserMessage } from "./browserCheck.ts";
 import { BrowserSession, SCREEN_FRAME } from "./browserRecorder.ts";
 import type { ResolvedTarget } from "./config.ts";
 import type { TimelineEvent } from "./events.ts";
@@ -492,7 +493,14 @@ export async function record(
         });
       } catch (error) {
         // The timeline keeps what the feeds gave until now.
-        failure = `The browser did not start: ${error instanceof Error ? error.message : String(error)}`;
+        const message = error instanceof Error ? error.message : String(error);
+        failure = isMissingBrowser(message)
+          ? missingBrowserMessage({
+              headed: browser.headed,
+              executablePath: browser.executablePath,
+              channel: browser.channel,
+            })
+          : `The browser did not start: ${message.split("\n")[0]}`;
       }
       const actions = browser.actions ? browser.scenario?.actions : undefined;
       if (session === null) {
