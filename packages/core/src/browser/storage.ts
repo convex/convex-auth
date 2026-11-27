@@ -10,7 +10,11 @@
  * Nothing here depends on React or Convex, so other client libraries can build
  * on it.
  */
-import { clientStepReportsEnabled, reportClientStep } from "./steps.ts";
+import {
+  clientStepReportsEnabled,
+  reportClientStep,
+  type ClientOp,
+} from "./steps.ts";
 
 /**
  * Read/write/delete string values by key. Every method may be synchronous or
@@ -68,12 +72,15 @@ const STEPS = "module:browser/storage";
 function reportRead(
   where: { key: string; namespace: string },
   value: ReturnType<TokenStorage["getItem"]>,
+  op: ClientOp | null,
 ): void {
   const report = (found: string | undefined | null) =>
-    reportClientStep(STEPS, "storage.read", {
-      ...where,
-      found: found !== null && found !== undefined,
-    });
+    reportClientStep(
+      STEPS,
+      "storage.read",
+      { ...where, found: found !== null && found !== undefined },
+      op,
+    );
   if (value instanceof Promise) {
     value.then(report, () => {});
   } else {
@@ -156,25 +163,33 @@ export class NamespacedStorage {
     return `${key}_${this.namespace}`;
   }
 
-  get(key: string) {
+  // `op` is the operation of the step reports (see `steps.ts`); the client
+  // passes it, and other callers leave it out.
+  get(key: string, op: ClientOp | null = null) {
     const value = this.storage.getItem(this.key(key));
     if (clientStepReportsEnabled()) {
-      reportRead({ key, namespace: this.namespace }, value);
+      // A read that resolves later is reported then, under the `op` handed
+      // here, which is why it is passed rather than taken from the call.
+      reportRead({ key, namespace: this.namespace }, value, op);
     }
     return value;
   }
-  set(key: string, value: string) {
-    reportClientStep(STEPS, "storage.write", {
-      key,
-      namespace: this.namespace,
-    });
+  set(key: string, value: string, op: ClientOp | null = null) {
+    reportClientStep(
+      STEPS,
+      "storage.write",
+      { key, namespace: this.namespace },
+      op,
+    );
     return this.storage.setItem(this.key(key), value);
   }
-  remove(key: string) {
-    reportClientStep(STEPS, "storage.remove", {
-      key,
-      namespace: this.namespace,
-    });
+  remove(key: string, op: ClientOp | null = null) {
+    reportClientStep(
+      STEPS,
+      "storage.remove",
+      { key, namespace: this.namespace },
+      op,
+    );
     return this.storage.removeItem(this.key(key));
   }
 

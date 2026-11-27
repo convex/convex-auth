@@ -5,7 +5,7 @@ import type { RefreshResult, TokenBundle } from "../lib/types.ts";
 import { AuthClient } from "./sessionManager.ts";
 import { InMemoryStorage } from "./storage.ts";
 import { reportedSignInCall } from "../react/signInSteps.ts";
-import { CLIENT_STEP_REPORTS_GLOBAL } from "./steps.ts";
+import { CLIENT_STEP_REPORTS_GLOBAL, resetClientOpsForTests } from "./steps.ts";
 
 const NAMESPACE = "http://127.0.0.1:3210";
 const NAMESPACE_SUFFIX = "http1270013210";
@@ -86,6 +86,7 @@ async function signInRefreshSignOut() {
 }
 
 beforeEach(() => {
+  resetClientOpsForTests();
   consoleLines = [];
   for (const level of ["log", "debug", "info", "warn", "error"] as const) {
     vi.spyOn(console, level).mockImplementation((...args: unknown[]) => {
@@ -173,6 +174,8 @@ describe("client step reports", () => {
         part: "module:react/index",
         kind: "mutation",
         function: "auth:signInWithUsernamePassword",
+        op: 2,
+        opKind: "signIn",
       },
     ]);
     expect(byStep("signIn.return")[0]).toMatchObject({

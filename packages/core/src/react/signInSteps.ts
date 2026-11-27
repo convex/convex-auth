@@ -10,7 +10,9 @@ import { getFunctionName, type FunctionReference } from "convex/server";
 import type { StepDetail } from "../lib/stepFormat.ts";
 import {
   clientStepReportsEnabled,
+  linkClientOp,
   reportClientStep,
+  startClientOp,
   type ClientStepPart,
 } from "../browser/steps.ts";
 
@@ -147,6 +149,10 @@ function functionNameOf(reference: unknown): string | null {
  * function and the outcome of its result (see {@link signInOutcomeOf}), never
  * its arguments or the rest of its result.
  *
+ * The three reports belong to one `signIn` operation (see `browser/steps.ts`).
+ * The `tokens` object of the result is linked to it, so the `setSession` that
+ * is handed that very object continues the operation.
+ *
  * When the reports are off, this returns the promise of `call` itself.
  */
 export function reportedSignInCall<Result>(
@@ -168,17 +174,23 @@ async function reportedCall<Result>(
   call: () => Promise<Result>,
 ): Promise<Result> {
   const fn = functionNameOf(reference);
-  reportClientStep(part, "signIn.call", { kind, function: fn });
+  const op = startClientOp("signIn");
+  reportClientStep(part, "signIn.call", { kind, function: fn }, op);
   let result: Result;
   try {
     result = await call();
   } catch (error) {
-    reportClientStep(part, "signIn.throw", { function: fn });
+    reportClientStep(part, "signIn.throw", { function: fn }, op);
     throw error;
   }
-  reportClientStep(part, "signIn.return", {
-    function: fn,
-    ...signInOutcomeOf(result),
-  });
+  reportClientStep(
+    part,
+    "signIn.return",
+    { function: fn, ...signInOutcomeOf(result) },
+    op,
+  );
+  if (typeof result === "object" && result !== null) {
+    linkClientOp((result as Record<string, unknown>).tokens, op);
+  }
   return result;
 }

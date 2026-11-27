@@ -11,7 +11,13 @@ import type {
   ConvexMutationApi,
 } from "./ambientSignInClient.ts";
 import { retryOnNetworkError } from "./retry.ts";
-import { reportClientStep } from "./steps.ts";
+import {
+  linkedClientOp,
+  reportClientStep,
+  startClientOp,
+  withClientOp,
+  type ClientOp,
+} from "./steps.ts";
 import {
   JWT_STORAGE_KEY,
   NamespacedStorage,
@@ -178,10 +184,13 @@ function replaceUrlKeepingState(url: string): void {
  * a token bundle.
  */
 export class AuthClient {
+  // The `op` parameters of the internal methods carry the operation of the
+  // step reports (see `steps.ts`). It is `null` when the reports are off.
+
   /** Refresh the session, resolving to one of the {@link RefreshOutcome} arms. */
-  readonly #refresh: () => Promise<RefreshOutcome>;
+  readonly #refresh: (op: ClientOp | null) => Promise<RefreshOutcome>;
   /** Revoke the session on the server. */
-  readonly #signOutInternal: () => Promise<void>;
+  readonly #signOutInternal: (op: ClientOp | null) => Promise<void>;
   readonly #storage: NamespacedStorage;
   readonly #verbose: boolean;
   readonly #lockKey: string;
@@ -219,8 +228,8 @@ export class AuthClient {
     // Bind the mode-specific refresh/sign-out behavior.
     if (config.mode === "spa") {
       const { authApi } = config;
-      this.#refresh = async () => {
-        const refreshToken = await this.#currentRefreshToken();
+      this.#refresh = async (op) => {
+        const refreshToken = await this.#currentRefreshToken(op);
         // No token means there's no session to refresh — don't call the API.
         if (refreshToken === null) return { kind: "noSession" };
         const result = await authApi.refreshSession(refreshToken);
@@ -231,11 +240,14 @@ export class AuthClient {
             return { kind: "noSession" };
         }
       };
-      this.#signOutInternal = async () => {
-        const refreshToken = await this.#currentRefreshToken();
-        reportClientStep(STEPS, "signOut.revoke", {
-          skipped: refreshToken === null,
-        });
+      this.#signOutInternal = async (op) => {
+        const refreshToken = await this.#currentRefreshToken(op);
+        reportClientStep(
+          STEPS,
+          "signOut.revoke",
+          { skipped: refreshToken === null },
+          op,
+        );
         if (refreshToken !== null) await authApi.signOut(refreshToken);
       };
     } else {
@@ -249,8 +261,8 @@ export class AuthClient {
           ? { kind: "noSession" }
           : { kind: "rotated", session };
       };
-      this.#signOutInternal = () => {
-        reportClientStep(STEPS, "signOut.revoke", { skipped: false });
+      this.#signOutInternal = (op) => {
+        reportClientStep(STEPS, "signOut.revoke", { skipped: false }, op);
         return authApi.signOut();
       };
     }
@@ -361,22 +373,28 @@ export class AuthClient {
     // Attach before the one-time guard so a dispose()/init() cycle re-attaches
     // the listener rather than skipping it. Idempotent, so repeat calls are
     // harmless.
-    this.#attachStorageListener();
+    const op = startClientOp("init");
+    this.#attachStorageListener(op);
     if (this.#initialized) return;
     this.#initialized = true;
-    reportClientStep(STEPS, "init", {
-      mode: this.#mode,
-      hasInitialAccessToken: this.#initialAccessToken !== null,
-    });
+    reportClientStep(
+      STEPS,
+      "init",
+      {
+        mode: this.#mode,
+        hasInitialAccessToken: this.#initialAccessToken !== null,
+      },
+      op,
+    );
     // Run ambient sign-in onInit callbacks before anything observable
     // happens, so a withSignInPending call inside one marks loading before
     // the session
     // loads. A callback that throws is logged and skipped, so the others
     // still run and the session still loads.
     for (const { id, callback } of this.#initCallbacks) {
-      reportClientStep(STEPS, "ambientSignIn.init", { id });
+      reportClientStep(STEPS, "ambientSignIn.init", { id }, op);
       try {
-        callback();
+        withClientOp(op, callback);
       } catch (error) {
         console.error(
           `[convex-auth] onInit for ambient sign-in "${id}" threw:`,
@@ -388,17 +406,17 @@ export class AuthClient {
     // persist it before the load below reads it back (and so other tabs see
     // it).
     if (this.#initialAccessToken !== null) {
-      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken);
+      await this.#storage.set(JWT_STORAGE_KEY, this.#initialAccessToken, op);
     }
     const [accessToken, refreshToken] = await Promise.all([
-      this.#storage.get(JWT_STORAGE_KEY),
-      this.#storage.get(REFRESH_TOKEN_STORAGE_KEY),
+      this.#storage.get(JWT_STORAGE_KEY, op),
+      this.#storage.get(REFRESH_TOKEN_STORAGE_KEY, op),
     ]);
     this.#accessToken = accessToken ?? null;
     this.#refreshToken = refreshToken ?? null;
     this.#log(`init: token is null: ${this.#accessToken === null}`);
     this.#isLoading = false;
-    this.#notify();
+    this.#notify(op);
   }
 
   /**
@@ -409,7 +427,7 @@ export class AuthClient {
    * {@link init} restores the client without losing its subscribers.
    */
   dispose(): void {
-    reportClientStep(STEPS, "dispose");
+    reportClientStep(STEPS, "dispose", {}, startClientOp("dispose"));
     const target = domEventTarget();
     if (this.#storageListener !== null && target !== null) {
       target.removeEventListener("storage", this.#storageListener);
@@ -428,10 +446,16 @@ export class AuthClient {
   setSession = async (
     session: TokenBundle | SlimTokenBundle,
   ): Promise<void> => {
-    reportClientStep(STEPS, "session.set", {
-      hasRefreshToken: hasRefreshToken(session),
-    });
-    await this.#storeFullTokenResult(session);
+    // A session that a reported sign-in call returned continues the operation
+    // of that call (see `react/signInSteps.ts`).
+    const op = linkedClientOp(session) ?? startClientOp("setSession");
+    reportClientStep(
+      STEPS,
+      "session.set",
+      { hasRefreshToken: hasRefreshToken(session) },
+      op,
+    );
+    await this.#storeFullTokenResult(session, op);
   };
 
   /**
@@ -443,15 +467,16 @@ export class AuthClient {
    * state holds until the client is authenticated.
    */
   withSignInPending = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const op = startClientOp("signInPending");
     this.#pendingSignIns++;
-    reportClientStep(STEPS, "signIn.pending.start");
-    this.#notify();
+    reportClientStep(STEPS, "signIn.pending.start", {}, op);
+    this.#notify(op);
     try {
-      return await fn();
+      return await withClientOp(op, fn);
     } finally {
       this.#pendingSignIns--;
-      reportClientStep(STEPS, "signIn.pending.end");
-      this.#notify();
+      reportClientStep(STEPS, "signIn.pending.end", {}, op);
+      this.#notify(op);
     }
   };
 
@@ -459,16 +484,17 @@ export class AuthClient {
    * Revoke the current session on the server and clear it locally.
    */
   signOut = async (): Promise<void> => {
-    reportClientStep(STEPS, "signOut.start");
+    const op = startClientOp("signOut");
+    reportClientStep(STEPS, "signOut.start", {}, op);
     try {
-      await this.#signOutInternal();
+      await this.#signOutInternal(op);
     } catch {
       // Usually means we were already signed out, which is fine.
-      reportClientStep(STEPS, "signOut.revokeFailed");
+      reportClientStep(STEPS, "signOut.revokeFailed", {}, op);
     }
     this.#log("signed out, erasing tokens");
-    await this.#storeTokens(null);
-    reportClientStep(STEPS, "signOut.end");
+    await this.#storeTokens(null, op);
+    reportClientStep(STEPS, "signOut.end", {}, op);
   };
 
   /**
@@ -482,10 +508,13 @@ export class AuthClient {
   }: {
     forceRefreshToken: boolean;
   }): Promise<string | null> => {
-    reportClientStep(STEPS, "token.fetch", {
-      forceRefresh: forceRefreshToken,
-      hasToken: this.#accessToken !== null,
-    });
+    const op = startClientOp("tokenFetch");
+    reportClientStep(
+      STEPS,
+      "token.fetch",
+      { forceRefresh: forceRefreshToken, hasToken: this.#accessToken !== null },
+      op,
+    );
     if (!forceRefreshToken) {
       return this.#accessToken;
     }
@@ -497,13 +526,13 @@ export class AuthClient {
       lock: REFRESH_TOKEN_STORAGE_KEY,
       namespace: this.#storage.namespace,
     };
-    reportClientStep(MUTEX_STEPS, "lock.request", lock);
+    reportClientStep(MUTEX_STEPS, "lock.request", lock, op);
     return await runWithMutex(this.#lockKey, async () => {
-      reportClientStep(MUTEX_STEPS, "lock.acquired", lock);
+      reportClientStep(MUTEX_STEPS, "lock.acquired", lock, op);
       try {
-        return await this.#refreshHoldingLock(tokenBeforeLock);
+        return await this.#refreshHoldingLock(tokenBeforeLock, op);
       } finally {
-        reportClientStep(MUTEX_STEPS, "lock.released", lock);
+        reportClientStep(MUTEX_STEPS, "lock.released", lock, op);
       }
     });
   };
@@ -511,42 +540,52 @@ export class AuthClient {
   /** Refresh the session while holding the refresh lock of all tabs. */
   async #refreshHoldingLock(
     tokenBeforeLock: string | null,
+    op: ClientOp | null,
   ): Promise<string | null> {
     // Another tab may have refreshed while we waited for the lock; if so,
     // use its result rather than rotating again.
     if (this.#accessToken !== tokenBeforeLock) {
       this.#log(`using token refreshed by another tab`);
-      reportClientStep(STEPS, "refresh.skipped", {
-        reason: "refreshedByAnotherTab",
-        hasToken: this.#accessToken !== null,
-      });
+      reportClientStep(
+        STEPS,
+        "refresh.skipped",
+        {
+          reason: "refreshedByAnotherTab",
+          hasToken: this.#accessToken !== null,
+        },
+        op,
+      );
       return this.#accessToken;
     }
-    reportClientStep(STEPS, "refresh.start", { mode: this.#mode });
+    reportClientStep(STEPS, "refresh.start", { mode: this.#mode }, op);
     let result: RefreshOutcome;
     try {
       result = await retryOnNetworkError(
-        () => this.#refresh(),
+        () => this.#refresh(op),
         (message) => this.#log(`refresh: ${message}`),
+        op,
       );
     } catch (error) {
-      reportClientStep(STEPS, "refresh.throw");
+      reportClientStep(STEPS, "refresh.throw", {}, op);
       throw error;
     }
-    await this.#handleRefresh(result);
-    reportClientStep(STEPS, "refresh.end", {
-      outcome: result.kind,
-      hasToken: this.#accessToken !== null,
-    });
+    await this.#handleRefresh(result, op);
+    reportClientStep(
+      STEPS,
+      "refresh.end",
+      { outcome: result.kind, hasToken: this.#accessToken !== null },
+      op,
+    );
     return this.#accessToken;
   }
 
   // --- Internals -----------------------------------------------------------
 
   /** The authoritative refresh token: storage (shared across tabs) then memory. */
-  async #currentRefreshToken(): Promise<string | null> {
+  async #currentRefreshToken(op: ClientOp | null): Promise<string | null> {
     return (
-      (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY)) ?? this.#refreshToken
+      (await this.#storage.get(REFRESH_TOKEN_STORAGE_KEY, op)) ??
+      this.#refreshToken
     );
   }
 
@@ -556,13 +595,16 @@ export class AuthClient {
    * This either extends/updates the signed in state via new tokens or
    * transitions the client to signed out.
    */
-  async #handleRefresh(result: RefreshOutcome): Promise<void> {
+  async #handleRefresh(
+    result: RefreshOutcome,
+    op: ClientOp | null,
+  ): Promise<void> {
     switch (result.kind) {
       case "noSession":
-        await this.#storeTokens(null);
+        await this.#storeTokens(null, op);
         return;
       case "rotated":
-        await this.#storeFullTokenResult(result.session);
+        await this.#storeFullTokenResult(result.session, op);
         return;
     }
   }
@@ -575,9 +617,10 @@ export class AuthClient {
    */
   async #storeFullTokenResult(
     result: TokenBundle | SlimTokenBundle | null,
+    op: ClientOp | null,
   ): Promise<void> {
     if (result === null) {
-      await this.#storeTokens(null);
+      await this.#storeTokens(null, op);
       return;
     }
     // Which shape arrives is a property of the session model, so a mismatch is
@@ -593,7 +636,7 @@ export class AuthClient {
             "to persist it in browser storage.",
         );
       }
-      await this.#storeTokens(result);
+      await this.#storeTokens(result, op);
     } else {
       // Nothing could rotate the session, so it would die at the first
       // access-token expiry and log the user out with no explanation.
@@ -604,7 +647,7 @@ export class AuthClient {
             "expire silently.",
         );
       }
-      await this.#storeAccessOnly(result);
+      await this.#storeAccessOnly(result, op);
     }
   }
 
@@ -612,40 +655,50 @@ export class AuthClient {
    * Stores (or clears in the case of a `null` bundle) the access and refresh
    * tokens.
    */
-  async #storeTokens(bundle: TokenBundle | null): Promise<void> {
+  async #storeTokens(
+    bundle: TokenBundle | null,
+    op: ClientOp | null,
+  ): Promise<void> {
     if (bundle === null) {
       this.#accessToken = null;
       this.#refreshToken = null;
-      await this.#storage.remove(JWT_STORAGE_KEY);
-      await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
+      await this.#storage.remove(JWT_STORAGE_KEY, op);
+      await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY, op);
     } else {
       this.#accessToken = bundle.accessToken;
       this.#refreshToken = bundle.refreshToken;
-      await this.#storage.set(JWT_STORAGE_KEY, bundle.accessToken);
-      await this.#storage.set(REFRESH_TOKEN_STORAGE_KEY, bundle.refreshToken);
+      await this.#storage.set(JWT_STORAGE_KEY, bundle.accessToken, op);
+      await this.#storage.set(
+        REFRESH_TOKEN_STORAGE_KEY,
+        bundle.refreshToken,
+        op,
+      );
     }
     this.#isLoading = false;
-    this.#notify();
+    this.#notify(op);
   }
 
   /**
    * Stores just the access token and notifies subscribers. Only SSR gets here:
    * the refresh token lives in the host's httpOnly cookie.
    */
-  async #storeAccessOnly(session: { accessToken: string }): Promise<void> {
+  async #storeAccessOnly(
+    session: { accessToken: string },
+    op: ClientOp | null,
+  ): Promise<void> {
     // Null out/remove any existing refresh token. It shouldn't be set unless
     // this was somehow a client instance configured for SPA use being
     // "upgraded" to SSR use.
     this.#refreshToken = null;
-    await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY);
+    await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY, op);
 
     this.#accessToken = session.accessToken;
-    await this.#storage.set(JWT_STORAGE_KEY, session.accessToken);
+    await this.#storage.set(JWT_STORAGE_KEY, session.accessToken, op);
     this.#isLoading = false;
-    this.#notify();
+    this.#notify(op);
   }
 
-  #attachStorageListener(): void {
+  #attachStorageListener(op: ClientOp | null): void {
     const target = domEventTarget();
     // This null check guards React Native, where cross-tab storage isn't a thing.
     if (target === null) return;
@@ -659,30 +712,41 @@ export class AuthClient {
       // would loop).
       if (event.storageArea !== this.#storage.storage) return;
       if (event.key === jwtKey) {
-        reportClientStep(STEPS, "crossTab.change", {
-          key: JWT_STORAGE_KEY,
-          namespace: this.#storage.namespace,
-          cleared: event.newValue === null,
-        });
+        const change = startClientOp("crossTab");
+        reportClientStep(
+          STEPS,
+          "crossTab.change",
+          {
+            key: JWT_STORAGE_KEY,
+            namespace: this.#storage.namespace,
+            cleared: event.newValue === null,
+          },
+          change,
+        );
         this.#accessToken = event.newValue;
         this.#log(`synced access token, is null: ${event.newValue === null}`);
         this.#isLoading = false;
-        this.#notify();
+        this.#notify(change);
       } else if (event.key === refreshKey) {
-        reportClientStep(STEPS, "crossTab.change", {
-          key: REFRESH_TOKEN_STORAGE_KEY,
-          namespace: this.#storage.namespace,
-          cleared: event.newValue === null,
-        });
+        reportClientStep(
+          STEPS,
+          "crossTab.change",
+          {
+            key: REFRESH_TOKEN_STORAGE_KEY,
+            namespace: this.#storage.namespace,
+            cleared: event.newValue === null,
+          },
+          startClientOp("crossTab"),
+        );
         this.#refreshToken = event.newValue;
       }
     };
     target.addEventListener("storage", listener);
     this.#storageListener = listener;
-    reportClientStep(STEPS, "crossTab.listen");
+    reportClientStep(STEPS, "crossTab.listen", {}, op);
   }
 
-  #notify(): void {
+  #notify(op: ClientOp | null): void {
     const before = this.#snapshot;
     this.#snapshot = {
       // Loading until the persisted session has been read, and again while a
@@ -697,11 +761,16 @@ export class AuthClient {
       before.isLoading !== this.#snapshot.isLoading ||
       before.isAuthenticated !== this.#snapshot.isAuthenticated
     ) {
-      reportClientStep(STEPS, "state", {
-        isLoading: this.#snapshot.isLoading,
-        isAuthenticated: this.#snapshot.isAuthenticated,
-        tokenChanged,
-      });
+      reportClientStep(
+        STEPS,
+        "state",
+        {
+          isLoading: this.#snapshot.isLoading,
+          isAuthenticated: this.#snapshot.isAuthenticated,
+          tokenChanged,
+        },
+        op,
+      );
     }
     for (const listener of this.#listeners) listener();
   }

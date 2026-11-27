@@ -32,6 +32,27 @@
  * its storage key, never by its value, and a function by its name, never by
  * its arguments or its return value.
  *
+ * ## Operations
+ *
+ * A report also says which operation its step belongs to, when the code knows
+ * it. An operation is one run of something the library does: one sign-in
+ * call with the session it sets, one sign-out, one token fetch with the lock
+ * and the refresh in it, one start-up of the client, one reaction to a change
+ * in another tab. Such a report has three more fields:
+ *
+ * - `op`: the number of the operation, from a counter of the page that starts
+ *   at 1 when the reports are on. Numbers only grow, and some are never
+ *   reported.
+ * - `opKind`: what the operation is, one of {@link ClientOpKind}.
+ * - `parentOp`: the number of the operation that started this one, when there
+ *   is one and the code knows it.
+ *
+ * An operation is known only where the code was handed it, or where the step
+ * runs in the same synchronous call that started the operation (see
+ * {@link withClientOp}); never by what ran last before an `await`. A step
+ * whose operation is not known has none of the three fields. The numbers are
+ * counters, never derived from a token, a user, or a credential.
+ *
  * The reports are console lines, so while the switch is on, a monitoring tool
  * on the page that records the console carries them off-site.
  *
@@ -63,6 +84,41 @@ export type ClientStepPart =
   | "module:react/client"
   | "module:ssr/nextjs/client";
 
+/** The kinds of the operations that client steps belong to. */
+export type ClientOpKind =
+  | "init"
+  | "dispose"
+  | "signIn"
+  | "setSession"
+  | "signInPending"
+  | "signOut"
+  | "sessionRevoked"
+  | "tokenFetch"
+  | "crossTab";
+
+/**
+ * An operation of the client (see the module comment). Made by
+ * {@link startClientOp} only while the reports are on; `null` stands for
+ * "no operation" everywhere else.
+ */
+export interface ClientOp {
+  readonly op: number;
+  readonly kind: ClientOpKind;
+  readonly parentOp: number | null;
+}
+
+let lastOp = 0;
+
+/** The operation whose synchronous call is running, set by {@link withClientOp}. */
+let currentOp: ClientOp | null = null;
+
+/**
+ * Operations by an object that one of their steps returned, such as the token
+ * bundle of a sign-in result, for the code that is later handed that very
+ * object (see {@link linkClientOp}).
+ */
+const opsByObject = new WeakMap<object, ClientOp>();
+
 /** Whether the page asked for client step reports. */
 export function clientStepReportsEnabled(): boolean {
   return (
@@ -71,7 +127,66 @@ export function clientStepReportsEnabled(): boolean {
 }
 
 /**
+ * Start an operation, or return `null` when the reports are off. Its parent
+ * is `parent` when given, otherwise the operation whose synchronous call is
+ * running (see {@link withClientOp}), if any.
+ */
+export function startClientOp(
+  kind: ClientOpKind,
+  parent: ClientOp | null = null,
+): ClientOp | null {
+  if (!clientStepReportsEnabled()) {
+    return null;
+  }
+  lastOp += 1;
+  return { op: lastOp, kind, parentOp: (parent ?? currentOp)?.op ?? null };
+}
+
+/**
+ * Run `fn` as part of `op`: the steps that run synchronously inside it, and
+ * the operations it starts synchronously, belong to `op` unless they are
+ * given another. What `fn` does after its first `await` is outside, because
+ * other code can run by then. With a `null` op this is `fn()`.
+ */
+export function withClientOp<Result>(
+  op: ClientOp | null,
+  fn: () => Result,
+): Result {
+  if (op === null) {
+    return fn();
+  }
+  const outer = currentOp;
+  currentOp = op;
+  try {
+    return fn();
+  } finally {
+    currentOp = outer;
+  }
+}
+
+/**
+ * Record that `object` came out of `op`, so that the code later handed the
+ * same object can continue `op` (see {@link linkedClientOp}). It keys by the
+ * object's identity and holds nothing of its contents.
+ */
+export function linkClientOp(object: unknown, op: ClientOp | null): void {
+  if (op !== null && typeof object === "object" && object !== null) {
+    opsByObject.set(object, op);
+  }
+}
+
+/** The operation that `object` came out of, if one was recorded. */
+export function linkedClientOp(object: unknown): ClientOp | null {
+  if (typeof object !== "object" || object === null) {
+    return null;
+  }
+  return opsByObject.get(object) ?? null;
+}
+
+/**
  * Write one client step report to the console, if the page asked for them.
+ * The step belongs to `op` when given, otherwise to the operation whose
+ * synchronous call is running (see {@link withClientOp}), if any.
  *
  * The caller gives no secret and no personal data in `detail`.
  */
@@ -79,10 +194,12 @@ export function reportClientStep(
   part: ClientStepPart,
   step: string,
   detail: StepDetail = {},
+  op: ClientOp | null = null,
 ): void {
   if (!clientStepReportsEnabled()) {
     return;
   }
+  const operation = op ?? currentOp;
   console.log(
     STEP_REPORT_PREFIX +
       JSON.stringify({
@@ -92,6 +209,21 @@ export function reportClientStep(
         runsIn: "browser",
         part,
         ...detail,
+        ...(operation === null
+          ? {}
+          : {
+              op: operation.op,
+              opKind: operation.kind,
+              ...(operation.parentOp === null
+                ? {}
+                : { parentOp: operation.parentOp }),
+            }),
       }),
   );
+}
+
+/** Exposed for tests: restart the counter of operations. */
+export function resetClientOpsForTests(): void {
+  lastOp = 0;
+  currentOp = null;
 }
