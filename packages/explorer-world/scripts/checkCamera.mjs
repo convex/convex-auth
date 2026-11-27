@@ -202,6 +202,65 @@ try {
       );
     }
   }
+  // The wheel arrives at what it points at: from Home, wheeling in on the
+  // browser region brings it near and keeps it in view, and wheeling on
+  // never takes the camera through it.
+  {
+    await view("home");
+    await page.waitForTimeout(2500);
+    const isl = await onScreenIsland();
+    const g = await ground(isl.x, isl.y);
+    const far = await page.evaluate(
+      (g) =>
+        explorerCamera.position.distanceTo(
+          explorerCamera.position.clone().set(...g),
+        ),
+      g,
+    );
+    await page.mouse.move(isl.x, isl.y);
+    for (let i = 0; i < 6; i++) {
+      await page.mouse.wheel(0, -300);
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(1500);
+    const near = await page.evaluate(
+      (g) =>
+        explorerCamera.position.distanceTo(
+          explorerCamera.position.clone().set(...g),
+        ),
+      g,
+    );
+    const s = await screen(g);
+    check(
+      near < far * 0.5 && s[0] > 0 && s[0] < W && s[1] > 0 && s[1] < H,
+      `wheeling in on ${isl.id} from Home arrives near it (${far.toFixed(0)} -> ${near.toFixed(0)}) with the point wheeled at in view (${s.map((v) => v.toFixed(0)).join(", ")})`,
+    );
+    for (let i = 0; i < 30; i++) {
+      await page.mouse.wheel(0, -300);
+      await page.waitForTimeout(60);
+    }
+    await page.waitForTimeout(1500);
+    const [y, under, moved] = await page.evaluate((g) => {
+      const p = explorerCamera.position;
+      let h = 0;
+      for (const i of explorerWorld.layout.islands)
+        if (
+          i.position[1] > h &&
+          Math.hypot(p.x - i.position[0], p.z - i.position[2]) <= i.radius
+        )
+          h = i.position[1];
+      return [p.y, h, Math.hypot(p.x - g[0], p.z - g[2])];
+    }, g);
+    check(
+      y > under + 0.4 && moved < 40,
+      `wheeling on stays above the surface (camera ${y.toFixed(1)} up, surface ${under.toFixed(1)}) and by the thing wheeled at (${moved.toFixed(1)} away)`,
+    );
+  }
+
+  // The checks below start from the flat tilt.
+  await view("flat");
+  await page.waitForTimeout(2000);
+
   // Cmd-drag pressed on an island
   await page.evaluate(() => explorer.getState().select(null));
   let isl = await onScreenIsland();

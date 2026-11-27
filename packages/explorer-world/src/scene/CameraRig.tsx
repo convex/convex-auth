@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import {
   PerspectiveCamera,
   Plane,
+  type Mesh,
   Raycaster,
   Vector2,
   Vector3,
@@ -154,8 +155,8 @@ const takeOver = () => {
 
 /**
  * The free camera. Drag pans across the map; Cmd-drag, Ctrl-drag or
- * right-drag orbits about the point looked at; the wheel zooms toward the
- * cursor; WASD flies (Q and E for down and up). Nothing ties the camera to a
+ * right-drag orbits about the point looked at; the wheel arrives at what it
+ * points at; WASD flies (Q and E for down and up). Nothing ties the camera to a
  * region: it moves on its own only for Overview, Follow and Fly to. In
  * director mode (Follow) it follows the action until the viewer takes over.
  */
@@ -167,6 +168,7 @@ export function CameraRig() {
 
   const canvas = useThree((s) => s.gl.domElement);
   const camera = useThree((s) => s.camera);
+  const scene = useThree((s) => s.scene);
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
@@ -273,16 +275,116 @@ export function CameraRig() {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
-    // The wheel zooms without a "control start": it takes over here.
-    canvas.addEventListener("wheel", takeOver, { passive: true });
+    // The wheel zooms about the thing under the pointer, as on the stage
+    // (`stage/Camera.tsx`): what the pointer is on stays under it, the
+    // camera stops with all of it in view, and close to it turns to look
+    // down into it. Over the sky it zooms straight in or out.
+    const wheel = (e: WheelEvent) => {
+      const c = controls.current;
+      if (!c) return;
+      e.preventDefault();
+      takeOver();
+      // Trackpads send small deltas, mice large ones; lines count as 40 px.
+      const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+      let k = Math.exp(Math.max(-600, Math.min(600, dy)) * 0.0016);
+      const pos = c.getPosition(new Vector3(), true);
+      const target = c.getTarget(new Vector3(), true);
+      const r = canvas.getBoundingClientRect();
+      ndc.set(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        -((e.clientY - r.top) / r.height) * 2 + 1,
+      );
+      ray.setFromCamera(ndc, camera);
+      ray.ray.origin.copy(pos);
+      const hit = ray
+        .intersectObjects(scene.children, true)
+        .find(
+          (h) => (h.object as { isMesh?: boolean }).isMesh && shown(h.object),
+        );
+      let thing: { centre: Vector3; radius: number } | null = null;
+      let least = ZOOM.min;
+      if (hit) {
+        const g = (hit.object as Mesh).geometry;
+        if (g && !g.boundingSphere) g.computeBoundingSphere();
+        const sphere = g?.boundingSphere;
+        const scale = hit.object.getWorldScale(new Vector3());
+        const radius =
+          (sphere?.radius ?? 0) * Math.max(scale.x, scale.y, scale.z);
+        if (sphere && radius > 0 && radius < ARRIVE.most) {
+          thing = {
+            centre: hit.object.localToWorld(sphere.center.clone()),
+            radius,
+          };
+          least = Math.max(ZOOM.min, radius * ARRIVE.stop);
+        }
+      }
+      // Only what is about as near as the point looked at: low over the
+      // ground the pointer meets things far off, and zooming toward them
+      // would glide across the world.
+      const reach = c.distance * 1.5;
+      if (hit && hit.distance > reach) thing = null;
+      if (!thing) least = ZOOM.min;
+      let about: Vector3 | null = hit && thing ? hit.point.clone() : null;
+      if (!about) {
+        const h = surfaceHeight(ray.ray.origin, ray.ray.direction);
+        ground.constant = -h;
+        const g =
+          ray.ray.direction.y < -1e-3
+            ? ray.ray.intersectPlane(ground, new Vector3())
+            : null;
+        about = g && g.distanceTo(pos) < reach ? g : target;
+      }
+      const d = pos.distanceTo(about);
+      if (k < 1 && d <= least) return;
+      k = Math.min(
+        Math.max(k, least / Math.max(d, 1e-6)),
+        c.maxDistance / Math.max(d, 1e-6),
+      );
+      const p = about.clone().add(pos.clone().sub(about).multiplyScalar(k));
+      const t = about.clone().add(target.clone().sub(about).multiplyScalar(k));
+      // Near the end of an approach to a thing, look down into it.
+      if (thing && k < 1) {
+        const d1 = p.distanceTo(about);
+        const near = Math.min(
+          1,
+          Math.max(
+            0,
+            (thing.radius * ARRIVE.from - d1) /
+              (thing.radius * (ARRIVE.from - 1)),
+          ),
+        );
+        if (near > 0) {
+          const v = p.clone().sub(about);
+          const len = v.length();
+          const el = Math.asin(Math.min(1, Math.max(-1, v.y / len)));
+          const want = (ARRIVE.elevation * Math.PI) / 180;
+          const el2 = el + (want - el) * Math.min(1, near * ARRIVE.rate);
+          const flat = new Vector3(v.x, 0, v.z);
+          if (flat.lengthSq() < 1e-9) flat.set(0, 0, 1);
+          flat.normalize().multiplyScalar(Math.cos(el2) * len);
+          p.copy(about)
+            .add(flat)
+            .add(new Vector3(0, Math.sin(el2) * len, 0));
+          t.lerp(thing.centre, Math.min(1, near * ARRIVE.rate));
+        }
+      }
+      // Never into the surface below the camera.
+      const below = surfaceHeight(
+        new Vector3(p.x, 1e4, p.z),
+        new Vector3(0, -1, 0),
+      );
+      if (p.y < below + 0.4 || p.y < about.y + 0.4) return;
+      void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, true);
+    };
+    canvas.addEventListener("wheel", wheel, { passive: false });
     return () => {
       canvas.removeEventListener("pointerdown", press, { capture: true });
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", release);
       window.removeEventListener("pointercancel", release);
-      canvas.removeEventListener("wheel", takeOver);
+      canvas.removeEventListener("wheel", wheel);
     };
-  }, [canvas, camera]);
+  }, [canvas, camera, scene]);
 
   // A requested flight: to the overview or to a selection.
   useEffect(() => {
@@ -384,7 +486,8 @@ export function CameraRig() {
         left: ACTION.NONE,
         middle: ACTION.DOLLY,
         right: ACTION.ROTATE,
-        wheel: ACTION.DOLLY,
+        // The wheel is handled above: it arrives at what it points at.
+        wheel: ACTION.NONE,
       }}
       minDistance={3}
       // Far enough to see the whole map from any side.
@@ -393,10 +496,26 @@ export function CameraRig() {
         overview.position.distanceTo(overview.target) * 4,
       )}
       maxPolarAngle={Math.PI * 0.49}
-      dollyToCursor
       onStart={takeOver}
     />
   );
+}
+
+/** The wheel's nearest approach to the point under it. */
+const ZOOM = { min: 3 };
+/**
+ * How the wheel arrives at a thing (as on the stage): within `from` times
+ * its radius each notch turns the camera `rate` of the way toward looking
+ * down at `elevation` degrees; things larger than `most` (an island's
+ * floor) are not arrived at; zooming in stops `stop` times its radius
+ * from it.
+ */
+const ARRIVE = { from: 5, elevation: 55, rate: 0.45, most: 150, stop: 1.15 };
+
+function shown(o: { visible: boolean; parent: unknown }): boolean {
+  for (let x: typeof o | null = o; x; x = x.parent as typeof o | null)
+    if (!x.visible) return false;
+  return true;
 }
 
 const ray = new Raycaster();
