@@ -8,6 +8,7 @@
  */
 import { useEffect, useRef, type ReactNode } from "react";
 import { doneBy } from "../model/done.ts";
+import { layInside } from "../model/insideLayout.ts";
 import { done, insideOf } from "../insides.ts";
 import { groupFacts, groupName } from "../scene/Groups.tsx";
 import { highlightOf } from "../scene/highlight.ts";
@@ -33,6 +34,8 @@ export interface CardContent {
   line?: { text: string; from?: string };
   /** What it has done, or is doing now: a line or two, none when nothing. */
   doing: ReactNode[];
+  /** Whether it has an inside to open up (`Inside.tsx`). */
+  opens?: boolean;
 }
 
 function partCard(id: string, state: WorldState): CardContent {
@@ -137,6 +140,7 @@ function partCard(id: string, state: WorldState): CardContent {
         ? { text: world.presentation.parts[id].summary! }
         : undefined),
     doing,
+    opens: inside ? layInside(inside).places.length > 0 : false,
   };
 }
 
@@ -283,6 +287,7 @@ const GAP = 22;
 export function Card() {
   const selected = usePlayback((s) => s.selected);
   const detail = usePlayback((s) => s.detail);
+  const open = usePlayback((s) => s.open);
   usePlayback((s) => Math.floor(s.time * 4));
   usePlayback((s) => s.version);
   const box = useRef<HTMLElement>(null);
@@ -300,7 +305,14 @@ export function Card() {
       const H = window.innerHeight;
       let x: number;
       let y: number;
-      if (cardAt.on) {
+      const sel = usePlayback.getState().selected;
+      const aside =
+        sel?.type === "part" && usePlayback.getState().open === sel.id;
+      if (aside) {
+        // Its inside is open: the card stands at the side, not over it.
+        x = 16;
+        y = 16;
+      } else if (cardAt.on) {
         x = cardAt.x + GAP;
         if (x + w > W - 12) x = cardAt.x - GAP - w;
         y = cardAt.y - h / 2;
@@ -311,7 +323,7 @@ export function Card() {
       x = Math.min(Math.max(12, x), W - w - 12);
       y = Math.min(Math.max(12, y), H - h - 96);
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
-      el.dataset.docked = cardAt.on ? "" : "docked";
+      el.dataset.docked = cardAt.on && !aside ? "" : "docked";
     };
     place();
     return () => cancelAnimationFrame(frame);
@@ -386,9 +398,18 @@ export function Card() {
         </div>
       )}
       <div className="card-actions">
-        <button onClick={() => flyTo(selected)} title="Go there">
-          Go there
-        </button>
+        {!(selected.type === "part" && open === selected.id) && (
+          <button
+            onClick={() => {
+              if (selected.type === "part" && c.opens)
+                usePlayback.getState().openUp(selected.id);
+              else flyTo(selected);
+            }}
+            title={c.opens ? "Go close: it opens up" : "Go there"}
+          >
+            {c.opens ? "Open up" : "Go there"}
+          </button>
+        )}
         <button
           aria-pressed={detail}
           onClick={() => setDetail(!detail)}

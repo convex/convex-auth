@@ -115,6 +115,10 @@ interface PlaybackStore {
   detail: boolean;
   /** The camera follows the action until the viewer takes the controls. */
   director: boolean;
+  /** The part whose inside is open now (`scene/Inside.tsx`), if any. */
+  open: string | null;
+  /** Bumped to ask the camera close to a part, where its inside opens (`Inside.tsx`). */
+  opening: { id: string; seq: number } | null;
   /** Bumped to ask the camera to fly somewhere. */
   flight: { target: "overview" | "home" | Selection; seq: number } | null;
   overlays: Overlays;
@@ -134,6 +138,7 @@ interface PlaybackStore {
   setSpeed: (speed: number) => void;
   select: (selection: Selection | null) => void;
   setDetail: (on: boolean) => void;
+  openUp: (id: string) => void;
   setDirector: (on: boolean) => void;
   flyTo: (target: "overview" | "home" | Selection) => void;
   toggleOverlay: (name: keyof Overlays) => void;
@@ -152,6 +157,8 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   // The camera stays where the viewer put it; it follows only when asked (F).
   director: false,
   flight: null,
+  opening: null,
+  open: null,
   overlays: { links: false, relations: true, unresolved: false },
   version: 0,
   layoutVersion: 0,
@@ -196,6 +203,11 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
         : { selected, detail: false },
     ),
   setDetail: (detail) => set({ detail }),
+  openUp: (id) =>
+    set((s) => ({
+      director: false,
+      opening: { id, seq: (s.opening?.seq ?? 0) + 1 },
+    })),
   setDirector: (director) => set({ director }),
   flyTo: (target) =>
     set((s) => ({

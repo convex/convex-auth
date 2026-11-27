@@ -1,12 +1,13 @@
 /**
  * What a click shows, and what a part opened up shows, on Convex Auth's
  * page recording: the line in the source's own words, what the part has
- * done (from the recording only), and the links lit by default and with
- * the detail asked for.
+ * done (from the recording only), the links lit by default and with the
+ * detail asked for, and the inside of a module from the structure map.
  */
 import { structure } from "@convex-dev/explorer-structure";
 import { describe, expect, test } from "vitest";
 import { contactsOf, doneBy, doneIn, lighting } from "../model/done.ts";
+import { layInside } from "../model/insideLayout.ts";
 import { loadProject, PROJECTS } from "../project.ts";
 
 const source = PROJECTS["convex-auth"];
@@ -103,5 +104,51 @@ describe("what a click lights", () => {
       world.index.unresolvedFrom.get(SM)?.length ?? 0,
     );
     expect(lit.unresolved.length).toBeGreaterThan(0);
+  });
+});
+
+describe("a part opened up", () => {
+  test("the session manager: AuthClient in the middle, its 11 members around it", () => {
+    const lay = layInside(inside.parts[SM]);
+    const main = lay.places.find((p) => p.x === 0 && p.z === 0)!;
+    expect(main.place.name).toBe("AuthClient");
+    expect(lay.places.filter((p) => p.shape === "member")).toHaveLength(11);
+    expect(
+      lay.holds
+        .filter((h) => h.kind === "key")
+        .map((h) => h.name)
+        .sort(),
+    ).toEqual(["__convexAuthJWT", "__convexAuthRefreshToken"]);
+    const lock = lay.holds.find((h) => h.kind === "lock")!;
+    const key = lay.holds.find((h) => h.name === "__convexAuthRefreshToken")!;
+    expect([lock.x, lock.z]).toEqual([key.x, key.z]);
+  });
+
+  test("each step mark sits on the place its code is in", () => {
+    const lay = layInside(inside.parts[SM]);
+    expect(lay.sites).toHaveLength(24);
+    const at = (step: string) => lay.sites.find((s) => s.step === step)!.place;
+    expect(at("token.fetch")).toBe("AuthClient.fetchAccessToken");
+    expect(at("session.set")).toBe("AuthClient.setSession");
+    expect(at("refresh.start")).toBe("AuthClient");
+  });
+
+  test("a hook is not drawn again inside its module", () => {
+    const withHooks = Object.values(inside.parts).find((p) =>
+      p.places.some((x) => x.part),
+    )!;
+    const lay = layInside(withHooks);
+    expect(lay.places.some((p) => p.place.part)).toBe(false);
+  });
+
+  test("every module opens from the same data", () => {
+    for (const [id, p] of Object.entries(inside.parts)) {
+      if (!id.startsWith("module:")) continue;
+      const lay = layInside(p);
+      for (const s of lay.sites)
+        expect(Number.isFinite(s.x + s.z), id).toBe(true);
+      const names = lay.places.map((x) => x.place.id);
+      expect(new Set(names).size, id).toBe(names.length);
+    }
   });
 });

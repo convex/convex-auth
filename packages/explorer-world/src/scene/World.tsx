@@ -12,6 +12,7 @@ import { CardAnchor } from "./CardAnchor.tsx";
 import { CameraRig } from "./CameraRig.tsx";
 import { Groups } from "./Groups.tsx";
 import { Diagnostics, Layer } from "./Diagnostics.tsx";
+import { Inside } from "./Inside.tsx";
 import { Islands } from "./Islands.tsx";
 import { Labels } from "./Labels.tsx";
 import { Links } from "./Links.tsx";
@@ -74,6 +75,7 @@ export function World() {
         <Parts />
         <Groups />
         <Browser />
+        <Inside />
       </Layer>
       <Layer name="rows">
         <Rows />
