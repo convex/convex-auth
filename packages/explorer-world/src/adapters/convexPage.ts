@@ -372,6 +372,9 @@ export function readPageFeed(
         step: String(e.step),
         ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
         ...(typeof detail.function === "string" ? { fn: detail.function } : {}),
+        ...(state === "error" && isCode(detail.error)
+          ? { code: detail.error }
+          : {}),
         ...(typeof detail.op === "number"
           ? {
               op: `${page}|load${loads.get(page)?.n ?? 0}|${detail.op}`,
@@ -669,6 +672,13 @@ function stateAfter(
   );
   return rule?.state ?? null;
 }
+
+/**
+ * An error code from the client's fixed list (capitals and underscores),
+ * not a message: only that is shown of an error.
+ */
+const isCode = (v: unknown): v is string =>
+  typeof v === "string" && /^[A-Z][A-Z0-9_]{1,63}$/.test(v);
 
 /** The step as one short line: its name, and its detail without secrets. */
 function stepText(step: string, detail: Record<string, unknown>): string {

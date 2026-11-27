@@ -31,6 +31,7 @@ import { Lod } from "./Lod.tsx";
 import type { OpPath } from "../model/operations.ts";
 import type { Timeline } from "../model/schedule.ts";
 import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
+import { TONE_COLORS } from "./palette.ts";
 import { runningNow } from "./Running.tsx";
 
 interface Entry {
@@ -272,8 +273,11 @@ function Declutter() {
  * The place the newest moving body is at or going to at time `t`: of the
  * operations under way, the one that reached a place last.
  */
-function bodyAt(ops: OpPath[], t: number): string | null {
-  let best: { at: number; anchor: string } | null = null;
+function bodyAt(
+  ops: OpPath[],
+  t: number,
+): { anchor: string; code?: string } | null {
+  let best: { at: number; anchor: string; code?: string } | null = null;
   for (const op of ops) {
     const p = op.points;
     if (p[0].at > t || p[p.length - 1].at + 0.6 < t) continue;
@@ -284,10 +288,19 @@ function bodyAt(ops: OpPath[], t: number): string | null {
     const k = next ? (t - p[i].at) / (next.at - p[i].at) : 0;
     const q = next && k > 0.5 ? next : p[i];
     const reached = next && k > 0.5 ? t : p[i].at;
-    if (!best || reached > best.at) best = { at: reached, anchor: q.anchor };
+    // Back with a refusal: named by its code, not the module.
+    const refused =
+      op.code && op.errorAt !== undefined && t >= op.errorAt
+        ? op.code
+        : undefined;
+    if (!best || reached > best.at)
+      best = { at: reached, anchor: q.anchor, code: refused };
   }
-  return best?.anchor ?? null;
+  return best ? { anchor: best.anchor, code: best.code } : null;
 }
+
+/** Between a part's id and the text that names it instead, in an acting key. */
+const CODE = "|code:";
 
 function useActing(): string[] {
   const [acting, setActing] = useState<string[]>([]);
@@ -298,20 +311,20 @@ function useActing(): string[] {
     const state = currentState();
     // In the client's region only one name: of the place the newest body
     // is at (a module, a key, the way out), else of the module reporting.
+    const body = bodyAt(world.timeline.ops, state.time);
     const at =
-      bodyAt(world.timeline.ops, state.time) ??
-      actingModules(world.timeline.clientSteps, state.time).now;
+      body?.anchor ?? actingModules(world.timeline.clientSteps, state.time).now;
     // The backend has one name too: of the part the call of an operation
     // is in now, at its kept size. What else runs or moves there (a query
     // run again, a row on its way) has its halo or its body, not a small
     // name; a click names it.
     const run = runningNow(world.timeline, state.time);
     const list = [
-      ...(at ? [`report:${at}`] : []),
+      ...(at ? [`report:${at}${body?.code ? CODE + body.code : ""}`] : []),
       ...(run ? [`report:${run}`] : []),
     ]
       .filter((id) => {
-        const p = placementOf(id.replace(/^report:/, ""));
+        const p = placementOf(id.replace(/^report:/, "").split(CODE)[0]);
         return p && p.shape !== "island" && p.shape !== "state";
       })
       .sort();
@@ -334,13 +347,20 @@ function PartLabel({
   id,
   rank,
   reporting = false,
+  text,
 }: {
   id: string;
   rank: 1 | 2;
   reporting?: boolean;
+  /** What names it instead of its own name (a refusal's code). */
+  text?: string;
 }) {
   const p = placementOf(id);
-  const part = partOf(id);
+  const found = partOf(id);
+  const part = useMemo(
+    () => (found && text ? { ...found, label: text } : found),
+    [found, text],
+  );
   const size = rank === 2 ? 0.36 : reporting ? 0.42 : 0.32;
   const grow = reporting ? REPORT_GROW : PART_GROW;
   const h = p ? HEIGHT[p.shape] * (p.radius / FOOTPRINT[p.shape]) + 0.4 : 0;
@@ -379,7 +399,7 @@ function PartLabel({
                 <BesideHalo beside={beside!}>
                   <Label
                     fontSize={size}
-                    color="#ffffff"
+                    color={text ? TONE_COLORS.error : "#ffffff"}
                     anchorX="left"
                     position={[0, -0.2, 0]}
                     weight="regular"
@@ -549,7 +569,8 @@ export function Labels() {
           id.startsWith("report:") ? (
             <PartLabel
               key={`r:${id}`}
-              id={id.slice("report:".length)}
+              id={id.slice("report:".length).split(CODE)[0]}
+              text={id.split(CODE)[1]}
               rank={1}
               reporting
             />

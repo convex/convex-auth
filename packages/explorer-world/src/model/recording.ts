@@ -125,6 +125,11 @@ export interface PageItem {
   opKind?: string;
   /** For a step that names a function (`signIn.call`): its name, `module:export`. */
   fn?: string;
+  /**
+   * For a step that reported an error: the error's code, when the client
+   * gave one from its fixed list (`INVALID_CREDENTIALS`); never message text.
+   */
+  code?: string;
   /** For a step of the scenario (a pressed control): whether it starts or ends. */
   scenario?: "start" | "end";
   parentOp?: string;

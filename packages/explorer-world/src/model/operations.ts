@@ -99,6 +99,8 @@ export interface OpPath {
   tone: Tone;
   /** When it first reported an error (shown time): it is red from then on. */
   errorAt?: number;
+  /** The code of the error it reported, if the client gave one. */
+  code?: string;
   /**
    * The client did it by itself while no pressed control was under way (a
    * token refreshed on its timer): it plays briefly and is drawn quieter.
@@ -213,6 +215,7 @@ export function operations(
       points,
       tone: steps.some((s) => s.item.tone === "error") ? "error" : "normal",
       errorAt: steps.find((s) => s.item.tone === "error")?.at,
+      code: steps.find((s) => s.item.code)?.item.code,
       loads: [],
       ...(brief.has(id) ? { unasked: true } : {}),
     };

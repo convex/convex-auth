@@ -464,6 +464,23 @@ function body(
               reported the same operation. It moves through the places in the
               order the steps were reported.
             </p>
+            {o.code && (
+              <Section title="Refused">
+                <span
+                  className="mono"
+                  style={{
+                    opacity:
+                      o.errorAt !== undefined && o.errorAt <= now ? 1 : 0.5,
+                  }}
+                >
+                  {o.code}
+                </span>
+                <p className="small">
+                  The error code the client reported with the step that came
+                  back, from its fixed list. No message text is shown.
+                </p>
+              </Section>
+            )}
             {o.run && (
               <Section title="Its call">
                 <RunLink run={o.run} />
