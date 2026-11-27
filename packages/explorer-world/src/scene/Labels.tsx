@@ -21,7 +21,8 @@ import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
 import { actingModules, HALO_ON_SCREEN } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
-import { HEIGHT, partOf, placementOf } from "./look.ts";
+import type { OpPath } from "../model/operations.ts";
+import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
 
 interface Entry {
   group: Group;
@@ -179,6 +180,27 @@ function Declutter() {
  * The parts acting now: running, reporting a step, or at either end of
  * something moving. Updated when the set changes.
  */
+/**
+ * The place the newest moving body is at or going to at time `t`: of the
+ * operations under way, the one that reached a place last.
+ */
+function bodyAt(ops: OpPath[], t: number): string | null {
+  let best: { at: number; anchor: string } | null = null;
+  for (const op of ops) {
+    const p = op.points;
+    if (p[0].at > t || p[p.length - 1].at + 0.6 < t) continue;
+    let i = 0;
+    while (i + 1 < p.length && p[i + 1].at <= t) i++;
+    // Halfway to the next place, it is that place that is named.
+    const next = p[i + 1];
+    const k = next ? (t - p[i].at) / (next.at - p[i].at) : 0;
+    const q = next && k > 0.5 ? next : p[i];
+    const reached = next && k > 0.5 ? t : p[i].at;
+    if (!best || reached > best.at) best = { at: reached, anchor: q.anchor };
+  }
+  return best?.anchor ?? null;
+}
+
 function useActing(): string[] {
   const [acting, setActing] = useState<string[]>([]);
   const last = useRef({ t: -1, key: "" });
@@ -187,13 +209,19 @@ function useActing(): string[] {
     last.current.t = clock.elapsedTime;
     const state = currentState();
     const ids = new Set<string>(state.active.keys());
-    // The module reporting the newest step: its name beside its halo.
-    const now = actingModules(world.timeline.clientSteps, state.time).now;
-    if (now) ids.add(`report:${now}`);
     for (const t of state.travellers) {
       ids.add(t.progress < 0.5 ? t.movement.from : t.movement.to);
     }
+    // In the client's region only one name: of the place the newest body
+    // is at (a module, a key, the way out), else of the module reporting.
+    const client = world.presentation.client;
+    const inClient = (id: string) => !!client && topIsland(id) === client;
+    const at =
+      bodyAt(world.timeline.ops, state.time) ??
+      actingModules(world.timeline.clientSteps, state.time).now;
     const list = [...ids]
+      .filter((id) => !inClient(id))
+      .concat(at ? [`report:${at}`] : [])
       .filter((id) => {
         const p = placementOf(id.replace(/^report:/, ""));
         return p && p.shape !== "island" && p.shape !== "state";

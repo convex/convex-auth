@@ -386,7 +386,15 @@ export function readPageFeed(
       }
       case "input": {
         const t = (e.target ?? {}) as Record<string, string | null>;
-        const what = t.text ?? t.name ?? t.id ?? t.selector ?? t.tag;
+        // A plain short name for the element, never its selector path: its
+        // name or id, its text when short, else its tag.
+        const text = t.text?.trim();
+        const what =
+          t.name ??
+          t.id ??
+          (text && text.length <= 24 ? text : null) ??
+          t.tag ??
+          "element";
         const page = pageOf(e.pageId);
         const element = placeOf(
           PLACES.element(page, String(t.selector ?? t.tag)),
