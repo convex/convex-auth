@@ -16,6 +16,7 @@ import type {
   Flight,
   Held,
   PageElement,
+  PageStep,
   SecretInfo,
   Slot,
   StageModel,
@@ -175,6 +176,7 @@ export function stageFromEvents(
   const cookies = new Slots();
   const cookieAttrs = new Map<string, Record<string, unknown>>();
   const flights: Flight[] = [];
+  const steps: PageStep[] = [];
   const locations: StageModel["locations"] = [];
   const secrets = new Map<string, SecretInfo>();
   const sockets = new Map<
@@ -303,6 +305,26 @@ export function stageFromEvents(
         });
         break;
       }
+      case "step": {
+        // Only the steps the page reported; a function's steps are the
+        // server's.
+        if (e.from !== "page" || typeof e.part !== "string") continue;
+        const detail = (e.detail ?? {}) as Record<string, unknown>;
+        steps.push({
+          id,
+          time,
+          part: e.part,
+          step: String(e.step),
+          detail,
+          storageKey:
+            typeof detail.key === "string"
+              ? typeof detail.namespace === "string"
+                ? `${detail.key}_${detail.namespace}`
+                : detail.key
+              : null,
+        });
+        break;
+      }
       case "secret": {
         secrets.set(id, {
           id,
@@ -360,6 +382,7 @@ export function stageFromEvents(
     session: session.list,
     cookies: cookieList,
     flights,
+    steps,
     exits: [...exits.values()],
     secrets,
     sockets: [...sockets.values()],

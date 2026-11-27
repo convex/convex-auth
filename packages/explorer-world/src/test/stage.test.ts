@@ -116,3 +116,91 @@ test("?screen= must be on the stage's host", () => {
   expect(() => screenUrl("https://example.com", stage)).toThrow();
   expect(screenUrl(null, stage)).toBeNull();
 });
+
+test("a step the page reported lights its module and the key it names", () => {
+  const key = model.local[0].key;
+  const [name, namespace] = [
+    key.slice(0, key.lastIndexOf("_")),
+    key.slice(key.lastIndexOf("_") + 1),
+  ];
+  const t0 = model.start + 1000;
+  const steps = [
+    {
+      kind: "step",
+      from: "page",
+      id: "p1#9001",
+      time: t0,
+      runId: null,
+      pageId: "p1",
+      runsIn: "browser",
+      part: "module:react/index",
+      v: 1,
+      source: "convex-auth",
+      step: "signIn.call",
+      detail: { kind: "action" },
+    },
+    {
+      kind: "step",
+      from: "page",
+      id: "p1#9002",
+      time: t0 + 50,
+      runId: null,
+      pageId: "p1",
+      runsIn: "browser",
+      part: "module:browser/storage",
+      v: 1,
+      source: "convex-auth",
+      step: "storage.read",
+      detail: { key: name, namespace },
+    },
+  ];
+  const m = stageFromEvents([...events, ...steps]);
+  expect(m.steps.map((s) => s.step)).toEqual(["signIn.call", "storage.read"]);
+  expect(stageAt(m, t0 - 1).parts.size).toBe(0);
+  const now = stageAt(m, t0 + 100);
+  expect(now.parts.get("module:react/index")?.lit).toBeGreaterThan(0);
+  expect(now.keys.get(key)?.step.step).toBe("storage.read");
+  // A function's steps are the server's: not the page's.
+  expect(stageFromEvents(events).steps).toEqual([]);
+});
+
+test("the islands world counts page steps without placing them under a run", async () => {
+  const { recordingFromTimeline } =
+    await import("../adapters/convexRecording.ts");
+  void recordingFromTimeline;
+  const step = {
+    kind: "step",
+    from: "page",
+    id: "p1#9001",
+    time: model.start + 1,
+    runId: null,
+    part: "module:react/index",
+    step: "signIn.call",
+    detail: {},
+  };
+  const { loadProject } = await import("../project.ts");
+  const src = PROJECTS["convex-auth"];
+  const world = loadProject({
+    ...src,
+    timelines: { x: `${src.timelines.page}\n${JSON.stringify(step)}` },
+  });
+  expect(
+    world.recording.unplaced.some((u) => u.what.includes("step (page)")),
+  ).toBe(true);
+});
+
+test("the modules the client library names are in the auth client district", async () => {
+  const { clientTree } = await import("../stage/sources.ts");
+  const ids = new Set(clientTree().map((m) => m.id));
+  for (const id of [
+    "module:browser/sessionManager",
+    "module:browser/storage",
+    "module:browser/mutex",
+    "module:browser/retry",
+    "module:react/index",
+    "module:react/client",
+    // module:ssr/nextjs/client is not here: the structure map says it runs
+    // in "ssr". Its steps light the district as a whole.
+  ])
+    expect(ids, id).toContain(id);
+});

@@ -119,6 +119,21 @@ export type Flight = {
   stack: number;
 };
 
+/**
+ * A step the client code reported from the page: which part of it ran
+ * (a module of the structure map) and what it did.
+ */
+export type PageStep = {
+  id: string;
+  time: number;
+  /** The module that ran, e.g. a module id of the structure map. */
+  part: string;
+  step: string;
+  detail: Record<string, unknown>;
+  /** For a storage step: the storage key it names (key and namespace). */
+  storageKey: string | null;
+};
+
 /** Where the page was, from a time on. */
 export type Location = { time: number; path: string };
 
@@ -133,6 +148,8 @@ export type StageModel = {
   session: Slot[];
   cookies: Slot[];
   flights: Flight[];
+  /** The steps the client code reported, in time order. */
+  steps: PageStep[];
   exits: Exit[];
   secrets: Map<string, SecretInfo>;
   /** The sockets' open and close times. */
@@ -152,6 +169,7 @@ export const EMPTY_MODEL: StageModel = {
   session: [],
   cookies: [],
   flights: [],
+  steps: [],
   exits: [],
   secrets: new Map(),
   sockets: [],
@@ -192,6 +210,10 @@ export type StageAt = {
   /** Per exit, whether something is there now. */
   busyExits: Set<ExitId>;
   socketOpen: boolean;
+  /** Per part of the client code that reported a step: how lit, and its last step. */
+  parts: Map<string, { lit: number; step: PageStep }>;
+  /** Per storage key a step just read or wrote: how lit, and the step. */
+  keys: Map<string, { lit: number; step: PageStep }>;
 };
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -271,6 +293,15 @@ export function stageAt(model: StageModel, t: number): StageAt {
     }
   }
 
+  const parts = new Map<string, { lit: number; step: PageStep }>();
+  const keys = new Map<string, { lit: number; step: PageStep }>();
+  for (const step of model.steps) {
+    if (step.time > t) break;
+    const lit = 1 - clamp01((t - step.time) / LIT_MS);
+    parts.set(step.part, { lit, step });
+    if (step.storageKey !== null) keys.set(step.storageKey, { lit, step });
+  }
+
   const socketOpen = model.sockets.some(
     (s) => s.open <= t && (s.close === null || s.close > t),
   );
@@ -285,5 +316,7 @@ export function stageAt(model: StageModel, t: number): StageAt {
     flights,
     busyExits,
     socketOpen,
+    parts,
+    keys,
   };
 }

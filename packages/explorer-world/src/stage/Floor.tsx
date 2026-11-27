@@ -20,7 +20,7 @@ import {
   type Spot,
   type Vec3,
 } from "./layout.ts";
-import { LOOK, MATTE } from "./look.ts";
+import { LOOK, MATTE, mix } from "./look.ts";
 import type { Exit, StageAt } from "./model.ts";
 import type { ClientPart } from "./sources.ts";
 import { useStage, type Selection } from "./store.ts";
@@ -202,7 +202,15 @@ export function grid(
 }
 
 /** The structure map's modules in a client district, each with its parts. */
-function ClientModules({ spot, parts }: { spot: Spot; parts: ClientPart[] }) {
+function ClientModules({
+  spot,
+  parts,
+  lit,
+}: {
+  spot: Spot;
+  parts: ClientPart[];
+  lit: StageAt["parts"];
+}) {
   const g = grid(spot, parts.length);
   const y = spot.h;
   return (
@@ -226,8 +234,9 @@ function ClientModules({ spot, parts }: { spot: Spot; parts: ClientPart[] }) {
             spot={inner}
             y={y}
             name={m.name}
-            color={LOOK.blockSide}
+            color={mix(LOOK.blockSide, LOOK.active, lit.get(m.id)?.lit ?? 0)}
             select={{ type: "part", id: m.id }}
+            note={lit.get(m.id)?.step.step}
             labelSize={Math.min(inner.w / 9, 1.6)}
             labelFar={5}
           >
@@ -257,6 +266,18 @@ function ClientModules({ spot, parts }: { spot: Spot; parts: ClientPart[] }) {
       })}
     </group>
   );
+}
+
+/**
+ * How lit the auth client's district is, seen from afar: as much as the most
+ * lit part of the client library. Every step the page reports is the
+ * library's, so a step whose module is not among the district's (the map
+ * places it elsewhere) lights the district too.
+ */
+function districtLit(at: StageAt): number {
+  let most = 0;
+  for (const p of at.parts.values()) most = Math.max(most, p.lit);
+  return most;
 }
 
 /** The parts of the browser that stand still: present from the start. */
@@ -308,6 +329,11 @@ export function Floor({
           spot={spot}
           name={labels.client[i]}
           select={{ type: "thing", id: `client${i}` }}
+          color={
+            i === labels.clientMap
+              ? mix(LOOK.block, LOOK.active, districtLit(at) * 0.45)
+              : LOOK.block
+          }
           note={
             i === labels.clientMap
               ? `${clientParts.length} modules that run in the browser`
@@ -315,7 +341,7 @@ export function Floor({
           }
         >
           {i === labels.clientMap && (
-            <ClientModules spot={spot} parts={clientParts} />
+            <ClientModules spot={spot} parts={clientParts} lit={at.parts} />
           )}
         </Container>
       ))}

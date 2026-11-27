@@ -241,6 +241,12 @@ export function recordingFromTimeline(
         break;
       case "log":
       case "step": {
+        // A step the page reported (the client library) has no run; the
+        // stage shows it, not the islands.
+        if (e.kind === "step" && e.from === "page") {
+          count("step (page)", false);
+          break;
+        }
         const ev = e as unknown as LogEvent | StepEvent;
         byRun.set(ev.runId, [...(byRun.get(ev.runId) ?? []), ev]);
         break;

@@ -36,6 +36,7 @@ function signature(at: StageAt): string {
 const moving = (at: StageAt) =>
   at.flights.length > 0 ||
   at.elements.some((e) => e.lit > 0) ||
+  [...at.parts.values(), ...at.keys.values()].some((p) => p.lit > 0) ||
   [...at.local, ...at.session, ...at.cookies].some((s) => s.settled < 1);
 
 /**

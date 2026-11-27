@@ -11,7 +11,7 @@ import {
   type Spot,
   type Vec3,
 } from "./layout.ts";
-import { LOOK, MATTE } from "./look.ts";
+import { LOOK, MATTE, mix } from "./look.ts";
 import type {
   Exit,
   FlightAt,
@@ -22,14 +22,6 @@ import type {
 } from "./model.ts";
 import { Container, Near, TopLabel, grid, selectOnClick } from "./Floor.tsx";
 import { useStage, type Selection } from "./store.ts";
-
-const mix = (a: string, b: string, k: number) => {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ch = (p: number, s: number) => (p >> s) & 255;
-  const c = (s: number) => Math.round(ch(pa, s) + (ch(pb, s) - ch(pa, s)) * k);
-  return `#${((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, "0")}`;
-};
 
 const useSelected = (match: (s: Selection | null) => boolean) =>
   useStage((s) => match(s.selection));
@@ -168,7 +160,10 @@ function SlotObjects({
   model,
   offset = 0,
   total,
+  keys,
 }: {
+  /** The keys a step of the client code just read or wrote. */
+  keys: StageAt["keys"];
   slots: SlotAt[];
   spot: Spot;
   area: "local" | "session" | "cookie";
@@ -204,6 +199,8 @@ function SlotObjects({
               area={area}
               k={slot.key}
               fresh={!leaving && settled < 1}
+              lit={keys.get(slot.key)?.lit ?? 0}
+              step={keys.get(slot.key)?.step.step ?? null}
               opacity={leaving ? settled : 1}
               value={held.value}
               secret={secret}
@@ -227,7 +224,12 @@ function KeyObject({
   value,
   secret,
   token,
+  lit,
+  step,
 }: {
+  /** How lit by a step of the client code that read or wrote it. */
+  lit: number;
+  step: string | null;
   w: number;
   d: number;
   name: string;
@@ -245,7 +247,9 @@ function KeyObject({
   );
   const h = 2.2;
   const color =
-    selected || fresh ? LOOK.active : token ? LOOK.token : LOOK.item;
+    selected || fresh
+      ? LOOK.active
+      : mix(token ? LOOK.token : LOOK.item, LOOK.active, lit);
   // Positions here are relative to the key's group.
   const size = Math.max(w, d);
   return (
@@ -259,6 +263,19 @@ function KeyObject({
           {...MATTE}
         />
       </mesh>
+      {lit > 0 && step && (
+        <Near at={[0, 0, 0]} within={size * 7}>
+          <Label
+            position={[0, h + size * 0.25, 0]}
+            anchorY="bottom"
+            fontSize={Math.min(w / 12, 1.4)}
+            color={LOOK.text}
+            billboard
+          >
+            {step}
+          </Label>
+        </Near>
+      )}
       <Near at={[0, 0, 0]} within={size * 7}>
         <TopLabel
           at={[0, h + 0.05, d / 2 - 0.3]}
@@ -370,6 +387,7 @@ export function Activity({ at, model }: { at: StageAt; model: StageModel }) {
           spot={LOCAL}
           area="local"
           model={model}
+          keys={at.keys}
           total={model.local.length + model.session.length}
         />
         <SlotObjects
@@ -377,6 +395,7 @@ export function Activity({ at, model }: { at: StageAt; model: StageModel }) {
           spot={LOCAL}
           area="session"
           model={model}
+          keys={at.keys}
           offset={model.local.length}
           total={model.local.length + model.session.length}
         />
@@ -385,6 +404,7 @@ export function Activity({ at, model }: { at: StageAt; model: StageModel }) {
           spot={COOKIES}
           area="cookie"
           model={model}
+          keys={at.keys}
           total={model.cookies.length}
         />
       </Near>

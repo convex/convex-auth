@@ -80,3 +80,12 @@ export const PANEL_CSS: Record<string, string> = {
   "--stage-button-on": "#2a2a28",
   "--stage-button-on-text": "#f4f4f1",
 };
+
+/** A colour between `a` and `b`, `k` of the way (both "#rrggbb"). */
+export function mix(a: string, b: string, k: number): string {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const ch = (p: number, s: number) => (p >> s) & 255;
+  const c = (s: number) => Math.round(ch(pa, s) + (ch(pb, s) - ch(pa, s)) * k);
+  return `#${((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, "0")}`;
+}

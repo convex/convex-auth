@@ -9,7 +9,9 @@ import { connectLive, LiveFeed, liveUrl } from "../live.ts";
 import { PROJECTS } from "../project.ts";
 import { rebuildLive, useStage } from "./store.ts";
 
-const params = new URLSearchParams(location.search);
+const params = new URLSearchParams(
+  typeof location === "undefined" ? "" : location.search,
+);
 const project = params.get("project");
 
 /** The saved recordings of the project, by name, loaded when chosen. */

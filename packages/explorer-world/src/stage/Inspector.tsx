@@ -60,7 +60,7 @@ const THINGS: Record<string, { title: string; text: string }> = {
   },
   client1: {
     title: "The auth client",
-    text: "Not observed: the recorder sees what leaves the page and what it stores, not which code ran. Nothing here moves.",
+    text: "Its modules light when the client library reports a step they ran.",
   },
   client2: {
     title: "The data client",
@@ -139,9 +139,32 @@ function Body({
           {part.children.length > 0 && (
             <p>Holds {part.children.map((c) => c.name).join(", ")}.</p>
           )}
-          <p className="dim">
-            Whether it ran is not recorded yet, so nothing here moves.
-          </p>
+          {(() => {
+            const ran = model.steps.filter(
+              (x) => x.part === part.id && x.time <= t,
+            );
+            return ran.length === 0 ? (
+              <p className="dim">
+                No step of it is in the recording up to now: it lights only when
+                the client library reports a step it ran.
+              </p>
+            ) : (
+              <ul className="stage-list">
+                {ran.slice(-30).map((x) => (
+                  <li key={x.id}>
+                    <span className="mono dim">{rel(model, x.time)}</span>{" "}
+                    {x.step}
+                    {Object.keys(x.detail).length > 0 && (
+                      <span className="dim mono">
+                        {" "}
+                        {JSON.stringify(x.detail)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
         </>
       );
     }
