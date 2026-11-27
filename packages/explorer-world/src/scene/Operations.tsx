@@ -42,10 +42,12 @@ const LEAST = 0.35;
 
 /**
  * A colour per kind of operation, from its name: the same kind always has
- * the same colour, and the world names no kind.
+ * the same colour, and the world names no kind. An operation that failed is
+ * red from the step that reported the error (at time `t`), not before.
  */
-export const opColor = (op: OpPath) => {
-  if (op.tone === "error") return TONE_COLORS.error;
+export const opColor = (op: OpPath, t = Infinity) => {
+  if (op.tone === "error" && t >= (op.errorAt ?? -Infinity))
+    return TONE_COLORS.error;
   let h = 0;
   for (const ch of op.kind) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return new Color().setHSL((h % 360) / 360, 0.75, 0.7).getStyle();
@@ -128,7 +130,10 @@ function Operation({ op }: { op: OpPath }) {
     () => op.points.map((p) => anchorPosition(p.anchor).clone()),
     [op],
   );
-  const color = useMemo(() => new Color(opColor(op)), [op]);
+  // The way it came keeps its kind's colour; the body turns red once the
+  // error is reported.
+  const color = useMemo(() => new Color(opColor(op, -Infinity)), [op]);
+  const failed = useMemo(() => new Color(opColor(op)), [op]);
   const colors = useMemo(
     () =>
       Array.from({ length: TRAIL }, (_, i) =>
@@ -154,10 +159,14 @@ function Operation({ op }: { op: OpPath }) {
       const r = Math.max(LEAST, camera.position.distanceTo(at) * ON_SCREEN);
       g.scale.setScalar(r * (op.unasked ? 0.6 : 1) * (0.6 + 0.4 * fade));
     }
+    const now = time >= (op.errorAt ?? Infinity) ? failed : color;
     for (const m of [core.current, halo.current])
-      if (m)
-        (m.material as MeshBasicMaterial).opacity =
-          (m === core.current ? 1 : 0.28) * fade;
+      if (m) {
+        const mat = m.material as MeshBasicMaterial;
+        mat.opacity = (m === core.current ? 1 : 0.28) * fade;
+        mat.color.copy(now);
+        if (m === core.current) mat.color.multiplyScalar(3);
+      }
     // The way it came: the last stretch of its path, fading behind it.
     const l = line.current;
     if (l) {
