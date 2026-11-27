@@ -739,8 +739,11 @@ button {
   cursor: pointer;
   white-space: nowrap;
 }
+/* Under the pointer: a quiet edge, so a control looks pressed (the live
+   colour, below) only while its action runs, not after a click while the
+   pointer rests on it. */
 .controls button:hover:not(:disabled) {
-  border-color: var(--accent);
+  border-color: rgba(160, 180, 255, 0.38);
 }
 .controls button:disabled {
   color: var(--dim);
