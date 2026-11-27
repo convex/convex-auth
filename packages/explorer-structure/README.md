@@ -32,6 +32,8 @@ knows Convex, not a repository:
   scheduled functions, table reads and writes, env reads, fetches, calls into
   child components and third-party libraries, and client calls of function
   references.
+- `inside.ts` reads the inside of a TypeScript module: its module doc comment,
+  its exports, and where it keeps state.
 
 **The project layer** says where things are and adds what only that project
 has. Convex Auth's is `src/generate/convex-auth/layer.ts`:
@@ -42,7 +44,9 @@ has. Convex Auth's is `src/generate/convex-auth/layer.ts`:
   authenticator, reached through `@simplewebauthn/browser`),
 - the sign-in methods, their `setup…` functions and the app functions those
   return, the React hooks, the browser and SSR modules,
-- the walks of the example frontends, down through the hooks.
+- the walks of the example frontends, down through the hooks,
+- the places that report steps (`steps.ts`), and the stored keys and locks of
+  the client modules (`holds.ts`).
 
 The generic layer runs on its own, with no project layer, on any Convex
 project:
@@ -99,6 +103,9 @@ import {
   "parts": [/* Part */],
   "dependencies": [/* Dependency */],
   "unresolved": [/* Unresolved */],
+  "modules": { "module:browser/retry": {/* ModuleInside */} },
+  "steps": [/* StepSite */],
+  "holds": { "module:browser/sessionManager": {/* ModuleHolds */} },
   "counts": { "parts": {}, "dependencies": {}, "unresolved": {} },
 }
 ```
@@ -196,6 +203,115 @@ not listed. Most entries are function handles, references a library hook
 forwards from its caller, members of interfaces with more than one
 implementation (`TokenStorage`), and URLs built from configuration.
 
+### Insides of modules
+
+`modules` holds the inside of each `module` part, keyed by its id. It sits
+beside `parts`, not in them, so that the parts, and the layout that follows
+them, stay the same when only the inside of a module changes. The generic
+layer defines it (`ModuleInside` in `src/model.ts`); a project layer fills it
+for the modules it has.
+
+```jsonc
+"module:browser/retry": {
+  "file": "packages/core/src/browser/retry.ts",
+  "summary": "Retry policy for the client's auth calls (session refresh, OAuth code redemption).",
+  "description": "Retry policy for the client's auth calls (…). …",
+  "exports": [
+    { "name": "retryOnNetworkError", "kind": "function", "line": 30, "summary": "…" }
+  ],
+  "state": []
+}
+```
+
+- `summary` and `description` are the first sentence and the first paragraph
+  of the file's module doc comment, copied from the source. The lines of the
+  paragraph are joined with spaces and `{@link X}` is written `X`; nothing
+  else changes. A file without one has neither field. The module doc comment
+  is the first `/** … */` before the first statement when it carries
+  `@module`, when another doc comment follows it, or when the statement is an
+  import; else it documents that statement.
+- `exports`, in the order of the file: `name`, `kind` (`function`, `class`,
+  `const`, `let`, `interface`, `type`, `enum`, `namespace`, `default`, or
+  `all` for an `export *`, named `*`), the `line`, and the first sentence of
+  its own doc comment (`summary`). A `const` whose value is a function is a
+  `function`. A re-export says where it `from`: a module part's id, else a
+  file of the repository, else the package. An export that is a part (a React
+  hook) carries the part's id in `part`, so the hook is described once, as a
+  part. A class carries its public `members` (methods, fields, and
+  accessors).
+- `state`: a top-level `let` or `var`, a `Map`, `Set`, `WeakMap`, or `WeakSet`
+  a top-level `const` holds (not a `Readonly…` one), and the fields of its
+  classes, private ones included, but not a field that holds a function.
+  Names only, never a value.
+
+### Step sites
+
+`steps` lists every call of Convex Auth's step reporters (`StepSite` in
+`src/convex-auth/model.ts`): `reportClientStep` (`packages/core/src/browser/steps.ts`)
+and `reportStep` (`packages/core/src/lib/steps.ts`). The scan
+(`src/generate/convex-auth/steps.ts`) takes the reporters as data, the
+function and the positions of its arguments, so another project passes its
+own.
+
+```jsonc
+{
+  "step": "lock.acquired",
+  "runsIn": "browser",
+  "location": {
+    "file": "packages/core/src/browser/sessionManager.ts",
+    "line": 544,
+  },
+  "part": "module:browser/sessionManager",
+  "export": "AuthClient",
+  "within": ["AuthClient", "fetchAccessToken"],
+  "reportsAs": "module:browser/mutex",
+  "detailKeys": ["lock", "namespace"],
+}
+```
+
+- `step`: the name the report carries. It must be spelled out in the source
+  (a literal or a constant of a literal type); the generator throws when it
+  is not.
+- `part`: the part whose code holds the call: the module of a client file; on
+  the server the method function or the setup function around it; `null` in
+  `lib/steps.ts`, which no part holds.
+- `export`: the top-level export around the call. A call in code the file
+  does not export has `null`, and `reachedFrom`: the exports whose code
+  refers to that code, within the file.
+- `within`: the named functions and classes around the call, outermost
+  first.
+- `reportsAs`: the part the report names in its `part` field, when the source
+  spells it out. It is not always `part`: `browser/sessionManager` reports
+  the `lock.*` steps as `module:browser/mutex`. When the part is a parameter,
+  `reportsAsPassedIn` names it and lists the value each caller passes
+  (`react/signInSteps` gets `module:react/index` and
+  `module:ssr/nextjs/client`). A server report names no part: it belongs to
+  the run of the function that wrote it.
+- `detailKeys`: the names of the detail's keys, read from the object literal
+  and the types of its spreads. `detailOpen` lists the spreads whose type
+  does not tell its keys (`outcomeOf(result)`).
+
+### What client modules hold
+
+`holds`, keyed by module part id, has what a module holds where the source
+says it plainly (`src/generate/convex-auth/holds.ts`):
+
+- `storage`: the logical keys it reads and writes through a
+  `NamespacedStorage` (which ends the stored key with `_<namespace>`) or a
+  `SignInStorage` (which starts it with the sign-in's id), with the methods
+  (`get`, `set`, `remove`, `key`) and the evidence. A key counts when the
+  source spells it out: a literal, a constant, or a property of a constant
+  object (an index with a variable counts for each key of the object).
+  `unresolvedStorage` has the calls whose key it does not.
+- `locks`: each `runWithMutex` call, with the stored key it is named after
+  when the source shows it (`this.#lockKey`, set once from
+  `storage.key(REFRESH_TOKEN_STORAGE_KEY)`).
+
+What the model cannot tell: the value of anything at run time, the keys a
+caller of `NamespacedStorage` passes in a variable, the keys of a detail
+built by a function that returns a `Record` (`outcomeOf`), and state held in
+closures (a hook's `useState`, a variable a function captures).
+
 ## Joining a recording
 
 `joinRecording(model, appName)` maps what a recording of an app holds to part
@@ -220,6 +336,29 @@ run of an app function maps to the app's function part, `fn:app:<app>:…`, not
 to the method function the library defines; follow its `definedBy` dependency
 to that. A name it cannot find gives `null`. A test maps every run, call
 target, and table of the recorder's fixture recording.
+
+`stepOrigin(model, step)` maps a recorded step (a line whose `kind` is
+`step`) to the sites that can have reported it, and the part and the export
+they share:
+
+```ts
+import { stepOrigin, structure } from "@convex-dev/explorer-structure";
+
+stepOrigin(structure, {
+  runsIn: "browser",
+  part: "module:browser/mutex",
+  step: "lock.acquired",
+});
+// { part: "module:browser/sessionManager", export: "AuthClient", sites: [ … ] }
+stepOrigin(structure, { step: "refresh.result" }); // a server step
+// { part: "methodFn:core.refreshSession", export: "setupConvexAuth", sites: [ … ] }
+```
+
+A client step matches by its name and the part it reports as; a server step
+by its name alone. When several sites match, those whose detail keys cannot
+hold the recorded ones are dropped. Some steps stay with more than one site
+(`session.issued` from sign-up and from sign-in); `stepSites` lists them. A
+test maps every step of the world's recordings.
 
 ## What it does not model yet
 
