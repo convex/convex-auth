@@ -226,7 +226,14 @@ function Declutter() {
         const rect = free(side) ? side : free(below) ? below : null;
         e.beside.mode = rect === below ? "below" : "side";
         e.group.visible = !!rect;
-        if (rect) shown.push(rect);
+        // With room around it: a name just touching it is hidden too.
+        if (rect)
+          shown.push([
+            rect[0] - ROOM,
+            rect[1] - ROOM,
+            rect[2] + ROOM,
+            rect[3] + ROOM,
+          ]);
         continue;
       }
       const k = e.grow
@@ -289,27 +296,20 @@ function useActing(): string[] {
     if (clock.elapsedTime - last.current.t < 0.1) return;
     last.current.t = clock.elapsedTime;
     const state = currentState();
-    const ids = new Set<string>(state.active.keys());
-    for (const t of state.travellers) {
-      ids.add(t.progress < 0.5 ? t.movement.from : t.movement.to);
-    }
     // In the client's region only one name: of the place the newest body
     // is at (a module, a key, the way out), else of the module reporting.
-    const client = world.presentation.client;
-    const inClient = (id: string) => !!client && topIsland(id) === client;
     const at =
       bodyAt(world.timeline.ops, state.time) ??
       actingModules(world.timeline.clientSteps, state.time).now;
-    // In the backend, the part the call of an operation is in now.
+    // The backend has one name too: of the part the call of an operation
+    // is in now, at its kept size. What else runs or moves there (a query
+    // run again, a row on its way) has its halo or its body, not a small
+    // name; a click names it.
     const run = runningNow(world.timeline, state.time);
-    // While a call runs, the backend has one name too: of the part the
-    // call is in now, at its kept size; the parts it passed through keep
-    // their halos without a name.
-    const list = [...ids]
-      .filter((id) => !inClient(id))
-      .filter((id) => !run || !state.active.has(id))
-      .concat(at ? [`report:${at}`] : [])
-      .concat(run ? [`report:${run}`] : [])
+    const list = [
+      ...(at ? [`report:${at}`] : []),
+      ...(run ? [`report:${run}`] : []),
+    ]
       .filter((id) => {
         const p = placementOf(id.replace(/^report:/, ""));
         return p && p.shape !== "island" && p.shape !== "state";
@@ -412,6 +412,8 @@ function PartLabel({
   );
 }
 
+/** Room kept clear around a name beside a halo (px). */
+const ROOM = 8;
 /** How far right on the window (device coordinates) a name may end. */
 const EDGE = 0.97;
 const right = new Vector3();
@@ -449,7 +451,7 @@ export class Beside {
     const d = camera.position.distanceTo(this.at);
     const scale = Math.min(this.grow.max, Math.max(1, d / this.grow.distance));
     const beside = haloRadius(this.radius, d) * 1.15;
-    const across = (this.chars * 0.5 * this.size + 0.1) * scale;
+    const across = (this.chars * 0.53 * this.size + 0.1) * scale;
     if (mode === "below")
       return { x: -across / 2, y: -beside * 0.8, across, scale };
     right.setFromMatrixColumn(camera.matrixWorld, 0);
