@@ -118,12 +118,26 @@ async function until(what, timeoutMs, predicate) {
  * thread, which software rendering keeps busy here.
  */
 const streamArrivals = [];
+/** The stream's path with its token, from the world's link once printed. */
+let streamPath = null;
 function readStream() {
+  if (streamPath === null) {
+    const world = seen(/World: (\S+)/);
+    if (world) {
+      const live = new URL(
+        new URL(/World: (\S+)/.exec(world.line)[1]).searchParams.get("live"),
+      );
+      streamPath = live.pathname + live.search;
+    } else {
+      setTimeout(readStream, 300);
+      return;
+    }
+  }
   const req = request(
     {
       host: "127.0.0.1",
       port: STREAM_PORT,
-      path: "/timeline",
+      path: streamPath,
       headers: { Origin: `http://127.0.0.1:${WORLD_PORT}` },
     },
     (response) => {

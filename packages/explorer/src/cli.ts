@@ -9,6 +9,7 @@
  *
  * @module
  */
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -55,6 +56,16 @@ Browser:
                          Run a browser installed on the machine instead, by its
                          Playwright channel: chrome, msedge, ...
 
+The page in your own browser, instead of --page:
+  --proxy <port>         Serve the app's page through a recording proxy on
+                         localhost:<port>, in front of its dev server at
+                         --proxy-target; open the printed link in your browser
+  --proxy-target <url>   The app's dev server, e.g. http://127.0.0.1:5180
+  --proxy-stage-origin <origin>
+                         An origin of the stage that shows the page in its
+                         frame; repeat for more. Without one, a top window records
+  The page token comes from EXPLORER_PAGE_TOKEN, else is made up.
+
 Live:
   --serve <port>         Also serve the timeline as it is written, over
                          Server-Sent Events at http://127.0.0.1:<port>/timeline
@@ -62,6 +73,7 @@ Live:
   --serve-origin <origin>
                          An origin allowed to read the stream, e.g.
                          http://127.0.0.1:5174; repeat for more. Needed with --serve
+  With EXPLORER_STREAM_TOKEN set, a reader must also give it as ?token=.
 
 Local: the admin key of the deployment that \`npx convex dev\` runs, or
 CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY.
@@ -92,6 +104,9 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       "browser-channel": { type: "string" },
       serve: { type: "string" },
       "serve-origin": { type: "string", multiple: true },
+      proxy: { type: "string" },
+      "proxy-target": { type: "string" },
+      "proxy-stage-origin": { type: "string", multiple: true },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -151,6 +166,39 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       "--page needs --scenario, or --headed for you to drive the page.",
     );
   }
+  if (values.proxy !== undefined && values.page !== undefined) {
+    throw new UsageError(
+      "--proxy and --page are two ways to record the page: give one.",
+    );
+  }
+  if ((values.proxy === undefined) !== (values["proxy-target"] === undefined)) {
+    throw new UsageError("--proxy and --proxy-target go together.");
+  }
+  if (values["proxy-target"] !== undefined) {
+    const target = URL.canParse(values["proxy-target"])
+      ? new URL(values["proxy-target"])
+      : null;
+    if (
+      target === null ||
+      target.protocol !== "http:" ||
+      !["127.0.0.1", "localhost", "[::1]"].includes(target.hostname)
+    ) {
+      throw new UsageError(
+        `--proxy-target takes the app's dev server on this machine, such as http://127.0.0.1:5180, not "${values["proxy-target"]}".`,
+      );
+    }
+  }
+  const stageOrigins = values["proxy-stage-origin"] ?? [];
+  if (values.proxy === undefined && stageOrigins.length > 0) {
+    throw new UsageError("--proxy-stage-origin needs --proxy.");
+  }
+  for (const origin of stageOrigins) {
+    if (!URL.canParse(origin) || new URL(origin).origin !== origin) {
+      throw new UsageError(
+        `--proxy-stage-origin takes an origin such as http://localhost:5174, not "${origin}".`,
+      );
+    }
+  }
   const origins = values["serve-origin"] ?? [];
   if (values.serve === undefined && origins.length > 0) {
     throw new UsageError("--serve-origin needs --serve.");
@@ -189,10 +237,25 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
               values.chromium ?? process.env.EXPLORER_CHROMIUM ?? undefined,
             channel: values["browser-channel"],
           },
+    pageProxy:
+      values.proxy === undefined
+        ? null
+        : {
+            port: number("--proxy", values.proxy, 0),
+            target: values["proxy-target"]!,
+            token:
+              process.env.EXPLORER_PAGE_TOKEN ||
+              randomBytes(32).toString("base64url"),
+            stageOrigins,
+          },
     serve:
       values.serve === undefined
         ? null
-        : { port: number("--serve", values.serve, 0), origins },
+        : {
+            port: number("--serve", values.serve, 0),
+            origins,
+            token: process.env.EXPLORER_STREAM_TOKEN || undefined,
+          },
     out: resolve(
       base,
       values.out ??

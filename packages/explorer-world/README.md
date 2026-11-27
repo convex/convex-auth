@@ -22,7 +22,8 @@ including the reuse of a spent refresh token).
 pnpm explorer:live examples/react-username-password
 ```
 
-One browser window opens: the stage (`stage.html`). The app's page is on a
+It prints one link and starts no browser: open it in your own (any recent
+Chromium-based browser). It is the stage (`stage.html`). The app's page is on a
 screen the size of a building, a wall standing at the back of a vast open
 ground; you use it there (**Face the screen** brings you square in front of
 it; **Home** returns). The page is laid out at 800 CSS pixels and
@@ -74,11 +75,21 @@ How it is built: the page is an iframe placed in the scene with drei's
 where the screen is, so things in front of the screen hide it, and the
 pointer reaches the page through the hole. The stage is served from
 `localhost` like the page (another port), so the page in its frame is on the
-same site and keeps first-party storage and cookies. The recorder opens the
-stage (`record --stage <url>`) and records the frame named `explorer-screen`
-only: its navigations, the person's actions (with each element's place on the
-page), its requests, its storage and its console; nothing the stage itself
-does. `src/adapters/browserStage.ts` reads the browser feed into the stage's
+same site and keeps first-party storage and cookies. The page comes through
+the recorder's page proxy (`record --proxy`, see `packages/explorer`), which
+takes the app's port (5173 when free) with the app's Vite behind it, and puts
+a recording script first in the page; the frame named `explorer-screen` alone
+records: its navigations, the person's actions (with each element's place on
+the page), its requests, its WebSocket, its storage, its cookies and its
+console; nothing the stage itself does. The link carries two random tokens of
+the run: one lets the stage's frame load the page through the proxy, the
+other lets the stage read the stream. Another page in the same browser can
+neither read the page through the proxy, nor send it observations, nor read
+the stream, nor frame the app (see `packages/explorer`, Safety).
+
+`--recorder cdp` records the old way: the recorder opens the stage in a
+Chromium of its own (`record --stage <url>`) and reads the frame over the
+DevTools protocol. `--scenario` and `--debug-port` need it. `src/adapters/browserStage.ts` reads the browser feed into the stage's
 model; `src/stage/` is the rest. Every colour, material and light of the stage
 is in `src/stage/look.ts`. A project names its exits and its client code in
 `projects/<name>/stage.json`.
@@ -87,8 +98,19 @@ Known limits: a sign-in provider's page (GitHub, Google) refuses to load in a
 frame. `?screen=` must be on the stage's own host. The wheel over the screen
 scrolls the page, not the camera.
 
-`pnpm --filter @convex-dev/explorer-world check:stage` runs the command as a
-person would, and uses its window over the DevTools port (`--debug-port`)
+`pnpm --filter @convex-dev/explorer-world check:in-page` runs the command as
+a person does: it checks that the command prints one link and starts no browser,
+opens the link in a Chromium the command did not start, signs up, reloads,
+signs out and signs in with real clicks and keys on the screen, and checks the
+events by kind, the client steps, that no password, JWT or raw token of the
+page is in the timeline, the stream or the logs, that pages of another origin
+and of another port of `localhost`, in another tab, are refused by every
+server, and that no process is left after Ctrl-C. `--recorder cdp` runs the
+same through the recorder's own Chromium; `--compare` runs both and prints
+their counts by kind. About two minutes a run.
+
+`pnpm --filter @convex-dev/explorer-world check:stage` runs the command with
+`--recorder cdp`, and uses its window over the DevTools port (`--debug-port`)
 with real clicks and keys: sign up, reload, sign out, sign in on the screen;
 it checks what was recorded and from where, what the floor holds at chosen
 times, that dragging the handle back and forth shows the same thing at the
@@ -99,14 +121,16 @@ screenshots.
 
 ## Live mode in the islands world
 
-`pnpm explorer:live <app> --view islands` opens the app's page in a window of
-its own and the islands world in your default browser, which shows what your
+`pnpm explorer:live <app> --view islands` prints a link to the app's page
+(with `--recorder cdp`, opens it in a window of its own) and opens the islands
+world in your default browser, which shows what your
 clicks cause as they happen. Ctrl-C stops everything; the timeline is saved
 (its path is printed) and plays like any other recording.
 
-What it needs: Node 20.6 or later, `pnpm install` and `pnpm build` at the root,
-and Google Chrome, which the recorder drives through Playwright with nothing
-to download. Without Chrome it runs Playwright's Chromium (`npx
+What it needs: Node 20.6 or later, and `pnpm install` and `pnpm build` at the
+root. In-page, nothing else: you open the links in your own browser. With
+`--recorder cdp`, Google Chrome, which the recorder drives through Playwright
+with nothing to download, or without Chrome, Playwright's Chromium (`npx
 playwright@1.63.0 install chromium`); `--browser` picks one. It runs no shell,
 so it does not need bash. See `--help` for the options.
 
@@ -119,11 +143,12 @@ with `CONVEX_DEPLOY_KEY`. If a deployment already answers at the app's URL,
 the command uses it and leaves it running.
 
 Each part runs in its own process group and is stopped as a whole: the
-recorder first (it saves the end of the timeline and closes its browser), then
+recorder first (it saves the end of the timeline, and closes its browser with
+`--recorder cdp`), then
 the page's server, then `convex dev` and its backend. When a part fails to
 start, the command says which, shows the end of its output (each part logs to
-the run directory it prints), and stops the rest. If the browser window is
-closed, the recording ends; the world keeps showing it until Ctrl-C.
+the run directory it prints), and stops the rest. With `--recorder cdp`, if
+the browser window is closed, the recording ends; the world keeps showing it until Ctrl-C.
 
 ### How the world plays a live recording
 
@@ -157,8 +182,8 @@ the check, from the moment in question to the line leaving the recorder's
 stream: a person's input 3 to 6 ms, a run's end 2 to 4 ms, a write's commit 40
 to 95 ms, a call's result in the page 60 to 90 ms. The floors:
 
-- The browser and the log stream report at once: the page through the
-  DevTools protocol, the deployment's log stream through a long poll that
+- The browser and the log stream report at once: the page through its
+  script or the DevTools protocol, the deployment's log stream through a long poll that
   answers as soon as a run ends.
 - A write comes from the data sync, which has no push: the recorder polls it
   every 100 ms here (`--poll`), so a write waits 50 ms on average for the

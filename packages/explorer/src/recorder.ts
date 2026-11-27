@@ -9,13 +9,15 @@
  */
 import { appendFileSync, writeFileSync } from "node:fs";
 import { BrowserRedactor } from "./browser.ts";
-import { BrowserSession } from "./browserRecorder.ts";
+import { BrowserSession, SCREEN_FRAME } from "./browserRecorder.ts";
 import type { ResolvedTarget } from "./config.ts";
 import type { TimelineEvent } from "./events.ts";
 import { recordingHeader } from "./header.ts";
 import { LogPoller, type TimedLogPage } from "./logPoller.ts";
 import { eventsFromLogEntry, isLogEntry } from "./logs.ts";
 import { nodeDigest } from "./nodeDigest.ts";
+import { PageIngest } from "./pageIngest.ts";
+import { PageProxy } from "./pageProxy.ts";
 import { browserConfig, type ProjectConfig } from "./project.ts";
 import { runScenario, type Scenario } from "./scenario.ts";
 import { Secrets } from "./secrets.ts";
@@ -46,11 +48,28 @@ export type BrowserRecording = {
   channel?: string;
 };
 
+/**
+ * Records a page in the person's own browser through a proxy in front of
+ * the app's dev server, instead of driving a browser: see `pageProxy.ts`.
+ */
+export type PageProxyRecording = {
+  /** The proxy's port on localhost: the port the app expects. */
+  port: number;
+  /** The app's dev server, such as `http://127.0.0.1:5180`. */
+  target: string;
+  /** The run's page token; see `PageProxyOptions.token`. */
+  token: string;
+  /** The stage's origins; with none, the top window records. */
+  stageOrigins: string[];
+};
+
 export type ServeOptions = {
   /** The port on 127.0.0.1; 0 picks a free one. */
   port: number;
   /** The origins allowed to read the stream. */
   origins: string[];
+  /** A token that a reader must give in the `token` query parameter. */
+  token?: string;
 };
 
 export type RecordOptions = ResolvedTarget & {
@@ -63,6 +82,8 @@ export type RecordOptions = ResolvedTarget & {
   settleMs: number;
   /** Also record a browser on the app's page. */
   browser: BrowserRecording | null;
+  /** Or record the page in the person's own browser, through a proxy. */
+  pageProxy?: PageProxyRecording | null;
   /** Also serve the timeline as it is written; see `stream.ts`. */
   serve: ServeOptions | null;
 };
@@ -180,7 +201,9 @@ export async function record(
     app: options.app,
     deploymentUrl: options.url,
     project: options.project.name,
-    page: options.browser?.url ?? null,
+    page:
+      options.browser?.url ??
+      (options.pageProxy ? `http://localhost:${options.pageProxy.port}` : null),
     scenario: options.browser?.scenario?.name ?? null,
   });
   const server =
@@ -367,11 +390,51 @@ export async function record(
   );
 
   let session: BrowserSession | null = null;
+  let proxy: PageProxy | null = null;
+  let ingest: PageIngest | null = null;
   let scenarioFailed = false;
   await Promise.race([ready, failed, aborted]);
   if (failure === null && !stopped()) {
     log(`Snapshot: ${snapshotCount} documents.`);
-    if (options.browser === null) {
+    if (options.pageProxy) {
+      const recording = options.pageProxy;
+      const origin = `http://localhost:${recording.port}`;
+      ingest = new PageIngest({
+        redactor: new BrowserRedactor(options.project, secrets),
+        secrets,
+        deploymentUrl: options.url,
+        origin,
+        emit: (events) => {
+          add(events);
+          builder.skew = ingest?.skew ?? 0;
+        },
+      });
+      try {
+        proxy = await PageProxy.start({
+          port: recording.port,
+          target: recording.target,
+          token: recording.token,
+          frameAncestors: recording.stageOrigins,
+          screen: recording.stageOrigins.length > 0 ? "stage" : "top",
+          frame: SCREEN_FRAME,
+          deploymentUrl: options.url,
+          ingest,
+        });
+        log(
+          `Recording the page at ${origin} through the proxy; use it in your browser, then press Ctrl-C.`,
+        );
+        if (
+          recording.stageOrigins.length === 0 &&
+          !process.env.EXPLORER_PAGE_TOKEN
+        ) {
+          // Without a stage, the person opens the page itself, with the token.
+          log(`Open ${proxy.screenUrl}`);
+        }
+        await Promise.race([failed, aborted]);
+      } catch (error) {
+        failure = `The page proxy did not start: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    } else if (options.browser === null) {
       log("Recording; press Ctrl-C to stop.");
       await Promise.race([failed, aborted]);
     } else {
@@ -438,6 +501,8 @@ export async function record(
     log(failure);
   }
   await session?.close();
+  await proxy?.close();
+  if (ingest !== null) builder.skew = ingest.skew;
   add([]);
   stop.abort();
   clearInterval(flushing);

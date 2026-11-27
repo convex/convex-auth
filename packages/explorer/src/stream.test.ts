@@ -76,6 +76,46 @@ describe("TimelineServer", () => {
     }
   });
 
+  test("with a token, refuses a request without it or with another", async () => {
+    const token = "k".repeat(43);
+    server = await TimelineServer.start({ port: 0, origins: [ORIGIN], token });
+    server.push(['{"kind":"recording"}']);
+    const { port } = server;
+    for (const path of [
+      "/timeline",
+      "/timeline?token=",
+      `/timeline?token=${"x".repeat(43)}`,
+      `/timeline?token=${token}x`,
+    ]) {
+      const reply = await get(port, allowed(port), undefined, path);
+      expect(reply.status).toBe(403);
+      expect(reply.body).toBe("");
+    }
+    // The token does not stand in for the origin or the host.
+    const others: Record<string, string>[] = [
+      { Host: `127.0.0.1:${port}`, Origin: "http://evil.example" },
+      { Host: `127.0.0.1:${port}` },
+      { Host: `evil.example:${port}`, Origin: ORIGIN },
+    ];
+    for (const headers of others) {
+      const reply = await get(
+        port,
+        headers,
+        undefined,
+        `/timeline?token=${token}`,
+      );
+      expect(reply.status).toBe(403);
+    }
+    const reply = await get(
+      port,
+      allowed(port),
+      (body) => body.includes("id: 0"),
+      `/timeline?token=${token}`,
+    );
+    expect(reply.status).toBe(200);
+    expect(reply.body).toBe('id: 0\ndata: {"kind":"recording"}\n\n');
+  });
+
   test("sends what was written, then each new line, then the end", async () => {
     server = await TimelineServer.start({ port: 0, origins: [ORIGIN] });
     server.push(['{"a":0}', '{"a":1}']);

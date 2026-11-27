@@ -18,8 +18,10 @@ A library can add a third, optional feed: [step reports](#step-reports), log
 lines that show the steps inside a function, such as its calls into
 components, which the logs do not show. Convex Auth writes them.
 
-With `--page`, the recorder also opens the app's page in Chromium and records
-[the browser](#record-a-browser): what the person does, the messages of the
+With `--proxy`, the recorder serves the app's page through a proxy and
+records it [in the person's own browser](#record-the-page-in-your-own-browser),
+from inside the page. With `--page`, it opens the page in a Chromium of its
+own instead and records [the browser](#record-a-browser): what the person does, the messages of the
 Convex sync WebSocket, the calls of the HTTP API, storage, cookies, and
 errors. It links each call of the page to its run on the server, and follows
 each token from the response that returned it to the row of the server that
@@ -116,6 +118,93 @@ It records the requests of type document, fetch, and XHR, and the sync
 WebSocket of the deployment; not the scripts, styles, and images, nor other
 WebSockets such as the one of a dev server.
 
+## Record the page in your own browser
+
+With `--proxy`, the recorder starts no browser. It puts a proxy on this
+machine in front of the app's dev server ([`src/pageProxy.ts`](src/pageProxy.ts)),
+and the person opens the page through it, in the browser they use every day:
+
+```sh
+cd examples/react-username-password
+npx convex dev                          # leave it running
+npx vite --host 127.0.0.1 --port 5180   # the dev server, behind the proxy
+```
+
+```sh
+pnpm --filter @convex-dev/explorer record examples/react-username-password \
+  --project convex-auth --proxy 5173 --proxy-target http://127.0.0.1:5180 \
+  --out run.ndjson
+```
+
+It prints `Open http://localhost:5173/?__explorer_token=...`; open that.
+`pnpm explorer:live` does all of this, with the stage (see
+`packages/explorer-world`).
+
+The proxy takes the origin the app expects (`localhost` on the app's port),
+passes every request and WebSocket upgrade through (hot reload keeps
+working), and passes the `Host` header on unchanged. It puts a recording
+script ([`src/pageScript.ts`](src/pageScript.ts)) first in every HTML
+document, before the app's code. The script turns on the client step reports
+and observes from inside the page what the DevTools protocol shows from
+outside: `fetch` and `XMLHttpRequest`, the deployment's WebSocket both ways,
+the writes, removals and clears of `localStorage` and `sessionStorage` (and
+those of other documents of the origin, through the `storage` event), the
+cookies the page can read (Cookie Store API), the console, navigations and
+loads, and the person's actions with each element's place, by the same
+listener as the other recorder. It never reads a password field. It sends what
+it sees to the proxy, numbered and in order, and
+[`src/pageIngest.ts`](src/pageIngest.ts) reads it through the same functions
+as the other recorder: the timeline has the same kinds and shapes. The proxy
+also records the documents it serves and the `Set-Cookie` headers of the
+app's server, HttpOnly cookies included.
+
+The script changes nothing the app sees: every function it wraps returns what
+it returned and throws what it threw, in the same order, and it adds no global
+but the switch of the step reports. One exception: it handles the promise of
+each `fetch` to read the response, so a failed `fetch` whose promise the app
+ignores no longer shows as an unhandled rejection. The console of the browser
+shows the script as the source of the app's console lines.
+
+What the page cannot see, the timeline leaves out:
+
+- cookies of other hosts than the page's, such as those the deployment sets
+  on `127.0.0.1:3210`, and, in a browser without the Cookie Store API, every
+  cookie the page can read; HttpOnly cookies of the app's server come from
+  the proxy;
+- cookies whose path the current page is not under, until it is;
+- a storage write by property (`localStorage.x = "1"`) rather than
+  `setItem`;
+- the timings of the network: `time` is when the page called, `endTime` when
+  it had the response (for the HTTP API, its body); a failed request has the
+  page's error (`TypeError: Failed to fetch`), not the network's;
+- the WebSocket frame and the request of a page that is going away, when the
+  browser drops the script's last send;
+- `close` of the page and of its socket at the end: the person's browser
+  stays open.
+
+Only the stage's frame records (`--proxy-stage-origin`), or without a stage,
+a top window; any other document of the app runs as if the script were not
+there. The page is `p1` across its documents.
+
+### Safety
+
+The page runs beside the person's other tabs, and raw tokens travel from it
+to the recorder. Every server listens on loopback only. The proxy refuses a
+request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` on its port
+(DNS rebinding), whose `Origin` is not its own, or whose `Sec-Fetch-Site` says
+another site, or another page of `localhost` (all of its ports are one site)
+than the stage; it needs the run's page token, which the stage's first load
+carries in its address and the proxy turns into an HttpOnly, SameSite=Strict
+cookie and strips; and a send of the script also needs the token in a header,
+which no other origin can add without a preflight, which the proxy refuses.
+HTML documents get `Content-Security-Policy: frame-ancestors` with the stage's
+origins only. The token is random per run and comes from
+`EXPLORER_PAGE_TOKEN` (else it is made up and printed), never from the
+arguments, which other users of the machine can list; it reaches neither the
+dev server nor the timeline. The raw values exist only in the page and in the
+recorder's memory, as with the other recorder: the timeline and the stream
+hold labels.
+
 ### Scenarios
 
 A scenario is a module whose default export is a `Scenario`
@@ -147,7 +236,9 @@ pnpm --filter @convex-dev/explorer record examples/react-username-password \
 The server listens on 127.0.0.1 only, and answers only a request whose `Host`
 is 127.0.0.1 or localhost on its port and whose `Origin` is one given with
 `--serve-origin`: another site's page cannot read it, through the browser or
-through DNS rebinding. A request with no `Origin` is refused too. The stream
+through DNS rebinding. A request with no `Origin` is refused too. With
+`EXPLORER_STREAM_TOKEN` set, a request must also give it as `?token=`:
+`explorer:live` sets one per run, which only the stage's link carries. The stream
 carries nothing that the file does not: see [Redaction](#redaction).
 `explorer-world` reads it in live mode; `pnpm explorer:live` at the root
 starts both (see that package's README).
@@ -178,6 +269,13 @@ starts both (see that package's README).
 - `--browser-channel <name>`: a browser installed on the machine, by its
   Playwright channel (`chrome`, `msedge`, ...), instead of Playwright's
   Chromium.
+- `--proxy <port>`: record the page in the person's own browser, through a
+  proxy on `localhost:<port>`. See
+  [Record the page in your own browser](#record-the-page-in-your-own-browser).
+- `--proxy-target <url>`: the app's dev server on this machine, behind the
+  proxy.
+- `--proxy-stage-origin <origin>`: an origin of the stage that shows the page
+  in its frame; repeat for more. Without one, a top window records.
 - `--serve <port>`: also serve the timeline as it is written; 0 picks a free
   port. See [Stream the timeline](#stream-the-timeline).
 - `--serve-origin <origin>`: an origin allowed to read the stream, such as
@@ -448,9 +546,10 @@ pnpm --filter @convex-dev/explorer typecheck
 
 The pure modules (`src/logs.ts`, `src/logPoller.ts`, `src/sync.ts`,
 `src/timeline.ts`, `src/redact.ts`, `src/config.ts`, `src/secrets.ts`,
-`src/browser.ts`, `src/calls.ts`) run in any runtime; `src/recorder.ts`,
-`src/browserRecorder.ts`, `src/scenario.ts`, `src/stream.ts`, and
-`src/cli.ts` are the Node-only part. The tests use feeds captured from a local backend in
+`src/browser.ts`, `src/calls.ts`, `src/pageIngest.ts`, `src/pageScript.ts`)
+run in any runtime; `src/recorder.ts`, `src/browserRecorder.ts`,
+`src/pageProxy.ts`, `src/scenario.ts`, `src/stream.ts`, and `src/cli.ts` are
+the Node-only part. The tests use feeds captured from a local backend in
 `src/fixtures/`, with each hash replaced by a fake. `browser-session.json`
 holds what a browser showed the recorder during a session, with each JWT
 re-signed by a fake signature, each refresh token a fake, and each hash the

@@ -28,6 +28,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import type { AddressInfo } from "node:net";
 
 export type TimelineServerOptions = {
@@ -35,6 +36,8 @@ export type TimelineServerOptions = {
   port: number;
   /** The origins allowed to read the stream, e.g. `http://127.0.0.1:5174`. */
   origins: readonly string[];
+  /** A token that every request must give in its `token` query parameter. */
+  token?: string;
 };
 
 /** How often to send a comment to keep idle connections open, in ms. */
@@ -51,6 +54,7 @@ export class TimelineServer {
     private readonly origins: ReadonlySet<string>,
     /** The port it listens on. */
     readonly port: number,
+    private readonly token: string | null,
   ) {
     this.keepalive = setInterval(() => {
       for (const client of this.clients) {
@@ -81,6 +85,7 @@ export class TimelineServer {
       server,
       new Set(options.origins),
       (server.address() as AddressInfo).port,
+      options.token ?? null,
     );
     server.on("request", (request, response) =>
       stream.handle(request, response),
@@ -88,7 +93,7 @@ export class TimelineServer {
     return stream;
   }
 
-  /** The URL of the stream. */
+  /** The URL of the stream, without its token. */
   get url(): string {
     return `http://127.0.0.1:${this.port}/timeline`;
   }
@@ -112,7 +117,15 @@ export class TimelineServer {
       response.writeHead(403).end();
       return;
     }
-    const path = new URL(request.url ?? "/", `http://${host}`).pathname;
+    const url = new URL(request.url ?? "/", `http://${host}`);
+    if (
+      this.token !== null &&
+      !sameToken(url.searchParams.get("token"), this.token)
+    ) {
+      response.writeHead(403).end();
+      return;
+    }
+    const path = url.pathname;
     if (request.method !== "GET" || path !== "/timeline") {
       response
         .writeHead(404, {
@@ -124,6 +137,7 @@ export class TimelineServer {
     }
     response.writeHead(200, {
       "Content-Type": "text/event-stream",
+      "X-Content-Type-Options": "nosniff",
       "Cache-Control": "no-store",
       Connection: "keep-alive",
       "Access-Control-Allow-Origin": origin,
@@ -181,4 +195,11 @@ export class TimelineServer {
 function message(id: number, line: string): string {
   // A line of the file is one line of JSON: it holds no newline.
   return `id: ${id}\ndata: ${line}\n\n`;
+}
+
+function sameToken(given: string | null, token: string): boolean {
+  if (given === null) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(token);
+  return a.length === b.length && timingSafeEqual(a, b);
 }

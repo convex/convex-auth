@@ -37,6 +37,7 @@ import {
   type PageInput,
 } from "./browser.ts";
 import type { PageEvent, TimelineEvent } from "./events.ts";
+import { inputListenerSource } from "./pageScript.ts";
 import type { Secrets } from "./secrets.ts";
 
 export type BrowserOptions = {
@@ -95,80 +96,7 @@ const inputListener = (stage: boolean) => `(() => {
   window.addEventListener("load", () => {
     try { window.__explorerLoad(); } catch {}
   });
-  const selectorOf = (el) => {
-    if (el.id) return "#" + CSS.escape(el.id);
-    const parts = [];
-    let e = el;
-    while (e && e.nodeType === 1 && parts.length < 4) {
-      if (e.id) { parts.unshift("#" + CSS.escape(e.id)); break; }
-      let part = e.tagName.toLowerCase();
-      const name = e.getAttribute("name");
-      if (name) part += '[name="' + name + '"]';
-      else if (e.parentElement) {
-        const same = [...e.parentElement.children].filter((c) => c.tagName === e.tagName);
-        if (same.length > 1) part += ":nth-of-type(" + (same.indexOf(e) + 1) + ")";
-      }
-      parts.unshift(part);
-      e = e.parentElement;
-    }
-    return parts.join(" > ");
-  };
-  const describe = (el) => {
-    const tag = el.tagName.toLowerCase();
-    const r = el.getBoundingClientRect();
-    const type = el.getAttribute("type");
-    const labelled = tag === "button" || tag === "a" ||
-      (tag === "input" && (type === "submit" || type === "button"));
-    return {
-      tag,
-      type,
-      id: el.id || null,
-      name: el.getAttribute("name"),
-      autocomplete: el.getAttribute("autocomplete"),
-      text: labelled ? ((el.innerText || el.value || "").trim().slice(0, 60) || null) : null,
-      selector: selectorOf(el),
-      rect: { x: r.x, y: r.y, width: r.width, height: r.height },
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-    };
-  };
-  const report = (action, el, value) => {
-    try { window.__explorerInput({ action, time: Date.now(), target: describe(el), value }); } catch {}
-  };
-  const pending = new Map();
-  const isField = (el) => el instanceof HTMLInputElement ||
-    el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
-  const flush = (el) => {
-    if (!pending.has(el)) return;
-    clearTimeout(pending.get(el));
-    pending.delete(el);
-    report("type", el, el.type === "password" ? null : String(el.value));
-  };
-  const flushAll = () => { for (const el of [...pending.keys()]) flush(el); };
-  document.addEventListener("input", (e) => {
-    const el = e.target;
-    if (!isField(el)) return;
-    clearTimeout(pending.get(el));
-    pending.set(el, setTimeout(() => flush(el), 600));
-  }, true);
-  document.addEventListener("change", (e) => flush(e.target), true);
-  document.addEventListener("focusout", (e) => flush(e.target), true);
-  document.addEventListener("click", (e) => {
-    flushAll();
-    const t = e.target;
-    if (!(t instanceof Element)) return;
-    report("click", t.closest("button,a,input,select,textarea,label,[role=button]") || t, null);
-  }, true);
-  document.addEventListener("submit", (e) => {
-    flushAll();
-    if (e.target instanceof Element) report("submit", e.target, null);
-  }, true);
-  document.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== "Escape") return;
-    flushAll();
-    if (e.target instanceof Element) report("key", e.target, e.key);
-  }, true);
-  window.addEventListener("pagehide", flushAll, true);
-})();`;
+${inputListenerSource("window.__explorerInput")}})();`;
 
 const RECORDED_TYPES = new Set(["Document", "Fetch", "XHR"]);
 

@@ -4,11 +4,16 @@
 //   pnpm explorer:live examples/react-username-password
 //
 // It starts the app's local deployment (`convex dev`), turns on the step
-// reports of the project, serves the app's page, starts the recorder with a
-// browser window on that page and the timeline streamed to the world, serves
-// the world, and opens it. Use the app in its window; the world shows what
+// reports of the project, serves the app's page behind the recorder's page
+// proxy, starts the recorder with the timeline streamed to the world, serves
+// the world, and prints one link: the stage, to open in your own browser. It
+// starts no browser. Use the app on the stage's screen; the stage shows what
 // each click causes. Ctrl-C stops every part. When a part fails to start,
 // the command says which, shows the end of its output, and stops the rest.
+//
+// `--recorder cdp` records as before instead: the recorder launches a
+// Chromium of its own and reads it over the DevTools protocol (for
+// scenarios, the scripted checks, and the fullest recording).
 //
 // Plain Node, no shell: every part is a Node process started from its own
 // package (the Convex CLI and Vite of the app, the recorder through tsx), so
@@ -16,8 +21,9 @@
 // process group, which is stopped as a whole.
 //
 // See `--help` and the README of this package.
-/* global setTimeout, fetch, AbortSignal -- Node globals. */
+/* global setTimeout, fetch, AbortSignal, URL -- Node globals. */
 import { spawn, spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   createWriteStream,
   existsSync,
@@ -34,19 +40,25 @@ import { parseArgs } from "node:util";
 
 const USAGE = `Usage: pnpm explorer:live <app directory> [options]
 
-Runs the Convex app on a local deployment and opens one browser window: the
-stage, with the app's page live on its screen for you to use, and the browser's
-storage, cookies and connections in front of it, moving as the page does.
-Ctrl-C stops everything.
+Runs the Convex app on a local deployment and prints one link, to open in
+your own browser: the stage, with the app's page live on its screen for you
+to use, and the browser's storage, cookies and connections in front of it,
+moving as the page does. It starts no browser. Ctrl-C stops everything.
 
 Options:
-  --view <which>       stage (default): the window above. islands: the app's
-                       page in its own window, and the islands world in your
+  --view <which>       stage (default): the link above. islands: the app's
+                       page on its own (a link too, or the recorder's window
+                       with --recorder cdp), and the islands world in your
                        default browser
+  --recorder <which>   in-page (default): the page proxy records the page in
+                       your browser, from inside it. cdp: the recorder
+                       launches its own Chromium and reads it over the
+                       DevTools protocol (needed by --scenario and
+                       --debug-port)
   --project <name>     The recorder's project config (default: convex-auth)
   --page <url>         Use a page you serve yourself, against the same
                        deployment, instead of serving the app with its Vite
-  --browser <which>    The browser of the app's window: chrome (the Google
+  --browser <which>    With --recorder cdp, the browser of the app's window: chrome (the Google
                        Chrome installed on this machine), chromium (the one
                        Playwright installed), or a path to a Chromium
                        (default: chrome when installed, else chromium)
@@ -89,6 +101,7 @@ try {
     options: {
       project: { type: "string", default: "convex-auth" },
       view: { type: "string", default: "stage" },
+      recorder: { type: "string" },
       page: { type: "string" },
       browser: { type: "string" },
       scenario: { type: "string" },
@@ -118,6 +131,27 @@ if (!["stage", "islands"].includes(values.view)) {
   process.exit(2);
 }
 const stageView = values.view === "stage";
+// The DevTools protocol drives a scenario and serves a debug port.
+const needsCdp =
+  values.scenario !== undefined || values["debug-port"] !== undefined;
+const recorderKind = values.recorder ?? (needsCdp ? "cdp" : "in-page");
+if (!["in-page", "cdp"].includes(recorderKind)) {
+  console.error(
+    `--recorder is in-page or cdp, not ${recorderKind}.\n\n${USAGE}`,
+  );
+  process.exit(2);
+}
+if (recorderKind === "in-page" && needsCdp) {
+  console.error(`--scenario and --debug-port need --recorder cdp.\n\n${USAGE}`);
+  process.exit(2);
+}
+const inPage = recorderKind === "in-page";
+// Random per run: the page token lets only this run's stage load the page
+// through the proxy and only its page send observations; the stream token
+// lets only the stage read the timeline. Given to the recorder in its
+// environment, not its arguments, which other users of the machine can list.
+const pageToken = randomBytes(32).toString("base64url");
+const streamToken = randomBytes(32).toString("base64url");
 if (positionals.length !== 1) {
   console.error(`Give one app directory.\n\n${USAGE}`);
   process.exit(2);
@@ -322,15 +356,25 @@ async function stopAll() {
 
 // ---------------------------------------------------------------- helpers --
 
-/** A free port on 127.0.0.1, from `start` up. */
-async function freePort(start) {
+/** Whether a port is free on one address; true when the address is absent. */
+const freeOn = (port, host) =>
+  new Promise((done) => {
+    const server = createNetServer();
+    server.once("error", (error) =>
+      done(error.code === "EADDRNOTAVAIL" || error.code === "EAFNOSUPPORT"),
+    );
+    server.listen(port, host, () => server.close(() => done(true)));
+  });
+
+/**
+ * A free port on 127.0.0.1 and on ::1, from `start` up: `localhost` can
+ * reach either, so a port taken on one would take the other's requests.
+ */
+async function freePort(start, taken = []) {
   for (let port = start; port < start + 100; port++) {
-    const free = await new Promise((done) => {
-      const server = createNetServer();
-      server.once("error", () => done(false));
-      server.listen(port, "127.0.0.1", () => server.close(() => done(true)));
-    });
-    if (free) return port;
+    if (taken.includes(port)) continue;
+    if ((await freeOn(port, "127.0.0.1")) && (await freeOn(port, "::1")))
+      return port;
   }
   throw new Error(`No free port from ${start} to ${start + 99}.`);
 }
@@ -491,6 +535,9 @@ async function main() {
     ? Number(values["stream-port"])
     : await freePort(5199);
   const streamUrl = `http://127.0.0.1:${streamPort}/timeline`;
+  // The stage's link to the stream carries its token; the recorder never
+  // prints it.
+  const streamLink = `${streamUrl}?token=${encodeURIComponent(streamToken)}`;
   const { createServer } = await import("vite");
   const server = await createServer({
     root: worldRoot,
@@ -507,7 +554,7 @@ async function main() {
   // stream once the recorder serves it. The stage opens in the recorder's
   // window, once the page is served.
   if (!stageView) {
-    const worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamUrl)}`;
+    const worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamLink)}`;
     say(`World: ${worldUrl}`);
     if (!values["no-open"]) openInBrowser(worldUrl);
   }
@@ -560,8 +607,13 @@ async function main() {
     say(`set ${name}=${value} on the deployment`);
   }
 
-  // The app's page.
+  // The app's page. In-page, the proxy takes the origin the app expects
+  // (localhost on the first free port from Vite's 5173) and the dev server
+  // moves to another port on 127.0.0.1, behind it.
   let pageUrl = values.page;
+  let proxyPort = null;
+  let devServer = pageUrl ?? null;
+  if (inPage) proxyPort = await freePort(5173, [worldPort, streamPort]);
   if (!pageUrl) {
     const viteBin = appBin("vite", "vite");
     if (!viteBin) {
@@ -570,21 +622,48 @@ async function main() {
         "The app has no Vite to serve its page; serve the page yourself and pass --page <url>.",
       );
     }
-    const port = await freePort(5173);
-    pageUrl = `http://localhost:${port}`;
+    const port = inPage
+      ? await freePort(proxyPort + 1, [worldPort, streamPort])
+      : await freePort(5173);
+    devServer = inPage
+      ? `http://127.0.0.1:${port}`
+      : `http://localhost:${port}`;
+    pageUrl = inPage ? `http://localhost:${proxyPort}` : devServer;
     const page = startPart(
       "page",
-      [viteBin, "--port", String(port), "--strictPort"],
+      [
+        viteBin,
+        ...(inPage ? ["--host", "127.0.0.1"] : []),
+        "--port",
+        String(port),
+        "--strictPort",
+      ],
       { cwd: appDir },
     );
-    await waitFor("The app's page", 60_000, () => answers(pageUrl), page);
+    await waitFor("The app's page", 60_000, () => answers(devServer), page);
+  } else if (inPage) {
+    if (!["localhost", "127.0.0.1"].includes(new URL(pageUrl).hostname)) {
+      throw new StartError(
+        null,
+        `--page must be on this machine, not ${pageUrl}.`,
+      );
+    }
+    pageUrl = `http://localhost:${proxyPort}`;
   }
-  say(`the app's page: ${pageUrl}`);
+  say(
+    inPage
+      ? `the app's page: ${pageUrl}, through the recorder's proxy in front of ${devServer}`
+      : `the app's page: ${pageUrl}`,
+  );
+  // The address that loads the page the first time, with the page token.
+  const screenLink = inPage
+    ? `${pageUrl}/?__explorer_token=${encodeURIComponent(pageToken)}`
+    : pageUrl;
 
   // The stage is on the same site as the page (localhost, another port), so
   // that the page in its frame keeps first-party storage and cookies.
   const stageUrl = stageView
-    ? `http://localhost:${worldPort}/stage.html?screen=${encodeURIComponent(pageUrl)}&live=${encodeURIComponent(streamUrl)}&project=${encodeURIComponent(values.project)}`
+    ? `http://localhost:${worldPort}/stage.html?screen=${encodeURIComponent(screenLink)}&live=${encodeURIComponent(streamLink)}&project=${encodeURIComponent(values.project)}`
     : null;
   if (stageUrl !== null) {
     if (new URL(pageUrl).hostname !== "localhost") {
@@ -593,7 +672,7 @@ async function main() {
         `The stage shows the page from localhost; give --page on localhost, not ${pageUrl}.`,
       );
     }
-    say(`Stage: ${stageUrl}`);
+    if (!inPage) say(`Stage: ${stageUrl}`);
   }
 
   // The recorder, streaming to the world.
@@ -614,8 +693,17 @@ async function main() {
       appDir,
       "--project",
       values.project,
-      "--page",
-      pageUrl,
+      ...(inPage
+        ? [
+            "--proxy",
+            String(proxyPort),
+            "--proxy-target",
+            devServer,
+            ...(stageView
+              ? ["--proxy-stage-origin", `http://localhost:${worldPort}`]
+              : []),
+          ]
+        : ["--page", pageUrl]),
       "--out",
       out,
       "--poll",
@@ -629,14 +717,24 @@ async function main() {
       "--serve-origin",
       `http://localhost:${worldPort}`,
       ...(values.cloud ? ["--cloud"] : []),
-      ...(stageUrl !== null ? ["--stage", stageUrl] : []),
-      ...(values["debug-port"] ? ["--debug-port", values["debug-port"]] : []),
-      ...browserArgs(),
-      ...(values.scenario ? ["--scenario", values.scenario] : []),
-      ...(values.headed || !values.scenario ? ["--headed"] : []),
+      ...(inPage
+        ? []
+        : [
+            ...(stageUrl !== null ? ["--stage", stageUrl] : []),
+            ...(values["debug-port"]
+              ? ["--debug-port", values["debug-port"]]
+              : []),
+            ...browserArgs(),
+            ...(values.scenario ? ["--scenario", values.scenario] : []),
+            ...(values.headed || !values.scenario ? ["--headed"] : []),
+          ]),
     ],
     {
       cwd: recorderRoot,
+      env: {
+        EXPLORER_STREAM_TOKEN: streamToken,
+        ...(inPage ? { EXPLORER_PAGE_TOKEN: pageToken } : {}),
+      },
       onLine: (line) => {
         const found = /Streaming the timeline at (\S+)/.exec(line);
         if (found) streaming = found[1];
@@ -654,12 +752,21 @@ async function main() {
     async () => streaming !== null && recording,
     recorder,
   );
+  if (inPage) {
+    // The one link: it carries the run's tokens, so it is printed here and
+    // nowhere else (not in the logs of the run directory).
+    console.log(
+      `\n  Open in your browser:\n\n    ${stageView ? stageUrl : screenLink}\n`,
+    );
+  }
   say(
     values.scenario
       ? `running the scenario ${values.scenario}; Ctrl-C to stop.`
       : stageView
         ? "use the app on the stage's screen. Ctrl-C stops everything."
-        : "use the app in its window; the world shows what it does. Ctrl-C stops everything.",
+        : inPage
+          ? "use the app at the link above; the world shows what it does. Ctrl-C stops everything."
+          : "use the app in its window; the world shows what it does. Ctrl-C stops everything.",
   );
 
   recorder.done.then(({ code, signal }) => {
