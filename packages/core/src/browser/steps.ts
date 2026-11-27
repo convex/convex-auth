@@ -94,7 +94,9 @@ export type ClientOpKind =
   | "signOut"
   | "sessionRevoked"
   | "tokenFetch"
-  | "crossTab";
+  | "crossTab"
+  | "providerMount"
+  | "providerUnmount";
 
 /**
  * An operation of the client (see the module comment). Made by

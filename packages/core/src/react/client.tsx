@@ -182,8 +182,17 @@ export function AuthProvider({
     // client instance, so it is init'd, disposed, then init'd again. That's
     // fine because init()/dispose() are symmetric, and the second init()
     // re-attaches the cross-tab listener the dispose() removed.
-    void authClient.init();
-    return () => authClient.dispose();
+    //
+    // The mount and the unmount are step reports of their own, and the init()
+    // and dispose() they run name them as parent operations.
+    const mount = startClientOp("providerMount");
+    reportClientStep("module:react/client", "provider.mount", {}, mount);
+    withClientOp(mount, () => void authClient.init());
+    return () => {
+      const unmount = startClientOp("providerUnmount");
+      reportClientStep("module:react/client", "provider.unmount", {}, unmount);
+      withClientOp(unmount, () => authClient.dispose());
+    };
   }, [authClient]);
 
   const fetchAccessToken = useCallback(

@@ -144,7 +144,7 @@ describe("the step sites", () => {
     const server = structure.steps.filter((s) => s.runsIn === "server");
     expect(server).toHaveLength(14);
     expect(structure.steps.filter((s) => s.runsIn === "browser")).toHaveLength(
-      32,
+      34,
     );
     expect(server.find((s) => s.step === "refresh.result")!.part).toBe(
       "methodFn:core.refreshSession",

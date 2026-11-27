@@ -21435,64 +21435,64 @@
         {
           "name": "ClientOp",
           "kind": "interface",
-          "line": 104,
+          "line": 106,
           "summary": "An operation of the client (see the module comment)."
         },
         {
           "name": "clientStepReportsEnabled",
           "kind": "function",
-          "line": 123,
+          "line": 125,
           "summary": "Whether the page asked for client step reports."
         },
         {
           "name": "startClientOp",
           "kind": "function",
-          "line": 134,
+          "line": 136,
           "summary": "Start an operation, or return `null` when the reports are off."
         },
         {
           "name": "withClientOp",
           "kind": "function",
-          "line": 151,
+          "line": 153,
           "summary": "Run `fn` as part of `op`: the steps that run synchronously inside it, and the operations it starts synchronously, belong to `op` unless they are given another."
         },
         {
           "name": "linkClientOp",
           "kind": "function",
-          "line": 172,
+          "line": 174,
           "summary": "Record that `object` came out of `op`, so that the code later handed the same object can continue `op` (see linkedClientOp)."
         },
         {
           "name": "linkedClientOp",
           "kind": "function",
-          "line": 179,
+          "line": 181,
           "summary": "The operation that `object` came out of, if one was recorded."
         },
         {
           "name": "reportClientStep",
           "kind": "function",
-          "line": 193,
+          "line": 195,
           "summary": "Write one client step report to the console, if the page asked for them."
         },
         {
           "name": "resetClientOpsForTests",
           "kind": "function",
-          "line": 226,
+          "line": 228,
           "summary": "Exposed for tests: restart the counter of operations."
         }
       ],
       "state": [
-        { "name": "lastOp", "kind": "let", "line": 110 },
+        { "name": "lastOp", "kind": "let", "line": 112 },
         {
           "name": "currentOp",
           "kind": "let",
-          "line": 113,
+          "line": 115,
           "summary": "The operation whose synchronous call is running, set by withClientOp."
         },
         {
           "name": "opsByObject",
           "kind": "collection",
-          "line": 120,
+          "line": 122,
           "summary": "Operations by an object that one of their steps returned, such as the token bundle of a sign-in result, for the code that is later handed that very object (see linkClientOp)."
         }
       ]
@@ -24366,6 +24366,26 @@
       "part": "module:react/client",
       "export": "SessionWatcher",
       "within": ["SessionWatcher"],
+      "reportsAs": "module:react/client",
+      "detailKeys": []
+    },
+    {
+      "step": "provider.mount",
+      "runsIn": "browser",
+      "location": { "file": "packages/core/src/react/client.tsx", "line": 189 },
+      "part": "module:react/client",
+      "export": "AuthProvider",
+      "within": ["AuthProvider"],
+      "reportsAs": "module:react/client",
+      "detailKeys": []
+    },
+    {
+      "step": "provider.unmount",
+      "runsIn": "browser",
+      "location": { "file": "packages/core/src/react/client.tsx", "line": 193 },
+      "part": "module:react/client",
+      "export": "AuthProvider",
+      "within": ["AuthProvider"],
       "reportsAs": "module:react/client",
       "detailKeys": []
     },
