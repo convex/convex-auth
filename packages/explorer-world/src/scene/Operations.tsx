@@ -7,6 +7,10 @@
  * the whole browser region it still reads as the one thing acting, and
  * where it is going.
  *
+ * What its call carried rides with it, one small shape per thing in a row
+ * over it (see {@link Loads}): out to the way out, and back to the storage
+ * key that took it, where it is put down.
+ *
  * Everything is a function of the playback time.
  */
 import { Line } from "@react-three/drei";
@@ -19,12 +23,15 @@ import {
   type Group,
   type Mesh,
   type MeshBasicMaterial,
+  Quaternion,
 } from "three";
-import type { OpPath } from "../model/operations.ts";
+import { loadName, type OpLoad, type OpPath } from "../model/operations.ts";
+import type { Cargo } from "../model/recording.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
 import { anchorPosition } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
+import { CargoMesh, heldPlace } from "./Travellers.tsx";
 
 /** Shown seconds an operation stays at its last place before it fades. */
 const LINGER = 0.6;
@@ -72,6 +79,10 @@ export function opAt(
   return p.length - 1;
 }
 
+/** Until when an operation is drawn: its fade, and every load put down resting on its key. */
+const shownUntil = (o: OpPath) =>
+  Math.max(o.points.at(-1)!.at + LINGER, ...o.loads.map((l) => l.held ?? 0));
+
 export function Operations() {
   // A live world is replaced as it grows: read its operations again then.
   const version = usePlayback((s) => s.version);
@@ -82,7 +93,7 @@ export function Operations() {
   const live = usePlayback((s) => {
     const t = s.time;
     return world.timeline.ops
-      .filter((o) => o.points[0].at <= t && t <= o.points.at(-1)!.at + LINGER)
+      .filter((o) => o.points[0].at <= t && t <= shownUntil(o))
       .map((o) => o.id)
       .join(",");
   });
@@ -221,6 +232,135 @@ function Operation({ op }: { op: OpPath }) {
           />
         </mesh>
       </group>
+      {op.loads.length > 0 && <Loads op={op} positions={positions} />}
     </>
   );
+}
+
+/** Shown seconds a load takes to appear, or to go into the way out or down onto its key. */
+const HAND = 0.3;
+/** A load's size, and the gap between loads, as multiples of the body's radius. */
+const LOAD_SIZE = 2.6;
+const LOAD_GAP = 3;
+/** How high over the body the row of loads rides, in body radii. */
+const LOAD_LIFT = 3.6;
+
+/**
+ * What the operation's call carried, riding over its body: a row facing
+ * the camera, one shape per thing, as the storage keys draw a token (a coin,
+ * a key), and a hollow ring for a field the recorder blanked. A load
+ * appears where the body picked it up, goes into the way out, or comes
+ * back from it and is put down onto the key that took it.
+ */
+function Loads({ op, positions }: { op: OpPath; positions: Vector3[] }) {
+  const groups = useRef<(Group | null)[]>([]);
+  const select = usePlayback((s) => s.select);
+  const at = useMemo(() => new Vector3(), []);
+  const right = useMemo(() => new Vector3(), []);
+  const up = useMemo(() => new Vector3(), []);
+  const goal = useMemo(() => new Vector3(), []);
+  const still = useMemo(() => new Quaternion(), []);
+
+  useFrame(({ camera }) => {
+    const { time } = currentState();
+    opAt(op, time, positions, at);
+    const r =
+      Math.max(LEAST, camera.position.distanceTo(at) * ON_SCREEN) *
+      (op.unasked ? 0.6 : 1);
+    right.setFromMatrixColumn(camera.matrixWorld, 0);
+    up.setFromMatrixColumn(camera.matrixWorld, 1);
+    // The loads riding now, in a row.
+    const riding = op.loads.filter(
+      (l) => time >= l.from - HAND && time <= l.to,
+    );
+    op.loads.forEach((l, i) => {
+      const g = groups.current[i];
+      if (!g) return;
+      // One put down rests on its key until the key shows it held.
+      const rest =
+        l.held !== undefined ? Math.max(l.to + HAND, l.held) : l.to + HAND;
+      const shown = time >= l.from - HAND && time < rest;
+      g.visible = shown;
+      if (!shown) return;
+      const slot = Math.max(0, riding.indexOf(l));
+      const n = Math.max(1, riding.length);
+      g.position
+        .copy(at)
+        .addScaledVector(right, (slot - (n - 1) / 2) * LOAD_GAP * r)
+        .addScaledVector(up, LOAD_LIFT * r);
+      g.quaternion.copy(camera.quaternion);
+      let size = LOAD_SIZE * r;
+      if (time < l.from) {
+        // Appearing: from the key it was picked up at, or out of the body.
+        const k = (time - (l.from - HAND)) / HAND;
+        if (l.at) {
+          const held = heldPlace(l.at, 0, 1, camera.position, goal);
+          g.position.lerp(goal, 1 - k);
+          g.quaternion.slerp(still, 1 - k);
+          size = size * k + held * (1 - k);
+        } else size *= k;
+      } else if (time > l.to) {
+        const k = Math.min(1, (time - l.to) / HAND);
+        if (l.dir === "back" && l.at) {
+          // Put down onto the key that took it, at rest as the key draws
+          // what it holds.
+          const held = heldPlace(l.at, 0, 1, camera.position, goal);
+          g.position.lerp(goal, k);
+          g.quaternion.slerp(still, k);
+          size = size * (1 - k) + held * k;
+        } else size *= 1 - k;
+      }
+      g.scale.setScalar(Math.max(1e-3, size));
+    });
+  });
+
+  return (
+    <>
+      {op.loads.map((l, i) => (
+        <group
+          key={i}
+          ref={(g) => {
+            groups.current[i] = g;
+          }}
+          visible={false}
+          onClick={(e) => {
+            if (isDrag(e)) return;
+            e.stopPropagation();
+            select({ type: "op", id: op.id });
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            hover.label = `${l.dir === "out" ? "carried out" : "carried back"}: ${loadName(l.load)}`;
+          }}
+          onPointerOut={() => (hover.label = "")}
+        >
+          <LoadMesh load={l.load} />
+        </group>
+      ))}
+    </>
+  );
+}
+
+const BLANKED_COLOR = "#c3cad8";
+
+function LoadMesh({ load }: { load: OpLoad["load"] }) {
+  if (load.kind === "blanked")
+    return (
+      <mesh>
+        <torusGeometry args={[0.36, 0.12, 10, 28]} />
+        <meshStandardMaterial
+          color={BLANKED_COLOR}
+          emissive={BLANKED_COLOR}
+          emissiveIntensity={1.4}
+          toneMapped={false}
+        />
+      </mesh>
+    );
+  const cargo: Cargo = load.cargo ?? {
+    table: "",
+    row: load.secret,
+    label: `${load.type} secret ${load.secret}`,
+    secret: load.secret,
+  };
+  return <CargoMesh cargo={cargo} labelled={false} />;
 }

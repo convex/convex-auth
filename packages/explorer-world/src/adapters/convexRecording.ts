@@ -493,6 +493,8 @@ export function recordingFromTimeline(
       run.answeredAt = call.answeredAt;
       run.carriesIn = call.cargoIn;
       run.carriesOut = call.cargoOut;
+      run.loadIn = call.loadIn;
+      run.loadOut = call.loadOut;
       run.facts.push([
         "page call",
         `${call.transport}, linked by ${call.link}`,

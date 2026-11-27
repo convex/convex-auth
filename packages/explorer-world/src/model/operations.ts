@@ -23,12 +23,18 @@
  * in the page's own order of events, that is its call. A call matched so
  * says so ({@link OpPath.matched}).
  *
+ * What the call carried rides on the body ({@link OpLoad}): what the
+ * request carried from where the body picked it up to the way out, what
+ * the response carried from the way out to the storage key whose storage
+ * event holds the same label. A token is matched by its label only, which
+ * is the same value; nothing else is matched.
+ *
  * A step with no operation is not part of one; it lights its module and
  * nothing travels.
  *
  * @module
  */
-import type { Derivation, PageItem, Run } from "./recording.ts";
+import type { Derivation, Load, PageItem, Run } from "./recording.ts";
 import type { Tone } from "./recording.ts";
 
 /**
@@ -46,6 +52,32 @@ export const HOP = 0.33;
 export const HOP_KEY = 0.28;
 /** The least shown time between two steps an operation reports at the same place (s). */
 export const HOP_SAME = 0.08;
+
+/**
+ * One thing the body carries, and when: it rides from `from` to `to` (shown
+ * time). One the request carried leaves at the way out; one the response
+ * carried is put down at `at`, the storage key that took it, if the body
+ * goes there.
+ */
+export interface OpLoad {
+  load: Load;
+  dir: "out" | "back";
+  from: number;
+  to: number;
+  /** Where it was picked up (out) or put down (back): a storage key. */
+  at?: string;
+  /**
+   * For one put down: when the key shows it held (shown time), which can
+   * be after the body put it down; it rests there until then.
+   */
+  held?: number;
+}
+
+/** How a load is named on hover and in the inspector: its kind and label, never a value. */
+export function loadName(l: OpLoad["load"]): string {
+  if (l.kind === "blanked") return `${l.field} (a field the recorder blanked)`;
+  return l.cargo?.label ?? `${l.type} secret ${l.secret}`;
+}
 
 /** One place an operation is at, at a shown time. */
 export interface OpPoint {
@@ -72,6 +104,8 @@ export interface OpPath {
   unasked?: boolean;
   /** The run of the call it made, when matched by bracket. */
   run?: string;
+  /** What its call carried, on the body. */
+  loads: OpLoad[];
   matched?: Derivation;
 }
 
@@ -115,6 +149,19 @@ export function operations(
   /** The operations nobody asked for: brief hops, and drawn quieter. */
   brief: Set<string> = new Set(),
 ): OpPath[] {
+  // Which label each storage key took or gave up: in the page's order of
+  // events, and when it is shown.
+  const holds: Hold[] = items
+    .filter((x) => x.item.hold?.cargo.secret && x.item.order)
+    .map((x) => ({
+      at: x.at,
+      seq: x.item.order!.seq,
+      page: x.item.order!.page,
+      key: x.item.part,
+      op: x.item.hold!.op,
+      secret: x.item.hold!.cargo.secret!,
+    }))
+    .sort((a, b) => a.seq - b.seq);
   const byOp = new Map<string, { item: PageItem; at: number }[]>();
   for (const x of items) {
     if (!x.item.op || !x.item.step) continue;
@@ -135,6 +182,8 @@ export function operations(
     // The module of the key the body was last at, and when.
     let inKeyOf: string | null = null;
     let lastAt = -Infinity;
+    // The body's visits to storage keys, with the page's order of the step.
+    const visits: Visit[] = [];
     for (const { item, at } of steps) {
       // Out with the call and back in between: not at the key any more.
       if (span && lastAt < span.out && at > span.out) inKeyOf = null;
@@ -145,12 +194,14 @@ export function operations(
       const key = item.lights?.[1];
       if (!(key && inKeyOf === item.part))
         points.push({ at, anchor: item.part, step: item.step! });
-      if (key)
+      if (key) {
         points.push({
           at: at + HOP_KEY * (brief.has(id) ? 0.5 : 1),
           anchor: key,
           step: item.step!,
         });
+        visits.push({ point: points.at(-1)!, key, order: item.order });
+      }
       inKeyOf = key ? item.part : null;
     }
     const path: OpPath = {
@@ -159,6 +210,7 @@ export function operations(
       parent: steps.find((s) => s.item.parentOp)?.item.parentOp,
       points,
       tone: steps.some((s) => s.item.tone === "error") ? "error" : "normal",
+      loads: [],
       ...(brief.has(id) ? { unasked: true } : {}),
     };
     if (call && span) {
@@ -180,9 +232,102 @@ export function operations(
     for (let i = 1; i < points.length; i++)
       if (points[i].at <= points[i - 1].at)
         points[i].at = points[i - 1].at + 1e-3;
+    if (call && span && call.via)
+      path.loads = loadsOf(points, visits, call, span, holds);
     out.push(path);
   }
   return out.sort((a, b) => a.points[0].at - b.points[0].at);
+}
+
+interface Hold {
+  at: number;
+  seq: number;
+  page: string;
+  key: string;
+  op: "gain" | "drop";
+  secret: string;
+}
+
+interface Visit {
+  point: OpPoint;
+  key: string;
+  order?: { page: string; seq: number };
+}
+
+/**
+ * What rides on the body of an operation whose call went out at `span`,
+ * with the storage keys matched by label in the page's own order of events.
+ * Out: from the body's last visit, before the call, of a key that then held
+ * the same label, else from the place it left for the way out; to the way
+ * out. Back: from the way out to the body's first visit, after the call, of
+ * a key that took the same label after the call, else to the end of its
+ * path.
+ */
+function loadsOf(
+  points: OpPoint[],
+  visits: Visit[],
+  call: Run,
+  span: CallSpan,
+  holds: Hold[],
+): OpLoad[] {
+  const end = points.at(-1)!.at;
+  const outAt = points.findIndex((p) => p.step === "out");
+  const leaves = points[Math.max(0, outAt - 1)].at;
+  const sent = call.order;
+  const heldAt = (key: string, order: { page: string; seq: number }) => {
+    let label: string | null = null;
+    for (const h of holds) {
+      if (h.page !== order.page || h.key !== key) continue;
+      if (h.seq > order.seq) break;
+      label = h.op === "gain" ? h.secret : null;
+    }
+    return label;
+  };
+  const loads: OpLoad[] = [];
+  for (const load of call.loadIn ?? []) {
+    let from = leaves;
+    let at: string | undefined;
+    if (load.kind === "secret" && sent)
+      for (const v of visits) {
+        if (!v.order || v.order.seq > sent.seq || v.point.at >= span.out)
+          continue;
+        if (heldAt(v.key, v.order) === load.secret) {
+          from = v.point.at;
+          at = v.key;
+        }
+      }
+    loads.push({ load, dir: "out", from, to: span.out, ...(at ? { at } : {}) });
+  }
+  for (const load of call.loadOut ?? []) {
+    let to = end;
+    let at: string | undefined;
+    let held: number | undefined;
+    if (load.kind === "secret" && sent) {
+      const took = holds.filter(
+        (h) =>
+          h.op === "gain" &&
+          h.secret === load.secret &&
+          h.page === sent.page &&
+          h.seq > sent.seq,
+      );
+      const visit = visits.find(
+        (v) => v.point.at > span.back && took.some((h) => h.key === v.key),
+      );
+      if (visit) {
+        to = visit.point.at;
+        at = visit.key;
+        held = took.find((h) => h.key === visit.key)!.at;
+      }
+    }
+    loads.push({
+      load,
+      dir: "back",
+      from: span.back,
+      to,
+      ...(at ? { at, held } : {}),
+    });
+  }
+  return loads;
 }
 
 /** The bracket rule: the one call inside an operation's bracket, or none. */

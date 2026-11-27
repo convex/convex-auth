@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Link, SourceRef } from "../model/graph.ts";
 import type { RowState, WorldState } from "../model/playback.ts";
+import { loadName } from "../model/operations.ts";
 import type { Derivation, Doc } from "../model/recording.ts";
 import { linkLook, nounOf } from "../presentation.ts";
 import { colorOf, nounOfPart, partOf, placementOf } from "../scene/look.ts";
@@ -467,6 +468,40 @@ function body(
               <Section title="Its call">
                 <RunLink run={o.run} />
                 <Derived d={o.matched} />
+              </Section>
+            )}
+            {o.loads.length > 0 && (
+              <Section title={`What it carried (${o.loads.length})`}>
+                {o.loads.map((l, i) => (
+                  <div
+                    key={i}
+                    className="dep"
+                    style={{ opacity: l.from <= now ? 1 : 0.5 }}
+                  >
+                    <span className="mono small">
+                      {l.dir === "out" ? "out" : "back"}
+                    </span>{" "}
+                    {loadName(l.load)}
+                    {l.load.kind === "secret" && (
+                      <span className="small">
+                        {" "}
+                        · {l.load.type}, in {l.load.field}
+                      </span>
+                    )}
+                    {l.at && (
+                      <>
+                        {" "}
+                        {l.dir === "out" ? "from" : "onto"}{" "}
+                        <PartLink id={l.at} />
+                      </>
+                    )}
+                  </div>
+                ))}
+                <p className="small">
+                  From the recording: the recorder replaces each token by a
+                  label and blanks the fields it hides; a token is followed by
+                  its label. No value is shown or kept.
+                </p>
               </Section>
             )}
             <Section title={`Where it went (${o.points.length})`}>

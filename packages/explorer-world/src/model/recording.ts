@@ -69,6 +69,25 @@ export interface Cargo {
   derived?: Derivation;
 }
 
+/**
+ * One thing a request or a response carried, as the recording shows it: a
+ * token the recorder replaced by its label (`{"$secret":"s5"}`), or a field
+ * it blanked (`"password":"[redacted]"`). Never a value.
+ */
+export type Load =
+  | {
+      kind: "secret";
+      /** The recorder's label (`s5`). */
+      secret: string;
+      /** Its type as the recorder saw it (`jwt`, `opaque`). */
+      type: string;
+      /** The field it was in. */
+      field: string;
+      /** The row it is, when the recording links it to one. */
+      cargo?: Cargo;
+    }
+  | { kind: "blanked"; field: string };
+
 /** The sign-in state of a page, as its client library reports it. */
 export type PageState =
   "loading" | "signedOut" | "signingIn" | "signedIn" | "error";
@@ -147,6 +166,9 @@ export interface Run {
   /** Rows the request carries in, and the response carries out. */
   carriesIn: Cargo[];
   carriesOut: Cargo[];
+  /** Everything the request and the response carried, as the recording shows it. */
+  loadIn?: Load[];
+  loadOut?: Load[];
   /** What a page did before the run (only the first run has these) and after it. */
   before: PageItem[];
   after: PageItem[];

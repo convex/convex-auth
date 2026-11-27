@@ -11,7 +11,13 @@
  * it is.
  */
 import type { Part } from "../model/graph.ts";
-import type { Cargo, PageItem, PageState, Tone } from "../model/recording.ts";
+import type {
+  Cargo,
+  Load,
+  PageItem,
+  PageState,
+  Tone,
+} from "../model/recording.ts";
 import type { Presentation } from "../presentation.ts";
 import { PLACES } from "./browserPlaces.ts";
 
@@ -47,6 +53,9 @@ export interface PageFeed {
       link: string;
       cargoIn: Cargo[];
       cargoOut: Cargo[];
+      /** What the request and the response carried: labels and blanked fields. */
+      loadIn: Load[];
+      loadOut: Load[];
       /** Where the request stands in its page's order of events. */
       order?: { page: string; seq: number };
       /** When the page sent the request and got the response, by the page's clock (ms). */
@@ -81,6 +90,29 @@ function secretsIn(value: unknown, out: string[] = []): string[] {
 }
 
 const secretOf = (value: unknown): string | undefined => secretsIn(value)[0];
+
+/** The value the recorder puts in place of a field it hides. */
+const BLANKED = "[redacted]";
+
+/**
+ * Every token label and every blanked field inside a value, with the field
+ * each was in, in the order they appear; a label once.
+ */
+function loadsIn(
+  value: unknown,
+  field = "",
+  out: { secret?: string; field: string }[] = [],
+): { secret?: string; field: string }[] {
+  if (value === BLANKED) out.push({ field });
+  else if (Array.isArray(value)) for (const v of value) loadsIn(v, field, out);
+  else if (value && typeof value === "object") {
+    const ref = (value as { $secret?: unknown }).$secret;
+    if (typeof ref === "string") {
+      if (!out.some((l) => l.secret === ref)) out.push({ secret: ref, field });
+    } else for (const [k, v] of Object.entries(value)) loadsIn(v, k, out);
+  }
+  return out;
+}
 
 export function readPageFeed(
   events: Event[],
@@ -128,6 +160,18 @@ export function readPageFeed(
       label: `${rule?.noun ?? `${s.type} secret`} ${label}`,
     };
   };
+  const loadOf = (value: unknown): Load[] =>
+    loadsIn(value).map((l) => {
+      if (l.secret === undefined) return { kind: "blanked", field: l.field };
+      const cargo = cargoOf(l.secret);
+      return {
+        kind: "secret",
+        secret: l.secret,
+        type: secrets.get(l.secret)?.type ?? "opaque",
+        field: l.field,
+        ...(cargo ? { cargo } : {}),
+      };
+    });
   const cargoIn = (value: unknown) =>
     [...new Set(secretsIn(value))]
       .map(cargoOf)
@@ -376,6 +420,19 @@ export function readPageFeed(
             ),
             cargoOut: cargoIn(
               response?.kind === "http" ? response.response : response?.message,
+            ),
+            // What it carried: the request's arguments, the response's
+            // result (the envelope of the message carries none).
+            loadIn: loadOf(
+              request?.kind === "http"
+                ? (request.request as { args?: unknown } | null)?.args
+                : (request?.message as { args?: unknown } | undefined)?.args,
+            ),
+            loadOut: loadOf(
+              response?.kind === "http"
+                ? (response.response as { value?: unknown } | null)?.value
+                : (response?.message as { result?: unknown } | undefined)
+                    ?.result,
             ),
           });
         } else {

@@ -1,6 +1,12 @@
 import { Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef, type ComponentRef } from "react";
+import {
+  useMemo,
+  useRef,
+  type ComponentProps,
+  type ComponentRef,
+  type ReactNode,
+} from "react";
 import {
   AdditiveBlending,
   Color,
@@ -305,6 +311,32 @@ export function CargoMesh({
   );
 }
 
+/** A held token's size in world units, at least. */
+export const HELD_SIZE = 1.3;
+/** Its size as a fraction of its distance to the camera, at least: from Home it still reads. */
+const HELD_ON_SCREEN = 0.022;
+/** How high over its holder a held token rests, and the gap between two, per unit of size. */
+const HELD_LIFT = 2.2 / HELD_SIZE;
+const HELD_GAP = 2.2 / HELD_SIZE;
+
+/**
+ * Where the `i`th of `n` tokens a holder holds rests, and how large it is,
+ * seen from `camera`: over the holder, kept to a least size on the window.
+ */
+export function heldPlace(
+  holder: string,
+  i: number,
+  n: number,
+  camera: Vector3,
+  out: Vector3,
+): number {
+  out.copy(anchorPosition(holder));
+  const size = Math.max(HELD_SIZE, camera.distanceTo(out) * HELD_ON_SCREEN);
+  out.x += (i - (n - 1) / 2) * HELD_GAP * size;
+  out.y += HELD_LIFT * size;
+  return size;
+}
+
 /** The cargo each caller holds now, hovering over it. */
 export function Holdings() {
   const signature = usePlayback((s) => {
@@ -320,16 +352,13 @@ export function Holdings() {
   }, [signature]);
   return (
     <>
-      {held.flatMap(([holder, list]) => {
-        const at = anchorPosition(holder);
-        return list.map((cargo, i) => (
-          <group
+      {held.flatMap(([holder, list]) =>
+        list.map((cargo, i) => (
+          <Held
             key={`${holder}/${cargo.row}`}
-            position={[
-              at.x + (i - (list.length - 1) / 2) * 2.2,
-              at.y + 2.2,
-              at.z,
-            ]}
+            holder={holder}
+            i={i}
+            n={list.length}
             onClick={(e) => {
               if (isDrag(e)) return;
               e.stopPropagation();
@@ -346,10 +375,38 @@ export function Holdings() {
             }}
             onPointerOut={() => (hover.label = "")}
           >
-            <CargoMesh cargo={cargo} scale={1.3} labelled={false} />
-          </group>
-        ));
-      })}
+            <CargoMesh cargo={cargo} labelled={false} />
+          </Held>
+        )),
+      )}
     </>
+  );
+}
+
+function Held({
+  holder,
+  i,
+  n,
+  children,
+  ...handlers
+}: {
+  holder: string;
+  i: number;
+  n: number;
+  children: ReactNode;
+} & Pick<
+  ComponentProps<"group">,
+  "onClick" | "onPointerOver" | "onPointerOut"
+>) {
+  const ref = useRef<Group>(null);
+  useFrame(({ camera }) => {
+    const g = ref.current;
+    if (g)
+      g.scale.setScalar(heldPlace(holder, i, n, camera.position, g.position));
+  });
+  return (
+    <group ref={ref} {...handlers}>
+      {children}
+    </group>
   );
 }
