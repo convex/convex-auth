@@ -6,7 +6,8 @@
  *
  * Nothing here is derived. A message goes to the exit its URL names; a
  * storage key holds a value from the event that set it until the event that
- * replaced or removed it.
+ * replaced or removed it. The paths (`stage/paths.ts`) follow only the links
+ * the recording holds, and the times are then stretched for the eye.
  *
  * @module
  */
@@ -21,6 +22,12 @@ import type {
   Slot,
   StageModel,
 } from "../stage/model.ts";
+import {
+  NO_PATHS,
+  withPaths,
+  type CallRecord,
+  type StorageChange,
+} from "../stage/paths.ts";
 
 type Event = { kind: string; id?: string; time?: number } & Record<
   string,
@@ -92,26 +99,30 @@ class Slots {
     value: unknown,
   ) {
     const slot = this.slot(key, name);
-    this.end(slot, time);
+    this.end(slot, time, eventId);
     slot.held.push({
       eventId,
       from: time,
       to: null,
+      toEventId: null,
       value,
       secrets: secretsIn(value),
     });
     return slot;
   }
-  remove(key: string, time: number) {
+  remove(key: string, time: number, eventId?: string) {
     const slot = this.byKey.get(key);
-    if (slot) this.end(slot, time);
+    if (slot) this.end(slot, time, eventId);
   }
-  clear(time: number) {
-    for (const slot of this.byKey.values()) this.end(slot, time);
+  clear(time: number, eventId?: string) {
+    for (const slot of this.byKey.values()) this.end(slot, time, eventId);
   }
-  private end(slot: Slot, time: number) {
+  private end(slot: Slot, time: number, eventId?: string) {
     const last: Held | undefined = slot.held[slot.held.length - 1];
-    if (last && last.to === null) last.to = time;
+    if (last && last.to === null) {
+      last.to = time;
+      last.toEventId = eventId ?? null;
+    }
   }
   private slot(key: string, name: string): Slot {
     let slot = this.byKey.get(key);
@@ -177,6 +188,8 @@ export function stageFromEvents(
   const cookieAttrs = new Map<string, Record<string, unknown>>();
   const flights: Flight[] = [];
   const steps: PageStep[] = [];
+  const storage: StorageChange[] = [];
+  const calls: CallRecord[] = [];
   const locations: StageModel["locations"] = [];
   const secrets = new Map<string, SecretInfo>();
   const sockets = new Map<
@@ -231,8 +244,15 @@ export function stageFromEvents(
         const slots = e.area === "session" ? session : local;
         if (e.op === "set")
           slots.set(String(e.key), String(e.key), id, time, e.value);
-        else if (e.op === "remove") slots.remove(String(e.key), time);
-        else slots.clear(time);
+        else if (e.op === "remove") slots.remove(String(e.key), time, id);
+        else slots.clear(time, id);
+        storage.push({
+          id,
+          time,
+          area: e.area === "session" ? "session" : "local",
+          op: e.op as StorageChange["op"],
+          key: String(e.key ?? ""),
+        });
         break;
       }
       case "cookie": {
@@ -325,6 +345,20 @@ export function stageFromEvents(
         });
         break;
       }
+      case "call": {
+        calls.push({
+          id,
+          time,
+          endTime: (e.endTime as number | null) ?? null,
+          identifier: String(e.identifier ?? ""),
+          udfType: String(e.udfType ?? ""),
+          transport: e.transport === "http" ? "http" : "socket",
+          requestEventId: (e.requestEventId as string | null) ?? null,
+          responseEventId: (e.responseEventId as string | null) ?? null,
+          ok: e.ok !== false,
+        });
+        break;
+      }
       case "secret": {
         secrets.set(id, {
           id,
@@ -373,20 +407,25 @@ export function stageFromEvents(
   for (const c of cookieList) c.attrs = cookieAttrs.get(c.key);
   if (!Number.isFinite(start)) start = end = 0;
 
-  return {
-    start,
-    end: Math.max(start, end),
-    locations,
-    elements: [...elements.values()],
-    local: local.list,
-    session: session.list,
-    cookies: cookieList,
-    flights,
-    steps,
-    exits: [...exits.values()],
-    secrets,
-    sockets: [...sockets.values()],
-    counts,
-    page,
-  };
+  return withPaths(
+    {
+      start,
+      end: Math.max(start, end),
+      locations,
+      elements: [...elements.values()],
+      local: local.list,
+      session: session.list,
+      cookies: cookieList,
+      flights,
+      steps,
+      exits: [...exits.values()],
+      secrets,
+      sockets: [...sockets.values()],
+      counts,
+      page,
+      ...NO_PATHS,
+    },
+    storage,
+    calls,
+  );
 }

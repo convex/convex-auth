@@ -40,10 +40,16 @@ and providers. Big things hold smaller things, shown as you come near and
 hidden as you leave: localStorage holds its keys, a key its value, a token its
 claims; the auth client holds the structure map's modules that run in the
 browser, a module its hooks and functions. Everything is there from the
-start. The camera goes from a metre to kilometres (`ZOOM` in `stage/layout.ts`);
-its depth range and speeds follow the distance. The wheel zooms about the
-thing under the pointer and stops when that thing fills the view, so zooming
-in arrives at it; over the sky it zooms straight in or out. The point looked
+start. The territory is wider and deeper than the screen (720 by 522 m
+against a screen 512 m wide), so from afar it reads as a field before a
+monument rather than a keyboard before a monitor. Labels are drawn at
+reading size, never larger than their thing allows, and hidden until they
+fit: a district's name is large from afar and modest close in, a module's
+name shows once it can be read. The camera goes from a metre to kilometres
+(`ZOOM` in `stage/layout.ts`); its depth range and speeds follow the
+distance. The wheel zooms about the thing under the pointer and stops with
+all of that thing in view; near the end of the approach the camera turns to
+look down into it, at about 55°. Over the sky it zooms straight in or out. The point looked
 at stays over the world and above the ground. **Home** (or H) returns to the
 default view, which fits the screen and the whole territory to the window's
 shape. A grid on the ground, a decade per level (10 m, 100 m, 1 km), and a
@@ -54,15 +60,37 @@ element on the screen and lights its tile on the page; a message leaves along
 its pipe to its exit and comes back; an HTTP request waits at its exit for
 its response; a storage write lands in localStorage as an object (a token is
 one object, named by its secret label, never its text) and a removed one
-leaves. The client code never moves: the recorder sees what leaves the page
-and what it stores, not which code ran.
+leaves.
+
+The client library reports its own steps from the page (`signIn.call`,
+`session.set`, `storage.write`, ...; see `packages/explorer`), each with the
+module that ran it. These make a path (`src/stage/paths.ts`): a ring and the
+step's name at the module that reported it, and a traveller wherever the
+recording links one event to the next: a storage step to the change of the
+key it names (out of the module into the key, or back for a read), a call
+to its request and its response (out along its channel to the exit and
+back). Two steps in a row that nothing links (the submit and the
+`signIn.call` after it, a `signIn.call` and the message that left) are only
+next in time: a faint dashed line joins them, never a traveller. So a
+sign-up reads: the form, then the Auth client's `signIn.call`, the call out
+to the backend and back, `session.set`, and two travellers into the two
+keys, which land. Travellers, rings and their names keep about the same size
+on the window at any distance: the path can be followed from the default
+view, and close in it points at one module and one key.
 
 Time: the stage is live by default and nothing plays on its own. The time
 handle at the bottom can be dragged back and forth; what is shown is a
 function of the time (`stage/model.ts`, `stageAt`), so it moves smoothly in
-both directions. A real request takes milliseconds: each movement is drawn
-over 0.7 s from the moment it happened. Let go at the right end, or press
-**Back to live**, and it is live again. **Replay** plays a recording instead: this session from its start, a
+both directions. Real steps happen milliseconds apart, so the stage shows
+them stretched: consecutive steps at least 0.24 s apart, a call at least 1.5
+s out and back; a gap that is already longer is kept, and the order never
+changes. Everything is stretched alike, so storage, messages and paths stay
+in step. The track marks the stretched stretches, the clock says "slowed:
+1060 ms shown over 7.1 s" while in one, and the inspector gives real times.
+Live plays a burst at its stretched pace, falling a few seconds behind now
+(the clock says how far) and catching up as soon as nothing is left to
+play. Let go at the right end, or press **Back to live**, and it is live
+again. **Replay** plays a recording instead: this session from its start, a
 saved one of the project, or a file (the `run.ndjson` the command prints).
 In a replay the screen is dark and shows where the page was; **Live**
 returns.
@@ -117,11 +145,15 @@ their counts by kind. About two minutes a run.
 person would, and uses its window over the DevTools port (`--debug-port`)
 with real clicks and keys: sign up, reload, sign out, sign in on the screen;
 it checks what was recorded and from where, what the floor holds at chosen
-times, that dragging the handle back and forth shows the same thing at the
-same time, the way back to live, replay, that the password is nowhere in the
-timeline, and that no process is left after Ctrl-C. Without a display it runs
-the window under `xvfb-run`. About two minutes; `STAGE_SHOTS=<dir>` saves
-screenshots.
+times, the legs of each action's path (and that none starts at an input), a
+traveller between its ends partway through its leg and back there after
+scrubbing away, that live falls behind during a burst, the arrival close in
+on a district, that dragging the handle back and forth shows the same thing
+at the same time, the way back to live, replay, that the password is nowhere
+in the timeline, and that no process is left after Ctrl-C. Without a display
+it runs the window under `xvfb-run`. About four minutes; `STAGE_SHOTS=<dir>`
+saves screenshots. `src/test/paths.test.ts` checks the paths on a session
+the command saved (`src/test/fixtures/stage-session.ndjson`).
 
 ## Live mode in the islands world
 

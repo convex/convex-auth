@@ -80,6 +80,16 @@ export function homePose(camera: PerspectiveCamera): {
 const raycaster = new Raycaster();
 
 /**
+ * How the wheel arrives at a thing: within `from` times its radius, each
+ * notch turns the camera `rate` of the way (times how near it is) toward
+ * looking down at `elevation` degrees, into the thing. Things larger than
+ * `most` (the ground, the screen's wall) are not arrived at. Zooming in
+ * stops `stop` times the radius from the point, with all of the thing in
+ * view.
+ */
+const ARRIVE = { from: 5, elevation: 55, rate: 0.45, most: 150, stop: 1.15 };
+
+/**
  * The camera of the stage, as in the islands world (`scene/CameraRig.tsx`):
  * a plain drag pans and keeps the point of the floor pressed under the
  * pointer; Cmd-drag, Ctrl-drag or right-drag orbits; the wheel zooms toward
@@ -233,6 +243,8 @@ export function StageCamera() {
       // least distance grows with its size (the ground and the wall count
       // as large things seen from a moderate height).
       let least = ZOOM.min;
+      /** The thing zoomed toward: its centre and radius (not the ground). */
+      let thing: { centre: Vector3; radius: number } | null = null;
       if (hit) {
         const g = (
           hit.object as {
@@ -246,7 +258,13 @@ export function StageCamera() {
         const sphere = g?.boundingSphere as { radius: number } | undefined;
         const scale = hit.object.getWorldScale(new Vector3());
         const r = (sphere?.radius ?? 0) * Math.max(scale.x, scale.y, scale.z);
-        least = Math.max(ZOOM.min, Math.min(r, 160) * 0.9);
+        least = Math.max(ZOOM.min, Math.min(r, 160) * ARRIVE.stop);
+        const sc = (sphere as { center?: Vector3 } | undefined)?.center;
+        if (r > 0 && r < ARRIVE.most && sc)
+          thing = {
+            centre: hit.object.localToWorld(sc.clone()),
+            radius: r,
+          };
       }
       if (!about) {
         const g = raycaster.ray.intersectPlane(floor, new Vector3());
@@ -263,6 +281,34 @@ export function StageCamera() {
       );
       const p = about.clone().add(pos.clone().sub(about).multiplyScalar(k));
       const t = about.clone().add(target.clone().sub(about).multiplyScalar(k));
+      // Near the end of an approach to a thing, look down into it: the
+      // camera turns about the point toward ARRIVE.elevation, and the point
+      // looked at moves toward the thing's centre.
+      if (thing && k < 1) {
+        const d1 = p.distanceTo(about);
+        const near = Math.min(
+          1,
+          Math.max(
+            0,
+            (thing.radius * ARRIVE.from - d1) /
+              (thing.radius * (ARRIVE.from - 1)),
+          ),
+        );
+        if (near > 0) {
+          const v = p.clone().sub(about);
+          const len = v.length();
+          const el = Math.asin(Math.min(1, Math.max(-1, v.y / len)));
+          const want = (ARRIVE.elevation * Math.PI) / 180;
+          const e = el + (want - el) * Math.min(1, near * ARRIVE.rate);
+          const flat = new Vector3(v.x, 0, v.z);
+          if (flat.lengthSq() < 1e-9) flat.set(0, 0, 1);
+          flat.normalize().multiplyScalar(Math.cos(e) * len);
+          p.copy(about)
+            .add(flat)
+            .add(new Vector3(0, Math.sin(e) * len, 0));
+          t.lerp(thing.centre, Math.min(1, near * ARRIVE.rate));
+        }
+      }
       // Never below the ground.
       if (p.y < 0.4) return;
       t.y = Math.max(0, t.y);

@@ -12,6 +12,8 @@ import {
   EXIT_Z,
   EXITS,
   LABEL_FAR,
+  LABEL_FIT,
+  LABEL_READ,
   LOCAL,
   PAGE,
   REVEAL,
@@ -21,6 +23,9 @@ import {
   type Vec3,
 } from "./layout.ts";
 import { Ground } from "./Ground.tsx";
+import { grid } from "./layout.ts";
+import { moduleSpot } from "./places.ts";
+export { grid };
 import { LOOK, MATTE, mix } from "./look.ts";
 import type { Exit, StageAt } from "./model.ts";
 import type { ClientPart } from "./sources.ts";
@@ -77,7 +82,14 @@ export const selectOnClick = (s: Selection) => ({
 const same = (a: Selection | null, b: Selection | undefined) =>
   b !== undefined && JSON.stringify(a) === JSON.stringify(b);
 
-/** A label lying on the top of a thing, near its front edge, read from the front. */
+/**
+ * A label lying on the top of a thing, near its front edge, read from the
+ * front, at the size of the level the camera is at: drawn at reading size
+ * (`LABEL_READ` of the distance to the camera), never larger than `size`,
+ * and hidden while reading size would not fit (more than `LABEL_FIT` times
+ * `size`). Thus a district's name is large from afar and modest from close
+ * in, and a module's name shows once you are near enough to read it.
+ */
 export function TopLabel({
   at,
   size,
@@ -85,27 +97,43 @@ export function TopLabel({
   color = LOOK.text,
   weight = "bold",
   maxWidth,
+  anchorY = "bottom",
 }: {
   at: Vec3;
+  /** The largest the label is drawn. */
   size: number;
   children: string;
   color?: string;
   weight?: "regular" | "bold" | "mono";
   maxWidth?: number;
+  anchorY?: "top" | "bottom";
 }) {
+  const group = useRef<Group>(null);
+  useFrame(({ camera }) => {
+    const g = group.current;
+    if (!g) return;
+    seen.set(0, 0, 0);
+    g.localToWorld(seen);
+    const read = camera.position.distanceTo(seen) * LABEL_READ;
+    g.visible = read <= size * LABEL_FIT;
+    // Scaled about its anchor, which scaling does not move.
+    const k = Math.min(1, read / size);
+    if (Math.abs(g.scale.x - k) > 1e-3) g.scale.setScalar(k);
+  });
   return (
-    <Label
-      position={at}
-      rotation={[-Math.PI / 2 + 0.55, 0, 0]}
-      anchorY="bottom"
-      fontSize={size}
-      color={color}
-      weight={weight}
-      maxWidth={maxWidth}
-      textAlign="center"
-    >
-      {children}
-    </Label>
+    <group ref={group} position={at}>
+      <Label
+        rotation={[-Math.PI / 2 + 0.55, 0, 0]}
+        anchorY={anchorY}
+        fontSize={size}
+        color={color}
+        weight={weight}
+        maxWidth={maxWidth === undefined ? undefined : maxWidth}
+        textAlign="center"
+      >
+        {children}
+      </Label>
+    </group>
   );
 }
 
@@ -139,7 +167,7 @@ export function Container({
   const selected = useStage((s) => same(s.selection, select));
   const size = Math.max(spot.w, spot.d);
   const center: Vec3 = [spot.x, y + spot.h, spot.z];
-  const ls = labelSize ?? Math.min(size / 9, 9);
+  const ls = labelSize ?? Math.min(size / 7, 16);
   return (
     <group name={`thing:${name}`}>
       <mesh
@@ -162,13 +190,14 @@ export function Container({
         </TopLabel>
       </Near>
       {note && (
-        <Near at={center} within={size * REVEAL}>
+        <Near at={center} within={size * labelFar}>
           <TopLabel
-            at={[spot.x, y + spot.h + 0.05, spot.z + spot.d / 2 - ls * 2.6]}
+            at={[spot.x, y + spot.h + 0.05, spot.z + spot.d / 2 + ls * 0.2]}
             size={ls * 0.42}
             weight="regular"
             color={LOOK.textDim}
-            maxWidth={spot.w * 0.9}
+            maxWidth={spot.w * 1.1}
+            anchorY="top"
           >
             {note}
           </TopLabel>
@@ -183,32 +212,6 @@ export function Container({
   );
 }
 
-/** Lays `n` things out in a grid inside a spot, with a margin. */
-export function grid(
-  spot: Spot,
-  n: number,
-  { margin = 0.12, front = 0.22, aspect = 2.2 } = {},
-) {
-  const w = spot.w * (1 - margin * 2);
-  const d = spot.d * (1 - margin - front);
-  const cols = Math.max(1, Math.ceil(Math.sqrt((n * w) / (d * aspect))));
-  const rows = Math.max(1, Math.ceil(n / cols));
-  const cw = w / cols;
-  const rd = d / rows;
-  return {
-    cw,
-    rd,
-    at: (i: number) => ({
-      x: spot.x - w / 2 + ((i % cols) + 0.5) * cw,
-      z:
-        spot.z -
-        spot.d / 2 +
-        spot.d * margin +
-        (Math.floor(i / cols) + 0.5) * rd,
-    }),
-  };
-}
-
 /** The structure map's modules in a client district, each with its parts. */
 function ClientModules({
   spot,
@@ -219,19 +222,11 @@ function ClientModules({
   parts: ClientPart[];
   lit: StageAt["parts"];
 }) {
-  const g = grid(spot, parts.length);
   const y = spot.h;
   return (
     <group>
       {parts.map((m, i) => {
-        const { x, z } = g.at(i);
-        const inner: Spot = {
-          x,
-          z,
-          w: g.cw * 0.86,
-          d: g.rd * 0.8,
-          h: 1.6,
-        };
+        const inner = moduleSpot(spot, i, parts.length);
         const kids = grid(inner, m.children.length, {
           margin: 0.1,
           front: 0.3,
@@ -241,12 +236,15 @@ function ClientModules({
             key={m.id}
             spot={inner}
             y={y}
-            name={m.name}
+            name={m.name.slice(m.name.lastIndexOf("/") + 1)}
             color={mix(LOOK.blockSide, LOOK.active, lit.get(m.id)?.lit ?? 0)}
             select={{ type: "part", id: m.id }}
-            note={lit.get(m.id)?.step.step}
-            labelSize={Math.min(inner.w / 9, 1.6)}
-            labelFar={5}
+            note={
+              m.name.includes("/")
+                ? m.name.slice(0, m.name.lastIndexOf("/"))
+                : undefined
+            }
+            labelSize={Math.min(inner.w / 7, 4)}
           >
             {m.children.map((c, k) => {
               const p = kids.at(k);
@@ -264,8 +262,7 @@ function ClientModules({
                   name={c.name}
                   color={LOOK.item}
                   select={{ type: "part", id: c.id }}
-                  labelSize={Math.min((kids.cw * 0.85) / 10, 0.5)}
-                  labelFar={6}
+                  labelSize={Math.min((kids.cw * 0.85) / 7, 1.2)}
                 />
               );
             })}
@@ -315,7 +312,7 @@ export function Floor({
         <meshStandardMaterial color={LOOK.platform} {...MATTE} />
       </mesh>
       <Near at={[0, 0, (z0 + z1) / 2]} within={6000}>
-        <TopLabel at={[x0 + 26, 0.05, z1 - 4]} size={9} color={LOOK.textDim}>
+        <TopLabel at={[x0 + 40, 0.05, z1 - 6]} size={16} color={LOOK.textDim}>
           Browser
         </TopLabel>
       </Near>

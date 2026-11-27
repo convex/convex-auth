@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 import { clientTree } from "./sources.ts";
 import { stageAt, type Held, type StageModel } from "./model.ts";
 import { modelOf, timeOf, useStage, type Selection } from "./store.ts";
+import { realOf } from "./paths.ts";
 
 const CLIENT_PARTS = clientTree();
 
+/** A shown time as the real time since the start of the recording. */
 const rel = (model: StageModel, t: number) =>
-  `+${((t - model.start) / 1000).toFixed(2)} s`;
+  `+${((realOf(model.warp, t) - realOf(model.warp, model.start)) / 1000).toFixed(3)} s`;
 
 function Value({ value }: { value: unknown }) {
   return (
@@ -266,7 +268,7 @@ function Body({
               : `from ${exit?.label}`}
             , {rel(model, f.time)}
             {f.endTime !== null &&
-              `, answered after ${Math.round(f.endTime - f.time)} ms`}
+              `, answered after ${Math.round(realOf(model.warp, f.endTime) - realOf(model.warp, f.time))} ms`}
             {f.status !== null && `, status ${f.status}`}
           </p>
           <Secrets ids={f.secrets} model={model} />

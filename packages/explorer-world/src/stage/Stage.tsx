@@ -6,6 +6,7 @@ import { Problems, SceneBoundary } from "../ui/Problems.tsx";
 import { Activity } from "./Activity.tsx";
 import { StageCamera } from "./Camera.tsx";
 import { Floor } from "./Floor.tsx";
+import { Paths } from "./Paths.tsx";
 import { Inspector } from "./Inspector.tsx";
 import { DEFAULT_VIEW, FOV } from "./layout.ts";
 import { LIGHTS, LOOK } from "./look.ts";
@@ -35,6 +36,9 @@ function signature(at: StageAt): string {
 
 const moving = (at: StageAt) =>
   at.flights.length > 0 ||
+  at.legs.length > 0 ||
+  at.beats.length > 0 ||
+  at.thens.length > 0 ||
   at.elements.some((e) => e.lit > 0) ||
   [...at.parts.values(), ...at.keys.values()].some((p) => p.lit > 0) ||
   [...at.local, ...at.session, ...at.cookies].some((s) => s.settled < 1);
@@ -75,6 +79,14 @@ function StageScene({ screen }: { screen: string | null }) {
         clientParts={CLIENT_PARTS}
       />
       <Activity at={at} model={model} />
+      <Paths
+        at={at}
+        ctx={{
+          model,
+          clientParts: CLIENT_PARTS,
+          clientMap: labels.clientMap ?? 1,
+        }}
+      />
     </group>
   );
 }

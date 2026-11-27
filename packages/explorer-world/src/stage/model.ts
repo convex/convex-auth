@@ -9,14 +9,27 @@
  * handle back and forth shows the same thing at the same time, in both
  * directions.
  *
- * Times are those of the recording, in ms since the epoch. A real request
- * takes milliseconds, too short to see; each movement is drawn over
- * {@link TRAVEL_MS} from the moment it happened, so a message that left at
- * `t` is on its way from `t` to `t + TRAVEL_MS`. Nothing moves that the
- * recording does not show happening.
+ * Times are shown times (`paths.ts`): the times of the recording, in ms
+ * since the epoch, with bursts stretched so that consecutive steps are far
+ * enough apart to follow; `model.warp` maps between the two. Each movement
+ * is drawn over {@link TRAVEL_MS} from the moment it happened, so a message
+ * that left at `t` is on its way from `t` to `t + TRAVEL_MS`. Nothing moves
+ * that the recording does not show happening.
  *
  * @module
  */
+
+import {
+  BEAT_LIT_MS,
+  NO_WARP,
+  THEN_MS,
+  legsAt,
+  type Beat,
+  type Leg,
+  type LegAt,
+  type Then,
+  type Warp,
+} from "./paths.ts";
 
 /** How long a movement is drawn, in ms. */
 export const TRAVEL_MS = 700;
@@ -61,6 +74,8 @@ export type Held = {
   eventId: string;
   from: number;
   to: number | null;
+  /** The event that ended it, or null. */
+  toEventId?: string | null;
   /** The value as recorded: tokens are `{ $secret }`. */
   value: unknown;
   /** The tokens in the value. */
@@ -158,6 +173,14 @@ export type StageModel = {
   counts: Record<string, number>;
   /** The page the recorder opened, from its first line. */
   page: string | null;
+  /** The path of what the client did (`paths.ts`). */
+  beats: Beat[];
+  legs: Leg[];
+  thens: Then[];
+  /** The stretch from real time to the shown time of every field here. */
+  warp: Warp;
+  /** The messages a call's traveller stands for, not drawn on their own. */
+  callFlights: Set<string>;
 };
 
 export const EMPTY_MODEL: StageModel = {
@@ -175,6 +198,11 @@ export const EMPTY_MODEL: StageModel = {
   sockets: [],
   counts: {},
   page: null,
+  beats: [],
+  legs: [],
+  thens: [],
+  warp: NO_WARP,
+  callFlights: new Set(),
 };
 
 // ------------------------------------------------------------ at a time --
@@ -214,6 +242,12 @@ export type StageAt = {
   parts: Map<string, { lit: number; step: PageStep }>;
   /** Per storage key a step just read or wrote: how lit, and the step. */
   keys: Map<string, { lit: number; step: PageStep }>;
+  /** The legs on their way. */
+  legs: LegAt[];
+  /** The "thens" drawn now, each with how faded it is (1 just drawn). */
+  thens: { then: Then; fresh: number }[];
+  /** The beats just happened, each with how lit (1 just now). */
+  beats: { beat: Beat; lit: number }[];
 };
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
@@ -265,6 +299,7 @@ export function stageAt(model: StageModel, t: number): StageAt {
   const busyExits = new Set<ExitId>();
   for (const flight of model.flights) {
     if (flight.time > t) continue;
+    if (model.callFlights.has(flight.id)) continue;
     const dt = t - flight.time;
     if (flight.via === "socket") {
       if (dt > TRAVEL_MS) continue;
@@ -302,6 +337,19 @@ export function stageAt(model: StageModel, t: number): StageAt {
     if (step.storageKey !== null) keys.set(step.storageKey, { lit, step });
   }
 
+  const thens: StageAt["thens"] = [];
+  for (const then of model.thens) {
+    if (then.time > t) break;
+    if (t - then.time < THEN_MS)
+      thens.push({ then, fresh: 1 - (t - then.time) / THEN_MS });
+  }
+  const beats: StageAt["beats"] = [];
+  for (const beat of model.beats) {
+    if (beat.time > t) break;
+    if (t - beat.time < BEAT_LIT_MS)
+      beats.push({ beat, lit: 1 - (t - beat.time) / BEAT_LIT_MS });
+  }
+
   const socketOpen = model.sockets.some(
     (s) => s.open <= t && (s.close === null || s.close > t),
   );
@@ -318,5 +366,8 @@ export function stageAt(model: StageModel, t: number): StageAt {
     socketOpen,
     parts,
     keys,
+    legs: legsAt(model.legs, t),
+    thens,
+    beats,
   };
 }

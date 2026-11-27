@@ -2,15 +2,12 @@ import { Label } from "../scene/Label.tsx";
 import {
   CHANNELS,
   COOKIES,
-  EXIT_Z,
-  EXITS,
   FLIGHT,
   LOCAL,
-  PAGE,
-  extraExit,
   type Spot,
   type Vec3,
 } from "./layout.ts";
+import { KEY_H, channelPoint, elementSpot, exitX, keyGrid } from "./places.ts";
 import { LOOK, MATTE, mix } from "./look.ts";
 import type {
   Exit,
@@ -27,20 +24,18 @@ const useSelected = (match: (s: Selection | null) => boolean) =>
   useStage((s) => match(s.selection));
 
 /** The elements the person used, standing on the page; lit when just used. */
-function ElementTiles({ at }: { at: StageAt }) {
-  const n = at.elements.length;
-  if (n === 0) return null;
-  const inner: Spot = { ...PAGE, w: PAGE.w * 0.8 };
-  const span = inner.w / Math.max(n, 6);
+function ElementTiles({ at, model }: { at: StageAt; model: StageModel }) {
+  const n = model.elements.length;
+  if (at.elements.length === 0) return null;
   return (
     <group>
       {at.elements.map(({ element, lit }) => {
-        const x = inner.x - inner.w / 2 + (element.order + 0.5) * span;
+        const s = elementSpot(element.order, n);
         return (
           <Tile
             key={element.key}
-            at={[x, PAGE.h, PAGE.z - 2]}
-            w={span * 0.8}
+            at={[s.x, s.h, s.z]}
+            w={s.w}
             lit={lit}
             label={element.label}
             k={element.key}
@@ -131,7 +126,7 @@ function ValueBlock({
       y={y}
       name={text}
       color={secret ? LOOK.token : LOOK.item}
-      labelSize={Math.min(spot.w / 12, 1)}
+      labelSize={Math.min(spot.w / 9, 2)}
       labelFar={4}
     >
       {claims.map(([k, v], i) => {
@@ -143,7 +138,7 @@ function ValueBlock({
             y={y + spot.h}
             name={claimText(k, v)}
             color={LOOK.item}
-            labelSize={Math.min((g.cw * 0.9) / 11, 0.32)}
+            labelSize={Math.min((g.cw * 0.9) / 8, 0.8)}
             labelFar={6}
           />
         );
@@ -173,7 +168,10 @@ function SlotObjects({
   /** How many slots the area holds over the whole recording. */
   total: number;
 }) {
-  const g = grid(spot, Math.max(total, 4), { aspect: 2.4 });
+  const g =
+    area === "cookie"
+      ? grid(spot, Math.max(total, 4), { aspect: 2.4 })
+      : keyGrid(model);
   return (
     <group>
       {slots.map(({ slot, held, settled, leaving }) => {
@@ -245,7 +243,7 @@ function KeyObject({
   const selected = useSelected(
     (s) => s?.type === "slot" && s.area === area && s.key === k,
   );
-  const h = 2.2;
+  const h = KEY_H;
   const color =
     selected || fresh
       ? LOOK.active
@@ -279,7 +277,7 @@ function KeyObject({
       <Near at={[0, 0, 0]} within={size * 7} name={`label:${k}`}>
         <TopLabel
           at={[0, h + 0.05, d / 2 - 0.3]}
-          size={Math.min(w / 14, 1.4)}
+          size={Math.min(w / 12, 4)}
           maxWidth={w * 0.95}
         >
           {name}
@@ -297,40 +295,16 @@ function KeyObject({
   );
 }
 
-function exitX(exits: Exit[], id: string): number {
-  const fixed = EXITS[id];
-  if (fixed) return fixed.x;
-  const extra = exits.filter((e) => !(e.id in EXITS));
-  return extraExit(
-    Math.max(
-      0,
-      extra.findIndex((e) => e.id === id),
-    ),
-  ).x;
-}
-
 /** Where a message is along its way. */
 function flightPosition(f: FlightAt, exits: Exit[]): Vec3 {
   const ch = CHANNELS[f.flight.via];
   const lane = (f.phase === "in" ? 1 : -1) * ch.width * 0.25;
-  const ex = exitX(exits, f.flight.exit);
-  // Along its channel to the front edge, then to the exit.
-  const a: [number, number] = [ch.x + lane, ch.from];
-  const b: [number, number] = [ch.x + lane, ch.to];
-  const c: [number, number] = [ex + lane, EXIT_Z - 4];
-  const l1 = Math.hypot(b[0] - a[0], b[1] - a[1]);
-  const l2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
-  let dd = f.along * (l1 + l2);
-  let x: number;
-  let z: number;
-  if (dd <= l1) {
-    x = a[0] + ((b[0] - a[0]) * dd) / l1;
-    z = a[1] + ((b[1] - a[1]) * dd) / l1;
-  } else {
-    dd -= l1;
-    x = b[0] + ((c[0] - b[0]) * dd) / Math.max(l2, 1e-6);
-    z = b[1] + ((c[1] - b[1]) * dd) / Math.max(l2, 1e-6);
-  }
+  const [x, z] = channelPoint(
+    f.flight.via,
+    exitX(exits, f.flight.exit),
+    f.along,
+    lane,
+  );
   const level = f.flight.stack % 6;
   const column = Math.floor(f.flight.stack / 6);
   return [
@@ -380,7 +354,7 @@ function FlightObject({ f, exits }: { f: FlightAt; exits: Exit[] }) {
 export function Activity({ at, model }: { at: StageAt; model: StageModel }) {
   return (
     <group>
-      <ElementTiles at={at} />
+      <ElementTiles at={at} model={model} />
       <Near at={[LOCAL.x, 0, LOCAL.z]} within={2000}>
         <SlotObjects
           slots={at.local}

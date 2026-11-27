@@ -47,6 +47,10 @@ export const LOOK = {
 
   /** What is happening now: a used element, a landing object. */
   active: "#d9822b",
+  /** What travels along a step's path, its trail and its rings. */
+  traveller: "#c2410c",
+  /** A "then": two steps only next in time, with no recorded link. */
+  then: "#6b6b66",
 
   text: "#2a2a28",
   textDim: "#6b6b66",

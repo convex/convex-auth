@@ -3,6 +3,7 @@ import { parseNdjson } from "../adapters/convexRecording.ts";
 import { stageFromEvents } from "../adapters/browserStage.ts";
 import { RECORDINGS, liveEvents } from "./sources.ts";
 import { modelOf, spanOf, timeOf, useStage } from "./store.ts";
+import { stretches } from "./paths.ts";
 
 /** Draws again on every animation frame while mounted. */
 function useEveryFrame() {
@@ -32,6 +33,32 @@ function marks(model: ReturnType<typeof modelOf>): number[] {
   for (const e of model.elements) for (const u of e.uses) out.push(u.time);
   for (const l of model.locations) out.push(l.time);
   return out;
+}
+
+/**
+ * Says when the time shown is stretched: real steps a few ms apart are
+ * shown far enough apart to follow, and this says by how much.
+ */
+function Slowed({
+  t,
+  model,
+}: {
+  t: number;
+  model: ReturnType<typeof modelOf>;
+}) {
+  const r = stretches(model.warp).find(
+    (x) => t >= x.shownStart && t <= x.shownEnd,
+  );
+  if (!r) return null;
+  const shown = r.shownEnd - r.shownStart;
+  return (
+    <div
+      className="stage-slowed mono"
+      title="Steps that happened milliseconds apart are spread out to be followed; their order is kept."
+    >
+      slowed: {Math.round(r.real)} ms shown over {(shown / 1000).toFixed(1)} s
+    </div>
+  );
 }
 
 /** The menu of recordings to replay. */
@@ -173,6 +200,19 @@ export function Timeline() {
         }}
       >
         <div className="stage-track-bar" />
+        {stretches(model.warp).map((r, i) =>
+          r.shownEnd >= span.start && r.shownStart <= span.end ? (
+            <div
+              key={`r${i}`}
+              className="stage-stretch"
+              title={`${Math.round(r.real)} ms of real time, shown over ${((r.shownEnd - r.shownStart) / 1000).toFixed(1)} s`}
+              style={{
+                left: `${(Math.max(0, r.shownStart - span.start) / length) * 100}%`,
+                width: `${((Math.min(r.shownEnd, span.end) - Math.max(r.shownStart, span.start)) / length) * 100}%`,
+              }}
+            />
+          ) : null,
+        )}
         {marks(model).map((m, i) =>
           m >= span.start && m <= span.end ? (
             <div
@@ -186,11 +226,14 @@ export function Timeline() {
       </div>
       <div className="stage-clock mono">
         {atLive
-          ? "now"
+          ? span.end - t > 60
+            ? `${seconds(span.end - t)} behind`
+            : "now"
           : isLive
             ? `${seconds(span.end - t)} ago`
             : `${seconds(t - span.start)} / ${seconds(length)}`}
       </div>
+      <Slowed t={t} model={model} />
       {!isLive && (
         <div className="stage-source dim">
           {s.source.kind === "replay" ? s.source.name : ""}

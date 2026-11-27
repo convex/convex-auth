@@ -35,38 +35,64 @@ export const SCREEN = {
   wall: { width: 512, top: 340, depth: 14 },
 };
 
+/**
+ * The ground plan below is drawn at this scale. At 1 the browser's
+ * territory was as wide as the screen and shallow, and from afar the two
+ * read as a monitor and its keyboard; at 1.5 the browser is a field wider
+ * and deeper than the screen, which stands at its back.
+ */
+export const GROUND = 1.5;
+/** The back edge of the territory, which the scale keeps in place. */
+const BACK = -300;
+const gx = (x: number) => x * GROUND;
+const gz = (z: number) => BACK + (z - BACK) * GROUND;
+/** A spot of the plan, at the ground's scale (heights are kept). */
+const ground = (s: Spot): Spot => ({
+  x: gx(s.x),
+  z: gz(s.z),
+  w: s.w * GROUND,
+  d: s.d * GROUND,
+  h: s.h,
+});
+
 /** The browser's territory on the ground. */
-export const TERRITORY = { x: [-240, 240], z: [-300, 48] } as const;
+export const TERRITORY = {
+  x: [gx(-240), gx(240)],
+  z: [gz(-300), gz(48)],
+} as const;
 
 /** A district or a thing on the ground: centre (x, z), size and height. */
 export type Spot = { x: number; z: number; w: number; d: number; h: number };
 
-export const PAGE: Spot = { x: 0, z: -262, w: 200, d: 38, h: 3 };
+export const PAGE: Spot = ground({ x: 0, z: -262, w: 200, d: 38, h: 3 });
 
 /** The client code, left to right. */
 export const CLIENT: Spot[] = [
   { x: -158, z: -188, w: 110, d: 60, h: 7 },
   { x: 0, z: -188, w: 140, d: 60, h: 7 },
   { x: 158, z: -188, w: 110, d: 60, h: 7 },
-];
+].map(ground);
 
-export const LOCAL: Spot = { x: -150, z: -92, w: 140, d: 70, h: 4 };
-export const COOKIES: Spot = { x: -150, z: -8, w: 140, d: 50, h: 4 };
+export const LOCAL: Spot = ground({ x: -150, z: -92, w: 140, d: 70, h: 4 });
+export const COOKIES: Spot = ground({ x: -150, z: -8, w: 140, d: 50, h: 4 });
 
 /** The connections out: a channel from the client code to the exits. */
 export const CHANNELS = {
-  http: { x: 40, from: -152, to: 44, width: 12 },
-  socket: { x: 158, from: -152, to: 44, width: 12 },
+  http: { x: gx(40), from: gz(-152), to: gz(44), width: 12 * GROUND },
+  socket: { x: gx(158), from: gz(-152), to: gz(44), width: 12 * GROUND },
 };
 
 /** The exits, at the front edge of the territory. */
-export const EXIT_Z = 60;
+export const EXIT_Z = gz(60);
 export const EXITS: Record<string, { x: number; w: number }> = {
-  page: { x: -40, w: 60 },
-  backend: { x: 130, w: 100 },
+  page: { x: gx(-40), w: 60 * GROUND },
+  backend: { x: gx(130), w: 100 * GROUND },
 };
 /** Exits seen in a recording (other sites) stand further right. */
-export const extraExit = (i: number) => ({ x: 260 + i * 56, w: 46 });
+export const extraExit = (i: number) => ({
+  x: gx(260 + i * 56),
+  w: 46 * GROUND,
+});
 export const EXIT_HEIGHT = 12;
 
 /** The height where things in flight travel, and their size. */
@@ -77,8 +103,8 @@ export const FLIGHT = { y: 3.5, size: 4, httpSize: 5.5 };
  * screen filling the upper background.
  */
 export const DEFAULT_VIEW = {
-  position: [0, 150, 300] as Vec3,
-  target: [0, 58, -220] as Vec3,
+  position: [0, 150, gz(-220) + 520] as Vec3,
+  target: [0, 58, gz(-220)] as Vec3,
 };
 
 /** How far the camera may go: from a metre to a few kilometres. */
@@ -90,6 +116,14 @@ export const ZOOM = { min: 1, max: 6000 };
  */
 export const REVEAL = 3.2;
 export const LABEL_FAR = 14;
+
+/**
+ * Labels are drawn at reading size: this share of their distance to the
+ * camera (about 15 px on a window 900 px high), never larger than their
+ * own size, and only while reading size is within `LABEL_FIT` times that.
+ */
+export const LABEL_READ = 0.017;
+export const LABEL_FIT = 1.6;
 
 /** The camera's field of view, in degrees, top to bottom. */
 export const FOV = 55;
@@ -106,3 +140,29 @@ export const HOME_FIT: Vec3[] = [
   [EXITS.page.x - EXITS.page.w / 2, 0, EXIT_Z],
   [EXITS.backend.x + EXITS.backend.w / 2, 0, EXIT_Z],
 ];
+
+/** Lays `n` things out in a grid inside a spot, with a margin. */
+export function grid(
+  spot: Spot,
+  n: number,
+  { margin = 0.12, front = 0.22, aspect = 2.2 } = {},
+) {
+  const w = spot.w * (1 - margin * 2);
+  const d = spot.d * (1 - margin - front);
+  const cols = Math.max(1, Math.ceil(Math.sqrt((n * w) / (d * aspect))));
+  const rows = Math.max(1, Math.ceil(n / cols));
+  const cw = w / cols;
+  const rd = d / rows;
+  return {
+    cw,
+    rd,
+    at: (i: number) => ({
+      x: spot.x - w / 2 + ((i % cols) + 0.5) * cw,
+      z:
+        spot.z -
+        spot.d / 2 +
+        spot.d * margin +
+        (Math.floor(i / cols) + 0.5) * rd,
+    }),
+  };
+}

@@ -6,7 +6,9 @@
  * The time is a function of the clock and of the viewer:
  *
  * - live: now (a little behind, so that an event has arrived when its time
- *   comes);
+ *   comes). Times are shown times (`paths.ts`): a burst of steps is
+ *   stretched, so live plays it at its shown pace, falling behind now while
+ *   it does, and catches up at once when nothing is left to play;
  * - held: a time the viewer dragged the handle to;
  * - playing: a replay running at real speed from where it was started.
  *
@@ -23,9 +25,17 @@ import {
 } from "../adapters/browserStage.ts";
 import type { Event } from "../adapters/convexRecording.ts";
 import { EMPTY_MODEL, type StageModel } from "./model.ts";
+import { shownOf } from "./paths.ts";
 
 /** How far behind now live shows, in ms. */
 export const LIVE_LAG_MS = 120;
+/**
+ * Live skips ahead once this much shown time has passed since the last
+ * beat it played: the last movement has arrived by then.
+ */
+export const SETTLE_MS = 1600;
+/** Live never falls further behind now than this, in shown ms. */
+export const MOST_BEHIND_MS = 20_000;
 
 export type Clock =
   | { mode: "live" }
@@ -82,8 +92,10 @@ export const useStage = create<StageState>((set, get) => ({
   setLive: (live) => set({ live }),
   setLiveStatus: (liveStatus) => set({ liveStatus }),
   hold: (time) => set({ clock: { mode: "held", time } }),
-  goLive: () =>
-    set({ source: { kind: "live" }, clock: { mode: "live" }, selection: null }),
+  goLive: () => {
+    head = null;
+    set({ source: { kind: "live" }, clock: { mode: "live" }, selection: null });
+  },
   play: () => {
     const s = get();
     const span = spanOf(s);
@@ -120,7 +132,42 @@ export function spanOf(
     return { start: m.start, end: Math.max(m.end, m.start + 1) };
   }
   const start = s.live.counts && s.live.start > 0 ? s.live.start : s.openedAt;
-  return { start: Math.min(start, now), end: now - LIVE_LAG_MS };
+  const end = shownOf(s.live.warp, now - LIVE_LAG_MS);
+  return { start: Math.min(start, end), end };
+}
+
+/** Where live is: played at the shown pace, caught up when idle. */
+let head: { shown: number; wall: number } | null = null;
+
+/** The index of the first beat after `t`. */
+function beatAfter(model: StageModel, t: number): number {
+  const b = model.beats;
+  let lo = 0;
+  let hi = b.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (b[mid].time <= t) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+/**
+ * The time live shows at the clock time `now`: it moves at the shown pace
+ * from where it was, never past the shown time of now. When the last beat
+ * it played is more than {@link SETTLE_MS} behind it, nothing is moving:
+ * it skips the quiet to the next beat, or to now.
+ */
+export function liveTime(model: StageModel, end: number, now: number): number {
+  let t = head ? head.shown + Math.max(0, now - head.wall) : end;
+  t = Math.min(t, end);
+  const i = beatAfter(model, t);
+  const prev = i > 0 ? model.beats[i - 1].time : -Infinity;
+  if (t - prev > SETTLE_MS)
+    t = i < model.beats.length ? Math.min(end, model.beats[i].time) : end;
+  t = Math.max(t, end - MOST_BEHIND_MS);
+  if (!head || now >= head.wall) head = { shown: t, wall: now };
+  return t;
 }
 
 /** The time shown, at the clock time `now`. */
@@ -131,7 +178,9 @@ export function timeOf(
   const span = spanOf(s, now);
   switch (s.clock.mode) {
     case "live":
-      return span.end;
+      return s.source.kind === "live"
+        ? liveTime(s.live, span.end, now)
+        : span.end;
     case "held":
       return Math.min(Math.max(s.clock.time, span.start), span.end);
     case "playing":

@@ -156,8 +156,11 @@ test("a step the page reported lights its module and the key it names", () => {
   ];
   const m = stageFromEvents([...events, ...steps]);
   expect(m.steps.map((s) => s.step)).toEqual(["signIn.call", "storage.read"]);
-  expect(stageAt(m, t0 - 1).parts.size).toBe(0);
-  const now = stageAt(m, t0 + 100);
+  // Times are shown times: the steps are spread out, in their order.
+  const [s0, s1] = m.steps.map((s) => s.time);
+  expect(s1 - s0).toBeGreaterThanOrEqual(50);
+  expect(stageAt(m, s0 - 1).parts.size).toBe(0);
+  const now = stageAt(m, s1 + 50);
   expect(now.parts.get("module:react/index")?.lit).toBeGreaterThan(0);
   expect(now.keys.get(key)?.step.step).toBe("storage.read");
   // A function's steps are the server's: not the page's.

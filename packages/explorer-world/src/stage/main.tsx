@@ -4,7 +4,13 @@ import "@fontsource/inter/700.css";
 import "@fontsource/jetbrains-mono/400.css";
 import "./stage.css";
 import { createRoot } from "react-dom/client";
-import { Box3, Vector3, type Camera, type Object3D } from "three";
+import {
+  Box3,
+  Vector3,
+  type Camera,
+  type Object3D,
+  type PerspectiveCamera,
+} from "three";
 import { configureTextBuilder } from "troika-three-text";
 import {
   checkFonts,
@@ -16,8 +22,16 @@ import { screenUrl } from "./frame.ts";
 import { PANEL_CSS } from "./look.ts";
 import { DEFAULT_VIEW, HOME_FIT, LOCAL, SCREEN } from "./layout.ts";
 import { Stage } from "./Stage.tsx";
-import { liveFeed, projectLabels, RECORDINGS, startLive } from "./sources.ts";
-import { modelOf, timeOf, useStage } from "./store.ts";
+import {
+  clientTree,
+  liveFeed,
+  projectLabels,
+  RECORDINGS,
+  startLive,
+} from "./sources.ts";
+import { modelOf, spanOf, timeOf, useStage } from "./store.ts";
+import { shownOf, type Place } from "./paths.ts";
+import { placePoint } from "./places.ts";
 import { stageAt } from "./model.ts";
 import { stageFromEvents } from "../adapters/browserStage.ts";
 import { parseNdjson } from "../adapters/convexRecording.ts";
@@ -66,6 +80,64 @@ if (replay && RECORDINGS[replay]) {
     return stageAt(modelOf(s), timeOf(s));
   },
   model: () => modelOf(useStage.getState()),
+  /** The shown time of a real time of the recording shown (`paths.ts`). */
+  shownOf: (t: number) => shownOf(modelOf(useStage.getState()).warp, t),
+  /** How far live is behind now, in shown ms (0 when caught up). */
+  behind: () => {
+    const s = useStage.getState();
+    return spanOf(s).end - timeOf(s);
+  },
+  /** Where a place of a path is in the world (`places.ts`). */
+  place: (place: Place) =>
+    placePoint(place, {
+      model: modelOf(useStage.getState()),
+      clientParts: clientTree(),
+      clientMap: useStage.getState().labels.clientMap ?? 1,
+    }),
+  /** Where a named object is in the world, or null when not drawn. */
+  worldOf: (name: string) => {
+    const scene = (globalThis as { explorerScene?: Object3D }).explorerScene;
+    let found: Object3D | null = null;
+    scene?.traverseVisible((o) => {
+      if (!found && o.name === name) found = o;
+    });
+    return found
+      ? (found as Object3D).getWorldPosition(new Vector3()).toArray()
+      : null;
+  },
+  /**
+   * How tall the text under a named group is drawn on the window, in CSS
+   * pixels, or null when it is not drawn.
+   */
+  textPx: (name: string) => {
+    const scene = (globalThis as { explorerScene?: Object3D }).explorerScene;
+    const camera = (globalThis as { explorerCamera?: PerspectiveCamera })
+      .explorerCamera;
+    let group: Object3D | null = null;
+    scene?.traverseVisible((o) => {
+      if (!group && o.name === name) group = o;
+    });
+    if (!group || !camera) return null;
+    let text: (Object3D & { fontSize?: number }) | null = null;
+    (group as Object3D).traverseVisible((o) => {
+      if (!text && typeof (o as { fontSize?: unknown }).fontSize === "number")
+        text = o;
+    });
+    if (!text) return null;
+    const t = text as Object3D & { fontSize: number };
+    const world = t.fontSize * t.getWorldScale(new Vector3()).y;
+    const d = camera.position.distanceTo(t.getWorldPosition(new Vector3()));
+    const view = 2 * d * Math.tan((camera.fov * Math.PI) / 360);
+    return (world / view) * innerHeight;
+  },
+  /** Replays the text of a recording, as the Replay menu's file does. */
+  replayText: (name: string, text: string) =>
+    useStage
+      .getState()
+      .replay(
+        name,
+        stageFromEvents(parseNdjson(text), useStage.getState().labels),
+      ),
   layout: { LOCAL, SCREEN, DEFAULT_VIEW, HOME_FIT },
   /** The names of the named groups drawn now (see `Near`). */
   shown: () => {

@@ -118,6 +118,28 @@ button.on {
   border-radius: 2px;
   background: var(--stage-track);
 }
+/* A stretch of time shown slower than it happened. */
+.stage-stretch {
+  position: absolute;
+  top: 12px;
+  height: 4px;
+  background: var(--stage-active);
+  opacity: 0.45;
+  border-radius: 2px;
+}
+/* Above the panel, out of its flow: the track keeps its width. */
+.stage-slowed {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% + 6px);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--stage-panel);
+  color: var(--stage-active);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .stage-mark {
   position: absolute;
   top: 9px;

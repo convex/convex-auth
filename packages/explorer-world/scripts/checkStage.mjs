@@ -10,6 +10,13 @@
 //   the page on the screen, are recorded from that frame only, and show on
 //   the floor: the elements used, tokens landing in localStorage and
 //   leaving it, messages on the WebSocket, the page's documents over HTTP;
+// - the paths: a sign-up goes out to the backend and back and into both
+//   keys, a reload reads them back, a sign-out removes each once, no leg
+//   starts at an input; partway through a leg its traveller is between its
+//   ends, and scrubbing away and back puts it where it was; live plays the
+//   stretched steps at their shown pace;
+// - wheeling in on a district arrives looking down into it, its insides
+//   named at a readable size and its own name modest;
 // - the time handle: dragged back and forth with the pointer, the stage
 //   shows the same thing at the same time in both directions; let go at the
 //   right end, it is live again;
@@ -25,7 +32,7 @@
 //
 //   pnpm --filter @convex-dev/explorer-world check:stage
 /* global setTimeout, URL -- Node globals. */
-/* global explorerStage, explorerCamera, innerWidth, innerHeight -- run in the page. */
+/* global explorerStage, explorerCamera, explorerControls, innerWidth, innerHeight -- run in the page. */
 import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -213,6 +220,16 @@ try {
   await screen().locator("button[type=submit]").click();
   await sleep(300);
   await shot("stage-4-sign-in");
+  // Live plays the stretched steps at their shown pace, behind now.
+  let behind = 0;
+  for (let i = 0; i < 8; i++) {
+    behind = Math.max(
+      behind,
+      await page.evaluate(() => explorerStage.behind()),
+    );
+    await sleep(250);
+  }
+  at.behindAtSignIn = behind;
   await signedIn().waitFor({ timeout: 30_000 });
   await sleep(3000);
   await shot("stage-5-signed-in");
@@ -384,6 +401,46 @@ try {
     );
   } else check(false, "a token is in localStorage to wheel in on");
   await goHome();
+  // Wheeling in on a district arrives looking down into it: its insides
+  // named at a readable size, its own name modest.
+  for (let i = 0; i < 16; i++) {
+    const p = await page.evaluate(() =>
+      explorerStage.locate("thing:Convex Auth client"),
+    );
+    if (!p) break;
+    await page.mouse.move(p.x, p.y);
+    await page.mouse.wheel(0, -300);
+    await sleep(250);
+  }
+  await sleep(1500);
+  const arrived = await page.evaluate(() => {
+    const c = explorerCamera.position;
+    const t = explorerControls.getTarget(c.clone());
+    const v = c.clone().sub(t);
+    const names = explorerStage.shown();
+    const modules = names
+      .filter((n) => n.startsWith("label:") && n !== "label:Convex Auth client")
+      .map((n) => explorerStage.textPx(n))
+      .filter((px) => px !== null);
+    return {
+      elevation: (Math.asin(v.y / v.length()) * 180) / Math.PI,
+      distance: v.length(),
+      inside: names.includes("inside:Convex Auth client"),
+      own: explorerStage.textPx("label:Convex Auth client"),
+      readable: modules.filter((px) => px >= 9 && px <= 40).length,
+    };
+  });
+  await shot("stage-arrive-auth");
+  check(
+    arrived.inside &&
+      arrived.elevation > 38 &&
+      arrived.elevation < 70 &&
+      arrived.readable >= 10 &&
+      arrived.own !== null &&
+      arrived.own < 40,
+    `wheeled in on the auth client, the camera looks down into it (${arrived.elevation.toFixed(0)}°, ${arrived.distance.toFixed(0)} m), ${arrived.readable} names inside at a readable size, its own name ${arrived.own?.toFixed(0)} px`,
+  );
+  await goHome();
   // The default view fits a narrow window too.
   await page.setViewportSize({ width: 835, height: 893 });
   await sleep(800);
@@ -441,10 +498,11 @@ try {
       storageStep: m.steps.find((x) => x.storageKey)?.time ?? null,
       exits: m.exits.map((e) => e.label),
       flights: m.flights.length,
-      storageTimes: storage.map((e) => [e.op, e.time]),
+      // The model's times are shown times: real ones go through the stretch.
+      storageTimes: storage.map((e) => [e.op, explorerStage.shownOf(e.time)]),
       socketTimes: ev
         .filter((e) => e.kind === "socket" && e.direction === "sent")
-        .map((e) => e.time),
+        .map((e) => [e.time, explorerStage.shownOf(e.time)]),
     };
   }, at);
   console.log(`     recorded: ${JSON.stringify(seen.by)}`);
@@ -510,7 +568,7 @@ try {
   // The floor at chosen times: a function of the time.
   const firstSet = seen.storageTimes.find(([op]) => op === "set")[1];
   const firstRemove = seen.storageTimes.find(([op]) => op === "remove")[1];
-  const firstSent = seen.socketTimes.find((t) => t > at.signIn);
+  const firstSent = seen.socketTimes.find(([t]) => t > at.signIn)[1];
   const probe = await page.evaluate(
     ({ firstSet, firstRemove, firstSent }) => {
       const { store } = explorerStage;
@@ -523,7 +581,10 @@ try {
             x.leaving,
             +x.settled.toFixed(2),
           ]),
-          flights: s.flights.length,
+          // A call's messages travel as its traveller.
+          flights:
+            s.flights.length +
+            s.legs.filter((l) => l.leg.kind === "call").length,
         };
       };
       return {
@@ -553,6 +614,118 @@ try {
     probe.flying.flights > 0,
     `350 ms after a message is sent, it is on its way (${probe.flying.flights} in flight)`,
   );
+  await page.evaluate(() => explorerStage.store.getState().goLive());
+
+  // The paths: which legs each action has, from recorded links only.
+  const paths = await page.evaluate((marks) => {
+    const m = explorerStage.model();
+    const short = (k) => k.replace(/_[a-z0-9]+$/, "");
+    const describe = (l) =>
+      l.kind === "call"
+        ? `call ${l.label}`
+        : `${l.kind} ${short(l.kind === "read" ? l.from.key : l.to.key)}`;
+    const after = (from, ms) =>
+      m.legs
+        .filter((l) => l.realStart >= from && l.realStart < from + ms)
+        .sort((a, b) => a.start - b.start)
+        .map(describe);
+    return {
+      signUp: after(marks.signUp, 4000),
+      reload: after(marks.reload, 5000),
+      signOut: after(marks.signOut, 2500),
+      fromInputs: m.legs.filter((l) => l.from.type === "element").length,
+      thens: m.thens.length,
+    };
+  }, at);
+  const has = (list, ...want) => want.every((w) => list.includes(w));
+  const once = (list, w) => list.filter((x) => x === w).length === 1;
+  check(
+    has(
+      paths.signUp,
+      "call auth:signUpWithUsernamePassword",
+      "write __convexAuthJWT",
+      "write __convexAuthRefreshToken",
+    ),
+    `a sign-up's path: out to the backend and back, then into both keys (${paths.signUp.join(", ")})`,
+  );
+  check(
+    has(paths.reload, "read __convexAuthJWT", "read __convexAuthRefreshToken"),
+    `a reload's path: both keys read back (${paths.reload.join(", ")})`,
+  );
+  check(
+    has(paths.signOut, "call auth:signOut") &&
+      once(paths.signOut, "remove __convexAuthJWT") &&
+      once(paths.signOut, "remove __convexAuthRefreshToken"),
+    `a sign-out's path: the call, each key removed once (${paths.signOut.join(", ")})`,
+  );
+  check(
+    paths.fromInputs === 0,
+    `no leg starts at an input: nothing records which input led to a step (${paths.thens} "thens" in time order instead)`,
+  );
+  check(
+    at.behindAtSignIn > 200,
+    `live plays a sign-in's steps at their shown pace (${(at.behindAtSignIn / 1000).toFixed(1)} s behind now at most)`,
+  );
+  // Partway through a write, its traveller is between the module and the
+  // key, in the state and in the scene; scrubbing away and back gives the
+  // same.
+  const leg = await page.evaluate((from) => {
+    const l = explorerStage
+      .model()
+      .legs.find((x) => x.kind === "write" && x.realStart >= from);
+    return l
+      ? { id: l.id, start: l.start, end: l.end, from: l.from, to: l.to }
+      : null;
+  }, at.signUp);
+  if (leg) {
+    const travellerAt = async (t) => {
+      await page.evaluate((t) => explorerStage.store.getState().hold(t), t);
+      await sleep(400);
+      return page.evaluate((id) => {
+        const l = explorerStage.now().legs.find((x) => x.leg.id === id);
+        return {
+          along: l ? l.along : null,
+          world: explorerStage.worldOf(`traveller:${id}`),
+          a: explorerStage.place(
+            l ? l.leg.from : { type: "gate", via: "socket" },
+          ),
+          b: explorerStage.place(
+            l ? l.leg.to : { type: "gate", via: "socket" },
+          ),
+        };
+      }, leg.id);
+    };
+    const mid = (leg.start + leg.end) / 2;
+    const first = await travellerAt(mid);
+    const k = (() => {
+      if (!first.world) return null;
+      const [a, b, p] = [first.a, first.b, first.world];
+      const ab = [b[0] - a[0], b[2] - a[2]];
+      const ap = [p[0] - a[0], p[2] - a[2]];
+      return (ab[0] * ap[0] + ab[1] * ap[1]) / (ab[0] ** 2 + ab[1] ** 2);
+    })();
+    await shot("stage-path-mid");
+    await travellerAt(leg.end + 2000);
+    await travellerAt(leg.start - 2000);
+    const again = await travellerAt(mid);
+    check(
+      first.along > 0 && first.along < 1 && k !== null && k > 0.05 && k < 0.95,
+      `partway through a write, its traveller is between the module and the key (along ${first.along?.toFixed(2)}, ${k?.toFixed(2)} of the way on the ground)`,
+    );
+    check(
+      again.along === first.along &&
+        JSON.stringify(again.world) === JSON.stringify(first.world),
+      "scrubbed away and back, the traveller is where it was",
+    );
+    const gone = await page.evaluate(
+      ({ id, t }) => {
+        explorerStage.store.getState().hold(t);
+        return explorerStage.now().legs.some((x) => x.leg.id === id);
+      },
+      { id: leg.id, t: leg.start - 1 },
+    );
+    check(!gone, "before its leg starts, there is no traveller");
+  } else check(false, "the sign-up has a write to follow");
   await page.evaluate(() => explorerStage.store.getState().goLive());
 
   // The time handle, dragged with the pointer.
