@@ -119,8 +119,9 @@ export function Chapters() {
         {world.graph.links.length} dependencies on the map.
       </p>
       <p className="keys">
-        drag orbit · right-drag pan · scroll zoom · WASD fly · Q/E down/up ·
-        click inspect · O overview · F follow · R L U overlays · space play
+        drag pan · ⌘/Ctrl-drag or right-drag orbit · scroll zoom · WASD fly ·
+        Q/E down/up · click inspect · O overview · F follow · R L U overlays ·
+        space play
       </p>
     </nav>
   );

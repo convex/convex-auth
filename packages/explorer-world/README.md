@@ -142,16 +142,18 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 
 ## Controls
 
-| Input                   | Action                                               |
-| ----------------------- | ---------------------------------------------------- |
-| drag, right-drag, wheel | orbit, pan, zoom                                     |
-| W A S D, Q E, Shift     | fly; down and up; faster                             |
-| click                   | inspect a part, island, row, traveller or held row   |
-| O / Overview            | fly back to the overview                             |
-| F / Follow              | the camera follows the action (on at start)          |
-| R, L, U                 | toggle the relations, all links, unresolved overlays |
-| Space, ← →              | play or pause; step to the previous or next beat     |
-| timeline, run list      | scrub; click a run to jump to it and inspect it      |
+| Input                         | Action                                               |
+| ----------------------------- | ---------------------------------------------------- |
+| drag                          | pan across the map                                   |
+| ⌘-drag, Ctrl-drag, right-drag | orbit about the point looked at                      |
+| wheel                         | zoom toward the cursor                               |
+| W A S D, Q E, Shift           | fly; down and up; faster                             |
+| click                         | inspect a part, island, row, traveller or held row   |
+| O / Overview                  | fly back to the overview                             |
+| F / Follow                    | the camera follows the action (on at start)          |
+| R, L, U                       | toggle the relations, all links, unresolved overlays |
+| Space, ← →                    | play or pause; step to the previous or next beat     |
+| timeline, run list            | scrub; click a run to jump to it and inspect it      |
 
 URL parameters for scripted screenshots: `?t=42&paused` opens at 42 s,
 `?free` starts at the overview without following, `?select=<part id>` opens
@@ -269,7 +271,7 @@ with 0 and clamps the rest (`src/scene/safety.ts`).
 GPU and what it supports, the size of the canvas and its pixel ratio, the
 camera, the count of NaN, infinite and negative pixels in the scene buffer
 before the effects (read back once a second), and a switch for each effect
-(the sanitize pass, bloom, vignette, fog) and each layer of the scene. Turn
+(the composer itself, the sanitize pass, bloom, vignette, fog) and each layer of the scene. Turn
 the layers off one at a time until the count drops to 0.
 
 `pnpm --filter @convex-dev/explorer-world check:rendering` checks in

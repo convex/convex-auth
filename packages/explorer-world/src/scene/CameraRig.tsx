@@ -1,5 +1,5 @@
-import { CameraControls } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { CameraControls, CameraControlsImpl } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import { Vector3 } from "three";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
@@ -63,10 +63,32 @@ const START_AFTER = 2.5;
 /** The direction Follow looks from: in front and above. */
 const VIEW = new Vector3(-0.18, 0.66, 0.73).normalize();
 
+const { ACTION } = CameraControlsImpl;
+
+/** A key typed into a field, not meant for the camera. */
+const typing = (e: KeyboardEvent) => {
+  const t = e.target as HTMLElement | null;
+  return (
+    !!t &&
+    (t.isContentEditable ||
+      t.tagName === "INPUT" ||
+      t.tagName === "TEXTAREA" ||
+      t.tagName === "SELECT")
+  );
+};
+
+/** The viewer takes the camera: Follow stops until turned on again. */
+const takeOver = () => {
+  if (usePlayback.getState().director)
+    usePlayback.getState().setDirector(false);
+};
+
 /**
- * The free camera: orbit, pan and dolly with the pointer, fly with WASD
- * (Q and E for down and up). In director mode it follows the action until
- * the viewer takes over.
+ * The free camera. Drag pans across the map; Cmd-drag, Ctrl-drag or
+ * right-drag orbits about the point looked at; the wheel zooms toward the
+ * cursor; WASD flies (Q and E for down and up). Nothing ties the camera to a
+ * region: it moves on its own only for Overview, Follow and Fly to. In
+ * director mode (Follow) it follows the action until the viewer takes over.
  */
 export function CameraRig() {
   const controls = useRef<CameraControls>(null);
@@ -91,19 +113,46 @@ export function CameraRig() {
     );
   }, []);
 
+  // The keys are read on the window: the canvas need not have focus.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
+      if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
       KEYS.add(e.key.toLowerCase());
     };
-    const up = (e: KeyboardEvent) => KEYS.delete(e.key.toLowerCase());
+    const up = (e: KeyboardEvent) => {
+      KEYS.delete(e.key.toLowerCase());
+      // With Cmd held, macOS sends no keyup for the other keys.
+      if (e.key === "Meta") KEYS.clear();
+    };
+    const clear = () => KEYS.clear();
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", clear);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", clear);
     };
   }, []);
+
+  // The button of a drag is chosen as it starts: plain drag pans along the
+  // map, with Cmd or Ctrl it orbits. Runs before the controls see the press.
+  const canvas = useThree((s) => s.gl.domElement);
+  useEffect(() => {
+    const press = (e: PointerEvent) => {
+      const c = controls.current;
+      if (!c) return;
+      c.mouseButtons.left =
+        e.metaKey || e.ctrlKey ? ACTION.ROTATE : ACTION.SCREEN_PAN;
+    };
+    // The wheel zooms without a "control start": it takes over here.
+    canvas.addEventListener("pointerdown", press, { capture: true });
+    canvas.addEventListener("wheel", takeOver, { passive: true });
+    return () => {
+      canvas.removeEventListener("pointerdown", press, { capture: true });
+      canvas.removeEventListener("wheel", takeOver);
+    };
+  }, [canvas]);
 
   // A requested flight: to the overview or to a selection.
   useEffect(() => {
@@ -160,8 +209,7 @@ export function CameraRig() {
         moved = true;
       }
     }
-    if (moved && usePlayback.getState().director)
-      usePlayback.getState().setDirector(false);
+    if (moved) takeOver();
 
     if (!director) return;
     // Director: frame every part the current beat touches. The world is shown
@@ -197,17 +245,21 @@ export function CameraRig() {
       makeDefault
       smoothTime={0.6}
       draggingSmoothTime={0.15}
+      mouseButtons={{
+        left: ACTION.SCREEN_PAN,
+        middle: ACTION.DOLLY,
+        right: ACTION.ROTATE,
+        wheel: ACTION.DOLLY,
+      }}
       minDistance={3}
+      // Far enough to see the whole map from any side.
       maxDistance={Math.max(
-        300,
-        overview.position.distanceTo(overview.target) * 2,
+        600,
+        overview.position.distanceTo(overview.target) * 4,
       )}
       maxPolarAngle={Math.PI * 0.49}
       dollyToCursor
-      onStart={() => {
-        if (usePlayback.getState().director)
-          usePlayback.getState().setDirector(false);
-      }}
+      onStart={takeOver}
     />
   );
 }
