@@ -286,8 +286,12 @@ function useActing(): string[] {
       actingModules(world.timeline.clientSteps, state.time).now;
     // In the backend, the part the call of an operation is in now.
     const run = runningNow(world.timeline, state.time);
+    // While a call runs, the backend has one name too: of the part the
+    // call is in now, at its kept size; the parts it passed through keep
+    // their halos without a name.
     const list = [...ids]
       .filter((id) => !inClient(id))
+      .filter((id) => !run || !state.active.has(id))
       .concat(at ? [`report:${at}`] : [])
       .concat(run ? [`report:${run}`] : [])
       .filter((id) => {
