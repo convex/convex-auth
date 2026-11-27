@@ -488,6 +488,9 @@ export function recordingFromTimeline(
             note: "The recording does not link the call to the module. It is the only call of this function the page made between the module's signIn.call and signIn.return, in the order the recorder numbered the page's events.",
           },
         };
+      run.sentAt = call.sentAt;
+      run.order = call.order;
+      run.answeredAt = call.answeredAt;
       run.carriesIn = call.cargoIn;
       run.carriesOut = call.cargoOut;
       run.facts.push([

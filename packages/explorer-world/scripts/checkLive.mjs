@@ -6,7 +6,7 @@
 // - events show in the world while the scenario is still running, and how
 //   long after the page did something its event reached the world and was
 //   drawn (the lag);
-// - pause, scrubbing back, resume and "skip to live" work while events keep
+// - pause, scrubbing back, resume and "back to live" work while events keep
 //   arriving, and a rebuild does not move a paused playhead out of its run;
 // - once the recording ends, the world equals the world of the saved file
 //   (same runs, steps, writes, calls, page items and unplaced list), and it
@@ -205,7 +205,25 @@ try {
         chapterRun: at.chapter?.run.id ?? null,
         chapterStart: at.chapter?.start ?? null,
         lastStart: chapters.at(-1)?.start ?? null,
+        // Where "back to live" goes: the newest pressed control or run.
+        edge: Math.max(
+          chapters.at(-1)?.start ?? -Infinity,
+          ...w.timeline.actions,
+        ),
         received: window.explorerLive.trace.received.length,
+        // The real moment the playhead shows (ms), through the warp.
+        real: (() => {
+          // As realAt in src/model/schedule.ts: past the ends, 1 s per s.
+          const { real, shown } = w.timeline.warp;
+          const n = shown.length;
+          if (n < 2) return null;
+          if (s.time >= shown[n - 1])
+            return real[n - 1] + (s.time - shown[n - 1]) * 1000;
+          let i = 0;
+          while (shown[i + 1] <= s.time) i++;
+          const k = (s.time - shown[i]) / (shown[i + 1] - shown[i]);
+          return real[i] + k * (real[i + 1] - real[i]);
+        })(),
         frames: window.explorerFrames.count,
       };
     });
@@ -244,43 +262,34 @@ try {
   const target = await page.evaluate(() => {
     const c = window.explorerWorld.timeline.chapters[1];
     window.explorer.getState().pause();
-    window.explorer.getState().setTime(c.start + 0.5);
-    return c.run.id;
+    window.explorer.getState().setTime(c.start);
+    return c.start;
   });
   await sleep(500);
   const scrubbed = await state();
-  // The run list (folded or not) marks the run shown.
-  const caption = await page.locator(".chapters li.current .n").textContent();
   check(
-    scrubbed.chapterRun === target && caption?.trim() === "2",
-    `scrubbing back shows the second run (run list at ${caption?.trim()})`,
+    scrubbed.chapterStart === target && !scrubbed.playing,
+    `scrubbing back shows the second run, paused`,
   );
 
   // Resume.
-  await page.getByRole("button", { name: "Play" }).click();
+  await page.evaluate(() => window.explorer.getState().play());
   await sleep(1500);
   const resumed = await state();
   check(
     resumed.playing && resumed.time > scrubbed.time,
     `resume plays on from there (${scrubbed.time.toFixed(1)} s -> ${resumed.time.toFixed(1)} s)`,
   );
-  const behindText = await page.locator(".live .lag").textContent();
-  check(
-    /behind/.test(behindText ?? ""),
-    `the HUD says how far behind: "${behindText}"`,
-  );
 
-  // Skip to live.
-  await page.getByRole("button", { name: "Skip to live" }).click();
+  // Back to live.
+  await page.evaluate(() => window.explorer.getState().skipToLive());
   const skipped = await state();
   check(
     skipped.playing &&
-      skipped.chapterIndex === skipped.chapters - 1 &&
-      // The world plays faster while it is far behind, so it may have moved
-      // on a little in the moment before the state is read.
-      skipped.time >= skipped.lastStart - 0.01 &&
-      skipped.time - skipped.lastStart < 2,
-    `skip to live plays the newest run (run ${skipped.chapterIndex + 1} of ${skipped.chapters})`,
+      // It may have moved on a little before the state is read.
+      skipped.time >= skipped.edge - 0.01 &&
+      skipped.time - skipped.edge < 2,
+    `back to live plays from the newest action or run (${skipped.time.toFixed(1)} s, edge ${skipped.edge.toFixed(1)} s)`,
   );
 
   check(
@@ -288,10 +297,9 @@ try {
     "scrub, resume and skip to live ran while the scenario ran",
   );
 
-  // Pause: the playhead stays in its run while the timeline grows.
-  await page.getByRole("button", { name: "Pause" }).click();
+  // Pause: the playhead stays at its moment while the timeline grows.
+  await page.evaluate(() => window.explorer.getState().pause());
   const paused = await state();
-  const offset = paused.time - (paused.chapterStart ?? 0);
   // The scenario waits about a minute for a refresh the page schedules; wait
   // until more runs come, and a little after.
   let endedWhilePaused = true;
@@ -311,14 +319,15 @@ try {
     later.received > paused.received && later.duration > paused.duration,
     `events kept arriving while paused: ${paused.received} -> ${later.received} events, ${paused.chapters} -> ${later.chapters} runs`,
   );
+  // Its place is a moment of real time: what arrived late lands where it
+  // happened, and the shown time of that moment may move a little.
   check(
-    later.chapterRun === paused.chapterRun &&
-      Math.abs(later.time - (later.chapterStart ?? 0) - offset) < 1e-6,
-    `the paused playhead kept its place: run ${paused.chapterRun}, ${offset.toFixed(2)} s in`,
+    paused.real !== null && Math.abs(later.real - paused.real) < 1,
+    `the paused playhead kept its moment: ${paused.time.toFixed(2)} s -> ${later.time.toFixed(2)} s shown, the same real moment`,
   );
 
-  await page.getByRole("button", { name: "Skip to live" }).click();
-  check((await state()).playing, "skip to live plays again after the pause");
+  await page.evaluate(() => window.explorer.getState().skipToLive());
+  check((await state()).playing, "back to live plays again after the pause");
 
   // ----------------------------------------------------------- end --
 

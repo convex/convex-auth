@@ -8,6 +8,7 @@ import {
   liveEdge,
   liveToken,
   liveUrl,
+  nextStart,
   placedBehind,
   withToken,
 } from "./live.ts";
@@ -199,6 +200,9 @@ export function currentState() {
   return cached.state;
 }
 
+/** Seconds of quiet the playhead keeps before something new it jumps to. */
+const LEAD_IN = 0.3;
+
 /**
  * Replaces the world with `next`, a rebuild of the same recording with more
  * events. The playhead keeps its place in the run it is in (see `live.ts`).
@@ -212,16 +216,22 @@ export function replaceWorld(next: World, relaidOut: boolean) {
   // the end plays it, unless the viewer paused.
   const caughtUp = s.live?.caughtUp ?? true;
   const atEnd = s.time >= before.duration - 1e-6;
-  const time = caughtUp
-    ? anchorTime(before, s.time, next.timeline)
-    : next.timeline.duration;
   const grew = next.timeline.duration > before.duration + 1e-6;
+  const resumes = Boolean(s.live && caughtUp && atEnd && grew && !s.held);
+  // A world at rest that something new reaches goes straight to it: the
+  // pause before it (a person who had not pressed anything) is not played.
+  const time = !caughtUp
+    ? next.timeline.duration
+    : resumes
+      ? Math.max(
+          s.time,
+          nextStart(next.timeline, before.duration - 1e-6) - LEAD_IN,
+        )
+      : anchorTime(before, s.time, next.timeline);
   world = next;
   cached = null;
   usePlayback.setState({
-    ...(s.live && caughtUp && atEnd && grew && !s.held && !s.playing
-      ? { playing: true }
-      : {}),
+    ...(resumes && !s.playing ? { playing: true } : {}),
     time,
     version: s.version + 1,
     layoutVersion: s.layoutVersion + (relaidOut ? 1 : 0),

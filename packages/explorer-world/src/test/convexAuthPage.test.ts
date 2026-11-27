@@ -156,7 +156,7 @@ describe("the client library in the browser", () => {
         (s) => s.part === run.sender!.part,
       );
       const call = steps
-        .filter((s) => s.step === "signIn.call" && s.end <= leaves)
+        .filter((s) => s.step === "signIn.call" && s.start <= leaves)
         .at(-1);
       const ret = steps.find(
         (s) => s.step === "signIn.return" && s.start >= back,

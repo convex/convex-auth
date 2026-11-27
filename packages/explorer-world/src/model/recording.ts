@@ -97,6 +97,16 @@ export interface PageItem {
   step?: string;
   /** The sign-in state the page is in after it. */
   state?: { holder: string; state: PageState };
+  /**
+   * For a step: the operation of the client it belongs to, as the client
+   * reported it, made unique by page and document load; its kind; and the
+   * operation that started it, when the client knows.
+   */
+  op?: string;
+  opKind?: string;
+  /** For a step of the scenario (a pressed control): whether it starts or ends. */
+  scenario?: "start" | "end";
+  parentOp?: string;
 }
 
 export interface Run {
@@ -112,6 +122,15 @@ export interface Run {
   /** Real start and end, in ms. */
   startedAt: number;
   endedAt: number;
+  /**
+   * When the page that called it sent the request and got the response, by
+   * the page's clock (ms), when recorded: the times the page's own steps are
+   * ordered against.
+   */
+  sentAt?: number;
+  answeredAt?: number;
+  /** Where the request stands in its page's order of events, when recorded. */
+  order?: { page: string; seq: number };
   /** The kind of function, as the recording says. */
   type: string;
   ok: boolean;

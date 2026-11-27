@@ -112,10 +112,13 @@ describe("a live recording", () => {
       runs: 0,
     });
     const first = behindLive(timeline, 0);
-    expect(first.runs).toBe(timeline.chapters.length - 1);
+    expect(first.runs).toBe(timeline.chapters.length);
     expect(first.seconds).toBeCloseTo(timeline.duration);
     expect(liveEdge(timeline)).toBe(
-      timeline.chapters[timeline.chapters.length - 1].start,
+      Math.max(
+        timeline.chapters[timeline.chapters.length - 1].start,
+        ...timeline.actions,
+      ),
     );
   });
 

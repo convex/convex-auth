@@ -18,7 +18,8 @@
     "check:stage": "node scripts/checkStage.mjs",
     "check:in-page": "node scripts/checkInPage.mjs",
     "check:controls": "node scripts/checkControls.mjs",
-    "check:browser": "node scripts/checkBrowserRegion.mjs"
+    "check:browser": "node scripts/checkBrowserRegion.mjs",
+    "check:pacing": "node scripts/checkPacing.mjs"
   },
   "dependencies": {
     "@convex-dev/explorer-structure": "workspace:*",

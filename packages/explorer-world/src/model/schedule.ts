@@ -118,28 +118,242 @@ export interface Timeline {
   alerts: Alert[];
   states: StateChange[];
   clientSteps: ClientStep[];
+  /** Real time (ms) to shown time (s), for what has no place of its own. */
+  warp: Warp;
+  /** When each pressed control (a step of the scenario) starts, in shown time. */
+  actions: number[];
+  /** When each pressed control was done, in shown time. */
+  actionEnds: number[];
 }
 
-/** Seconds of playback for each kind of step. */
+/**
+ * Seconds of shown time for the parts of a function run. A run takes
+ * milliseconds; these make each part long enough to see, and no longer.
+ */
 export const PACE = {
-  lead: 0.8,
-  request: 1.8,
-  call: 1.2,
-  inside: 0.5,
-  return: 1.0,
-  note: 1.6,
-  page: 1.1,
-  /** A step the client library reported: many come in a row. */
-  step: 0.5,
-  log: 2.6,
-  commit: 1.6,
-  response: 1.8,
-  schedule: 1.2,
-  gap: 1.4,
+  request: 0.35,
+  call: 0.16,
+  inside: 0.06,
+  return: 0.14,
+  note: 0.2,
+  log: 0.5,
+  commit: 0.35,
+  response: 0.35,
+  schedule: 0.4,
+  /** A run that shows nothing inside (a query read again): out and back. */
+  quick: 0.3,
 };
 
-/** Seconds of the leg between a caller in the browser and its way out. */
-const HOP = 0.6;
+/** Seconds a step the client reported, or another page event, stays lit. */
+export const LIT = 0.5;
+
+/**
+ * The least shown time between two consecutive things that happened, in
+ * seconds: a step of the same operation as the one before it, another
+ * page event, a run starting.
+ */
+export const GAP = { sameOp: 0.08, item: 0.12, run: 0.08, lead: 0.6 };
+
+/** The shown length of a query run again with nothing new to show. */
+export const RERUN = 0.7;
+
+/** A real gap up to this (s) is shown as it is. */
+const REAL_UP_TO = 0.5;
+/** No real gap is shown longer than this (s): a long wait is a short pause. */
+export const LONGEST_WAIT = 2.4;
+
+/**
+ * The shown length of a real gap, in seconds: as it is up to
+ * {@link REAL_UP_TO}, then growing with its logarithm, at most
+ * {@link LONGEST_WAIT}. A lock held for 50 s, or a minute of nobody pressing
+ * anything, is a pause of a couple of seconds.
+ */
+export function shownGap(real: number): number {
+  if (real <= REAL_UP_TO) return Math.max(0, real);
+  return Math.min(
+    LONGEST_WAIT,
+    REAL_UP_TO + 0.45 * Math.log(1 + (real - REAL_UP_TO) / REAL_UP_TO),
+  );
+}
+
+/**
+ * The map from real time (ms since the epoch) to shown time (s): piecewise
+ * linear through `(real[i], shown[i])`, increasing in both.
+ */
+export interface Warp {
+  real: number[];
+  shown: number[];
+}
+
+/** The shown time of a real time, through a warp. */
+export function shownAt(w: Warp, real: number): number {
+  const n = w.real.length;
+  if (n === 0) return 0;
+  if (real <= w.real[0]) return w.shown[0];
+  if (real >= w.real[n - 1]) return w.shown[n - 1];
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (w.real[mid] <= real) lo = mid;
+    else hi = mid;
+  }
+  const span = w.real[hi] - w.real[lo];
+  const k = span > 0 ? (real - w.real[lo]) / span : 0;
+  return w.shown[lo] + k * (w.shown[hi] - w.shown[lo]);
+}
+
+/** The real time of a shown time, through a warp: the inverse of {@link shownAt}. */
+export function realAt(w: Warp, shown: number): number {
+  const n = w.shown.length;
+  if (n === 0) return 0;
+  if (shown <= w.shown[0]) return w.real[0] - (w.shown[0] - shown) * 1000;
+  if (shown >= w.shown[n - 1])
+    return w.real[n - 1] + (shown - w.shown[n - 1]) * 1000;
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (w.shown[mid] <= shown) lo = mid;
+    else hi = mid;
+  }
+  const span = w.shown[hi] - w.shown[lo];
+  const k = span > 0 ? (shown - w.shown[lo]) / span : 0;
+  return w.real[lo] + k * (w.real[hi] - w.real[lo]);
+}
+
+/** The op a page item belongs to, when the client reported one. */
+const opOf = (it: Run["before"][number]) => it.op ?? null;
+
+/** The natural shown length of a run: its parts end to end. */
+function naturalLength(run: Run): number {
+  if (!run.steps.length && !run.writes.length) return 2 * PACE.quick;
+  let t = run.scheduledBy ? PACE.schedule : PACE.request;
+  for (const s of run.steps)
+    t +=
+      s.kind === "call"
+        ? PACE.call + PACE.inside
+        : s.kind === "return"
+          ? PACE.return
+          : s.kind === "note"
+            ? PACE.note
+            : PACE.log;
+  if (run.writes.length) t += PACE.commit;
+  if (!run.scheduledBy) t += PACE.response;
+  return t;
+}
+
+/**
+ * Whether a run is a query run again: a query that wrote nothing, of a
+ * function the same caller ran before. A subscribed query runs again after
+ * every change; each time it plays briefly.
+ */
+function reruns(runs: Run[]): Set<string> {
+  const seen = new Set<string>();
+  const out = new Set<string>();
+  for (const r of [...runs].sort((a, b) => a.startedAt - b.startedAt)) {
+    const key = `${r.caller}|${r.function}`;
+    if (r.type === "Query" && !r.writes.length && seen.has(key)) out.add(r.id);
+    seen.add(key);
+  }
+  return out;
+}
+
+/**
+ * How much a run's parts are scaled to fit its shown length: 1, or less
+ * for a query run again.
+ */
+function runScale(run: Run, rerun: Set<string>): number {
+  const n = naturalLength(run);
+  return rerun.has(run.id) && n > RERUN ? RERUN / n : 1;
+}
+
+type Placed =
+  | { kind: "item"; real: number; item: Run["before"][number]; run: Run }
+  | { kind: "run"; real: number; run: Run };
+
+/**
+ * Where each run and each page event goes in shown time. Everything is
+ * taken in real order; each is at least a short gap after the one before
+ * it, and a real gap longer than that is shown as {@link shownGap} of it.
+ * A run lasts {@link naturalLength} (a query run again, {@link RERUN}); what the page did while it was in flight
+ * plays while it plays, and what happened after its answer waits for it.
+ * Thus things that happened at the same time play at the same time, and
+ * shown time is one increasing function of real time.
+ */
+function place(recording: Recording, rerun: Set<string>) {
+  const all: Placed[] = [];
+  for (const run of recording.runs) {
+    for (const item of run.before)
+      all.push({ kind: "item", real: item.time, item, run });
+    all.push({ kind: "run", real: run.sentAt ?? run.startedAt, run });
+    for (const item of run.after)
+      all.push({ kind: "item", real: item.time, item, run });
+  }
+  // A page's own order of events wins over its times, which the recorder
+  // takes as the events reach it: along each page's order, an event is
+  // taken no earlier than the one before it.
+  const byPage = new Map<string, { p: Placed; seq: number }[]>();
+  for (const p of all) {
+    const order = p.kind === "item" ? p.item.order : p.run.order;
+    if (!order) continue;
+    const list = byPage.get(order.page) ?? [];
+    list.push({ p, seq: order.seq });
+    byPage.set(order.page, list);
+  }
+  for (const list of byPage.values()) {
+    list.sort((a, b) => a.seq - b.seq);
+    let floor = -Infinity;
+    for (const { p } of list) {
+      p.real = Math.max(p.real, floor);
+      floor = p.real;
+    }
+  }
+  // In that order; ties keep the adapter's order (the sort is stable).
+  all.sort((a, b) => a.real - b.real);
+  const at = new Map<Placed, number>();
+  const runStart = new Map<string, number>();
+  const warp: Warp = { real: [], shown: [] };
+  const open: { answer: number; end: number }[] = [];
+  let prev: Placed | null = null;
+  let prevShown = 0;
+  let last = 0;
+  for (const p of all) {
+    let s: number;
+    if (!prev) s = GAP.lead;
+    else {
+      const least =
+        p.kind === "run"
+          ? GAP.run
+          : prev.kind === "item" &&
+              opOf(p.item) &&
+              opOf(p.item) === opOf(prev.item)
+            ? GAP.sameOp
+            : GAP.item;
+      s = prevShown + Math.max(least, shownGap((p.real - prev.real) / 1000));
+    }
+    // After a run's answer: after the run has played.
+    for (let i = open.length - 1; i >= 0; i--)
+      if (open[i].answer <= p.real) {
+        s = Math.max(s, open[i].end + 0.05);
+        open.splice(i, 1);
+      }
+    at.set(p, s);
+    if (p.kind === "run") {
+      runStart.set(p.run.id, s);
+      const end = s + naturalLength(p.run) * runScale(p.run, rerun);
+      open.push({ answer: p.run.answeredAt ?? p.run.endedAt, end });
+      last = Math.max(last, end);
+    } else last = Math.max(last, s + LIT);
+    if (!warp.real.length || p.real > warp.real[warp.real.length - 1]) {
+      warp.real.push(p.real);
+      warp.shown.push(s);
+    }
+    prev = p;
+    prevShown = s;
+  }
+  return { all, at, runStart, warp, last };
+}
 
 export function buildTimeline(
   index: GraphIndex,
@@ -156,6 +370,9 @@ export function buildTimeline(
     alerts: [],
     states: [],
     clientSteps: [],
+    warp: { real: [], shown: [] },
+    actions: [],
+    actionEnds: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
   // Ids count within each run, so that a run keeps the ids of its movements
@@ -181,52 +398,41 @@ export function buildTimeline(
     tl.rowChanges.push({ at: 0, run: "", write });
   }
 
-  /** What a page did outside the runs: beats at the page, and what it holds. */
-  const playItems = (run: Run, items: Run["before"], from: number) => {
-    let at = from;
-    for (const it of items) {
-      const pace = it.kind === "step" ? PACE.step : PACE.page;
-      beat(
-        at,
-        at + pace,
-        run.id,
-        `${name(it.part)}: ${it.text}`,
-        it.tone,
-        it.part,
-        it.lights ?? [it.part],
-      );
-      for (const node of it.lights ?? [])
-        tl.activations.push({
-          node,
-          run: run.id,
-          start: at,
-          end: at + pace,
-          tone: it.tone,
-        });
-      if (it.step)
-        tl.clientSteps.push({
-          start: at,
-          end: at + pace,
-          part: it.part,
-          step: it.step,
-          tone: it.tone,
-        });
-      if (it.state)
-        tl.states.push({
-          at: at + pace * 0.5,
-          holder: it.state.holder,
-          state: it.state.state,
-        });
-      if (it.hold)
-        tl.holdings.push({
-          at: at + pace * 0.5,
-          holder: it.part,
-          cargo: it.hold.cargo,
-          op: it.hold.op,
-        });
-      at += pace;
-    }
-    return at;
+  /** Something a page did outside the runs, at its shown time. */
+  const playItem = (run: Run, it: Run["before"][number], at: number) => {
+    const end = at + LIT;
+    beat(
+      at,
+      end,
+      run.id,
+      `${name(it.part)}: ${it.text}`,
+      it.tone,
+      it.part,
+      it.lights ?? [it.part],
+    );
+    for (const node of it.lights ?? [])
+      tl.activations.push({ node, run: run.id, start: at, end, tone: it.tone });
+    if (it.step)
+      tl.clientSteps.push({
+        start: at,
+        end,
+        part: it.part,
+        step: it.step,
+        tone: it.tone,
+      });
+    if (it.state)
+      tl.states.push({
+        at: at + 0.05,
+        holder: it.state.holder,
+        state: it.state.state,
+      });
+    if (it.hold)
+      tl.holdings.push({
+        at: at + 0.05,
+        holder: it.part,
+        cargo: it.hold.cargo,
+        op: it.hold.op,
+      });
   };
 
   /**
@@ -239,7 +445,7 @@ export function buildTimeline(
     to: Anchor,
     start: number,
     kind: "request" | "response",
-    end = start + HOP,
+    end: number,
   ) => {
     move({
       run: run.id,
@@ -264,24 +470,43 @@ export function buildTimeline(
     return end;
   };
 
-  let t = 0;
+  const rerun = reruns(recording.runs);
+  const placed = place(recording, rerun);
+  tl.warp = placed.warp;
+  for (const p of placed.all)
+    if (p.kind === "item") {
+      playItem(p.run, p.item, placed.at.get(p)!);
+      if (p.item.scenario === "start") tl.actions.push(placed.at.get(p)!);
+      if (p.item.scenario === "end") tl.actionEnds.push(placed.at.get(p)!);
+    }
+
   for (const run of recording.runs) {
-    const start = t;
+    const start = placed.runStart.get(run.id)!;
+    let t = start;
+    // A query run again plays its parts faster, to fit its short length.
+    const k = runScale(run, rerun);
+    const P = Object.fromEntries(
+      Object.entries(PACE).map(([key, v]) => [key, v * k]),
+    ) as typeof PACE;
     const root = run.function;
     // A run that shows nothing inside (a query read again) passes quickly.
     const quick = !run.steps.length && !run.writes.length;
-    const pace = quick ? 0.5 : 1;
-    t = playItems(run, run.before, t);
-    t += PACE.lead * pace;
     const scheduled = Boolean(run.scheduledBy);
     const verb = run.type.toLowerCase();
 
     // The request, from the caller, out by the way it left (a WebSocket).
     const reqStart = t;
-    t += (scheduled ? PACE.schedule : PACE.request) * pace;
+    t += quick ? P.quick : scheduled ? P.schedule : P.request;
     const sender = run.sender?.part ?? run.caller;
     const out = run.via
-      ? hop(run, sender, run.via, reqStart, "request")
+      ? hop(
+          run,
+          sender,
+          run.via,
+          reqStart,
+          "request",
+          reqStart + (t - reqStart) * 0.35,
+        )
       : reqStart;
     move({
       run: run.id,
@@ -331,7 +556,7 @@ export function buildTimeline(
             from: caller,
             to: s.target,
             start: t,
-            end: t + PACE.call,
+            end: t + P.call,
             label: `${s.callKind ?? "call"} · ${name(s.target)}`,
             detail: `${name(caller)} calls ${name(s.target)}${s.callKind ? ` (a ${s.callKind})` : ""}.${run.type === "Mutation" ? " Inside a mutation, it runs in the same transaction." : ""}`,
             cargo: [],
@@ -339,15 +564,15 @@ export function buildTimeline(
           });
           beat(
             t,
-            t + PACE.call + PACE.inside,
+            t + P.call + P.inside,
             run.id,
             `calls ${name(s.target)}`,
             "normal",
             s.target,
             [caller, s.target],
           );
-          open.push({ target: s.target, arrived: t + PACE.call });
-          t += PACE.call + PACE.inside;
+          open.push({ target: s.target, arrived: t + P.call });
+          t += P.call + P.inside;
           break;
         }
         case "return": {
@@ -370,7 +595,7 @@ export function buildTimeline(
             from: s.target,
             to: back,
             start: t,
-            end: t + PACE.return,
+            end: t + P.return,
             label: `returns · ${name(s.target)}`,
             detail: `${name(s.target)} returns to ${name(back)}. The recording does not hold the value.`,
             cargo: [],
@@ -378,25 +603,25 @@ export function buildTimeline(
           });
           beat(
             t,
-            t + PACE.return,
+            t + P.return,
             run.id,
             `${name(s.target)} returns`,
             s.tone,
             back,
             [s.target, back],
           );
-          t += PACE.return;
+          t += P.return;
           break;
         }
         case "note": {
-          beat(t, t + PACE.note, run.id, s.text, s.tone, caller);
-          t += PACE.note;
+          beat(t, t + P.note, run.id, s.text, s.tone, caller);
+          t += P.note;
           break;
         }
         case "log": {
           tl.alerts.push({
             start: t,
-            end: t + PACE.log + PACE.return + PACE.commit + PACE.response,
+            end: t + P.log + P.return + P.commit + P.response,
             run: run.id,
             part: s.part,
             level: s.level,
@@ -404,13 +629,13 @@ export function buildTimeline(
           });
           beat(
             t,
-            t + PACE.log,
+            t + P.log,
             run.id,
             `${s.level.toLowerCase()} · ${s.message}`,
             s.tone,
             s.part,
           );
-          t += PACE.log;
+          t += P.log;
           break;
         }
       }
@@ -430,7 +655,7 @@ export function buildTimeline(
     const tables = [...new Set(run.writes.map((w) => w.table))];
     for (const w of run.writes)
       tl.rowChanges.push({
-        at: commitAt + PACE.commit * 0.6,
+        at: commitAt + P.commit * 0.6,
         run: run.id,
         write: w,
       });
@@ -443,7 +668,7 @@ export function buildTimeline(
         from: root,
         to: table,
         start: commitAt,
-        end: commitAt + PACE.commit * 0.6,
+        end: commitAt + P.commit * 0.6,
         label: `${n.map((w) => w.op).join(", ")} · ${name(table)}`,
         detail: `The commit writes ${n.length} row${n.length === 1 ? "" : "s"} of ${name(table)}.`,
         cargo: [],
@@ -454,14 +679,14 @@ export function buildTimeline(
     if (run.writes.length) {
       beat(
         t,
-        t + PACE.commit,
+        t + P.commit,
         run.id,
         `commit · ${run.writes.length} write${run.writes.length === 1 ? "" : "s"} to ${tables.map(name).join(", ")}`,
         "normal",
         tables.length === 1 ? tables[0] : root,
         [root, ...tables],
       );
-      t += PACE.commit;
+      t += P.commit;
     }
     tl.activations.push({
       node: root,
@@ -474,8 +699,8 @@ export function buildTimeline(
     // The response, back to the caller.
     if (!scheduled) {
       const resStart = t;
-      t += PACE.response * pace;
-      const back = run.via ? t - HOP * pace : t;
+      t += quick ? P.quick : P.response;
+      const back = run.via ? t - (t - resStart) * 0.35 : t;
       if (run.via)
         hop(run, run.via, run.sender?.part ?? run.caller, back, "response", t);
       move({
@@ -508,7 +733,6 @@ export function buildTimeline(
       );
     }
 
-    t = playItems(run, run.after, t);
     tl.chapters.push({
       run,
       title: `${name(root)}${run.status !== "ok" ? ` · ${run.status}` : ""}`,
@@ -517,8 +741,8 @@ export function buildTimeline(
       end: t,
       commitAt,
     });
-    t += PACE.gap * pace;
   }
+  tl.chapters.sort((a, b) => a.start - b.start);
 
   // A scheduled run's request leaves the run that scheduled it, at its commit.
   for (const c of tl.chapters) {
@@ -541,7 +765,11 @@ export function buildTimeline(
     });
   }
 
-  tl.duration = t;
+  tl.duration = Math.max(
+    placed.last,
+    ...tl.chapters.map((c) => c.end),
+    ...tl.movements.map((m) => m.end),
+  );
   tl.beats.sort((a, b) => a.start - b.start);
   tl.rowChanges.sort((a, b) => a.at - b.at);
   tl.movements.sort((a, b) => a.start - b.start);

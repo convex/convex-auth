@@ -49,6 +49,9 @@ export interface PageFeed {
       cargoOut: Cargo[];
       /** Where the request stands in its page's order of events. */
       order?: { page: string; seq: number };
+      /** When the page sent the request and got the response, by the page's clock (ms). */
+      sentAt?: number;
+      answeredAt?: number;
       /**
        * The module that sent it: the one that reported a `signIn.call` of
        * its function when this was the only call of that function from the
@@ -259,7 +262,18 @@ export function readPageFeed(
     return true;
   };
 
+  // Document loads per page: a client's operation numbers count within one.
+  // The recorder can report a load twice (from the page and from the
+  // browser); two within LOAD_TWICE_MS are one.
+  const loads = new Map<string, { n: number; at: number }>();
+  const LOAD_TWICE_MS = 100;
   for (const e of feed) {
+    if (e.kind === "page" && e.event === "load") {
+      const page = pageOf(e.pageId);
+      const was = loads.get(page);
+      if (!was || e.time - was.at > LOAD_TWICE_MS)
+        loads.set(page, { n: (was?.n ?? 0) + 1, at: e.time });
+    }
     if (isPageStep(e)) {
       const part = String(e.part);
       const reporter = hasPart(part) ? part : pageOf(e.pageId);
@@ -298,6 +312,17 @@ export function readPageFeed(
         lights,
         step: String(e.step),
         ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
+        ...(typeof detail.op === "number"
+          ? {
+              op: `${page}|load${loads.get(page)?.n ?? 0}|${detail.op}`,
+              opKind:
+                typeof detail.opKind === "string" ? detail.opKind : undefined,
+              parentOp:
+                typeof detail.parentOp === "number"
+                  ? `${page}|load${loads.get(page)?.n ?? 0}|${detail.parentOp}`
+                  : undefined,
+            }
+          : {}),
       });
       count("step (page)", true);
       continue;
@@ -326,6 +351,8 @@ export function readPageFeed(
           calls.set(runId, {
             page,
             order: request ? { page, seq: sequence(request.id) } : undefined,
+            sentAt: request?.time,
+            answeredAt: response?.time,
             transport: String(e.transport),
             link: String(e.link),
             cargoIn: cargoIn(
@@ -421,6 +448,7 @@ export function readPageFeed(
                 ? `the scenario step is done: ${String(e.step)}`
                 : `the scenario step failed: ${String(e.step)}${e.error ? ` (${String(e.error)})` : ""}`,
             tone,
+            { scenario: e.status === "start" ? "start" : "end" },
           ),
         );
         break;

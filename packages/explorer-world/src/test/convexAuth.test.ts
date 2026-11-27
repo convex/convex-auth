@@ -156,7 +156,9 @@ describe("the recording", () => {
   test("keeps the real durations next to a human-speed schedule", () => {
     for (const c of world.timeline.chapters) {
       expect(c.run.endedAt - c.run.startedAt).toBeLessThan(1000);
-      expect(c.end - c.start).toBeGreaterThan(3);
+      // Long enough to follow, short enough that an action stays short.
+      expect(c.end - c.start).toBeGreaterThanOrEqual(0.6);
+      expect(c.end - c.start).toBeLessThan(5);
     }
   });
 });

@@ -19,7 +19,7 @@
  * @module
  */
 import type { Event } from "./adapters/convexRecording.ts";
-import type { Timeline } from "./model/schedule.ts";
+import { realAt, shownAt, type Timeline } from "./model/schedule.ts";
 import type { World } from "./model/world.ts";
 
 /** The events of a live recording as they arrive. */
@@ -51,22 +51,26 @@ export class LiveFeed {
 
 /**
  * Where the playhead goes when `before` is rebuilt as `after`: the same
- * offset into the same run, kept within that run. Before the first run, or
- * when the run is gone, the time itself.
+ * moment of real time. Shown time is a function of real time; what arrives
+ * late lands where it happened, behind the playhead or ahead of it, and
+ * does not move what is on screen. Past the last moment `before` knew, the
+ * same distance past it.
  */
 export function anchorTime(
   before: Timeline,
   time: number,
   after: Timeline,
 ): number {
-  let chapter = null;
-  for (const c of before.chapters) if (c.start <= time) chapter = c;
-  if (!chapter) return Math.min(time, after.duration);
-  const same = after.chapters.find((c) => c.run.id === chapter.run.id);
-  if (!same) return Math.min(time, after.duration);
+  if (!before.warp.real.length || !after.warp.real.length)
+    return Math.min(time, after.duration);
+  const n = before.warp.shown.length;
+  const last = before.warp.shown[n - 1];
+  if (time > last) {
+    const was = shownAt(after.warp, before.warp.real[n - 1]);
+    return Math.min(was + (time - last), after.duration);
+  }
   return Math.min(
-    same.start + (time - chapter.start),
-    same.end,
+    shownAt(after.warp, realAt(before.warp, time)),
     after.duration,
   );
 }
@@ -102,10 +106,57 @@ export function behindLive(
   };
 }
 
-/** Where "skip to live" puts the playhead: the start of the newest run. */
+/**
+ * Where "back to live" puts the playhead: the start of the newest pressed
+ * control, or of the newest run, when it has not played yet; else the end.
+ */
 export function liveEdge(timeline: Timeline): number {
-  const last = timeline.chapters[timeline.chapters.length - 1];
-  return last ? last.start : timeline.duration;
+  const last = Math.max(
+    timeline.actions[timeline.actions.length - 1] ?? -Infinity,
+    timeline.chapters[timeline.chapters.length - 1]?.start ?? -Infinity,
+  );
+  return Number.isFinite(last) ? last : timeline.duration;
+}
+
+/**
+ * When the first thing at or after `t` starts: a step, a movement, a part
+ * lighting up, a pressed control. The end of the timeline when none does.
+ */
+export function nextStart(timeline: Timeline, t: number): number {
+  let next = timeline.duration;
+  const consider = (start: number) => {
+    if (start >= t - 1e-6 && start < next) next = start;
+  };
+  for (const m of timeline.movements) consider(m.start);
+  for (const s of timeline.clientSteps) consider(s.start);
+  for (const a of timeline.activations) consider(a.start);
+  for (const a of timeline.actions) consider(a);
+  return next;
+}
+
+/** Seconds of shown time a live world may lag before it speeds up anyway. */
+export const BEHIND_AT_MOST = 20;
+/** How long the rest of an action takes once a newer one was pressed (s). */
+export const COLLAPSE_IN = 1;
+
+/**
+ * How many times faster than shown time the playhead moves, live, at
+ * `time`. Once a newer control was pressed than the one playing, the rest
+ * plays out in about {@link COLLAPSE_IN} seconds, so the world is never more
+ * than one action behind; otherwise at shown speed, faster only if it falls
+ * more than {@link BEHIND_AT_MOST} seconds behind.
+ */
+export function hurry(timeline: Timeline, time: number): number {
+  const newest = timeline.actions[timeline.actions.length - 1];
+  const playing = timeline.actions.filter((a) => a <= time + 1e-6).length;
+  if (
+    newest !== undefined &&
+    newest > time + 1e-3 &&
+    playing > 0 &&
+    playing < timeline.actions.length
+  )
+    return Math.max(3, (newest - time) / COLLAPSE_IN);
+  return Math.max(1, (timeline.duration - time) / BEHIND_AT_MOST);
 }
 
 /**
