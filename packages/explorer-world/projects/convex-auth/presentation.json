@@ -89,6 +89,11 @@
       "color": "#ff7a45"
     }
   },
+  "groups": {
+    "region:browser/browser": { "label": "session core" },
+    "region:browser/react": { "label": "React binding" },
+    "region:ssr": { "label": "Next.js client" }
+  },
   "tables": {
     "table:auth.refreshTokens": {
       "stateField": "state",

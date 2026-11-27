@@ -22,10 +22,28 @@ export interface Placement {
   profile?: Profile;
 }
 
-/** A group of parts on an island that share a parent from elsewhere. */
+/**
+ * A group of parts on an island that share a parent from elsewhere (the
+ * client code of one sign-in method, say). Parts whose parent is a region
+ * that holds no more specific owner group by their top directory instead.
+ */
 export interface Cluster {
-  /** The id of the part the group belongs to (it may live elsewhere). */
+  /**
+   * The id of the part the group belongs to (it may live elsewhere); for a
+   * group by directory, that id, "/" and the directory.
+   */
   id: string;
+  /** The part the group belongs to. */
+  owner: string;
+  /** Its name from the data: the owner's label, or the directory. */
+  label: string;
+  /**
+   * The directory its members' labels share ("" for none): a member is
+   * named inside the group by the rest of its label.
+   */
+  prefix: string;
+  /** Every part in the group, the parts below its members included. */
+  members: string[];
   center: Vec3;
   radius: number;
 }

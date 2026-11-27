@@ -171,6 +171,11 @@ export interface Presentation {
   namedAtRest?: string[];
   /** The name of the layout strategy (see `src/layout/index.ts`); "islands" by default. */
   layout?: string;
+  /**
+   * Per group of parts (a `Cluster` id, see `layout/types.ts`): a better
+   * name than the data gives (the owner's label, or the directory).
+   */
+  groups?: Record<string, { label?: string }>;
 }
 
 /** Merges a project's presentation over the preset it extends. */
@@ -189,6 +194,7 @@ export function extendPresentation(
     cargo: [...(base.cargo ?? []), ...(own.cargo ?? [])],
     steps: { ...base.steps, ...own.steps },
     callers: { ...base.callers, ...own.callers },
+    groups: { ...base.groups, ...own.groups },
   };
 }
 

@@ -430,9 +430,51 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
       else loose.push(p);
     }
     const clusters: Cluster[] = [];
+    // A group whose members share no directory (they all sit deeper than
+    // what they share) splits by the next directory down.
+    const named: {
+      key: string;
+      owner: string;
+      label: string;
+      prefix: string;
+      list: Part[];
+    }[] = [];
+    for (const [owner, list] of groups) {
+      const dirs = list.map((p) => dirOf(p.label));
+      const prefix = commonDir(dirs);
+      if (list.length > 1 && dirs.every((d) => d !== prefix)) {
+        const by = new Map<string, Part[]>();
+        list.forEach((p, i) => {
+          const rest = prefix ? dirs[i].slice(prefix.length + 1) : dirs[i];
+          const seg = rest.split("/")[0];
+          by.set(seg, [...(by.get(seg) ?? []), p]);
+        });
+        for (const [seg, sub] of by) {
+          const dir = prefix ? `${prefix}/${seg}` : seg;
+          named.push({
+            key: `${owner}/${dir}`,
+            owner,
+            label: seg,
+            prefix: dir,
+            list: sub,
+          });
+        }
+      } else
+        named.push({
+          key: owner,
+          owner,
+          label: index.part.get(owner)?.label ?? owner,
+          prefix,
+          list,
+        });
+    }
+    const below = (p: Part): string[] => [
+      p.id,
+      ...(kids.get(p.id) ?? []).flatMap(below),
+    ];
     const nodes: Node[] = [
       ...loose.map(bundle),
-      ...[...groups].map(([key, list]): Node => {
+      ...named.map(({ key, owner, label, prefix, list }): Node => {
         const inner = list
           .map(bundle)
           .sort((a, b) => a.order - b.order || weightOf(b) - weightOf(a));
@@ -449,7 +491,15 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
             ? Math.max(...list.map((p) => heart.get(p.id) ?? 1))
             : undefined,
           layoutChildren: (o) => {
-            clusters.push({ id: key, center: o, radius: r });
+            clusters.push({
+              id: key,
+              owner,
+              label,
+              prefix,
+              members: list.flatMap(below),
+              center: o,
+              radius: r,
+            });
             inner.forEach((n, i) =>
               n.layoutChildren!([
                 o[0] + circles[i].x,
@@ -785,4 +835,23 @@ function coupling(index: GraphIndex, topOf: (id: string) => string | null) {
   }
   return (a: string, b: string) =>
     counts.get(a < b ? `${a}|${b}` : `${b}|${a}`) ?? 0;
+}
+
+/** The directory of a slash-separated name ("" at the top). */
+export function dirOf(name: string): string {
+  const i = name.lastIndexOf("/");
+  return i < 0 ? "" : name.slice(0, i);
+}
+
+/** The longest directory that every one of `dirs` is or lies in. */
+export function commonDir(dirs: string[]): string {
+  if (!dirs.length) return "";
+  let common = dirs[0].split("/");
+  for (const d of dirs.slice(1)) {
+    const segs = d.split("/");
+    let i = 0;
+    while (i < common.length && i < segs.length && common[i] === segs[i]) i++;
+    common = common.slice(0, i);
+  }
+  return common.join("/");
 }
