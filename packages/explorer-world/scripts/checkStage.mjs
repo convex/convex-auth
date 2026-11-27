@@ -319,6 +319,10 @@ try {
         (e) => e.kind === "http" && new URL(e.url).port === String(5474),
       ).length,
       elements: m.elements.map((e) => e.label),
+      pageSteps: m.steps.length,
+      stepParts: [...new Set(m.steps.map((x) => x.part))],
+      firstStep: m.steps[0]?.time ?? null,
+      storageStep: m.steps.find((x) => x.storageKey)?.time ?? null,
       exits: m.exits.map((e) => e.label),
       flights: m.flights.length,
       storageTimes: storage.map((e) => [e.op, e.time]),
@@ -353,6 +357,39 @@ try {
     seen.elements.includes("username") && seen.elements.includes("password"),
     `the elements used stand on the page (${seen.elements.join(", ")})`,
   );
+
+  check(
+    seen.pageSteps > 0,
+    `the client library's steps are recorded from the page (${seen.pageSteps}, in ${seen.stepParts.join(", ")})`,
+  );
+  if (seen.firstStep !== null) {
+    const lit = await page.evaluate(
+      ({ first, storage }) => {
+        const { store } = explorerStage;
+        store.getState().hold(first + 100);
+        const a = explorerStage.now();
+        const parts = [...a.parts.entries()].filter(([, p]) => p.lit > 0);
+        let keys = [];
+        if (storage !== null) {
+          store.getState().hold(storage + 100);
+          keys = [...explorerStage.now().keys.entries()].filter(
+            ([, k]) => k.lit > 0,
+          );
+        }
+        store.getState().goLive();
+        return { parts: parts.map(([id]) => id), keys: keys.map(([k]) => k) };
+      },
+      { first: seen.firstStep, storage: seen.storageStep },
+    );
+    check(
+      lit.parts.length > 0,
+      `100 ms after a step, its module is lit (${lit.parts.join(", ")})`,
+    );
+    check(
+      seen.storageStep === null || lit.keys.length > 0,
+      `a storage step lights the key it names (${lit.keys.join(", ")})`,
+    );
+  }
 
   // The floor at chosen times: a function of the time.
   const firstSet = seen.storageTimes.find(([op]) => op === "set")[1];
