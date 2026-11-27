@@ -39,6 +39,11 @@ const ARCS: Record<PageState, [number, number][]> = {
     [0.68, 0.27],
   ],
 };
+/** How long the pulse of a change of state lasts (s of playback). */
+const PULSE = 0.9;
+/** How large the pulse grows, as a fraction of its distance to the camera. */
+const PULSE_ON_SCREEN = 0.09;
+const pulseAt = new Vector3();
 /** How long a change of state takes to settle, in seconds of playback. */
 const SETTLE = 0.5;
 
@@ -92,11 +97,32 @@ function StateShape({ id }: { id: string }) {
       })),
     [],
   );
-  useFrame(() => {
+  const pulse = useRef<Mesh>(null);
+  useFrame(({ camera }) => {
     const g = group.current;
     if (!g) return;
     const now = currentState();
     const at = now.states.get(id);
+    // A change of state sends one pulse out of the ring, large enough on
+    // the window to read from Home: driven by the reported state step.
+    const m = pulse.current;
+    if (m) {
+      const since = at ? now.time - at.since : Infinity;
+      const k = since / PULSE;
+      m.visible = k >= 0 && k < 1;
+      if (m.visible) {
+        g.getWorldPosition(pulseAt);
+        const big = Math.max(
+          p.radius * 3,
+          camera.position.distanceTo(pulseAt) * PULSE_ON_SCREEN,
+        );
+        const e = 1 - Math.pow(1 - k, 2);
+        m.scale.setScalar(p.radius + (big - p.radius) * e);
+        const mat = m.material as MeshBasicMaterial;
+        mat.color.set(STATE_COLORS[at!.state]).multiplyScalar(2);
+        mat.opacity = 0.9 * (1 - k);
+      }
+    }
     const state: PageState = at?.state ?? "loading";
     const settle = at ? Math.min(1, (now.time - at.since) / SETTLE) : 1;
     shown.current = state;
@@ -146,6 +172,17 @@ function StateShape({ id }: { id: string }) {
           ))}
         </group>
       ))}
+      <Billboard>
+        <mesh ref={pulse} visible={false} raycast={() => null}>
+          <ringGeometry args={[0.9, 1, 64]} />
+          <meshBasicMaterial
+            toneMapped={false}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+          />
+        </mesh>
+      </Billboard>
       <mesh ref={core} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[r * 0.62, 40]} />
         <meshBasicMaterial toneMapped={false} transparent opacity={0.85} />
