@@ -42,6 +42,14 @@ export function selectionFocus(s: Selection): {
         distance: 40,
       };
     }
+    case "op": {
+      // The middle of the places it went through.
+      const o = world.timeline.ops.find((x) => x.id === s.id);
+      const target = new Vector3();
+      for (const p of o?.points ?? []) target.add(anchorPosition(p.anchor));
+      if (o?.points.length) target.divideScalar(o.points.length);
+      return { target, distance: 30 };
+    }
   }
 }
 

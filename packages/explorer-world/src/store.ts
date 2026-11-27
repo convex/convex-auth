@@ -86,6 +86,7 @@ export type Selection =
   | { type: "row"; table: string; id: string }
   | { type: "movement"; id: string }
   | { type: "run"; id: string }
+  | { type: "op"; id: string }
   | { type: "cargo"; holder: string; table: string; row: string };
 
 /** What is drawn over the world besides the selection. */

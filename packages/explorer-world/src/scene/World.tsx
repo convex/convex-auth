@@ -16,6 +16,7 @@ import { Links } from "./Links.tsx";
 import { Parts } from "./Parts.tsx";
 import { Rows } from "./Rows.tsx";
 import { SanitizePass } from "./safety.ts";
+import { Operations } from "./Operations.tsx";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
 /** Advances the playback time while playing, and counts the frames drawn. */
@@ -67,6 +68,7 @@ export function World() {
       </Layer>
       <Layer name="travellers">
         <Travellers />
+        <Operations />
         <Holdings />
         <Alerts />
       </Layer>

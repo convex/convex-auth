@@ -312,6 +312,9 @@ export function readPageFeed(
         lights,
         step: String(e.step),
         ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
+        ...(typeof detail.function === "string"
+          ? { fn: detail.function }
+          : {}),
         ...(typeof detail.op === "number"
           ? {
               op: `${page}|load${loads.get(page)?.n ?? 0}|${detail.op}`,

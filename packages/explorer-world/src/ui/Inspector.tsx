@@ -449,6 +449,42 @@ function body(
         ),
       };
     }
+    case "op": {
+      const o = world.timeline.ops.find((x) => x.id === s.id);
+      if (!o) return { kind: "operation", title: s.id, content: null };
+      const now = state.time;
+      return {
+        kind: "operation of the client",
+        title: o.kind,
+        content: (
+          <>
+            <p>
+              One operation, as the client numbered it: every step below
+              reported the same operation. It moves through the places in the
+              order the steps were reported.
+            </p>
+            {o.run && (
+              <Section title="Its call">
+                <RunLink run={o.run} />
+                <Derived d={o.matched} />
+              </Section>
+            )}
+            <Section title={`Where it went (${o.points.length})`}>
+              {o.points.map((p, i) => (
+                <div
+                  key={i}
+                  className="dep"
+                  style={{ opacity: p.at <= now ? 1 : 0.5 }}
+                >
+                  <span className="mono small">{p.step}</span>{" "}
+                  <PartLink id={p.anchor} />
+                </div>
+              ))}
+            </Section>
+          </>
+        ),
+      };
+    }
     case "run": {
       const c = chapterOf(s.id);
       if (!c) return { kind: "run", title: s.id, content: null };

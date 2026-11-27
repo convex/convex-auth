@@ -63,6 +63,11 @@ export function highlightOf(s: Selection | null): Highlight {
       );
       break;
     }
+    case "op": {
+      const o = world.timeline.ops.find((x) => x.id === s.id);
+      covered = new Set(o?.points.map((p) => p.anchor) ?? []);
+      break;
+    }
   }
   const links: Link[] = [];
   const linked = new Map<string, string>();

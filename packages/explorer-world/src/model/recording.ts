@@ -104,6 +104,8 @@ export interface PageItem {
    */
   op?: string;
   opKind?: string;
+  /** For a step that names a function (`signIn.call`): its name, `module:export`. */
+  fn?: string;
   /** For a step of the scenario (a pressed control): whether it starts or ends. */
   scenario?: "start" | "end";
   parentOp?: string;

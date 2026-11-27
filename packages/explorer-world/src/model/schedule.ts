@@ -8,6 +8,7 @@
  * runs, and the UI shows them.
  */
 import type { GraphIndex } from "./graph.ts";
+import { operations, type CallSpan, type OpPath } from "./operations.ts";
 import type {
   Cargo,
   Derivation,
@@ -124,6 +125,8 @@ export interface Timeline {
   actions: number[];
   /** When each pressed control was done, in shown time. */
   actionEnds: number[];
+  /** The operations of the client, one moving thing each. */
+  ops: OpPath[];
 }
 
 /**
@@ -373,6 +376,7 @@ export function buildTimeline(
     warp: { real: [], shown: [] },
     actions: [],
     actionEnds: [],
+    ops: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
   // Ids count within each run, so that a run keeps the ids of its movements
@@ -472,6 +476,9 @@ export function buildTimeline(
 
   const rerun = reruns(recording.runs);
   const placed = place(recording, rerun);
+  // Where each call that left by a way out of the browser is, for the
+  // operations that made them.
+  const calls = new Map<string, CallSpan>();
   tl.warp = placed.warp;
   for (const p of placed.all)
     if (p.kind === "item") {
@@ -701,6 +708,7 @@ export function buildTimeline(
       const resStart = t;
       t += quick ? P.quick : P.response;
       const back = run.via ? t - (t - resStart) * 0.35 : t;
+      if (run.via) calls.set(run.id, { run, out, back, home: t });
       if (run.via)
         hop(run, run.via, run.sender?.part ?? run.caller, back, "response", t);
       move({
@@ -764,6 +772,14 @@ export function buildTimeline(
       derived: by.derived,
     });
   }
+
+  tl.ops = operations(
+    placed.all.flatMap((p) =>
+      p.kind === "item" ? [{ item: p.item, at: placed.at.get(p)! }] : [],
+    ),
+    recording.runs,
+    calls,
+  );
 
   tl.duration = Math.max(
     placed.last,
