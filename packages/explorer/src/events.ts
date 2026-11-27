@@ -258,6 +258,13 @@ export type InputTarget = {
   text: string | null;
   /** A CSS selector that found the element when it happened. */
   selector: string;
+  /**
+   * Where the element was in the page's viewport, in CSS pixels, when it
+   * happened. Absent in recordings made before the field existed.
+   */
+  rect?: { x: number; y: number; width: number; height: number };
+  /** The size of the page's viewport then, in CSS pixels. */
+  viewport?: { width: number; height: number };
 };
 
 /**

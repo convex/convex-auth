@@ -44,6 +44,10 @@ Browser:
   --scenario <name|file> Drive the page with a scenario, then stop: ${Object.keys(SCENARIOS).join(", ")},
                          or a module whose default export is a Scenario
   --headed               Show the browser; without --scenario, you drive the page
+  --stage <url>          Open this page instead, which shows the app's page in a
+                         frame named explorer-screen, and record that frame only
+  --debug-port <port>    Open the browser's DevTools port on 127.0.0.1, for a
+                         scripted check to look at the window and use it
                          and close the browser (or press Ctrl-C) to stop
   --chromium <path>      The Chromium to run (default: EXPLORER_CHROMIUM, else
                          Playwright's: npx playwright@1.63.0 install chromium)
@@ -83,6 +87,8 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
       scenario: { type: "string" },
       headed: { type: "boolean" },
       chromium: { type: "string" },
+      stage: { type: "string" },
+      "debug-port": { type: "string" },
       "browser-channel": { type: "string" },
       serve: { type: "string" },
       "serve-origin": { type: "string", multiple: true },
@@ -131,6 +137,8 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
     for (const flag of [
       "scenario",
       "headed",
+      "stage",
+      "debug-port",
       "chromium",
       "browser-channel",
     ] as const) {
@@ -172,6 +180,11 @@ async function readOptions(argv: string[]): Promise<RecordOptions> {
                 ? null
                 : await loadScenario(values.scenario, base),
             headed: values.headed === true,
+            stage: values.stage,
+            debugPort:
+              values["debug-port"] === undefined
+                ? undefined
+                : number("--debug-port", values["debug-port"], 1),
             executablePath:
               values.chromium ?? process.env.EXPLORER_CHROMIUM ?? undefined,
             channel: values["browser-channel"],

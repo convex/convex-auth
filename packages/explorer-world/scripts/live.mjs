@@ -34,11 +34,15 @@ import { parseArgs } from "node:util";
 
 const USAGE = `Usage: pnpm explorer:live <app directory> [options]
 
-Runs the Convex app on a local deployment, opens its page in a browser window
-for you to use, and opens the world, which shows what the app does as you use
-it. Ctrl-C stops everything.
+Runs the Convex app on a local deployment and opens one browser window: the
+stage, with the app's page live on its screen for you to use, and the browser's
+storage, cookies and connections in front of it, moving as the page does.
+Ctrl-C stops everything.
 
 Options:
+  --view <which>       stage (default): the window above. islands: the app's
+                       page in its own window, and the islands world in your
+                       default browser
   --project <name>     The recorder's project config (default: convex-auth)
   --page <url>         Use a page you serve yourself, against the same
                        deployment, instead of serving the app with its Vite
@@ -61,7 +65,9 @@ Options:
   --world-port <port>  The port of the world on 127.0.0.1 (default: the first
                        free one from 5174)
   --stream-port <port> The port of the recorder's stream on 127.0.0.1
-                       (default: the first free one from 5199)`;
+                       (default: the first free one from 5199)
+  --debug-port <port>  Open the window's DevTools port on 127.0.0.1, for a
+                       scripted check (check:stage)`;
 
 /** What each project of the recorder needs set on the deployment. */
 const PROJECT_ENV = {
@@ -82,6 +88,7 @@ try {
     allowPositionals: true,
     options: {
       project: { type: "string", default: "convex-auth" },
+      view: { type: "string", default: "stage" },
       page: { type: "string" },
       browser: { type: "string" },
       scenario: { type: "string" },
@@ -93,6 +100,7 @@ try {
       poll: { type: "string", default: "100" },
       "world-port": { type: "string" },
       "stream-port": { type: "string" },
+      "debug-port": { type: "string" },
       help: { type: "boolean", short: "h" },
     },
   });
@@ -105,6 +113,11 @@ if (values.help) {
   console.log(USAGE);
   process.exit(0);
 }
+if (!["stage", "islands"].includes(values.view)) {
+  console.error(`--view is stage or islands, not ${values.view}.\n\n${USAGE}`);
+  process.exit(2);
+}
+const stageView = values.view === "stage";
 if (positionals.length !== 1) {
   console.error(`Give one app directory.\n\n${USAGE}`);
   process.exit(2);
@@ -490,11 +503,14 @@ async function main() {
   await server.listen();
   if (stopping) throw new StartError(null, "Stopped while starting.");
 
-  // The world opens first: it shows the map, and connects to the stream once
-  // the recorder serves it.
-  const worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamUrl)}`;
-  say(`World: ${worldUrl}`);
-  if (!values["no-open"]) openInBrowser(worldUrl);
+  // The islands world opens first: it shows the map, and connects to the
+  // stream once the recorder serves it. The stage opens in the recorder's
+  // window, once the page is served.
+  if (!stageView) {
+    const worldUrl = `${worldOrigin}/?live=${encodeURIComponent(streamUrl)}`;
+    say(`World: ${worldUrl}`);
+    if (!values["no-open"]) openInBrowser(worldUrl);
+  }
 
   const url0 = deploymentUrl();
   const alreadyUp =
@@ -565,6 +581,21 @@ async function main() {
   }
   say(`the app's page: ${pageUrl}`);
 
+  // The stage is on the same site as the page (localhost, another port), so
+  // that the page in its frame keeps first-party storage and cookies.
+  const stageUrl = stageView
+    ? `http://localhost:${worldPort}/stage.html?screen=${encodeURIComponent(pageUrl)}&live=${encodeURIComponent(streamUrl)}&project=${encodeURIComponent(values.project)}`
+    : null;
+  if (stageUrl !== null) {
+    if (new URL(pageUrl).hostname !== "localhost") {
+      throw new StartError(
+        null,
+        `The stage shows the page from localhost; give --page on localhost, not ${pageUrl}.`,
+      );
+    }
+    say(`Stage: ${stageUrl}`);
+  }
+
   // The recorder, streaming to the world.
   const tsx = createRequire(join(recorderRoot, "package.json")).resolve(
     "tsx/package.json",
@@ -598,6 +629,8 @@ async function main() {
       "--serve-origin",
       `http://localhost:${worldPort}`,
       ...(values.cloud ? ["--cloud"] : []),
+      ...(stageUrl !== null ? ["--stage", stageUrl] : []),
+      ...(values["debug-port"] ? ["--debug-port", values["debug-port"]] : []),
       ...browserArgs(),
       ...(values.scenario ? ["--scenario", values.scenario] : []),
       ...(values.headed || !values.scenario ? ["--headed"] : []),
@@ -624,7 +657,9 @@ async function main() {
   say(
     values.scenario
       ? `running the scenario ${values.scenario}; Ctrl-C to stop.`
-      : "use the app in its window; the world shows what it does. Ctrl-C stops everything.",
+      : stageView
+        ? "use the app on the stage's screen. Ctrl-C stops everything."
+        : "use the app in its window; the world shows what it does. Ctrl-C stops everything.",
   );
 
   recorder.done.then(({ code, signal }) => {

@@ -13,13 +13,20 @@
  * @module
  */
 import { randomBytes } from "node:crypto";
-import type { Page } from "playwright-core";
+import type { Frame, Page } from "playwright-core";
 import type { ScenarioEvent } from "./events.ts";
 import { scrubText } from "./redact.ts";
 
 export type ScenarioContext = {
-  /** The page the recorder opened at `baseUrl`. */
+  /** The page the recorder opened at `baseUrl`, or the stage that shows it. */
   page: Page;
+  /**
+   * The frame of the app's page: the main frame of `page`, or the frame of
+   * the stage that shows it. Drive the app through it.
+   */
+  frame: Frame;
+  /** Loads the app's page again, in its frame. */
+  reload(): Promise<void>;
   /** The URL of `--page`. */
   baseUrl: string;
   /**
@@ -52,6 +59,7 @@ export type Scenario = {
 export async function runScenario(
   scenario: Scenario,
   page: Page,
+  frame: Frame | Promise<Frame>,
   baseUrl: string,
   emit: (event: ScenarioEvent) => void,
   onSecret?: (value: string) => void,
@@ -71,8 +79,17 @@ export async function runScenario(
       status,
       error,
     });
+  const screen = await frame;
   await scenario.run({
     page,
+    frame: screen,
+    async reload() {
+      if (screen === page.mainFrame()) {
+        await page.reload();
+      } else {
+        await screen.goto(screen.url());
+      }
+    },
     baseUrl,
     unique: randomBytes(3).toString("hex"),
     newSecret(prefix) {

@@ -72,6 +72,8 @@ const launcher = spawn(
   [
     join(root, "scripts/live.mjs"),
     appDir,
+    "--view",
+    "islands",
     "--scenario",
     "react-username-password",
     "--browser",

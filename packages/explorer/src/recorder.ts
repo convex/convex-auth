@@ -33,6 +33,13 @@ export type BrowserRecording = {
   scenario: Scenario | null;
   /** Show the window. */
   headed: boolean;
+  /**
+   * A stage that shows the app's page in a frame; the recorder opens it and
+   * records the frame (see `BrowserOptions.stage`).
+   */
+  stage?: string;
+  /** The browser's DevTools port, for checks; see `BrowserOptions.debugPort`. */
+  debugPort?: number;
   /** The Chromium to run; see `BrowserOptions.executablePath`. */
   executablePath?: string;
   /** A browser installed on the machine; see `BrowserOptions.channel`. */
@@ -374,6 +381,8 @@ export async function record(
         session = await BrowserSession.start({
           url: browser.url,
           headed: browser.headed,
+          stage: browser.stage,
+          debugPort: browser.debugPort,
           executablePath: browser.executablePath,
           channel: browser.channel,
           deploymentUrl: options.url,
@@ -402,6 +411,7 @@ export async function record(
         const scenario = runScenario(
           browser.scenario,
           session.page,
+          session.screen(),
           browser.url,
           (event) => add([event]),
           hooks.onRawSecret,

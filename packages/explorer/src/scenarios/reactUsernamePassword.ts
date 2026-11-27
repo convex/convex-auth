@@ -28,31 +28,31 @@ const scenario: Scenario = {
   name: "react-username-password",
   description:
     "examples/react-username-password: sign up, reload, scheduled refresh, sign out, wrong password, sign in",
-  async run({ page, baseUrl, step, newSecret, unique }) {
+  async run({ page, frame, reload, baseUrl, step, newSecret, unique }) {
     const username = `explorer-${unique}`;
     const password = newSecret("pw");
     const wrongPassword = newSecret("wrong");
     const url = (path: string) => new URL(path, baseUrl).toString();
 
     await step("open the sign-up page", async () => {
-      await page.goto(url("/signup"));
-      await page.locator("#username").waitFor();
+      await frame.goto(url("/signup"));
+      await frame.locator("#username").waitFor();
     });
     await step("sign up", async () => {
-      await page
+      await frame
         .locator("#username")
         .pressSequentially(username, { delay: 20 });
-      await page
+      await frame
         .locator("#password")
         .pressSequentially(password, { delay: 10 });
-      await page.locator("button[type=submit]").click();
-      await page.locator(signedIn).waitFor();
-      await page.getByText(username).waitFor();
+      await frame.locator("button[type=submit]").click();
+      await frame.locator(signedIn).waitFor();
+      await frame.getByText(username).waitFor();
     });
     await step("reload: the session comes back from storage", async () => {
-      await page.reload();
-      await page.locator(signedIn).waitFor();
-      await page.getByText(username).waitFor();
+      await reload();
+      await frame.locator(signedIn).waitFor();
+      await frame.getByText(username).waitFor();
     });
     await step(
       "wait for the scheduled refresh of the access token",
@@ -70,27 +70,27 @@ const scenario: Scenario = {
       },
     );
     await step("sign out", async () => {
-      await page.locator(signedIn).click();
-      await page.waitForURL(url("/login"));
+      await frame.locator(signedIn).click();
+      await frame.waitForURL(url("/login"));
     });
     await step("sign in with a wrong password", async () => {
-      await page
+      await frame
         .locator("#username")
         .pressSequentially(username, { delay: 20 });
-      await page
+      await frame
         .locator("#password")
         .pressSequentially(wrongPassword, { delay: 10 });
-      await page.locator("button[type=submit]").click();
-      await page.getByText("Incorrect username or password.").waitFor();
+      await frame.locator("button[type=submit]").click();
+      await frame.getByText("Incorrect username or password.").waitFor();
     });
     await step("sign in", async () => {
-      await page.locator("#password").fill("");
-      await page
+      await frame.locator("#password").fill("");
+      await frame
         .locator("#password")
         .pressSequentially(password, { delay: 10 });
-      await page.locator("button[type=submit]").click();
-      await page.locator(signedIn).waitFor();
-      await page.getByText(username).waitFor();
+      await frame.locator("button[type=submit]").click();
+      await frame.locator(signedIn).waitFor();
+      await frame.getByText(username).waitFor();
     });
   },
 };

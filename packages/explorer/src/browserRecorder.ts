@@ -18,6 +18,7 @@ import {
   type Browser,
   type BrowserContext,
   type CDPSession,
+  type Frame,
   type Page,
 } from "playwright-core";
 import {
@@ -54,18 +55,43 @@ export type BrowserOptions = {
   channel?: string;
   /** The URL of the deployment, to tell its calls and its socket. */
   deploymentUrl: string;
+  /**
+   * A page that shows the app's page in a frame named {@link SCREEN_FRAME},
+   * such as the stage of `explorer-world`. The recorder opens it instead of
+   * `url` and records the frame alone, as the page: its navigations, the
+   * person's actions in it, its requests, its storage and its console. What
+   * the stage itself does is not recorded. The stage must be on the same
+   * site as the app (`localhost` with another port), so that the app's
+   * frame runs in the stage's process and its storage and cookies are those
+   * of a first-party page.
+   */
+  stage?: string;
+  /**
+   * Opens the DevTools port of the browser on 127.0.0.1, for a scripted check
+   * to look at the window and use it as a person would.
+   */
+  debugPort?: number;
   redactor: BrowserRedactor;
   secrets: Secrets;
   /** Receives the events, in the order the browser reported them. */
   emit: (events: TimelineEvent[]) => void;
 };
 
+/** The name of the frame of a stage that shows the app's page. */
+export const SCREEN_FRAME = "explorer-screen";
+
 // The listener of the person's actions. A string, not a function, because
 // Playwright sends a function's source to the page, and the transform of tsx
-// can add helpers to it that the page lacks.
-const INPUT_LISTENER = `(() => {
-  if (window.top !== window || window.__explorerListening) return;
+// can add helpers to it that the page lacks. Without a stage it listens in the
+// top window; with one, in the stage's frame of the app's page only.
+const inputListener = (stage: boolean) => `(() => {
+  const screen = window.name === ${JSON.stringify(SCREEN_FRAME)} &&
+    window.parent !== window && window.parent === window.top;
+  if (${stage ? "!screen" : "window.top !== window"} || window.__explorerListening) return;
   window.__explorerListening = true;
+  window.addEventListener("load", () => {
+    try { window.__explorerLoad(); } catch {}
+  });
   const selectorOf = (el) => {
     if (el.id) return "#" + CSS.escape(el.id);
     const parts = [];
@@ -86,6 +112,7 @@ const INPUT_LISTENER = `(() => {
   };
   const describe = (el) => {
     const tag = el.tagName.toLowerCase();
+    const r = el.getBoundingClientRect();
     const type = el.getAttribute("type");
     const labelled = tag === "button" || tag === "a" ||
       (tag === "input" && (type === "submit" || type === "button"));
@@ -97,6 +124,8 @@ const INPUT_LISTENER = `(() => {
       autocomplete: el.getAttribute("autocomplete"),
       text: labelled ? ((el.innerText || el.value || "").trim().slice(0, 60) || null) : null,
       selector: selectorOf(el),
+      rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
     };
   };
   const report = (action, el, value) => {
@@ -189,6 +218,10 @@ export class BrowserSession {
   static async start(options: BrowserOptions): Promise<BrowserSession> {
     const browser = await chromium.launch({
       headless: !options.headed,
+      args:
+        options.debugPort === undefined
+          ? []
+          : [`--remote-debugging-port=${options.debugPort}`],
       executablePath: options.executablePath,
       channel:
         options.executablePath === undefined ? options.channel : undefined,
@@ -214,18 +247,57 @@ export class BrowserSession {
         }
       },
     );
-    await context.addInitScript(INPUT_LISTENER);
+    await context.exposeBinding("__explorerLoad", (source) => {
+      const pageId = session.pageIds.get(source.page);
+      if (pageId !== undefined && session.isScreen(source.frame)) {
+        session.pageEvent(pageId, "load", source.frame.url());
+      }
+    });
+    await context.addInitScript(inputListener(options.stage !== undefined));
     context.on("page", (page) => void session.attach(page));
     session.cookieTimer = setInterval(() => void session.readCookies(), 500);
     const page = await context.newPage();
     await session.attach(page);
-    await page.goto(options.url);
+    await page.goto(options.stage ?? options.url);
     return session;
   }
 
   /** The first page. */
   get page(): Page {
     return this.context.pages()[0];
+  }
+
+  /**
+   * The frame of the app's page: the main frame of the first page, or on a
+   * stage, its screen frame once it is there.
+   */
+  screen(): Promise<Frame> {
+    const page = this.page;
+    if (this.options.stage === undefined) {
+      return Promise.resolve(page.mainFrame());
+    }
+    const found = () => page.frames().find((frame) => this.isScreen(frame));
+    return new Promise((resolve, reject) => {
+      const now = found();
+      if (now !== undefined) return resolve(now);
+      const timer = setTimeout(() => {
+        page.off("frameattached", check);
+        page.off("framenavigated", check);
+        reject(
+          new Error(`The stage showed no frame named ${SCREEN_FRAME} in 60 s.`),
+        );
+      }, 60_000);
+      const check = () => {
+        const frame = found();
+        if (frame === undefined) return;
+        clearTimeout(timer);
+        page.off("frameattached", check);
+        page.off("framenavigated", check);
+        resolve(frame);
+      };
+      page.on("frameattached", check);
+      page.on("framenavigated", check);
+    });
   }
 
   /**
@@ -264,11 +336,27 @@ export class BrowserSession {
     return `${prefix}#${n}`;
   }
 
-  private pageEvent(
-    pageId: string,
-    event: PageEvent["event"],
-    url: string,
-  ): void {
+  /** Whether a frame is the one recorded: the main frame, or the stage's screen. */
+  isScreen(frame: Frame): boolean {
+    if (this.options.stage === undefined) {
+      return frame === frame.page().mainFrame();
+    }
+    return (
+      frame.name() === SCREEN_FRAME &&
+      frame.parentFrame() === frame.page().mainFrame()
+    );
+  }
+
+  /** Whether a URL is of the app's page, by origin. */
+  private ofApp(url: string): boolean {
+    try {
+      return new URL(url).origin === new URL(this.options.url).origin;
+    } catch {
+      return false;
+    }
+  }
+
+  pageEvent(pageId: string, event: PageEvent["event"], url: string): void {
     const id = this.nextId(pageId);
     const time = Date.now();
     this.emit([
@@ -294,15 +382,39 @@ export class BrowserSession {
     const reader = new SocketReader(redactor, calls);
     this.readers.push(reader);
 
-    this.pageEvent(pageId, "open", page.url());
+    const stage = this.options.stage !== undefined;
+    let opened = false;
+    let lastUrl = page.url();
+    if (!stage) {
+      this.pageEvent(pageId, "open", page.url());
+      opened = true;
+    }
     page.on("framenavigated", (frame) => {
-      if (frame === page.mainFrame()) {
-        this.pageEvent(pageId, "navigated", frame.url());
+      if (!this.isScreen(frame)) {
+        return;
+      }
+      lastUrl = frame.url();
+      if (!opened) {
+        // On a stage the page opens when its frame first gets a URL.
+        opened = true;
+        this.pageEvent(pageId, "open", frame.url());
+      }
+      this.pageEvent(pageId, "navigated", frame.url());
+    });
+    if (!stage) {
+      // On a stage, the listener reports the load of the frame.
+      page.on("load", () => this.pageEvent(pageId, "load", page.url()));
+    }
+    page.on("close", () => {
+      if (opened) {
+        this.pageEvent(pageId, "close", stage ? lastUrl : page.url());
       }
     });
-    page.on("load", () => this.pageEvent(pageId, "load", page.url()));
-    page.on("close", () => this.pageEvent(pageId, "close", page.url()));
     page.on("console", (message) => {
+      // On a stage, only what the app's scripts logged.
+      if (stage && !this.ofApp(message.location().url)) {
+        return;
+      }
       const type = message.type();
       if (type === "error" || type === "warning") {
         this.emit([
@@ -318,6 +430,12 @@ export class BrowserSession {
       }
     });
     page.on("pageerror", (error) => {
+      if (
+        stage &&
+        !this.ofApp(/https?:\/\/[^\s/]+/.exec(error.stack ?? "")?.[0] ?? "")
+      ) {
+        return;
+      }
       this.emit([
         {
           kind: "console",
@@ -353,10 +471,42 @@ export class BrowserSession {
     const requests = new Map<string, PendingRequest>();
     const sockets = new Map<string, string>();
     let socketCount = 0;
+    // On a stage, the requests of the app's frame only: the frame is known by
+    // the first document of the app's origin that a frame other than the main
+    // one loads, and keeps its id across its navigations.
+    const stage = this.options.stage !== undefined;
+    let mainFrameId: string | null = null;
+    let screenFrameId: string | null = null;
+    if (stage) {
+      void cdp
+        .send("Page.getFrameTree")
+        .then(({ frameTree }) => (mainFrameId = frameTree.frame.id))
+        .catch(() => {});
+    }
+    const recorded = (event: {
+      frameId?: string;
+      type?: string;
+      request: { url: string };
+    }) => {
+      if (!stage) {
+        return true;
+      }
+      if (
+        screenFrameId === null &&
+        event.type === "Document" &&
+        event.frameId !== undefined &&
+        event.frameId !== mainFrameId &&
+        mainFrameId !== null &&
+        this.ofApp(event.request.url)
+      ) {
+        screenFrameId = event.frameId;
+      }
+      return screenFrameId !== null && event.frameId === screenFrameId;
+    };
 
     cdp.on("Network.requestWillBeSent", (event) => {
       wallOffset = event.wallTime * 1000 - event.timestamp * 1000;
-      if (!RECORDED_TYPES.has(event.type ?? "")) {
+      if (!RECORDED_TYPES.has(event.type ?? "") || !recorded(event)) {
         return;
       }
       const { request } = event;
@@ -545,21 +695,29 @@ export class BrowserSession {
         ),
       ]);
     };
+    // On a stage, the storage of the app's origin only.
+    const ofScreen = (id: StorageId) =>
+      this.options.stage === undefined ||
+      this.ofApp(id.securityOrigin ?? id.storageKey ?? "");
     cdp.on("DOMStorage.domStorageItemAdded", (event) => {
+      if (!ofScreen(event.storageId)) return;
       area(event.storageId).set(event.key, event.newValue);
       change(event.storageId, "set", event.key, event.newValue, null);
     });
     cdp.on("DOMStorage.domStorageItemUpdated", (event) => {
+      if (!ofScreen(event.storageId)) return;
       area(event.storageId).set(event.key, event.newValue);
       change(event.storageId, "set", event.key, event.newValue, event.oldValue);
     });
     cdp.on("DOMStorage.domStorageItemRemoved", (event) => {
+      if (!ofScreen(event.storageId)) return;
       const values = area(event.storageId);
       const oldValue = values.get(event.key) ?? null;
       values.delete(event.key);
       change(event.storageId, "remove", event.key, null, oldValue);
     });
     cdp.on("DOMStorage.domStorageItemsCleared", (event) => {
+      if (!ofScreen(event.storageId)) return;
       area(event.storageId).clear();
       change(event.storageId, "clear", null, null, null);
     });

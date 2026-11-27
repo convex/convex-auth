@@ -1,0 +1,200 @@
+/* The panels of the stage. Colours come from look.ts (PANEL_CSS). */
+:root {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--stage-text);
+  background: var(--stage-bg);
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root,
+.stage {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--stage-bg);
+}
+.stage {
+  position: relative;
+}
+.stage-canvas {
+  position: absolute !important;
+  inset: 0;
+}
+.stage-frame {
+  border: 0;
+  display: block;
+  background: #fff;
+}
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--stage-button);
+  border: 1px solid var(--stage-line);
+  border-radius: 7px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+button.on {
+  background: var(--stage-button-on);
+  color: var(--stage-button-on-text);
+}
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.92em;
+}
+.dim {
+  color: var(--stage-dim);
+}
+.panel {
+  position: absolute;
+  z-index: 20000000;
+  background: var(--stage-panel);
+  border: 1px solid var(--stage-line);
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+}
+.problems {
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 560px;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-left: 3px solid var(--stage-active);
+}
+
+.stage-view {
+  top: 14px;
+  right: 14px;
+  padding: 6px;
+}
+
+.stage-timeline {
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  width: min(880px, calc(100% - 28px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.stage-modes {
+  position: relative;
+  display: flex;
+  gap: 4px;
+}
+.stage-modes .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 3px;
+  background: var(--stage-dim);
+}
+.stage-modes .dot.open {
+  background: var(--stage-active);
+}
+.stage-track {
+  position: relative;
+  flex: 1;
+  height: 28px;
+  cursor: pointer;
+  touch-action: none;
+}
+.stage-track-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--stage-track);
+}
+.stage-mark {
+  position: absolute;
+  top: 9px;
+  width: 1px;
+  height: 10px;
+  background: var(--stage-dim);
+  opacity: 0.6;
+}
+.stage-handle {
+  position: absolute;
+  top: 3px;
+  width: 14px;
+  height: 22px;
+  margin-left: -7px;
+  border-radius: 4px;
+  background: var(--stage-button-on);
+}
+.stage-clock {
+  min-width: 96px;
+  text-align: right;
+}
+.stage-source {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stage-menu {
+  bottom: 40px;
+  left: 0;
+  min-width: 250px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stage-menu button {
+  text-align: left;
+}
+.stage-menu-title {
+  font-weight: 700;
+  padding: 2px 4px;
+}
+
+.stage-inspector {
+  top: 60px;
+  right: 14px;
+  width: 340px;
+  max-height: calc(100% - 140px);
+  overflow: auto;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.stage-inspector h3 {
+  margin: 0 70px 6px 0;
+  font-size: 15px;
+  word-break: break-word;
+}
+.stage-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+}
+.stage-json {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  padding: 6px 8px;
+  max-height: 260px;
+  overflow: auto;
+  font-size: 11.5px;
+}
+.stage-list {
+  margin: 6px 0;
+  padding-left: 16px;
+}
+.stage-secret {
+  margin: 6px 0;
+}
