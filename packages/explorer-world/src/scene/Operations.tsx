@@ -147,7 +147,7 @@ function Operation({ op }: { op: OpPath }) {
     // The way it came: the last stretch of its path, fading behind it.
     const l = line.current;
     if (l) {
-      const from = Math.max(0, along - 2.5);
+      const from = Math.max(0, along - 4);
       for (let i = 0; i < TRAIL; i++) {
         const s = from + ((along - from) * i) / (TRAIL - 1);
         // The time at path position s.

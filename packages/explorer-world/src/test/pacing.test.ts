@@ -2,7 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { parseNdjson } from "../adapters/convexRecording.ts";
 import { hurry, liveEdge, nextStart } from "../live.ts";
-import { LONGEST_WAIT, RERUN, shownAt, shownGap } from "../model/schedule.ts";
+import {
+  HOP,
+  HOP_KEY,
+  LONGEST_WAIT,
+  RERUN,
+  shownAt,
+  shownGap,
+} from "../model/schedule.ts";
 import { prepareProject, PROJECTS, worldFromEvents } from "../project.ts";
 
 // A live session of the username-password example: three controls pressed
@@ -33,13 +40,34 @@ const spans = tl.actions.map((start, i) => {
 });
 
 describe("pacing", () => {
-  test("each pressed control plays out in about 8 to 12 seconds or less", () => {
+  test("each pressed control plays out in about 12 seconds or less", () => {
     expect(tl.actions).toHaveLength(3);
     expect(tl.actionEnds).toHaveLength(3);
-    for (const s of spans) {
-      expect(s).toBeGreaterThan(2);
-      expect(s).toBeLessThanOrEqual(12);
-    }
+    const [signUp, signOut, signIn] = spans;
+    for (const s of spans) expect(s).toBeGreaterThan(2);
+    // Sign-in with the token fetch that follows it.
+    expect(signIn).toBeLessThanOrEqual(13);
+    expect(signOut).toBeLessThanOrEqual(12);
+    // Sign-up loads the page again first: the client starts up, then signs
+    // in, then fetches its first token.
+    expect(signUp).toBeLessThanOrEqual(16.5);
+  });
+
+  test("an operation's body takes at least a hop to get from one place to the next", () => {
+    let hops = 0;
+    for (const op of tl.ops)
+      for (let i = 1; i < op.points.length; i++) {
+        const [a, b] = [op.points[i - 1], op.points[i]];
+        if (a.anchor === b.anchor) continue;
+        hops++;
+        const key = [a.anchor, b.anchor].some((x) =>
+          x.startsWith("storageKey:"),
+        );
+        expect(b.at - a.at).toBeGreaterThanOrEqual(
+          (key ? HOP_KEY : HOP) - 1e-9,
+        );
+      }
+    expect(hops).toBeGreaterThan(50);
   });
 
   test("shown time is one increasing function of real time", () => {

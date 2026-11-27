@@ -3,12 +3,18 @@
 // the world in a headless Chromium, and asserts:
 //
 // - one pressed control plays out in at most MAX_SPAN seconds of shown
-//   time, and the playhead reaches the live edge (the world at rest and up
+//   time (sign-up, which loads the page again before it signs in, in
+//   MAX_SPAN_SIGN_UP), and the playhead reaches the live edge (the world at rest and up
 //   to date) within that span plus SLACK seconds of wall time after the
 //   control's work ended;
 // - three controls pressed in a row, each as soon as it is enabled: the
 //   playhead is never more than one pressed control behind, and after the
-//   last one it reaches the live edge within the same bound.
+//   last one it reaches the live edge within the same bound; the sign-in
+//   among them, with the token fetch that follows it, plays out in at most
+//   MAX_SPAN_SIGN_IN;
+// - every operation's body takes at least MIN_HOP seconds to go from one
+//   place to the next (MIN_HOP_KEY between a module and a storage key in
+//   it): seven places in a third of a second is a flash, not a path.
 //
 // SLACK covers the software renderer of a headless browser, whose frames
 // are slow; on a real GPU the playhead keeps shown time.
@@ -33,6 +39,14 @@ const WORLD_PORT = 5474;
 const STREAM_PORT = 5499;
 /** The longest shown time one pressed control may take, start to rest (s). */
 const MAX_SPAN = 12;
+/** The same for sign-in with the token fetch that follows it (s). */
+const MAX_SPAN_SIGN_IN = 13;
+/** The same for sign-up, which loads the page again first (s). */
+const MAX_SPAN_SIGN_UP = 16.5;
+/** The least shown time of a body's hop between two places (s); `HOP` in `model/operations.ts`. */
+const MIN_HOP = 0.33;
+/** The same between a module and a storage key in it (s); `HOP_KEY`. */
+const MIN_HOP_KEY = 0.28;
 /** Wall seconds allowed past the shown span, for slow headless frames. */
 const SLACK = 8;
 
@@ -205,8 +219,8 @@ try {
     `one pressed control is one action in the timeline (${one.pressed})`,
   );
   check(
-    one.span <= MAX_SPAN,
-    `sign up plays out in ${one.span.toFixed(1)} s of shown time (at most ${MAX_SPAN})`,
+    one.span <= MAX_SPAN_SIGN_UP,
+    `sign up plays out in ${one.span.toFixed(1)} s of shown time (at most ${MAX_SPAN_SIGN_UP})`,
   );
   check(
     one.wall !== null,
@@ -229,6 +243,57 @@ try {
   check(
     three.wall !== null,
     `after the last, the playhead reached the live edge ${three.wall === null ? "not" : `${three.wall.toFixed(1)} s`} after its work ended (at most ${(three.span + SLACK).toFixed(1)})`,
+  );
+
+  // Each action from its start to the end of the last thing that started
+  // before it was done, the body of an operation included.
+  const spans = await page.evaluate(() => {
+    const tl = window.explorerWorld.timeline;
+    const things = [
+      ...tl.movements.map((m) => [m.start, m.end]),
+      ...tl.clientSteps.map((c) => [c.start, c.end]),
+      ...tl.ops.map((o) => [o.points[0].at, o.points.at(-1).at]),
+    ];
+    return tl.actions.map((start, i) => {
+      const done = tl.actionEnds[i];
+      const ends = things
+        .filter(([s]) => s >= start && s <= done)
+        .map(([, e]) => e);
+      return Math.max(done, ...ends) - start;
+    });
+  });
+  check(
+    spans.length === 4 && spans[2] <= MAX_SPAN_SIGN_IN,
+    `sign in, with its token fetch, plays out in ${spans[2]?.toFixed(1)} s of shown time (at most ${MAX_SPAN_SIGN_IN}; each action: ${spans.map((x) => x.toFixed(1)).join(", ")} s)`,
+  );
+
+  const hops = await page.evaluate(() =>
+    window.explorerWorld.timeline.ops.flatMap((op) =>
+      op.points.slice(1).flatMap((b, i) => {
+        const a = op.points[i];
+        if (a.anchor === b.anchor) return [];
+        const key = [a.anchor, b.anchor].some((x) =>
+          x.startsWith("storageKey:"),
+        );
+        return [
+          { key, gap: b.at - a.at, what: `${op.kind}: ${a.step} → ${b.step}` },
+        ];
+      }),
+    ),
+  );
+  const short = hops.filter(
+    (h) => h.gap < (h.key ? MIN_HOP_KEY : MIN_HOP) - 1e-6,
+  );
+  check(
+    hops.length > 20 && short.length === 0,
+    `each of ${hops.length} hops of a body takes at least ${MIN_HOP} s (${MIN_HOP_KEY} s to or from a storage key)${
+      short.length
+        ? `; shorter: ${short
+            .slice(0, 5)
+            .map((h) => `${h.what} ${h.gap.toFixed(3)} s`)
+            .join(", ")}`
+        : ""
+    }`,
   );
 } catch (error) {
   check(false, error instanceof Error ? error.message : String(error));

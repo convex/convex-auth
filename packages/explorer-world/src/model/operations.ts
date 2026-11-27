@@ -12,7 +12,9 @@
  * An operation is drawn as one thing that moves through the places its
  * steps were reported at, in the order they were reported: the module that
  * reported a step, then the storage key the step names (`detail.key` +
- * `"_"` + `detail.namespace`, which the adapter resolves). Where the
+ * `"_"` + `detail.namespace`, which the adapter resolves); from one key of
+ * a module straight to the next. Each move takes at least {@link HOP}
+ * ({@link HOP_KEY} to or from a key), which the schedule leaves. Where the
  * operation made a call, it goes out with the call to the way out of the
  * browser and comes back with the answer. The link from an operation to its
  * call is not recorded by an id. The one derivation allowed is the bracket
@@ -29,6 +31,22 @@
  */
 import type { Derivation, PageItem, Run } from "./recording.ts";
 import type { Tone } from "./recording.ts";
+
+/**
+ * The least shown time an operation's body takes to move from one place to
+ * the next (s): from a module to the storage key it names, from one module
+ * to another, between the module that sent a call and the way out of the
+ * browser. Seven places in a third of a second is a flash; this makes each
+ * one a place the eye can follow.
+ */
+export const HOP = 0.33;
+/**
+ * The least shown time between a module and a storage key inside it, either
+ * way (s): a short trip.
+ */
+export const HOP_KEY = 0.28;
+/** The least shown time between two steps an operation reports at the same place (s). */
+export const HOP_SAME = 0.08;
 
 /** One place an operation is at, at a shown time. */
 export interface OpPoint {
@@ -102,11 +120,23 @@ export function operations(
         (a.item.order?.seq ?? 0) - (b.item.order?.seq ?? 0) || a.at - b.at,
     );
     const points: OpPoint[] = [];
+    const call = matchCall(steps, runs);
+    const span = call ? calls.get(call.id) : undefined;
+    // The module of the key the body was last at, and when.
+    let inKeyOf: string | null = null;
+    let lastAt = -Infinity;
     for (const { item, at } of steps) {
-      points.push({ at, anchor: item.part, step: item.step! });
-      // The key the step names, a moment after the module.
+      // Out with the call and back in between: not at the key any more.
+      if (span && lastAt < span.out && at > span.out) inKeyOf = null;
+      lastAt = at;
+      // The key the step names, one hop after the module (the schedule
+      // leaves the time for it). From a key of the same module the body
+      // goes straight to the next key, inside the module.
       const key = item.lights?.[1];
-      if (key) points.push({ at: at + 0.06, anchor: key, step: item.step! });
+      if (!(key && inKeyOf === item.part))
+        points.push({ at, anchor: item.part, step: item.step! });
+      if (key) points.push({ at: at + HOP_KEY, anchor: key, step: item.step! });
+      inKeyOf = key ? item.part : null;
     }
     const path: OpPath = {
       id,
@@ -115,9 +145,7 @@ export function operations(
       points,
       tone: steps.some((s) => s.item.tone === "error") ? "error" : "normal",
     };
-    const call = matchCall(steps, runs);
-    if (call && calls.has(call.id)) {
-      const span = calls.get(call.id)!;
+    if (call && span) {
       const from = steps.find((s) =>
         BRACKETS.some((b) => b.open === s.item.step),
       )!;

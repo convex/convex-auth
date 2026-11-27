@@ -8,7 +8,16 @@
  * runs, and the UI shows them.
  */
 import type { GraphIndex } from "./graph.ts";
-import { operations, type CallSpan, type OpPath } from "./operations.ts";
+import {
+  HOP,
+  HOP_KEY,
+  HOP_SAME,
+  operations,
+  type CallSpan,
+  type OpPath,
+} from "./operations.ts";
+
+export { HOP, HOP_KEY, HOP_SAME } from "./operations.ts";
 import type {
   Cargo,
   Derivation,
@@ -134,14 +143,14 @@ export interface Timeline {
  * milliseconds; these make each part long enough to see, and no longer.
  */
 export const PACE = {
-  request: 0.35,
+  request: 0.3,
   call: 0.16,
   inside: 0.06,
   return: 0.14,
-  note: 0.2,
+  note: 0.12,
   log: 0.5,
-  commit: 0.35,
-  response: 0.35,
+  commit: 0.3,
+  response: 0.3,
   schedule: 0.4,
   /** A run that shows nothing inside (a query read again): out and back. */
   quick: 0.3,
@@ -161,9 +170,9 @@ export const GAP = { sameOp: 0.08, item: 0.12, run: 0.08, lead: 0.6 };
 export const RERUN = 0.7;
 
 /** A real gap up to this (s) is shown as it is. */
-const REAL_UP_TO = 0.5;
+const REAL_UP_TO = 0.25;
 /** No real gap is shown longer than this (s): a long wait is a short pause. */
-export const LONGEST_WAIT = 2.4;
+export const LONGEST_WAIT = 1.6;
 
 /**
  * The shown length of a real gap, in seconds: as it is up to
@@ -175,7 +184,7 @@ export function shownGap(real: number): number {
   if (real <= REAL_UP_TO) return Math.max(0, real);
   return Math.min(
     LONGEST_WAIT,
-    REAL_UP_TO + 0.45 * Math.log(1 + (real - REAL_UP_TO) / REAL_UP_TO),
+    REAL_UP_TO + 0.2 * Math.log(1 + (real - REAL_UP_TO) / REAL_UP_TO),
   );
 }
 
@@ -247,6 +256,16 @@ function naturalLength(run: Run): number {
 }
 
 /**
+ * The shown time of the leg between the module that sent a call and the way
+ * out of the browser, each way: {@link HOP} for a call that went out by one,
+ * none otherwise (a query run again keeps its short leg inside its parts).
+ */
+function browserLeg(run: Run, rerun?: Set<string>): number {
+  const quick = !run.steps.length && !run.writes.length;
+  return run.via && !run.scheduledBy && !quick && !rerun?.has(run.id) ? HOP : 0;
+}
+
+/**
  * Whether a run is a query run again: a query that wrote nothing, of a
  * function the same caller ran before. A subscribed query runs again after
  * every change; each time it plays briefly.
@@ -271,6 +290,11 @@ function runScale(run: Run, rerun: Set<string>): number {
   return rerun.has(run.id) && n > RERUN ? RERUN / n : 1;
 }
 
+/** The shown length of a run: its parts, scaled, and its legs in the browser. */
+function runLength(run: Run, rerun: Set<string>): number {
+  return naturalLength(run) * runScale(run, rerun) + 2 * browserLeg(run, rerun);
+}
+
 type Placed =
   | { kind: "item"; real: number; item: Run["before"][number]; run: Run }
   | { kind: "run"; real: number; run: Run };
@@ -281,6 +305,9 @@ type Placed =
  * it, and a real gap longer than that is shown as {@link shownGap} of it.
  * A run lasts {@link naturalLength} (a query run again, {@link RERUN}); what the page did while it was in flight
  * plays while it plays, and what happened after its answer waits for it.
+ * A step of an operation of the client comes no sooner than its body can
+ * get there from where it was ({@link HOP}), and a call the page sends
+ * leaves after the bodies have reached the keys they were going to.
  * Thus things that happened at the same time play at the same time, and
  * shown time is one increasing function of real time.
  */
@@ -318,6 +345,20 @@ function place(recording: Recording, rerun: Set<string>) {
   const runStart = new Map<string, number>();
   const warp: Warp = { real: [], shown: [] };
   const open: { answer: number; end: number }[] = [];
+  // Per operation: when its body is last somewhere, and where.
+  const opAt = new Map<
+    string,
+    { at: number; anchor: string; keyOf?: string; real: number }
+  >();
+  // The calls the page sent and got answered: an operation whose body may
+  // have gone out with one is not still at the key it was at.
+  const calls: { sent: number; answer: number; end: number; sender: string }[] =
+    [];
+  const wentOut = (since: number, now: number) =>
+    calls.filter((c) => c.sent >= since && c.answer <= now);
+  // When the last body reached the key its step named: a call the page
+  // sends next leaves after that.
+  let bodiesAt = 0;
   let prev: Placed | null = null;
   let prevShown = 0;
   let last = 0;
@@ -341,15 +382,70 @@ function place(recording: Recording, rerun: Set<string>) {
         s = Math.max(s, open[i].end + 0.05);
         open.splice(i, 1);
       }
+    // An operation's body has time to get here from where it was.
+    const op = p.kind === "item" && p.item.step ? opOf(p.item) : null;
+    if (op && p.kind === "item") {
+      const last = opAt.get(op);
+      // A body that may have gone out with a call since is back at the
+      // module that sent it when the call is home.
+      const back = last ? wentOut(last.real, p.real) : [];
+      const was = back.length
+        ? {
+            ...last!,
+            keyOf: undefined,
+            at: Math.max(last!.at, ...back.map((c) => c.end)),
+            anchor: back.at(-1)!.sender,
+          }
+        : last;
+      const key = p.item.lights?.[1];
+      // From a key to another key of the same module, the body goes
+      // straight across (see `operations`): the hop is the key's.
+      if (was)
+        s = Math.max(
+          s,
+          was.at +
+            (was.anchor === p.item.part
+              ? HOP_SAME
+              : was.keyOf === p.item.part
+                ? key
+                  ? 0
+                  : HOP_KEY
+                : HOP),
+        );
+      opAt.set(
+        op,
+        key
+          ? { at: s + HOP_KEY, anchor: key, keyOf: p.item.part, real: p.real }
+          : { at: s, anchor: p.item.part, real: p.real },
+      );
+      bodiesAt = Math.max(bodiesAt, key ? s + HOP_KEY : s);
+    } else if (p.kind === "run") s = Math.max(s, bodiesAt);
     at.set(p, s);
     if (p.kind === "run") {
       runStart.set(p.run.id, s);
-      const end = s + naturalLength(p.run) * runScale(p.run, rerun);
-      open.push({ answer: p.run.answeredAt ?? p.run.endedAt, end });
+      const end = s + runLength(p.run, rerun);
+      // A query run again plays briefly beside what follows; nothing waits
+      // for it.
+      if (!rerun.has(p.run.id) && p.run.via)
+        calls.push({
+          sent: p.real,
+          answer: p.run.answeredAt ?? p.run.endedAt,
+          end,
+          sender: p.run.sender?.part ?? p.run.caller,
+        });
+      if (!rerun.has(p.run.id))
+        open.push({ answer: p.run.answeredAt ?? p.run.endedAt, end });
       last = Math.max(last, end);
     } else last = Math.max(last, s + LIT);
-    if (!warp.real.length || p.real > warp.real[warp.real.length - 1]) {
+    // Steps reported in the same millisecond play one after another: each
+    // is its own point, a microsecond of real time apart, so that a wait
+    // after them starts where they end.
+    const lastReal = warp.real.length ? warp.real[warp.real.length - 1] : null;
+    if (lastReal === null || p.real > lastReal) {
       warp.real.push(p.real);
+      warp.shown.push(s);
+    } else if (s > warp.shown[warp.shown.length - 1]) {
+      warp.real.push(lastReal + 1e-3);
       warp.shown.push(s);
     }
     prev = p;
@@ -503,7 +599,8 @@ export function buildTimeline(
 
     // The request, from the caller, out by the way it left (a WebSocket).
     const reqStart = t;
-    t += quick ? P.quick : scheduled ? P.schedule : P.request;
+    const leg = browserLeg(run, rerun);
+    t += (quick ? P.quick : scheduled ? P.schedule : P.request) + leg;
     const sender = run.sender?.part ?? run.caller;
     const out = run.via
       ? hop(
@@ -512,7 +609,7 @@ export function buildTimeline(
           run.via,
           reqStart,
           "request",
-          reqStart + (t - reqStart) * 0.35,
+          reqStart + (leg || (t - reqStart) * 0.35),
         )
       : reqStart;
     move({
@@ -706,8 +803,8 @@ export function buildTimeline(
     // The response, back to the caller.
     if (!scheduled) {
       const resStart = t;
-      t += quick ? P.quick : P.response;
-      const back = run.via ? t - (t - resStart) * 0.35 : t;
+      t += (quick ? P.quick : P.response) + leg;
+      const back = run.via ? t - (leg || (t - resStart) * 0.35) : t;
       if (run.via) calls.set(run.id, { run, out, back, home: t });
       if (run.via)
         hop(run, run.via, run.sender?.part ?? run.caller, back, "response", t);
