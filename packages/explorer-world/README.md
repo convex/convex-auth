@@ -388,3 +388,20 @@ sky, light, materials, lines, movers, labels and effects. `?look=<id>`,
 @convex-dev/explorer-world check:looks` checks in Chromium that every look and
 the contact sheet draw a frame that is not black, with no non-finite pixel and
 no page error, and that the camera stays put when the look changes.
+
+The last entry, **Warm clay (vast)**, draws a second sample on its own
+(`src/looks/vast/`): the browser of the sign-in as a small piece of a vast
+world. A monumental screen (640 m across) shows the sign-in page; in front of
+it lies the browser, a field holding the page, the app's code, the Convex
+Auth client, localStorage, cookies, and the WebSocket and HTTP connections,
+which lead along lanes to plain gates a kilometre off (the Convex backend, the
+page server). Big things hold smaller ones, by the names in the code: a
+district of code holds modules (`world.ts` lists the files), a module its
+functions, localStorage its keys, a key its value, the token its claims.
+Detail comes in by distance (`reveal.tsx`) and text hides while it is too
+small to read, so each level is uncrowded. F, B, A, J jump to the levels: far
+out, the browser, inside the Auth client, close on the JWT (which moves the
+motion to its end, when the key exists). Its look is one file
+(`looks/clay.tsx`): matcap clay, painted soft shadows, no post effects. The
+camera's near and far planes follow the distance looked at, from 2 m to
+2.8 km. `?view=<far|browser|authClient|jwt>` opens at a level.

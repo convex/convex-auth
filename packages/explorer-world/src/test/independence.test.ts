@@ -7,8 +7,16 @@
 import { expect, test } from "vitest";
 import { PROJECTS } from "../project.ts";
 
+// The content of the vast sample of the looks gallery is hand-placed, like a
+// project: it names the real files and functions on purpose.
 const code = import.meta.glob<string>(
-  ["../**/*.{ts,tsx}", "!../test/**", "!../**/*.test.ts"],
+  [
+    "../**/*.{ts,tsx}",
+    "!../test/**",
+    "!../**/*.test.ts",
+    "!../looks/vast/world.ts",
+    "!../looks/vast/motion.ts",
+  ],
   { query: "?raw", import: "default", eager: true },
 );
 

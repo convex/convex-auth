@@ -3,7 +3,16 @@
  * a pure function of time, and the split holds: the sample scene names no
  * colour and no material, and every look supplies every part.
  */
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
+import * as vast from "../looks/vast/motion.ts";
+import {
+  APP_CODE,
+  AUTH_CLIENT,
+  JWT_KEY,
+  REFRESH_KEY,
+} from "../looks/vast/world.ts";
 import { DURATION, frameAt } from "../looks/motion.ts";
 import { BUTTON_CENTER, LOCAL_STORAGE, ROUTES } from "../looks/layout.ts";
 
@@ -63,10 +72,20 @@ test("the motion goes out through the exit and comes back", () => {
 });
 
 test("the sample scene names no colour and no material", () => {
-  const scene = files["../looks/SampleScene.tsx"];
-  expect(scene).toBeDefined();
-  expect(scene).not.toMatch(/#[0-9a-f]{3,8}\b/i);
-  expect(scene).not.toMatch(/[Mm]aterial|color|colour|rgb\(/);
+  const scenes = [
+    "../looks/SampleScene.tsx",
+    "../looks/vast/VastScene.tsx",
+    "../looks/vast/world.ts",
+    "../looks/vast/motion.ts",
+    "../looks/vast/reveal.tsx",
+    "../looks/vast/views.ts",
+  ];
+  for (const name of scenes) {
+    const scene = files[name];
+    expect(scene, name).toBeDefined();
+    expect(scene, name).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(scene, name).not.toMatch(/[Mm]aterial|color|colour|rgb\(/);
+  }
 });
 
 test("every look supplies every part", () => {
@@ -91,7 +110,20 @@ test("every look supplies every part", () => {
   for (const [, , file] of names) {
     const source = files[`../looks/looks/${file}.tsx`];
     // A look either takes the standard parts from a style or spells them out.
-    expect(source).toMatch(/makeParts\(|parts: \{/);
+    expect(source).toMatch(/makeParts\(|parts: \{|world: \{/);
+    if (/world: \{/.test(source))
+      for (const p of [
+        "Ground",
+        "Monument",
+        "Place",
+        "Piece",
+        "Lane",
+        "Gate",
+        "Trail",
+        "Carrier",
+        "Name",
+      ])
+        expect(source).toMatch(new RegExp(`world: \\{[^}]*\\b${p}\\b`));
     expect(source).toMatch(/Stage:/);
     expect(source).toMatch(/Effects:/);
     // Bloom or any composer reads half floats: the sanitize pass goes first.
@@ -100,4 +132,65 @@ test("every look supplies every part", () => {
         /<EffectComposer[^>]*>\s*<primitive object=\{pass\} \/>/,
       );
   }
+});
+
+test("the vast sample's motion starts still at the button and ends with both keys set", () => {
+  const start = vast.frameAt(0);
+  expect(start.pressed).toBe(true);
+  expect(start.keys[JWT_KEY.id]).toBe(0);
+  const end = vast.frameAt(vast.DURATION);
+  expect(end.carrier).toBeNull();
+  expect(end.tokens.every((t) => t === null)).toBe(true);
+  expect(end.keys[JWT_KEY.id]).toBe(1);
+  expect(end.keys[REFRESH_KEY.id]).toBe(1);
+  expect(end.active).toBeNull();
+  // It reaches the backend's gate on the way.
+  const times = Array.from(
+    { length: 2000 },
+    (_, i) => (i / 2000) * vast.DURATION,
+  );
+  expect(times.some((t) => vast.frameAt(t).active === "convexBackend")).toBe(
+    true,
+  );
+});
+
+test("the vast sample scrubs smoothly in either direction", () => {
+  const step = 1 / 240;
+  const where = (t: number) => {
+    const f = vast.frameAt(t);
+    return [
+      f.carrier?.position ?? null,
+      ...f.tokens.map((x) => x?.position ?? null),
+    ];
+  };
+  let jumps = 0;
+  for (let t = 0; t < vast.DURATION; t += step) {
+    const a = where(t);
+    const b = where(t + step);
+    // The long way to the backend is the fastest leg: about 4 m a step.
+    a.forEach((p, i) => {
+      const q = b[i];
+      if (p && q && p.distanceTo(q) > 8) jumps++;
+    });
+  }
+  expect(jumps).toBe(0);
+  expect(vast.frameAt(6.7)).toEqual(vast.frameAt(6.7));
+});
+
+test("the vast sample names real files and functions", () => {
+  const root = fileURLToPath(new URL("../../../../", import.meta.url));
+  const dirs = new Map([
+    [APP_CODE, "examples/react-username-password/src/"],
+    [AUTH_CLIENT, "packages/core/src/"],
+  ]);
+  for (const [district, dir] of dirs)
+    for (const m of district.children) {
+      const path = root + dir + m.label;
+      expect(existsSync(path), path).toBe(true);
+      const source = readFileSync(path, "utf8");
+      for (const f of m.children)
+        expect(source, `${f.label} in ${m.label}`).toContain(
+          f.label.split(".").pop(),
+        );
+    }
 });

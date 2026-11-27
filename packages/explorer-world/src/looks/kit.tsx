@@ -20,11 +20,13 @@ import type {
   LabelProps,
   Look,
   MoverProps,
+  SampleLook,
   PageStyle,
   PathProps,
   ScreenProps,
   TokenProps,
 } from "./look.ts";
+import { isWorldLook } from "./look.ts";
 import { pageTexture } from "./page.ts";
 import { CanvasTexture, SRGBColorSpace } from "three";
 import { FONT, FONT_BOLD, FONT_MONO } from "../scene/fonts.ts";
@@ -39,40 +41,48 @@ export function useLook(): Look {
   return look;
 }
 
+/** The parts of the small sample, from a look that has them. */
+function useSampleLook(): SampleLook {
+  const look = useLook();
+  if (isWorldLook(look))
+    throw new Error(`The look ${look.id} draws the vast sample only.`);
+  return look;
+}
+
 export const Ground = () => {
-  const { Ground } = useLook().parts;
+  const { Ground } = useSampleLook().parts;
   return <Ground />;
 };
 export const Screen = (p: ScreenProps) => {
-  const { Screen } = useLook().parts;
+  const { Screen } = useSampleLook().parts;
   return <Screen {...p} />;
 };
 export const Block = (p: BlockProps) => {
-  const { Block } = useLook().parts;
+  const { Block } = useSampleLook().parts;
   return <Block {...p} />;
 };
 export const Container = (p: ContainerProps) => {
-  const { Container } = useLook().parts;
+  const { Container } = useSampleLook().parts;
   return <Container {...p} />;
 };
 export const Exit = (p: ExitProps) => {
-  const { Exit } = useLook().parts;
+  const { Exit } = useSampleLook().parts;
   return <Exit {...p} />;
 };
 export const Token = (p: TokenProps) => {
-  const { Token } = useLook().parts;
+  const { Token } = useSampleLook().parts;
   return <Token {...p} />;
 };
 export const Path = (p: PathProps) => {
-  const { Path } = useLook().parts;
+  const { Path } = useSampleLook().parts;
   return <Path {...p} />;
 };
 export const Mover = (p: MoverProps) => {
-  const { Mover } = useLook().parts;
+  const { Mover } = useSampleLook().parts;
   return <Mover {...p} />;
 };
 export const Label = (p: LabelProps) => {
-  const { Label } = useLook().parts;
+  const { Label } = useSampleLook().parts;
   return <Label {...p} />;
 };
 

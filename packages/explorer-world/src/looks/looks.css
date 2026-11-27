@@ -136,3 +136,16 @@ body,
   border: 1px solid var(--edge);
   color: var(--fg);
 }
+.looks-levels {
+  position: absolute;
+  bottom: 72px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  backdrop-filter: blur(8px);
+}

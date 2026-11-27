@@ -1,5 +1,6 @@
 import type { Look } from "../look.ts";
 import { blueprint } from "./blueprint.tsx";
+import { clay } from "./clay.tsx";
 import { glassLook } from "./glass.tsx";
 import { hardware } from "./hardware.tsx";
 import { nightGlow } from "./nightGlow.tsx";
@@ -14,4 +15,5 @@ export const LOOKS: Look[] = [
   glassLook,
   toy,
   hardware,
+  clay,
 ];

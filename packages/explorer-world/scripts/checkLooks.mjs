@@ -6,13 +6,15 @@
 //   NaN or infinite pixel;
 // - the frame on screen is not black: enough of it has content, and it is
 //   not one flat colour;
-// - the camera stays where it is when the look changes (keys 1 to 9).
+// - the camera stays where it is when the look changes (keys 1 to 9);
+// - the vast sample (a look with its own scene) draws each of its levels
+//   (keys F, B, A, J) the same way, and the motion at three points.
 //
 // SwiftShader is not a GPU: passing does not prove that a GPU draws right.
 // Needs Playwright with a Chromium (`require("playwright")`).
 //
 //   pnpm --filter @convex-dev/explorer-world check:looks
-/* global document, requestAnimationFrame, looksDiag, looksFrames, looksControls, looksIds, looksGallery -- these run in the page. */
+/* global document, requestAnimationFrame, looksDiag, looksFrames, looksControls, looksIds, looksGallery, looksWorld -- these run in the page. */
 import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -124,7 +126,29 @@ await page.waitForFunction(
 );
 await page.waitForTimeout(3000);
 const ids = await page.evaluate(() => looksIds);
-check(ids.length >= 6, `${ids.length} looks`);
+const world = await page.evaluate(() => looksWorld);
+check(ids.length >= 7, `${ids.length} looks`);
+check(world.some(Boolean), "one look draws the vast sample");
+
+/** The scene buffer holds no non-finite pixel, and the frame is not black. */
+async function drawsClean(name) {
+  const scans = [];
+  for (let k = 0; k < 2; k++) {
+    scans.push(await page.evaluate(() => looksDiag.scan()));
+    await page.waitForTimeout(300);
+  }
+  const bad = scans.reduce((n, s) => n + s.nonFinite, 0);
+  check(
+    bad === 0,
+    `${name}: no non-finite pixel in the scene buffer (${bad} in 2 scans of ${scans[0].width}×${scans[0].height})`,
+  );
+  const [lum] = await canvasBlocks(page);
+  const c = content(lum);
+  check(
+    c.ok,
+    `${name}: the frame is not black (${Math.round(c.lit * 100)}% lit, spread ${c.spread.toFixed(0)})`,
+  );
+}
 
 // Move the camera away from the start, to see that it stays when the look changes.
 await page.evaluate(() => looksControls.setLookAt(6, 12, 26, 2, 4, -2, false));
@@ -141,6 +165,34 @@ for (let i = 0; i < ids.length; i++) {
   }
   const shown = await page.evaluate(() => looksGallery.getState().view);
   check(shown === i, `key ${i + 1} shows ${ids[i]}`);
+  if (world[i]) {
+    // Its own scene and camera: each level, then the motion at three points.
+    for (const [key, view] of [
+      ["f", "far"],
+      ["b", "browser"],
+      ["a", "authClient"],
+      ["j", "jwt"],
+    ]) {
+      await page.keyboard.press(key);
+      await settle(page, 6000);
+      const at = await page.evaluate(() => {
+        const p = looksControls.camera.position;
+        return [p.x, p.y, p.z];
+      });
+      check(
+        Number.isFinite(at[0]),
+        `${ids[i]}, key ${key.toUpperCase()}: at ${view} (${at.map((x) => x.toFixed(0)).join(", ")})`,
+      );
+      await drawsClean(`${ids[i]} at ${view}`);
+    }
+    await page.keyboard.press("b");
+    for (const t of [1.2, 5.0, 9.4]) {
+      await page.evaluate((t) => looksGallery.getState().setTime(t), t);
+      await settle(page, 2500);
+      await drawsClean(`${ids[i]} at ${t} s`);
+    }
+    continue;
+  }
   const scans = [];
   for (let k = 0; k < 2; k++) {
     scans.push(await page.evaluate(() => looksDiag.scan()));
@@ -168,19 +220,20 @@ for (let i = 0; i < ids.length; i++) {
   );
 }
 
-// The contact sheet: every look, side by side.
+// The contact sheet: every look of the small sample, side by side.
+const sheetIds = ids.filter((_, i) => !world[i]);
 await page.keyboard.press("0");
 await settle(page, 15_000);
 const sheet = await canvasBlocks(page);
 check(
-  sheet.length === ids.length,
+  sheet.length === sheetIds.length,
   `the contact sheet shows ${sheet.length} canvases`,
 );
 sheet.forEach((lum, i) => {
   const c = content(lum);
   check(
     c.ok,
-    `contact sheet, ${ids[i]}: not black (${Math.round(c.lit * 100)}% lit, spread ${c.spread.toFixed(0)})`,
+    `contact sheet, ${sheetIds[i]}: not black (${Math.round(c.lit * 100)}% lit, spread ${c.spread.toFixed(0)})`,
   );
 });
 check(

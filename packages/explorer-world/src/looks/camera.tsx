@@ -9,25 +9,61 @@
 import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
+import {
+  Plane,
+  Raycaster,
+  Vector2,
+  Vector3,
+  type Camera,
+  type PerspectiveCamera,
+} from "three";
 import { create } from "zustand";
 import { START_VIEW, type V3 } from "./layout.ts";
 
-type Pose = { position: V3; target: V3; by: number; version: number };
+type Pose = {
+  position: V3;
+  target: V3;
+  /** The canvas that set it, or -1 for a jump from outside. */
+  by: number;
+  /** Move there over a moment rather than at once. */
+  smooth?: boolean;
+  version: number;
+};
 
-export const usePose = create<
-  Pose & { set: (p: Omit<Pose, "version">) => void }
->((set) => ({
-  ...START_VIEW,
-  by: -1,
-  version: 0,
-  set: (p) => set((s) => ({ ...p, version: s.version + 1 })),
-}));
+/** A pose shared by the canvases of one scene. */
+export function createPose(start: { position: V3; target: V3 }) {
+  return create<Pose & { set: (p: Omit<Pose, "version">) => void }>((set) => ({
+    ...start,
+    by: -1,
+    version: 0,
+    set: (p) => set((s) => ({ ...p, version: s.version + 1 })),
+  }));
+}
+export type PoseStore = ReturnType<typeof createPose>;
+
+/** The pose of the small sample. */
+export const usePose = createPose(START_VIEW);
+const defaultPose = usePose;
 
 const { ACTION } = CameraControlsImpl;
 let nextId = 0;
 
-export function GalleryCamera() {
+export function GalleryCamera({
+  pose: usePose = defaultPose,
+  minDistance = 4,
+  maxDistance = 160,
+  vast = false,
+}: {
+  pose?: PoseStore;
+  minDistance?: number;
+  maxDistance?: number;
+  /**
+   * A scene of kilometres seen from metres: the near and far planes follow
+   * the distance to the point looked at, which keeps the depth precise at
+   * every level.
+   */
+  vast?: boolean;
+}) {
   const controls = useRef<CameraControls>(null);
   const id = useRef(nextId++);
   const seen = useRef(-1);
@@ -55,16 +91,28 @@ export function GalleryCamera() {
         const c = controls.current;
         if (!c || s.by === id.current || s.version === seen.current) return;
         seen.current = s.version;
-        void c.setLookAt(...s.position, ...s.target, false);
+        void c.setLookAt(...s.position, ...s.target, Boolean(s.smooth));
         invalidate();
       }),
-    [invalidate],
+    [invalidate, usePose],
   );
 
   // Publish the pose as this canvas's camera moves.
   useFrame(() => {
     const c = controls.current;
     if (!c || !ready.current) return;
+    if (vast) {
+      const near = Math.min(40, Math.max(0.05, c.distance * 0.02));
+      const far = Math.max(9000, c.distance * 8);
+      if (
+        Math.abs(camera.near - near) > near * 0.05 ||
+        Math.abs(camera.far - far) > far * 0.05
+      ) {
+        camera.near = near;
+        camera.far = far;
+        (camera as PerspectiveCamera).updateProjectionMatrix();
+      }
+    }
     const p = c.getPosition(new Vector3(), true).toArray() as V3;
     const t = c.getTarget(new Vector3(), true).toArray() as V3;
     const s = usePose.getState();
@@ -126,8 +174,8 @@ export function GalleryCamera() {
         right: ACTION.ROTATE,
         wheel: ACTION.DOLLY,
       }}
-      minDistance={4}
-      maxDistance={160}
+      minDistance={minDistance}
+      maxDistance={maxDistance}
       maxPolarAngle={Math.PI * 0.49}
       dollyToCursor
     />

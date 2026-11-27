@@ -7,13 +7,19 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import { PCFSoftShadowMap } from "three";
 import { create } from "zustand";
-import { GalleryCamera } from "./camera.tsx";
+import { createPose, GalleryCamera } from "./camera.tsx";
 import { LookProvider } from "./kit.tsx";
 import { START_VIEW } from "./layout.ts";
-import type { Look } from "./look.ts";
+import { isWorldLook, type Look } from "./look.ts";
 import { LOOKS } from "./looks/index.ts";
-import { DURATION, beatAt } from "./motion.ts";
+import { DURATION as SAMPLE_DURATION, beatAt as sampleBeat } from "./motion.ts";
 import { SampleScene } from "./SampleScene.tsx";
+import {
+  DURATION as VAST_DURATION,
+  beatAt as vastBeat,
+} from "./vast/motion.ts";
+import { VastScene } from "./vast/VastScene.tsx";
+import { START as VAST_START, VIEWS, type View } from "./vast/views.ts";
 import { scanScene } from "../diag.ts";
 
 const params = new URLSearchParams(location.search);
@@ -30,6 +36,33 @@ type State = {
   setPlaying: (p: boolean) => void;
 };
 
+/** The looks of the small sample, side by side on the contact sheet. */
+const SHEET = LOOKS.filter((l) => !isWorldLook(l));
+
+const durationOf = (view: number) =>
+  view >= 0 && isWorldLook(LOOKS[view]) ? VAST_DURATION : SAMPLE_DURATION;
+const beatOf = (view: number, t: number) =>
+  view >= 0 && isWorldLook(LOOKS[view]) ? vastBeat(t) : sampleBeat(t);
+
+/** The camera of the vast sample: its own pose, far from the small one. */
+const startView = VIEWS.find((v) => v.id === params.get("view")) ?? VAST_START;
+export const useVastPose = createPose(startView);
+
+/** Moves the camera of the vast sample to one of its levels. */
+export function goTo(view: View) {
+  useVastPose.getState().set({
+    position: view.position,
+    target: view.target,
+    by: -1,
+    smooth: true,
+  });
+  const g = useGallery.getState();
+  if (view.atLeast !== undefined && g.time < view.atLeast) {
+    g.setPlaying(false);
+    g.setTime(view.atLeast);
+  }
+}
+
 const initial = () => {
   if (params.has("sheet")) return -1;
   const i = LOOKS.findIndex((l) => l.id === params.get("look"));
@@ -38,10 +71,15 @@ const initial = () => {
 
 export const useGallery = create<State>((set) => ({
   view: initial(),
-  time: Math.min(DURATION, Math.max(0, Number(params.get("t") ?? 0) || 0)),
+  time: Math.min(
+    durationOf(initial()),
+    Math.max(0, Number(params.get("t") ?? 0) || 0),
+  ),
   playing: false,
-  show: (view) => set({ view }),
-  setTime: (time) => set({ time: Math.min(DURATION, Math.max(0, time)) }),
+  show: (view) =>
+    set((s) => ({ view, time: Math.min(durationOf(view), s.time) })),
+  setTime: (time) =>
+    set((s) => ({ time: Math.min(durationOf(s.view), Math.max(0, time)) })),
   setPlaying: (playing) => set({ playing }),
 }));
 
@@ -51,6 +89,12 @@ Object.assign(globalThis, {
   looksFrames: frames,
   looksGallery: useGallery,
   looksIds: LOOKS.map((l) => l.id),
+  looksWorld: LOOKS.map((l) => isWorldLook(l)),
+  looksViews: VIEWS.map((v) => v.id),
+  looksGoTo: (id: string) => {
+    const v = VIEWS.find((x) => x.id === id);
+    if (v) goTo(v);
+  },
 });
 
 function GlSettings({ look }: { look: Look }) {
@@ -87,6 +131,7 @@ function Hooks({ main }: { main: boolean }) {
 function LookCanvas({ look, main }: { look: Look; main: boolean }) {
   const time = useGallery((s) => s.time);
   const { Stage, Effects } = look;
+  const world = isWorldLook(look);
   return (
     <Canvas
       className="looks-canvas"
@@ -94,18 +139,32 @@ function LookCanvas({ look, main }: { look: Look; main: boolean }) {
       shadows
       dpr={[1, 2]}
       gl={{ antialias: true, preserveDrawingBuffer: true }}
-      camera={{ fov: 42, near: 0.5, far: 600, position: START_VIEW.position }}
+      camera={
+        world
+          ? { fov: 42, near: 1, far: 9000, position: startView.position }
+          : { fov: 42, near: 0.5, far: 600, position: START_VIEW.position }
+      }
     >
       <GlSettings look={look} />
       <LookProvider value={look}>
         {/* Mounted afresh for each look: nothing of the last one stays. */}
         <Fragment key={look.id}>
           <Stage />
-          <SampleScene time={time} />
+          {world ? <VastScene time={time} /> : <SampleScene time={time} />}
         </Fragment>
         {Effects && <Effects key={`effects-${look.id}`} />}
       </LookProvider>
-      <GalleryCamera />
+      {world ? (
+        <GalleryCamera
+          key="vast"
+          pose={useVastPose}
+          minDistance={2}
+          maxDistance={2800}
+          vast
+        />
+      ) : (
+        <GalleryCamera key="sample" />
+      )}
       <Hooks main={main} />
     </Canvas>
   );
@@ -122,7 +181,7 @@ function usePlayLoop() {
       const t = time + (now - last) / 1000;
       last = now;
       setTime(t);
-      if (t >= DURATION) setPlaying(false);
+      if (t >= durationOf(useGallery.getState().view)) setPlaying(false);
       else raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -138,7 +197,11 @@ function useKeys() {
       const n = Number(e.key);
       if (e.key === "0") g.show(-1);
       else if (n >= 1 && n <= LOOKS.length) g.show(n - 1);
-      else if (e.key === " ") {
+      else if (g.view >= 0 && isWorldLook(LOOKS[g.view])) {
+        const v = VIEWS.find((x) => x.key === e.key.toLowerCase());
+        if (v) goTo(v);
+      }
+      if (e.key === " ") {
         e.preventDefault();
         togglePlay();
       }
@@ -152,7 +215,7 @@ function togglePlay() {
   const g = useGallery.getState();
   if (g.playing) g.setPlaying(false);
   else {
-    if (g.time >= DURATION) g.setTime(0);
+    if (g.time >= durationOf(g.view)) g.setTime(0);
     g.setPlaying(true);
   }
 }
@@ -179,9 +242,24 @@ function Tabs() {
   );
 }
 
+/** The levels of the vast sample, to jump to. */
+function Levels() {
+  return (
+    <nav className="looks-levels" aria-label="Levels">
+      {VIEWS.map((v) => (
+        <button key={v.id} onClick={() => goTo(v)}>
+          <kbd>{v.key.toUpperCase()}</kbd> {v.name}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function Transport() {
   const time = useGallery((s) => s.time);
   const playing = useGallery((s) => s.playing);
+  const view = useGallery((s) => s.view);
+  const duration = durationOf(view);
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div className="looks-transport">
@@ -192,7 +270,7 @@ function Transport() {
         ref={ref}
         type="range"
         min={0}
-        max={DURATION}
+        max={duration}
         step={0.001}
         value={time}
         aria-label="Time"
@@ -202,7 +280,7 @@ function Transport() {
         }}
       />
       <span className="looks-time">{time.toFixed(1)} s</span>
-      <span className="looks-beat">{beatAt(time)}</span>
+      <span className="looks-beat">{beatOf(view, time)}</span>
     </div>
   );
 }
@@ -225,17 +303,18 @@ export function Gallery() {
         </div>
       ) : (
         <div className="looks-sheet">
-          {LOOKS.map((l, i) => (
+          {SHEET.map((l, i) => (
             <figure key={l.id} className={`chrome-${l.chrome}`}>
               <LookCanvas look={l} main={i === 0} />
               <figcaption>
-                <kbd>{i + 1}</kbd> {l.name}
+                <kbd>{LOOKS.indexOf(l) + 1}</kbd> {l.name}
               </figcaption>
             </figure>
           ))}
         </div>
       )}
       <Tabs />
+      {look && isWorldLook(look) && <Levels />}
       <Transport />
     </div>
   );
