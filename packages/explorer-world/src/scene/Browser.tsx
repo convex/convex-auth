@@ -19,7 +19,12 @@ import {
   type Mesh,
   MeshBasicMaterial,
 } from "three";
-import type { ClientStep } from "../model/schedule.ts";
+import {
+  LOAD_SWEEP,
+  STATE_PULSE,
+  STEP_FADE,
+  type ClientStep,
+} from "../model/schedule.ts";
 import type { PageState } from "../model/recording.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
@@ -40,7 +45,7 @@ const ARCS: Record<PageState, [number, number][]> = {
   ],
 };
 /** How long the pulse of a change of state lasts (s of playback). */
-const PULSE = 0.9;
+const PULSE = STATE_PULSE;
 /** How large the pulse grows, as a fraction of its distance to the camera. */
 const PULSE_ON_SCREEN = 0.09;
 const pulseAt = new Vector3();
@@ -118,7 +123,7 @@ function KeyPulses() {
 }
 
 /** How long the sweep of a document load takes (s of playback). */
-const SWEEP = 1.2;
+const SWEEP = LOAD_SWEEP;
 
 function LoadSweeps() {
   const version = usePlayback((s) => s.version);
@@ -385,7 +390,7 @@ function StepRing({ part, steps }: { part: string; steps: string[] }) {
 }
 
 /** Shown seconds a halo takes to fade after its module's last step. */
-const HALO_FADE = 0.35;
+const HALO_FADE = STEP_FADE;
 /** A halo's radius as a fraction of its distance to the camera, at least. */
 export const HALO_ON_SCREEN = 0.03;
 

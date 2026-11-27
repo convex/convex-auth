@@ -4,7 +4,13 @@
  */
 import { describe, expect, test } from "vitest";
 import { commonDir, dirOf } from "../layout/islands.ts";
-import { buildTimeline } from "../model/schedule.ts";
+import {
+  buildTimeline,
+  LOAD_SWEEP,
+  STATE_PULSE,
+  STEP_FADE,
+  type Timeline,
+} from "../model/schedule.ts";
 import { takenPart } from "../model/takenPart.ts";
 import { loadProject, PROJECTS } from "../project.ts";
 
@@ -137,5 +143,49 @@ describe("before any run", () => {
     );
     expect(facts.groups.get("region:browser/browser")?.how).toBe("reported");
     expect(facts.groups.has("method:username-password")).toBe(false);
+  });
+});
+
+/** Whether anything is still being drawn as happening at `t`. */
+function happeningAt(tl: Timeline, t: number): string[] {
+  return [
+    ...tl.activations.filter((a) => a.end > t).map((a) => `lit ${a.node}`),
+    ...tl.clientSteps
+      .filter((c) => c.end + STEP_FADE > t)
+      .map((c) => `halo ${c.part}`),
+    ...tl.loads
+      .filter((l) => l.at + LOAD_SWEEP > t)
+      .map((l) => `sweep ${l.page}`),
+    ...tl.movements.filter((m) => m.end > t).map((m) => `moving ${m.id}`),
+    ...tl.states
+      .filter((c) => c.at + STATE_PULSE > t)
+      .map((c) => `pulse ${c.holder}`),
+    ...tl.holdings
+      .filter((h) => h.op === "drop" && h.at + STATE_PULSE > t)
+      .map((h) => `pulse ${h.holder}`),
+  ];
+}
+
+describe("the world opens at rest", () => {
+  test("with only what the page did on load, nothing is happening at the end", () => {
+    // A load that ends on its change of state (to signed out), as a live
+    // one does: the last thing placed is the one with the longest effect.
+    const before = world.recording.runs[0].before;
+    const call = before.findIndex((it) => it.step === "signIn.call");
+    const last = before
+      .slice(0, call)
+      .findLastIndex((it) => it.state !== undefined);
+    expect(last).toBeGreaterThan(0);
+    const tl = buildTimeline(world.index, {
+      ...world.recording,
+      runs: [],
+      early: before.slice(0, last + 1),
+    });
+    expect(tl.loads.length).toBeGreaterThan(0);
+    expect(happeningAt(tl, tl.duration)).toEqual([]);
+  });
+
+  test("nor at the end of the whole recording", () => {
+    expect(happeningAt(world.timeline, world.timeline.duration)).toEqual([]);
   });
 });

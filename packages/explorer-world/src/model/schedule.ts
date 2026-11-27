@@ -163,6 +163,15 @@ export const PACE = {
 
 /** Seconds a step the client reported, or another page event, stays lit. */
 export const LIT = 0.5;
+/** How long the sweep around a page that loaded its document lasts (s). */
+export const LOAD_SWEEP = 1.2;
+/** How long a reporting module's halo takes to fade after its step (s). */
+export const STEP_FADE = 0.35;
+/**
+ * How long the pulse out of a page's state ring lasts when the state
+ * changes, and out of a storage key when it is emptied (s).
+ */
+export const STATE_PULSE = 0.9;
 
 /**
  * The least shown time between two consecutive things that happened, in
@@ -953,10 +962,20 @@ export function buildTimeline(
     placed.briefOps,
   );
 
+  // The end is after every effect has ended, so that the world rests
+  // there: a halo fading, a sweep around a page that loaded, a pulse out
+  // of a state that changed or a key that was emptied.
   tl.duration = Math.max(
     placed.last,
     ...tl.chapters.map((c) => c.end),
     ...tl.movements.map((m) => m.end),
+    ...tl.activations.map((a) => a.end),
+    ...tl.clientSteps.map((c) => c.end + STEP_FADE),
+    ...tl.loads.map((l) => l.at + LOAD_SWEEP),
+    ...tl.states.map((c) => c.at + STATE_PULSE),
+    ...tl.holdings
+      .filter((h) => h.op === "drop")
+      .map((h) => h.at + STATE_PULSE),
   );
   tl.beats.sort((a, b) => a.start - b.start);
   tl.rowChanges.sort((a, b) => a.at - b.at);
