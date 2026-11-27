@@ -311,11 +311,37 @@ frame takes milliseconds; that is not measured here.
   arc between related islands. Nearer: the names of the parts of the islands
   around you. Close up: the source location under each part and the fields of
   each table.
-- **Selecting a part lights its dependencies**, in both directions, each kind
-  in its color, and dims the rest. The inspector lists them by kind, each with
-  its evidence (file and line), and lists the unresolved dependencies; these
-  rise from the part as dashed red stubs. Selecting an island draws one arc per
-  related island.
+- **A click leads with the least that explains** (`src/ui/Card.tsx`). A
+  small card stands beside what was clicked: its name, its kind, the group
+  it is in, and one line in the source's own words (a module's doc comment;
+  for a module without one, its one class's line, and it says whose; a
+  hook's own export line). No line is better than an invented one. Under
+  it, what the thing has done so far, from the recording only: the steps a
+  module reported out of those its code can report, the latest, its runs,
+  the parts it dealt with. Only who it dealt with lights up, one arc each.
+  Its links in the source (both directions, each kind in its color), the
+  unresolved dependencies as dashed red stubs, and the full panel wait
+  behind **All of it** on the card, or the I key. A click on something that
+  moves (an operation, a call, a run, a row, a held token) says where it is
+  and what it is doing now. The camera stays where it is: **Go there** and
+  **Open up** on the card fly only when pressed.
+- **A part opens up as you close in** (`src/scene/Inside.tsx`,
+  `src/model/insideLayout.ts`). Its inside rises above it on a disc of its
+  own: its main export in the middle with its members around it (for the
+  session manager, `AuthClient` and its eleven public members), its other
+  exports further out, the names of its types small on the rim, what it
+  holds at the front (its stored keys, a lock ringing the key it is named
+  after, its state), and a mark for each place in its code that reports a
+  step, on the export or member it sits in. A mark lights once running code
+  reported that step and flashes as it does, at that place. A hook is not
+  drawn again: it stands beside the module. One part is open at a time: the
+  selected one from 16 m, else the nearest from 8 m. Names inside come by
+  distance like everywhere: the exports while it is open, the members and
+  what it holds from 9.5 m, the steps from 3.4 m; a pointer on a place
+  shows its own line. The project gives the inside as data
+  (`ProjectInside` in `src/model/inside.ts`; Convex Auth's is
+  `projects/convex-auth/inside.ts`, from the structure map's `modules`,
+  `holds` and `steps`).
 - **The browser region holds what runs in the browser**, as districts laid
   out left to right toward the platform by each kind's `flow`: the page
   (the elements the person used, and its sign-in state as one ring: open
@@ -354,19 +380,20 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 
 ## Controls
 
-| Input                         | Action                                               |
-| ----------------------------- | ---------------------------------------------------- |
-| drag                          | pan across the map                                   |
-| ⌘-drag, Ctrl-drag, right-drag | orbit about the point looked at                      |
-| wheel                         | zoom toward the cursor                               |
-| W A S D, Q E, Shift           | fly; down and up; faster                             |
-| click                         | inspect a part, island, row, traveller or held row   |
-| H / Home                      | the browser region, with the world beyond (at start) |
-| O / Overview                  | fly back to the overview                             |
-| F / Follow                    | the camera follows the action (on at start)          |
-| R, L, U                       | toggle the relations, all links, unresolved overlays |
-| Space, ← →                    | play or pause; step to the previous or next beat     |
-| timeline, run list            | scrub; click a run to jump to it and inspect it      |
+| Input                         | Action                                                |
+| ----------------------------- | ----------------------------------------------------- |
+| drag                          | pan across the map                                    |
+| ⌘-drag, Ctrl-drag, right-drag | orbit about the point looked at                       |
+| wheel                         | zoom toward the cursor                                |
+| W A S D, Q E, Shift           | fly; down and up; faster                              |
+| click                         | a card on a part, island, row, traveller or held row  |
+| I                             | all of it: the full panel and the links in the source |
+| H / Home                      | the browser region, with the world beyond (at start)  |
+| O / Overview                  | fly back to the overview                              |
+| F / Follow                    | the camera follows the action (on at start)           |
+| R, L, U                       | toggle the relations, all links, unresolved overlays  |
+| Space, ← →                    | play or pause; step to the previous or next beat      |
+| timeline, run list            | scrub; click a run to jump to it and inspect it       |
 
 URL parameters for scripted screenshots: `?t=42&paused` opens at 42 s,
 `?free` starts at the overview without following, `?select=<part id>` opens
