@@ -21,6 +21,7 @@ import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
 import { actingModules, HALO_ON_SCREEN } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
+import { Lod } from "./Lod.tsx";
 import type { OpPath } from "../model/operations.ts";
 import { HEIGHT, partOf, placementOf, topIsland } from "./look.ts";
 
@@ -269,30 +270,37 @@ function PartLabel({
     <group position={[x, y, z]}>
       <group ref={group} position={[0, h, 0]}>
         <KeepSize distance={grow.distance} max={grow.max}>
-          <Billboard>
-            <Label
-              fontSize={size}
-              color="#ffffff"
-              // Beside the halo, which is HALO_ON_SCREEN of the distance
-              // across: the same in this group's units.
-              anchorX={reporting ? "left" : "center"}
-              position={
-                reporting
-                  ? [HALO_ON_SCREEN * grow.distance * 1.15, -0.2, 0]
-                  : undefined
-              }
-              weight={rank === 2 ? "bold" : "regular"}
-              outlineWidth={0.025}
-              outlineColor="#03050a"
-            >
-              {part.label}
-            </Label>
-          </Billboard>
+          {/* A storage key is named only close in: from afar its mark and
+              the body at it are enough. */}
+          <Lod far={id.startsWith("storageKey:") ? KEY_NAME_FAR : Infinity}>
+            <Billboard>
+              <Label
+                fontSize={size}
+                color="#ffffff"
+                // Beside the halo, which is HALO_ON_SCREEN of the distance
+                // across: the same in this group's units.
+                anchorX={reporting ? "left" : "center"}
+                position={
+                  reporting
+                    ? [HALO_ON_SCREEN * grow.distance * 1.15, -0.2, 0]
+                    : undefined
+                }
+                weight={rank === 2 ? "bold" : "regular"}
+                outlineWidth={0.025}
+                outlineColor="#03050a"
+              >
+                {part.label}
+              </Label>
+            </Billboard>
+          </Lod>
         </KeepSize>
       </group>
     </group>
   );
 }
+
+/** The farthest a storage key's name shows from (world units). */
+const KEY_NAME_FAR = 45;
 
 export function Labels() {
   const acting = useActing();

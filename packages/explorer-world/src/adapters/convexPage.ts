@@ -164,7 +164,21 @@ export function readPageFeed(
   for (const e of feed)
     if (e.kind === "storage" && typeof e.key === "string")
       if (!areaOfKey.has(e.key)) areaOfKey.set(e.key, String(e.area));
+  // A key a step names with a namespace is known by its own name; the
+  // namespace (the deployment's address) is in its summary, for the
+  // inspector.
+  const nameOfKey = new Map<string, { name: string; namespace: string }>();
+  for (const e of feed)
+    if (isPageStep(e)) {
+      const d = (e.detail ?? {}) as Record<string, unknown>;
+      if (typeof d.key === "string" && typeof d.namespace === "string")
+        nameOfKey.set(`${d.key}_${d.namespace}`, {
+          name: d.key,
+          namespace: d.namespace,
+        });
+    }
   const keyOf = (key: string, reporter?: string) => {
+    const known = nameOfKey.get(key);
     const area = areaOfKey.get(key);
     const store = area ? PLACES.store(area) : null;
     if (store && region)
@@ -178,11 +192,12 @@ export function readPageFeed(
     return placeOf(
       PLACES.storageKey(key),
       "storageKey",
-      key,
+      known?.name ?? key,
       store ?? reporter ?? region,
-      store
+      (store
         ? `A key of ${area}Storage the recording shows.`
-        : "A storage key the client library names; no storage event of the recording says which storage holds it.",
+        : "A storage key the client library names; no storage event of the recording says which storage holds it.") +
+        (known ? ` Stored as ${key} (namespace ${known.namespace}).` : ""),
     );
   };
   // A scenario step names no page: it belongs to the page last seen.
@@ -312,9 +327,7 @@ export function readPageFeed(
         lights,
         step: String(e.step),
         ...(state ? { state: { holder: PLACES.state(page), state } } : {}),
-        ...(typeof detail.function === "string"
-          ? { fn: detail.function }
-          : {}),
+        ...(typeof detail.function === "string" ? { fn: detail.function } : {}),
         ...(typeof detail.op === "number"
           ? {
               op: `${page}|load${loads.get(page)?.n ?? 0}|${detail.op}`,
