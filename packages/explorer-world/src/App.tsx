@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { ACESFilmicToneMapping } from "three";
+import { isDrag } from "./scene/clicks.ts";
 import { World } from "./scene/World.tsx";
 import { usePlayback } from "./store.ts";
 import { CameraHud, Caption, Chapters, useShortcuts } from "./ui/Hud.tsx";
@@ -26,7 +27,9 @@ export function App() {
           preserveDrawingBuffer: params.has("capture"),
         }}
         camera={{ fov: 42, near: 0.5, far: 4000, position: [0, 200, 260] }}
-        onPointerMissed={() => usePlayback.getState().select(null)}
+        onPointerMissed={(e) => {
+          if (!isDrag(e)) usePlayback.getState().select(null);
+        }}
         fallback={
           // Shown by the browser only where the canvas cannot be drawn.
           <div className="problems panel no-webgl" role="alert">

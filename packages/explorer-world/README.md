@@ -283,6 +283,12 @@ and that without the sanitize pass the check would see the black area. It
 runs on SwiftShader, which is not a GPU: passing does not prove that a GPU
 draws right.
 
+`pnpm --filter @convex-dev/explorer-world check:camera` drives the camera with
+the pointer: a drag pans with the point of the ground pressed kept under the
+pointer, at the overview and at a flat tilt, and selects nothing even when
+pressed on an island; Cmd-drag orbits; a click in place selects, and a click
+on empty space clears.
+
 Everything the app needs is bundled, fonts included. Text in the 3D scene goes
 through `glyphSafe` so that troika never fetches a fallback font.
 

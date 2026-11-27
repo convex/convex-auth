@@ -23,6 +23,7 @@ import { FOOTPRINT } from "../layout/islands.ts";
 import type { Placement } from "../layout/types.ts";
 import type { Profile, Shape } from "../presentation.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
+import { isDrag } from "./clicks.ts";
 import { highlightOf } from "./highlight.ts";
 import { linkColor, nounOfPart, partOf } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
@@ -207,6 +208,7 @@ function ShapeInstances({ items }: { items: Placement[] }) {
 
   const handlers = {
     onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (isDrag(e)) return;
       if (e.instanceId === undefined) return;
       e.stopPropagation();
       select({ type: "part", id: items[e.instanceId].id });

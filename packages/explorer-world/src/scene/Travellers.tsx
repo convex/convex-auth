@@ -15,6 +15,7 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
 import { Tag } from "./Tag.tsx";
 import { anchorPosition } from "./look.ts";
+import { isDrag } from "./clicks.ts";
 import { MOVEMENT_COLORS, TONE_COLORS } from "./palette.ts";
 
 /** How cargo of a table is drawn, from the presentation. */
@@ -123,6 +124,7 @@ function TravellerMesh({ movement }: { movement: Movement }) {
         ref={group}
         position={start}
         onClick={(e) => {
+          if (isDrag(e)) return;
           e.stopPropagation();
           select({ type: "movement", id: movement.id });
         }}
@@ -341,6 +343,7 @@ export function Holdings() {
               at.z,
             ]}
             onClick={(e) => {
+              if (isDrag(e)) return;
               e.stopPropagation();
               select({
                 type: "cargo",

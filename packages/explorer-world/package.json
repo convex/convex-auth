@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "check:load-failures": "node scripts/checkLoadFailures.mjs",
     "check:rendering": "node scripts/checkRendering.mjs",
+    "check:camera": "node scripts/checkCamera.mjs",
     "check:live": "node scripts/checkLive.mjs",
     "live": "node scripts/live.mjs"
   },

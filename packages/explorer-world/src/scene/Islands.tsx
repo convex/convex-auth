@@ -20,6 +20,7 @@ import {
   Vector3,
 } from "three";
 import { currentState, hover, usePlayback, world } from "../store.ts";
+import { isDrag } from "./clicks.ts";
 import { highlightOf } from "./highlight.ts";
 import { nounOfPart, partOf, placementOf } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
@@ -164,6 +165,7 @@ export function Islands() {
 
   const handlers = {
     onClick: (e: ThreeEvent<MouseEvent>) => {
+      if (isDrag(e)) return;
       if (e.instanceId === undefined) return;
       e.stopPropagation();
       select({ type: "part", id: world.layout.islands[e.instanceId].id });

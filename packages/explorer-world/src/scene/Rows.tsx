@@ -13,6 +13,7 @@ import { currentState, hover, usePlayback, world } from "../store.ts";
 import { Label } from "./Label.tsx";
 import { Lod } from "./Lod.tsx";
 import { partOf, placementOf } from "./look.ts";
+import { isDrag } from "./clicks.ts";
 import { DELETED_COLOR } from "./palette.ts";
 
 const CARD = { width: 1.0, depth: 0.68, gap: 0.12, columns: 3, perLayer: 9 };
@@ -140,6 +141,7 @@ function RowCard({
       ref={group}
       position={[x, 0.7, z]}
       onClick={(e) => {
+        if (isDrag(e)) return;
         e.stopPropagation();
         select({ type: "row", table, id: row.id });
       }}

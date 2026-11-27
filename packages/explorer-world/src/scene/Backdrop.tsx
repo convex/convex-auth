@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import { AdditiveBlending, Color, DoubleSide, ShaderMaterial } from "three";
 import { usePlayback, world } from "../store.ts";
 import { Layer } from "./Diagnostics.tsx";
+import { isDrag } from "./clicks.ts";
 import { BACKGROUND, PLATFORM_COLOR } from "./palette.ts";
 import { SparklesMaterial } from "./safety.ts";
 
@@ -156,6 +157,7 @@ function PlatformFloor() {
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         onClick={(e) => {
+          if (isDrag(e)) return;
           e.stopPropagation();
           select(null);
         }}

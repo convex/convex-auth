@@ -1,7 +1,7 @@
 import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Vector3 } from "three";
+import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
@@ -135,24 +135,52 @@ export function CameraRig() {
     };
   }, []);
 
-  // The button of a drag is chosen as it starts: plain drag pans along the
-  // map, with Cmd or Ctrl it orbits. Runs before the controls see the press.
+  // A plain drag pans: the point of the ground pressed stays under the
+  // pointer, as on a map. With Cmd or Ctrl the controls orbit instead.
   const canvas = useThree((s) => s.gl.domElement);
+  const camera = useThree((s) => s.camera);
   useEffect(() => {
+    let pressed: Vector3 | null = null;
+    let id = -1;
     const press = (e: PointerEvent) => {
       const c = controls.current;
-      if (!c) return;
-      c.mouseButtons.left =
-        e.metaKey || e.ctrlKey ? ACTION.ROTATE : ACTION.SCREEN_PAN;
+      if (!c || e.button !== 0) return;
+      const orbit = e.metaKey || e.ctrlKey;
+      c.mouseButtons.left = orbit ? ACTION.ROTATE : ACTION.NONE;
+      if (orbit || e.pointerType === "touch") return;
+      pressed = groundUnder(c, camera, canvas, e.clientX, e.clientY);
+      id = e.pointerId;
+      if (pressed) takeOver();
     };
-    // The wheel zooms without a "control start": it takes over here.
+    const move = (e: PointerEvent) => {
+      const c = controls.current;
+      if (!c || !pressed || e.pointerId !== id) return;
+      const now = groundUnder(c, camera, canvas, e.clientX, e.clientY);
+      if (!now) return;
+      const step = pressed.clone().sub(now);
+      // Near the horizon a pixel is far away: never jump.
+      const most = c.distance * 0.5;
+      if (step.length() > most) step.setLength(most);
+      const t = c.getTarget(new Vector3(), true).add(step);
+      void c.moveTo(t.x, t.y, t.z, false);
+    };
+    const release = (e: PointerEvent) => {
+      if (e.pointerId === id) pressed = null;
+    };
     canvas.addEventListener("pointerdown", press, { capture: true });
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", release);
+    window.addEventListener("pointercancel", release);
+    // The wheel zooms without a "control start": it takes over here.
     canvas.addEventListener("wheel", takeOver, { passive: true });
     return () => {
       canvas.removeEventListener("pointerdown", press, { capture: true });
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", release);
+      window.removeEventListener("pointercancel", release);
       canvas.removeEventListener("wheel", takeOver);
     };
-  }, [canvas]);
+  }, [canvas, camera]);
 
   // A requested flight: to the overview or to a selection.
   useEffect(() => {
@@ -246,7 +274,8 @@ export function CameraRig() {
       smoothTime={0.6}
       draggingSmoothTime={0.15}
       mouseButtons={{
-        left: ACTION.SCREEN_PAN,
+        // A plain drag pans by hand (above); Cmd or Ctrl sets ROTATE.
+        left: ACTION.NONE,
         middle: ACTION.DOLLY,
         right: ACTION.ROTATE,
         wheel: ACTION.DOLLY,
@@ -262,4 +291,31 @@ export function CameraRig() {
       onStart={takeOver}
     />
   );
+}
+
+const ray = new Raycaster();
+const ndc = new Vector2();
+const ground = new Plane(new Vector3(0, 1, 0), 0);
+
+/**
+ * The point of the ground (y = 0) under the pointer, seen from where the
+ * controls will put the camera, or null when the pointer looks at the sky.
+ */
+function groundUnder(
+  c: CameraControlsImpl,
+  camera: Camera,
+  canvas: HTMLElement,
+  x: number,
+  y: number,
+): Vector3 | null {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+  // The camera turns only when it orbits; it moves with each step of a pan,
+  // so the ray starts where the controls hold it, not where it was drawn.
+  ray.setFromCamera(ndc, camera);
+  c.getPosition(ray.ray.origin, true);
+  if (ray.ray.direction.y > -1e-3) return null;
+  const hit = ray.ray.intersectPlane(ground, new Vector3());
+  if (!hit || hit.distanceTo(ray.ray.origin) > c.distance * 50) return null;
+  return hit;
 }
