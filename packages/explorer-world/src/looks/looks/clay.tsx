@@ -29,7 +29,6 @@ import { Words, usePage } from "../kit.tsx";
 import type {
   CarrierProps,
   GateProps,
-  LaneProps,
   MonumentProps,
   NameProps,
   PageStyle,
@@ -58,6 +57,7 @@ const DISTRICT: Record<string, string> = {
   page: "#ffd27c",
   appCode: "#9ccdf5",
   authClient: "#ffa587",
+  convexClient: "#f5b8d0",
   localStorage: "#a6dcb4",
   cookies: "#d4bdf2",
   websocket: "#a9b8ff",
@@ -576,64 +576,44 @@ function Piece({ kind, id, label, note, size, active }: PieceProps) {
   );
 }
 
-function Lane({ from, to, width, active }: LaneProps) {
-  const a = new Vector3(...from);
-  const b = new Vector3(...to);
-  const length = a.distanceTo(b);
-  const mid = a.clone().lerp(b, 0.5);
-  const angle = Math.atan2(b.z - a.z, b.x - a.x);
-  return (
-    <group position={[mid.x, 0, mid.z]} rotation-y={-angle}>
-      <RoundedBox args={[length, 0.6, width]} radius={0.25} smoothness={1}>
-        <Clay colour={active ? mix(REQUEST, "#ffffff", 0.45) : "#f7d8b8"} />
-      </RoundedBox>
-      {/* Stones along its edges, every 40 m: the measure of how far it goes. */}
-      {Array.from({ length: Math.floor(length / 40) }, (_, i) => (
-        <group key={i} position={[-length / 2 + 20 + i * 40, 0, 0]}>
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[0, 0.9, s * (width / 2 + 2.2)]}>
-              <icosahedronGeometry args={[1.1, 0]} />
-              <Clay colour="#f9e0c6" />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
-  );
-}
-
 function Gate({ position, width, height, label, active }: GateProps) {
   const post = width * 0.16;
   const colour = active ? mix(ACTIVE, "#ffffff", 0.25) : "#fff0de";
   return (
     <group position={position}>
-      <Shadow w={post * 1.4} d={width} strength={0.35} spread={1.4} />
-      {/* The opening faces along the lane. */}
-      {[-1, 1].map((s) => (
+      <group rotation-y={Math.PI / 2}>
+        <Shadow w={post * 1.4} d={width} strength={0.35} spread={1.4} />
+        {/* The opening faces along the channel, forward. */}
+        {[-1, 1].map((s) => (
+          <RoundedBox
+            key={s}
+            args={[post, height, post]}
+            radius={post * 0.3}
+            smoothness={2}
+            position={[0, height / 2, s * (width / 2 - post / 2)]}
+          >
+            <Clay colour={colour} />
+          </RoundedBox>
+        ))}
         <RoundedBox
-          key={s}
-          args={[post, height, post]}
+          args={[post * 1.3, post * 1.1, width + post * 0.4]}
           radius={post * 0.3}
           smoothness={2}
-          position={[0, height / 2, s * (width / 2 - post / 2)]}
+          position={[0, height + post * 0.4, 0]}
         >
           <Clay colour={colour} />
         </RoundedBox>
-      ))}
-      <RoundedBox
-        args={[post * 1.3, post * 1.1, width + post * 0.4]}
-        radius={post * 0.3}
-        smoothness={2}
-        position={[0, height + post * 0.4, 0]}
-      >
-        <Clay colour={colour} />
-      </RoundedBox>
-      <group position={[0, height + post * 2.6, 0]}>
-        <KeepReadable size={9} px={20}>
-          <Words fontSize={9} color={INK} weight="bold">
+      </group>
+      <group position={[0, height + post * 2.2, 0]}>
+        <Legible size={3.2} px={9}>
+          <Words
+            fontSize={fit(label, 3.2, width * 1.5)}
+            color={INK}
+            weight="bold"
+          >
             {label}
           </Words>
-        </KeepReadable>
+        </Legible>
       </group>
     </group>
   );
@@ -715,5 +695,5 @@ export const clay: WorldLook = {
     </>
   ),
   Effects: null,
-  world: { Ground, Monument, Place, Piece, Lane, Gate, Trail, Carrier, Name },
+  world: { Ground, Monument, Place, Piece, Gate, Trail, Carrier, Name },
 };

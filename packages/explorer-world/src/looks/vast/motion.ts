@@ -53,8 +53,22 @@ export const STOPS = {
     topOf(piece("authClient:browser/storage.ts#NamespacedStorage.set")),
     lift,
   ),
-  port: v(topOf(WEBSOCKET), 4),
-  gate: v(GATES[0].position, 22),
+  mutation: v(
+    topOf(piece("convexClient:ConvexReactClient#ConvexReactClient.mutation")),
+    lift,
+  ),
+  /** The back end of the WebSocket's channel, and its front end. */
+  port: v([
+    WEBSOCKET.position[0],
+    8,
+    WEBSOCKET.position[2] - WEBSOCKET.size[2] / 2 + 6,
+  ]),
+  portEnd: v([
+    WEBSOCKET.position[0],
+    8,
+    WEBSOCKET.position[2] + WEBSOCKET.size[2] / 2,
+  ]),
+  gate: v(GATES[0].position, 16),
   jwt: v(topOf(JWT_KEY.children[0]), 1.2),
   refresh: v(topOf(REFRESH_KEY.children[0]), 1.2),
 };
@@ -70,18 +84,24 @@ export const ROUTES = {
   ),
   submit: hop(S.submit, S.logIn),
   call: hop(S.logIn, S.signIn),
+  call2: hop(S.signIn, S.mutation),
   out: curve(
-    S.signIn.clone(),
-    new Vector3((S.signIn.x + S.port.x) / 2, 30, S.port.z),
+    S.mutation.clone(),
+    new Vector3((S.mutation.x + S.port.x) / 2, 24, S.port.z - 4),
     S.port.clone(),
-    new Vector3(S.port.x + 120, 18, S.port.z),
+    S.port.clone().lerp(S.portEnd, 0.5),
+    S.portEnd.clone(),
     S.gate.clone(),
   ),
   back: curve(
     S.gate.clone(),
-    new Vector3(S.port.x + 120, 18, S.port.z + 2),
-    S.port.clone().add(new Vector3(0, 0, 2)),
-    new Vector3((S.setSession.x + S.port.x) / 2, 30, S.port.z + 2),
+    S.portEnd.clone().add(new Vector3(-3, 0, 0)),
+    S.port
+      .clone()
+      .lerp(S.portEnd, 0.5)
+      .add(new Vector3(-3, 0, 0)),
+    S.port.clone().add(new Vector3(-3, 0, 0)),
+    new Vector3((S.setSession.x + S.port.x) / 2, 30, S.port.z),
     S.setSession.clone(),
   ),
   write: hop(S.setSession, S.storageSet, 0.5),
@@ -123,15 +143,23 @@ const LEGS: Leg[] = [
     end: 4.2,
     kind: "request",
     to: "authClient:methods/username-password/react.tsx#useSignInWithUsernamePassword",
-    beat: "LogIn calls signIn of useSignInWithUsernamePassword",
+    beat: "LogIn calls signIn of useSignInWithUsernamePassword (signIn.call)",
+  },
+  {
+    route: "call2",
+    start: 4.3,
+    end: 4.9,
+    kind: "request",
+    to: "convexClient:ConvexReactClient#ConvexReactClient.mutation",
+    beat: "It runs the sign-in mutation through the Convex client",
   },
   {
     route: "out",
-    start: 4.4,
-    end: 6.0,
+    start: 5.0,
+    end: 6.2,
     kind: "request",
     to: "convexBackend",
-    beat: "The sign-in mutation goes out on the WebSocket",
+    beat: "The mutation goes out on the WebSocket",
   },
   {
     route: "back",
@@ -139,7 +167,7 @@ const LEGS: Leg[] = [
     end: 8.0,
     kind: "response",
     to: "authClient:browser/sessionManager.ts#AuthClient.setSession",
-    beat: "The backend answers with the tokens: AuthClient.setSession",
+    beat: "The backend answers with the tokens: AuthClient.setSession (session.set)",
   },
   {
     route: "write",
@@ -147,7 +175,7 @@ const LEGS: Leg[] = [
     end: 8.9,
     kind: "response",
     to: "authClient:browser/storage.ts#NamespacedStorage.set",
-    beat: "setSession writes them through NamespacedStorage.set",
+    beat: "setSession writes them through NamespacedStorage.set (storage.write ×2)",
   },
 ];
 

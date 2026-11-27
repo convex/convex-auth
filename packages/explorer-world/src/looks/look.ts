@@ -144,12 +144,6 @@ export type MonumentProps = {
   pageLift: number;
   pressed: boolean;
 };
-export type LaneProps = {
-  from: V3;
-  to: V3;
-  width: number;
-  active: boolean;
-};
 export type GateProps = {
   position: V3;
   width: number;
@@ -183,7 +177,6 @@ export type WorldParts = {
   Monument: FC<MonumentProps>;
   Place: FC<PlaceProps & { children?: ReactNode }>;
   Piece: FC<PieceProps>;
-  Lane: FC<LaneProps>;
   Gate: FC<GateProps>;
   Trail: FC<TrailProps>;
   Carrier: FC<CarrierProps>;

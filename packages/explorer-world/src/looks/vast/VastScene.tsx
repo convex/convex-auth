@@ -122,10 +122,9 @@ function DistrictView({ d }: { d: District }) {
   const r = reach(d.size);
   const front = d.position[2] + d.size[2] / 2;
   const narrow = d.size[0] < 40;
-  // A narrow district (a port) has its name beside it, on the outer side.
-  const side = Math.sign(d.position[0]);
+  // A channel is named at its back end, where it starts.
   const namePos: V3 = narrow
-    ? [d.position[0] - side * 2, d.position[1] + 0.05, front + 6]
+    ? [d.position[0], d.position[1] + 0.05, d.position[2] - d.size[2] / 2 - 3]
     : [d.position[0], d.position[1] + 0.05, front + 3];
   return (
     <>
@@ -148,7 +147,7 @@ function DistrictView({ d }: { d: District }) {
       </Reveal>
       <Reveal at={namePos} box={boxOf(d)} from={1.7 * r} full={1.15 * r}>
         <Name
-          position={[0, 0, narrow ? 4 : 5.5]}
+          position={[0, 0, narrow ? -4 : 5.5]}
           text={d.note}
           size={narrow ? 1.4 : 2.2}
           kind="note"
@@ -209,36 +208,16 @@ export function VastScene({ time }: { time: number }) {
       {DISTRICTS.map((d) => (
         <DistrictView key={d.id} d={d} />
       ))}
-      {GATES.map((g) => {
-        const from = g.from;
-        const side = Math.sign(g.position[0]);
-        return (
-          <group key={g.id}>
-            <w.Lane
-              from={[
-                from.position[0] + (side * from.size[0]) / 2,
-                0,
-                from.position[2],
-              ]}
-              to={[g.position[0] - (side * g.width) / 2, 0, g.position[2]]}
-              width={10}
-              active={
-                f.trail?.route === "out" ||
-                (f.trail?.route === "back" && f.trail.u < 0.7)
-                  ? g.id === "convexBackend"
-                  : false
-              }
-            />
-            <w.Gate
-              position={g.position}
-              width={g.width}
-              height={g.height}
-              label={g.label}
-              active={f.active === g.id}
-            />
-          </group>
-        );
-      })}
+      {GATES.map((g) => (
+        <w.Gate
+          key={g.id}
+          position={g.position}
+          width={g.width}
+          height={g.height}
+          label={g.label}
+          active={f.active === g.id}
+        />
+      ))}
       {trail && <w.Trail points={trail.points} kind={trail.kind} />}
       {f.carrier && (
         <w.Carrier

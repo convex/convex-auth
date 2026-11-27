@@ -117,7 +117,6 @@ test("every look supplies every part", () => {
         "Monument",
         "Place",
         "Piece",
-        "Lane",
         "Gate",
         "Trail",
         "Carrier",

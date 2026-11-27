@@ -397,11 +397,13 @@ no page error, and that the camera stays put when the look changes.
 
 The last entry, **Warm clay (vast)**, draws a second sample on its own
 (`src/looks/vast/`): the browser of the sign-in as a small piece of a vast
-world. A monumental screen (640 m across) shows the sign-in page; in front of
-it lies the browser, a field holding the page, the app's code, the Convex
-Auth client, localStorage, cookies, and the WebSocket and HTTP connections,
-which lead along lanes to plain gates a kilometre off (the Convex backend, the
-page server). Big things hold smaller ones, by the names in the code: a
+world, laid out in the large as the stage is. A monumental screen (640 m
+across) shows the sign-in page; in front of it lies the browser, a field
+holding the page nearest the screen, the client code in the middle (the app's
+code, the Convex Auth client, the Convex client), storage on the left
+(localStorage, cookies), and on the right the WebSocket and HTTP connections,
+long channels running forward to plain exits at the field's front edge. The
+ground beyond is empty, kept for servers. Big things hold smaller ones, by the names in the code: a
 district of code holds modules (`world.ts` lists the files), a module its
 functions, localStorage its keys, a key its value, the token its claims.
 Detail comes in by distance (`reveal.tsx`) and text hides while it is too

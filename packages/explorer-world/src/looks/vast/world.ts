@@ -4,18 +4,21 @@
  * monumental screen. Content and positions only; how anything looks is up to
  * the look.
  *
- * Big things hold smaller things. The browser holds districts: the page, the
- * app's code, the Convex Auth client, localStorage, cookies, and the two
- * connections out. A district of code holds modules (source files), and a
+ * Big things hold smaller things. The browser holds districts: the page
+ * nearest the screen's foot; the client code in the middle (the app's code,
+ * the Convex Auth client, the Convex client); storage on the left
+ * (localStorage, cookies); the connections on the right, as long channels
+ * running forward to plain exits at the browser's front edge. A district of code holds modules (source files), and a
  * module holds its functions; the page holds its elements; localStorage
  * holds keys, a key holds its value, and the token opens to its claims. The
  * names are the ones in the code. The values (the deployment URL, the
  * session id, the times) are a sample.
  *
  * Metres, y up. The screen stands at the back (-z); the browser lies in
- * front of it, toward the viewer; nothing stands behind it. The connections
- * leave by the sides, to plain gates far off. Most of the ground is empty, on
- * purpose: room for more things and more levels.
+ * front of it, toward the viewer; nothing stands behind it. Beyond the
+ * exits, forward, the ground is empty, kept for servers and providers; most
+ * of the ground is empty, on purpose: room for more things and more levels.
+ * The layout follows the stage's (`src/stage/`) in the large.
  */
 import { PAGE, type V3 } from "../layout.ts";
 import type { PieceKind } from "../look.ts";
@@ -160,7 +163,7 @@ export const APP_CODE = codeDistrict(
     id: "appCode",
     label: "App code",
     note: "examples/react-username-password/src",
-    position: [-142, DISTRICT_TOP - SLAB, -124],
+    position: [-108, DISTRICT_TOP - SLAB, -124],
     size: [96, SLAB, 104],
   },
   2,
@@ -183,7 +186,7 @@ export const AUTH_CLIENT = codeDistrict(
     id: "authClient",
     label: "Convex Auth client",
     note: "@convex-dev/auth  ·  packages/core/src",
-    position: [8, DISTRICT_TOP - SLAB, -124],
+    position: [42, DISTRICT_TOP - SLAB, -124],
     size: [150, SLAB, 104],
   },
   4,
@@ -238,7 +241,7 @@ export const CLAIMS: { name: string; value: string }[] = [
 ];
 
 const LS = {
-  position: [148, DISTRICT_TOP - SLAB, -136] as V3,
+  position: [-252, DISTRICT_TOP - SLAB, -150] as V3,
   size: [84, SLAB, 80] as V3,
 };
 
@@ -314,7 +317,7 @@ export const COOKIES: District = {
   id: "cookies",
   label: "Cookies",
   note: "none: this app keeps its tokens in localStorage",
-  position: [148, DISTRICT_TOP - SLAB, -50],
+  position: [-252, DISTRICT_TOP - SLAB, -62],
   size: [84, SLAB, 44],
   children: [],
 };
@@ -377,21 +380,47 @@ export const PAGE_DISTRICT: District = {
   children: [FORM, SIGNUP_LINK],
 };
 
-/** Where the connections leave the browser, at its sides. */
+/** The Convex client (`convex/react`), which the Auth client calls through. */
+export const CONVEX_CLIENT = codeDistrict(
+  {
+    id: "convexClient",
+    label: "Convex client",
+    note: "convex/react",
+    position: [176, DISTRICT_TOP - SLAB, -124],
+    size: [64, SLAB, 104],
+  },
+  1,
+  [
+    {
+      file: "ConvexReactClient",
+      items: [
+        "ConvexReactClient.mutation",
+        "ConvexReactClient.action",
+        "ConvexReactClient.setAuth",
+        "ConvexReactClient.clearAuth",
+      ],
+    },
+  ],
+);
+
+/** The connections out: long channels running forward to the front edge. */
+const CHANNEL = { z0: -210, z1: 84 };
+const channel = (x: number) => ({
+  position: [x, DISTRICT_TOP - SLAB, (CHANNEL.z0 + CHANNEL.z1) / 2] as V3,
+  size: [18, SLAB, CHANNEL.z1 - CHANNEL.z0] as V3,
+});
 export const WEBSOCKET: District = {
   id: "websocket",
   label: "WebSocket",
-  note: "ConvexReactClient  ·  ws://127.0.0.1:3210",
-  position: [368, DISTRICT_TOP - SLAB, -124],
-  size: [18, SLAB, 34],
+  note: "ws://127.0.0.1:3210",
+  ...channel(250),
   children: [],
 };
 export const HTTP: District = {
   id: "http",
   label: "HTTP",
-  note: "GET /login, the app's scripts",
-  position: [-368, DISTRICT_TOP - SLAB, -124],
-  size: [18, SLAB, 34],
+  note: "GET /login, the scripts",
+  ...channel(316),
   children: [],
 };
 
@@ -399,29 +428,31 @@ export const DISTRICTS: District[] = [
   PAGE_DISTRICT,
   APP_CODE,
   AUTH_CLIENT,
+  CONVEX_CLIENT,
   LOCAL_STORAGE,
   COOKIES,
   WEBSOCKET,
   HTTP,
 ];
 
-/** The far-off places the connections lead to. No interior: plain gates. */
+/**
+ * The plain exits at the browser's front edge, where each connection leaves
+ * for a server. No interior; the ground beyond is kept for the servers.
+ */
 export const GATES = [
   {
     id: "convexBackend",
-    label: "Convex backend",
-    position: [1000, 0, -124] as V3,
-    width: 70,
-    height: 64,
-    from: WEBSOCKET,
+    label: "To the Convex backend",
+    position: [250, 0, CHANNEL.z1 + 14] as V3,
+    width: 40,
+    height: 34,
   },
   {
     id: "pageServer",
-    label: "Page server",
-    position: [-1000, 0, -124] as V3,
-    width: 70,
-    height: 64,
-    from: HTTP,
+    label: "To the page server",
+    position: [316, 0, CHANNEL.z1 + 14] as V3,
+    width: 40,
+    height: 34,
   },
 ];
 
