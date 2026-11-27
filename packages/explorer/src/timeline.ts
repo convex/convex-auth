@@ -4,7 +4,7 @@
  *
  * @module
  */
-import { linkCall, type LinkContext } from "./calls.ts";
+import { linkCall, WINDOW_TOLERANCE_MS, type LinkContext } from "./calls.ts";
 import type {
   CallEvent,
   RunEvent,
@@ -230,6 +230,10 @@ export class TimelineBuilder {
   private lineCounts = new Map<string, number>();
   private usedRuns = new Set<string>();
   private logsUntil = -Infinity;
+  /** The latest end of a run added, on the deployment's clock. */
+  private latestRunEnd = -Infinity;
+  /** The number of writes added for each commit time. */
+  private writesPerCommit = new Map<string, number>();
   private readonly early: boolean;
 
   /**
@@ -255,6 +259,13 @@ export class TimelineBuilder {
       this.seen.add(key);
       if (event.kind === "run") {
         this.runs.push(event);
+        this.latestRunEnd = Math.max(this.latestRunEnd, event.endTime);
+      }
+      if (event.kind === "write") {
+        this.writesPerCommit.set(
+          event.ts,
+          (this.writesPerCommit.get(event.ts) ?? 0) + 1,
+        );
       }
       countLines([event], this.lineCounts);
       this.pending.push({ event, arrival: now });
@@ -276,7 +287,7 @@ export class TimelineBuilder {
   waitingForLogs(): number | null {
     let earliest: number | null = null;
     for (const item of this.pending) {
-      if (waitsForLogs(item.event)) {
+      if (waitsForLogs(item.event) && !this.hasItsRuns(item.event)) {
         const until = item.arrival + LOG_MARGIN_MS;
         if (until > this.logsUntil && (earliest === null || until < earliest)) {
           earliest = until;
@@ -295,8 +306,32 @@ export class TimelineBuilder {
     }
     return (
       !waitsForLogs(item.event) ||
-      item.arrival + LOG_MARGIN_MS <= this.logsUntil
+      item.arrival + LOG_MARGIN_MS <= this.logsUntil ||
+      this.hasItsRuns(item.event)
     );
+  }
+
+  /**
+   * Whether every run that a write or a call could attach to is known
+   * already. The log stream gives the runs in the order they ended, thus:
+   *
+   * - A write: once a run holds its commit time with as many writes as the
+   *   commit has, a run that fits it better would have ended earlier, and is
+   *   known too.
+   * - A call: once a run that ended after the call's result is known, so is
+   *   every run that ended before it.
+   */
+  private hasItsRuns(event: TimelineEvent): boolean {
+    if (event.kind === "write") {
+      const count = this.writesPerCommit.get(event.ts) ?? 0;
+      return runForCommit(this.runs, event.time, count)?.writeCount === count;
+    }
+    if (event.kind === "call") {
+      return (
+        this.latestRunEnd > event.endTime + this.skew + WINDOW_TOLERANCE_MS
+      );
+    }
+    return false;
   }
 
   /**

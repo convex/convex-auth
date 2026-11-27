@@ -242,22 +242,28 @@ writes each event as soon as nothing it depends on can still arrive:
 
 - A run, its lines, a write of the initial snapshot, and every event of the
   browser except a call: at once.
-- A write of a transaction, and a call: once the log stream is known to be
-  read past the moment the event arrived, plus 25 ms. The deployment writes
-  the log entry of a run as the run ends, before or within a few ms of the
-  moment the page sees its result or the data sync its commit. The log stream
-  is a long poll that answers at once when it has a new entry, so the
-  recorder knows it is read up to a moment when a request sent then comes
-  back, or when a probe sent then is still unanswered after a few round trips
-  (at least 50 ms).
+- A write of a transaction, and a call: once every run it could attach to
+  is known. The log stream gives the runs in the order they ended, so that is
+  the case for a write once a run holds its commit time with as many writes
+  as the commit has (a run that fits better ended earlier), and for a call
+  once a run that ended after the call's result is known.
+- Otherwise, once the log stream is known to be read past the moment the
+  event arrived, plus 25 ms. The deployment writes the log entry of a run as
+  the run ends, before or within a few ms of the moment the page sees its
+  result. The log stream is a long poll that answers at once when it has a
+  new entry, so the recorder knows it is read up to a moment when a request
+  sent then comes back, or when a probe sent then is still unanswered after
+  three of the shortest round trips seen (at least 50 ms).
 - Anything still held after `--settle` is written then.
 
-Measured on a local deployment (`pnpm --filter @convex-dev/explorer-world
-check:live`), from the moment in question to the line leaving the recorder: a
-person's input about 4 ms, a run's end about 3 ms, a call's result in the page
-about 100 ms, a write's commit about 200 ms. A write waits for the data sync,
-which the recorder polls every `--poll` ms (`explorer:live` sets 100), and
-then for the log stream as above.
+Thus a write or a call links to the same run as it would with every run
+known. Measured on a local deployment (`pnpm --filter
+@convex-dev/explorer-world check:live`), from the moment in question to the
+line leaving the recorder, medians over runs of the check: a person's input
+3 to 6 ms, a run's end 2 to 4 ms, a write's commit 40 to 95 ms, a call's
+result in the page 60 to 90 ms. A write waits for the data sync, which the
+recorder polls every `--poll` ms (`explorer:live` sets 100); the data sync
+has no push.
 
 ### How a write finds its run
 

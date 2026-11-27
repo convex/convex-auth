@@ -185,28 +185,29 @@ describe("TimelineBuilder", () => {
     expect(builder.drain(Infinity)).toEqual([]);
   });
 
-  test("with early, releases at once what waits on nothing, and the rest once the logs are read", () => {
+  test("with early, holds a write until its run is known, then releases it", () => {
     const builder = new TimelineBuilder(3000, { early: true });
     const events = fixtureEvents();
     const writes = events.filter(
       (event) => event.kind === "write" && !event.snapshot,
     );
     const others = events.filter((event) => !writes.includes(event));
+    // The writes come first: their runs are not known yet.
     builder.add(writes, 0);
-    builder.add(others, 10);
-    // The runs and lines are out; the writes wait for the log stream.
-    const first = builder.drain(20);
-    expect(first.length).toBe(others.length);
+    expect(builder.drain(10)).toEqual([]);
     expect(builder.waitingForLogs()).toBe(LOG_MARGIN_MS);
-    builder.logsReadUntil(LOG_MARGIN_MS - 1);
-    expect(builder.drain(30)).toEqual([]);
-    builder.logsReadUntil(LOG_MARGIN_MS);
-    expect(builder.waitingForLogs()).toBeNull();
+    // The runs come: everything is out, the writes attached.
+    builder.add(others, 20);
     const released = builder.drain(30);
-    expect(released.length).toBe(writes.length);
-    // Attached as the whole timeline attaches them.
+    expect(released.length).toBe(events.length);
+    expect(builder.waitingForLogs()).toBeNull();
     expect(
-      released.map((event) => (event.kind === "write" ? event.runId : null)),
+      released
+        .filter(
+          (event): event is WriteEvent =>
+            event.kind === "write" && !event.snapshot,
+        )
+        .map((write) => write.runId),
     ).toEqual(
       timeline
         .filter(
@@ -215,6 +216,19 @@ describe("TimelineBuilder", () => {
         )
         .map((write) => write.runId),
     );
+  });
+
+  test("with early, releases a write with no run once the logs are read past it", () => {
+    const builder = new TimelineBuilder(3000, { early: true });
+    const write = fixtureEvents().find(
+      (event) => event.kind === "write" && !event.snapshot,
+    )!;
+    builder.add([write], 0);
+    builder.logsReadUntil(LOG_MARGIN_MS - 1);
+    expect(builder.drain(30)).toEqual([]);
+    builder.logsReadUntil(LOG_MARGIN_MS);
+    const [released] = builder.drain(30);
+    expect(released.kind === "write" && released.runId).toBeNull();
   });
 
   test("with early, still releases a waiting event after settleMs", () => {

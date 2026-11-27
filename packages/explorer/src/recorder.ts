@@ -370,20 +370,27 @@ export async function record(
     } else {
       const browser = options.browser;
       const redactor = new BrowserRedactor(options.project, secrets);
-      session = await BrowserSession.start({
-        url: browser.url,
-        headed: browser.headed,
-        executablePath: browser.executablePath,
-        channel: browser.channel,
-        deploymentUrl: options.url,
-        redactor,
-        secrets,
-        emit: (events) => {
-          add(events);
-          builder.skew = session?.skew ?? 0;
-        },
-      });
-      if (browser.scenario === null) {
+      try {
+        session = await BrowserSession.start({
+          url: browser.url,
+          headed: browser.headed,
+          executablePath: browser.executablePath,
+          channel: browser.channel,
+          deploymentUrl: options.url,
+          redactor,
+          secrets,
+          emit: (events) => {
+            add(events);
+            builder.skew = session?.skew ?? 0;
+          },
+        });
+      } catch (error) {
+        // The timeline keeps what the feeds gave until now.
+        failure = `The browser did not start: ${error instanceof Error ? error.message : String(error)}`;
+      }
+      if (session === null) {
+        // Reported below.
+      } else if (browser.scenario === null) {
         log(
           `Recording ${browser.url}; use the page, then close the browser or press Ctrl-C.`,
         );
