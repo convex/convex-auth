@@ -249,10 +249,11 @@ try {
   });
   await sleep(500);
   const scrubbed = await state();
-  const caption = await page.locator(".caption .run .n").textContent();
+  // The run list (folded or not) marks the run shown.
+  const caption = await page.locator(".chapters li.current .n").textContent();
   check(
     scrubbed.chapterRun === target && caption?.trim() === "2",
-    `scrubbing back shows the second run (caption ${caption?.trim()})`,
+    `scrubbing back shows the second run (run list at ${caption?.trim()})`,
   );
 
   // Resume.
@@ -275,7 +276,10 @@ try {
   check(
     skipped.playing &&
       skipped.chapterIndex === skipped.chapters - 1 &&
-      Math.abs(skipped.time - skipped.lastStart) < 0.5,
+      // The world plays faster while it is far behind, so it may have moved
+      // on a little in the moment before the state is read.
+      skipped.time >= skipped.lastStart - 0.01 &&
+      skipped.time - skipped.lastStart < 2,
     `skip to live plays the newest run (run ${skipped.chapterIndex + 1} of ${skipped.chapters})`,
   );
 

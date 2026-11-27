@@ -225,8 +225,10 @@ Thus once the recording ends, the world equals the world of its file.
 Real runs take milliseconds and the world plays at human speed, so the
 timeline grows ahead of the playhead: playback is a queue. The timeline bar
 says whether it is still recording, how many runs and seconds the playhead is
-behind the newest run, and **Skip to live** (End) plays the newest run. At
-the end the playhead waits for what comes next. Pause, scrub, step and inspect
+behind the newest run, and **Skip to live** (End) plays the newest run. The
+further the playhead falls behind, the faster it plays (more than 8 s behind,
+proportionally), so a burst of steps catches up. At the end the playhead
+waits for what comes next, and nothing moves. Pause, scrub, step and inspect
 work as for a saved recording while events keep arriving.
 
 Events can arrive late or out of order. A rebuild never moves what is on
@@ -286,6 +288,26 @@ frame takes milliseconds; that is not measured here.
   its evidence (file and line), and lists the unresolved dependencies; these
   rise from the part as dashed red stubs. Selecting an island draws one arc per
   related island.
+- **The browser region holds what runs in the browser**, as districts laid
+  out left to right toward the platform by each kind's `flow`: the page
+  (the elements the person used, and its sign-in state as one ring: open
+  when signed out, a core while signing in, closed when signed in, broken on
+  an error), the client library (`library` in the region's presentation;
+  its modules stand there by `placeIn`), localStorage with its keys, the
+  Convex client with its WebSocket, cookies, and the HTTP way out. Each step
+  the client library reported lights the module that reported it, and a
+  ring of marks on the module holds one mark per kind of step it reported; a
+  storage step lights the key it names. A call leaves by the way out its
+  transport names; a sign-in call leaves from the module whose `signIn.call`
+  brackets it (derived: the only call of that function before
+  `signIn.return`). The sign-in state follows the project's `pageStates`
+  rules over the reported steps. `src/adapters/browserPlaces.ts` makes the
+  districts.
+- **Few words.** The world names the islands (those inside another as you
+  come near), the parts acting now and the selection. A part's name shows by
+  the pointer on hover; its kind, source, fields and evidence are in the
+  inspector, on click. Nothing moves unless a recorded event is behind it:
+  the backdrop, the island walls and held tokens stand still.
 - **The page plays too**, when the recording has one: it stands in the
   browser region and calls the runs its calls link to; the tokens its
   requests and responses carry are followed by their secret labels to the
@@ -311,6 +333,7 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 | wheel                         | zoom toward the cursor                               |
 | W A S D, Q E, Shift           | fly; down and up; faster                             |
 | click                         | inspect a part, island, row, traveller or held row   |
+| H / Home                      | the browser region, with the world beyond (at start) |
 | O / Overview                  | fly back to the overview                             |
 | F / Follow                    | the camera follows the action (on at start)          |
 | R, L, U                       | toggle the relations, all links, unresolved overlays |
@@ -444,6 +467,12 @@ also draws a quad that outputs NaN and checks that the frame survives it,
 and that without the sanitize pass the check would see the black area. It
 runs on SwiftShader, which is not a GPU: passing does not prove that a GPU
 draws right.
+
+`pnpm --filter @convex-dev/explorer-world check:browser` plays the saved
+scripted sign-up and sign-in in Chromium and checks that every step the page
+reported lights the module that reported it, in order; that every storage
+step lands on its key; that the sign-in state goes through what was
+reported; and that at rest two frames a second apart are the same.
 
 `pnpm --filter @convex-dev/explorer-world check:camera` drives the camera with
 the pointer: a drag pans with the point of the ground pressed kept under the
