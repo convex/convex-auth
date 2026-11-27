@@ -4,16 +4,15 @@
 //   pnpm explorer:live examples/react-username-password
 //
 // It starts the app's local deployment (`convex dev`), turns on the step
-// reports of the project, serves the app's page behind the recorder's page
-// proxy, starts the recorder with the timeline streamed to the world, serves
-// the world, and prints one link: the stage, to open in your own browser. It
-// starts no browser. Use the app on the stage's screen; the stage shows what
+// reports of the project, serves the app's page, starts the recorder with a
+// browser window on that page and the timeline streamed to the world, serves
+// the world, and opens it. Use the app in its window; the world shows what
 // each click causes. Ctrl-C stops every part. When a part fails to start,
 // the command says which, shows the end of its output, and stops the rest.
 //
-// `--recorder cdp` records as before instead: the recorder launches a
-// Chromium of its own and reads it over the DevTools protocol (for
-// scenarios, the scripted checks, and the fullest recording).
+// `--recorder in-page` starts no browser instead: the app's page goes
+// through the recorder's page proxy, and the command prints one link to the
+// stage, to open in your own browser.
 //
 // Plain Node, no shell: every part is a Node process started from its own
 // package (the Convex CLI and Vite of the app, the recorder through tsx), so
@@ -40,25 +39,26 @@ import { parseArgs } from "node:util";
 
 const USAGE = `Usage: pnpm explorer:live <app directory> [options]
 
-Runs the Convex app on a local deployment and prints one link, to open in
-your own browser: the stage, with the app's page live on its screen for you
-to use, and the browser's storage, cookies and connections in front of it,
-moving as the page does. It starts no browser. Ctrl-C stops everything.
+Runs the Convex app on a local deployment and opens one browser window: the
+stage, with the app's page live on its screen for you to use, and the browser's
+storage, cookies and connections in front of it, moving as the page does.
+With --recorder in-page, it opens no window and prints one link to open in
+your own browser instead. Ctrl-C stops everything.
 
 Options:
-  --view <which>       stage (default): the link above. islands: the app's
-                       page on its own (a link too, or the recorder's window
-                       with --recorder cdp), and the islands world in your
-                       default browser
-  --recorder <which>   in-page (default): the page proxy records the page in
-                       your browser, from inside it. cdp: the recorder
-                       launches its own Chromium and reads it over the
-                       DevTools protocol (needed by --scenario and
-                       --debug-port)
+  --view <which>       stage (default): the window above. islands: the app's
+                       page in its own window (a link with --recorder
+                       in-page), and the islands world in your default
+                       browser
+  --recorder <which>   cdp (default): the recorder launches its own Chromium
+                       and reads it over the DevTools protocol. in-page: no
+                       browser is started; the recorder's page proxy records
+                       the page in your browser, from inside it (not with
+                       --scenario or --debug-port)
   --project <name>     The recorder's project config (default: convex-auth)
   --page <url>         Use a page you serve yourself, against the same
                        deployment, instead of serving the app with its Vite
-  --browser <which>    With --recorder cdp, the browser of the app's window: chrome (the Google
+  --browser <which>    The browser of the app's window: chrome (the Google
                        Chrome installed on this machine), chromium (the one
                        Playwright installed), or a path to a Chromium
                        (default: chrome when installed, else chromium)
@@ -134,7 +134,7 @@ const stageView = values.view === "stage";
 // The DevTools protocol drives a scenario and serves a debug port.
 const needsCdp =
   values.scenario !== undefined || values["debug-port"] !== undefined;
-const recorderKind = values.recorder ?? (needsCdp ? "cdp" : "in-page");
+const recorderKind = values.recorder ?? "cdp";
 if (!["in-page", "cdp"].includes(recorderKind)) {
   console.error(
     `--recorder is in-page or cdp, not ${recorderKind}.\n\n${USAGE}`,
