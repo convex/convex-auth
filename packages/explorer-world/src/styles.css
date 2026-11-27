@@ -694,18 +694,29 @@ button {
   cursor: pointer;
 }
 
-/* Live controls (ui/Controls.tsx), bottom left, above the timeline. Kept
-   plain on purpose; restyle freely. */
-.controls {
+/* Live controls (ui/Controls.tsx): one quiet row along the bottom, over
+   the time line, so the world keeps the window. */
+.controls.panel {
   left: 18px;
-  bottom: 52px;
-  width: 300px;
-  padding: 12px 14px;
+  right: 18px;
+  bottom: 42px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0;
   font-size: 12px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+.controls > * {
+  pointer-events: auto;
 }
 .controls .who {
   color: var(--dim);
-  margin-bottom: 10px;
+  white-space: nowrap;
 }
 .controls .who .mono {
   color: var(--text);
@@ -714,24 +725,17 @@ button {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-}
-/* The button and, beside it, why it is off: one line each, never wrapped. */
-.controls li {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
 }
 .controls button {
   font: inherit;
   color: var(--text);
-  background: transparent;
+  background: rgba(8, 12, 22, 0.55);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -740,19 +744,12 @@ button {
 }
 .controls button:disabled {
   color: var(--dim);
+  border-color: transparent;
   cursor: default;
 }
 .controls button[data-running] {
   border-color: var(--live);
   color: var(--live);
-}
-.controls .reason {
-  color: var(--dim);
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 .controls .hint {
   margin: 0;
@@ -760,7 +757,6 @@ button {
 }
 .controls .hint.error {
   color: var(--warn);
-  margin-top: 6px;
 }
 
 /* Live: a thin time line along the bottom, with a handle. */

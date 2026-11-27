@@ -2,9 +2,11 @@ import { requestAction, useControls } from "../controls.ts";
 import { idle, usePlayback } from "../store.ts";
 
 /**
- * The controls of live mode: one button per action of the hidden page, and
- * the username in use. A button is enabled only when the recorder says its
- * action applies to the page as it is, and says why otherwise.
+ * The controls of live mode: one quiet row along the bottom, over the time
+ * line, so the world keeps the window: the username in use, and one button
+ * per action of the hidden page. A button is enabled only when the recorder
+ * says its action applies to the page as it is; why it is not shows on
+ * hover.
  */
 export function Controls() {
   const live = usePlayback((s) => s.live);
@@ -53,7 +55,8 @@ export function Controls() {
                 ? "not connected"
                 : action.reason;
             return (
-              <li key={action.id}>
+              // Its title too: a disabled button may show none on hover.
+              <li key={action.id} title={reason ?? undefined}>
                 <button
                   type="button"
                   data-action={action.id}
@@ -64,7 +67,6 @@ export function Controls() {
                 >
                   {action.label}
                 </button>
-                {reason ? <span className="reason">{reason}</span> : null}
               </li>
             );
           })}
