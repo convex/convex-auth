@@ -65,6 +65,7 @@ export function Browser() {
   return (
     <>
       <Halos />
+      <KeyPulses />
       {states.map((p) => (
         <StateShape key={p.id} id={p.id} />
       ))}
@@ -78,6 +79,77 @@ export function Browser() {
         </group>
       ))}
     </>
+  );
+}
+
+/**
+ * The keys of the page's storage that were emptied, and when: a removal the
+ * page's `storage` events recorded (a drop with no value put in its place
+ * at the same moment).
+ */
+function emptied(): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const hs = world.timeline.holdings;
+  for (const h of hs) {
+    if (h.op !== "drop" || !placementOf(h.holder)) continue;
+    if (!h.holder.startsWith("storageKey:")) continue;
+    const replaced = hs.some(
+      (g) => g.op === "gain" && g.holder === h.holder && g.at === h.at,
+    );
+    if (!replaced) out.set(h.holder, [...(out.get(h.holder) ?? []), h.at]);
+  }
+  return out;
+}
+
+function KeyPulses() {
+  const version = usePlayback((s) => s.version);
+  const keys = useMemo(() => {
+    void version;
+    return [...emptied()];
+  }, [version]);
+  return (
+    <>
+      {keys.map(([id, times]) => (
+        <KeyPulse key={id} id={id} times={times} />
+      ))}
+    </>
+  );
+}
+
+/** One pulse out of a key each time it is emptied, as the state ring's. */
+function KeyPulse({ id, times }: { id: string; times: number[] }) {
+  const p = placementOf(id)!;
+  const ring = useRef<Mesh>(null);
+  const at = useMemo(() => anchorPosition(id, new Vector3()), [id]);
+  useFrame(({ camera }) => {
+    const m = ring.current;
+    if (!m) return;
+    const t = currentState().time;
+    const since = t - Math.max(-Infinity, ...times.filter((x) => x <= t));
+    const k = since / PULSE;
+    m.visible = k >= 0 && k < 1;
+    if (!m.visible) return;
+    const big = Math.max(
+      p.radius * 3,
+      camera.position.distanceTo(at) * PULSE_ON_SCREEN * 0.6,
+    );
+    const e = 1 - Math.pow(1 - k, 2);
+    m.scale.setScalar(p.radius + (big - p.radius) * e);
+    (m.material as MeshBasicMaterial).opacity = 0.85 * (1 - k);
+  });
+  return (
+    <Billboard position={at}>
+      <mesh ref={ring} visible={false} raycast={() => null}>
+        <ringGeometry args={[0.9, 1, 48]} />
+        <meshBasicMaterial
+          color={new Color("#dfe6ff").multiplyScalar(1.6)}
+          toneMapped={false}
+          transparent
+          depthWrite={false}
+          depthTest={false}
+        />
+      </mesh>
+    </Billboard>
   );
 }
 
