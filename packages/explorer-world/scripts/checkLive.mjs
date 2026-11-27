@@ -204,6 +204,7 @@ try {
     return s.live?.connection === "open" ? s : null;
   });
   const openedAt = Date.now();
+  const framesAtOpen = opened.frames;
   check(
     true,
     `the world connected to the stream (${opened.received} events so far)`,
@@ -308,6 +309,9 @@ try {
   });
   // The last rebuild.
   await sleep(500);
+  const { frames: framesAtEnd } = await state();
+  const frameMs =
+    (Date.now() - openedAt) / Math.max(1, framesAtEnd - framesAtOpen);
   const text = readFileSync(out, "utf8");
   const fileLines = text.split("\n").filter((line) => line.trim() !== "");
   const result = await page.evaluate((ndjson) => {
@@ -380,7 +384,10 @@ try {
   console.log(`  a run's end:                    ${stats(lag.runStream)}`);
   console.log(`  a write's commit:               ${stats(lag.writeStream)}`);
   console.log(`  a call's result in the page:    ${stats(lag.callStream)}`);
-  console.log("In the world (headless, software rendering):");
+  console.log(
+    `In the world (headless, software rendering: ${Math.round(frameMs)} ms a frame on average; ` +
+      `a rebuild ${stats(builds.map((b) => b.ms))}):`,
+  );
   console.log(
     `lag, a person's action (input) to the world:   ${stats(lag.input)}`,
   );
@@ -400,8 +407,17 @@ try {
     `lag, a call's result in the page to the world:  ${stats(lag.call)}`,
   );
   check(
-    lag.input.length > 0 && quantile(lag.input, 0.5) < 1000,
-    `a person's action reaches the world in under a second (median ${ms(quantile(lag.input, 0.5) ?? NaN)})`,
+    lag.inputStream.length > 0 && quantile(lag.inputStream, 0.5) < 100,
+    `a person's action leaves the recorder's stream within 100 ms (median ${ms(quantile(lag.inputStream, 0.5) ?? NaN)})`,
+  );
+  check(
+    lag.writeStream.length > 0 && quantile(lag.writeStream, 0.5) < 500,
+    `a write leaves the recorder's stream within 500 ms of its commit (median ${ms(quantile(lag.writeStream, 0.5) ?? NaN)})`,
+  );
+  // Loose: software rendering here takes hundreds of ms a frame.
+  check(
+    lag.input.length > 0 && quantile(lag.input, 0.5) < 3000,
+    `a person's action reaches the world within 3 s here (median ${ms(quantile(lag.input, 0.5) ?? NaN)})`,
   );
   check(
     external.length === 0,
@@ -422,7 +438,9 @@ try {
   const left = [...processes()].filter(
     ([pid, args]) =>
       !before.has(pid) &&
-      /convex|vite|chrom|tsx|live\.mjs|playwright|explorer/i.test(args) &&
+      /convex|vite|chrom|tsx|live\.mjs|playwright|explorer|esbuild|node -e/i.test(
+        args,
+      ) &&
       !/\bps\b/.test(args),
   );
   check(

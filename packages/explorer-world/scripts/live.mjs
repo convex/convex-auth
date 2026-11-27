@@ -183,6 +183,7 @@ function startPart(name, argv, { cwd, env = {}, onLine } = {}) {
     part.exited = { code: null, signal: null, error };
   });
   parts.push(part);
+  if (child.pid !== undefined) reaper?.stdin.write(`${child.pid}\n`);
   return part;
 }
 
@@ -198,6 +199,46 @@ async function runStep(name, argv, opts) {
     );
   }
 }
+
+/**
+ * A detached process that outlives this one: if this process ends without
+ * stopping its parts (it is killed, or crashes), the reaper stops their
+ * process groups. It reads the group of each part on its stdin, and `done`
+ * when the parts were stopped; its stdin closing first means this process is
+ * gone. Not on Windows, which has no process groups.
+ */
+const REAPER = `
+const groups = new Set();
+let done = false;
+let buffer = "";
+process.stdin.on("data", (chunk) => {
+  buffer += chunk;
+  const lines = buffer.split("\\n");
+  buffer = lines.pop();
+  for (const line of lines) {
+    if (line === "done") done = true;
+    else if (/^\\d+$/.test(line)) groups.add(Number(line));
+  }
+});
+process.stdin.on("end", () => {
+  if (done) process.exit(0);
+  const kill = (signal) => {
+    for (const group of groups) {
+      try { process.kill(-group, signal); } catch {}
+    }
+  };
+  kill("SIGINT");
+  setTimeout(() => { kill("SIGKILL"); process.exit(0); }, 5000);
+});
+`;
+const reaper = isWindows
+  ? null
+  : spawn(process.execPath, ["-e", REAPER], {
+      stdio: ["pipe", "ignore", "ignore"],
+      detached: true,
+    });
+reaper?.unref();
+reaper?.stdin.on("error", () => {});
 
 /** Whether any process of the part's group is alive. */
 function groupAlive(part) {
@@ -260,6 +301,10 @@ async function stopAll() {
   const server = worldServer;
   worldServer = null;
   await server?.close();
+  if (reaper && !parts.some((part) => groupAlive(part))) {
+    // Flushed before this process exits, or the reaper would act.
+    await new Promise((done) => reaper.stdin.end("done\n", done));
+  }
 }
 
 // ---------------------------------------------------------------- helpers --
@@ -283,7 +328,11 @@ async function waitFor(what, timeoutMs, check, part) {
   for (;;) {
     if (await check().catch(() => false)) return;
     if (part?.exited) {
-      throw new StartError(part, `${what}: ${part.name} exited first.`);
+      const { code, signal } = part.exited;
+      throw new StartError(
+        part,
+        `${what} exited (${signal ?? `exit code ${code}`}) before it was ready.`,
+      );
     }
     if (Date.now() > deadline) {
       throw new StartError(
@@ -524,6 +573,7 @@ async function main() {
     join(dirname(tsx), "dist/esm/index.mjs"),
   ).href;
   let streaming = null;
+  let recording = false;
   const recorder = startPart(
     "recorder",
     [
@@ -557,15 +607,18 @@ async function main() {
       onLine: (line) => {
         const found = /Streaming the timeline at (\S+)/.exec(line);
         if (found) streaming = found[1];
+        if (/^(Recording |Running the scenario)/.test(line)) recording = true;
         if (/^(Recording |Running the scenario|The scenario|Wrote )/.test(line))
           say(`recorder: ${line}`);
       },
     },
   );
   await waitFor(
-    "The recorder's stream",
-    60_000,
-    async () => streaming !== null,
+    "The recorder",
+    120_000,
+    // The stream comes up first, then the snapshot of the data, then the
+    // browser; the recorder is ready when it says it records.
+    async () => streaming !== null && recording,
     recorder,
   );
   say(

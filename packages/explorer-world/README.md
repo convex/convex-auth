@@ -78,23 +78,28 @@ a write until its run can have arrived, so this is rare.
 
 ### The lag
 
-`check:live` (below) measures it on a local deployment. From the moment in
-question to the line leaving the recorder's stream: a person's input about 4
-ms, a run's end about 3 ms, a call's result in the page about 100 ms, a
-write's commit about 200 ms. The floors:
+`check:live` (below) measures it on a local deployment. Medians over runs of
+the check, from the moment in question to the line leaving the recorder's
+stream: a person's input 3 to 6 ms, a run's end 2 to 4 ms, a write's commit 40
+to 95 ms, a call's result in the page 60 to 90 ms. The floors:
 
 - The browser and the log stream report at once: the page through the
   DevTools protocol, the deployment's log stream through a long poll that
   answers as soon as a run ends.
 - A write comes from the data sync, which has no push: the recorder polls it
-  every 100 ms here (`--poll`), then holds the write until the log stream is
-  known to be read past it, about 75 ms more, so that it names the right run.
-- A call of the page is held the same way, for the same reason.
+  every 100 ms here (`--poll`), so a write waits 50 ms on average for the
+  poll, plus the poll itself.
+- A write or a call is held until its run is known, so that it names the
+  right run; the run is usually known by then (see `packages/explorer`).
 
-The world adds a rebuild (a few ms) and a frame. Here the world runs in a
-headless Chromium with software rendering, where a frame takes 200 to 350 ms
-and blocks the page, so the world shows an input about 0.5 s after it; with
-a GPU a frame takes milliseconds. That figure is not measured here.
+The world adds its own time: it rebuilds the recording (4 ms median here) and
+draws a frame. Here the world runs in a headless Chromium with software
+rendering, about 120 ms a frame for the whole map, and it received a run's end
+24 ms after it (median) and drew it about 300 ms after. Each time the
+recording adds a part to the map (the first caller of a kind, the page), the
+map is laid out again and the scene mounts afresh, which here holds the page
+for a second or so; it happens a few times in a session, early. With a GPU a
+frame takes milliseconds; that is not measured here.
 
 ## What you see
 

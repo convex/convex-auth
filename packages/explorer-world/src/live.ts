@@ -30,6 +30,8 @@ export class LiveFeed {
   ended = false;
   /** Lines that could not be read, skipped. */
   skipped = 0;
+  /** When each event arrived, in ms since the epoch, by index in `events`. */
+  readonly arrivals: number[] = [];
 
   /** Takes one line of the stream; false when it was already taken. */
   take(id: number, data: string): boolean {
@@ -39,6 +41,7 @@ export class LiveFeed {
       const event = JSON.parse(data) as Event;
       if (typeof event?.kind !== "string") throw new Error("no kind");
       this.events.push(event);
+      this.arrivals.push(Date.now());
     } catch {
       this.skipped++;
     }

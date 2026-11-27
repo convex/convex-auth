@@ -198,12 +198,21 @@ export function replaceWorld(next: World, relaidOut: boolean) {
 export const liveTrace: {
   /** Per event of the stream, in order: when the world received it. */
   received: number[];
-  /** Per rebuild: how many events it held, when it was built, when drawn. */
-  builds: { events: number; builtAt: number; drawnAt: number | null }[];
+  /**
+   * Per rebuild: how many events it held, when it was built, how long the
+   * rebuild took (ms), and when the next frame began.
+   */
+  builds: {
+    events: number;
+    builtAt: number;
+    ms: number;
+    drawnAt: number | null;
+  }[];
 } = { received: [], builds: [] };
 
 if (liveSource) {
   const feed = new LiveFeed();
+  liveTrace.received = feed.arrivals;
   let lastBuild = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   // Rebuilding takes a few ms; at most one every MIN_GAP ms.
@@ -211,6 +220,7 @@ if (liveSource) {
   const rebuild = () => {
     timer = null;
     lastBuild = performance.now();
+    const started = lastBuild;
     const { world: next, relaidOut } = worldFromEvents(
       project,
       feed.events,
@@ -221,6 +231,7 @@ if (liveSource) {
     liveTrace.builds.push({
       events: feed.events.length,
       builtAt: Date.now(),
+      ms: performance.now() - started,
       drawnAt: null,
     });
     usePlayback.setState((s) => ({
@@ -229,8 +240,6 @@ if (liveSource) {
   };
   connectLive(liveSource, feed, {
     onLines: () => {
-      while (liveTrace.received.length < feed.events.length)
-        liveTrace.received.push(Date.now());
       if (timer !== null) return;
       timer = setTimeout(
         rebuild,
