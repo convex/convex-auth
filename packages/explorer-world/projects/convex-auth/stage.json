@@ -1,5 +1,6 @@
 {
   "backend": "Convex backend",
   "pageServer": "Page server",
-  "client": ["App code", "Convex Auth client", "Convex client"]
+  "client": ["App code", "Convex Auth client", "Convex client"],
+  "clientMap": 1
 }

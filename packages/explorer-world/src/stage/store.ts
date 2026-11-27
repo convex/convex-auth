@@ -37,6 +37,7 @@ export type Selection =
   | { type: "slot"; area: "local" | "session" | "cookie"; key: string }
   | { type: "flight"; id: string }
   | { type: "thing"; id: string }
+  | { type: "part"; id: string }
   | { type: "exit"; id: string };
 
 export type Source =

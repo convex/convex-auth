@@ -9,7 +9,7 @@ import {
   type Camera,
   type PerspectiveCamera,
 } from "three";
-import { DEFAULT_VIEW, SCREEN } from "./layout.ts";
+import { DEFAULT_VIEW, SCREEN, ZOOM } from "./layout.ts";
 import { useStage } from "./store.ts";
 
 const { ACTION } = CameraControlsImpl;
@@ -37,8 +37,8 @@ export function screenPose(camera: PerspectiveCamera): {
 } {
   const half = ((camera.fov / 2) * Math.PI) / 180;
   const margin = 1.06;
-  const h = SCREEN.height + SCREEN.bezel * 2;
-  const w = SCREEN.width + SCREEN.bezel * 2;
+  const h = SCREEN.height;
+  const w = SCREEN.width;
   const d =
     Math.max(h / 2 / Math.tan(half), w / 2 / (Math.tan(half) * camera.aspect)) *
     margin;
@@ -151,7 +151,17 @@ export function StageCamera() {
   useFrame((_, delta) => {
     const c = controls.current;
     if (!c) return;
-    const speed = (KEYS.has("shift") ? 40 : 12) * delta;
+    // From a metre to kilometres: the depth range follows the distance, and
+    // so do the speeds.
+    const near = Math.max(0.05, c.distance / 400);
+    const far = Math.max(20_000, c.distance * 60);
+    if (Math.abs(camera.near - near) > near * 0.05 || camera.far !== far) {
+      camera.near = near;
+      camera.far = far;
+      camera.updateProjectionMatrix();
+    }
+    const speed =
+      (KEYS.has("shift") ? 2.4 : 0.7) * Math.max(c.distance, 2) * delta;
     if (KEYS.has("w")) void c.forward(speed, false);
     if (KEYS.has("s")) void c.forward(-speed, false);
     if (KEYS.has("a")) void c.truck(-speed, 0, false);
@@ -172,8 +182,8 @@ export function StageCamera() {
         right: ACTION.ROTATE,
         wheel: ACTION.DOLLY,
       }}
-      minDistance={2}
-      maxDistance={140}
+      minDistance={ZOOM.min}
+      maxDistance={ZOOM.max}
       maxPolarAngle={Math.PI * 0.49}
       dollyToCursor
     />

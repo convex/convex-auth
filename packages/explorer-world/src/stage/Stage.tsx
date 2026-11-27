@@ -7,12 +7,15 @@ import { Activity } from "./Activity.tsx";
 import { StageCamera } from "./Camera.tsx";
 import { Floor } from "./Floor.tsx";
 import { Inspector } from "./Inspector.tsx";
-import { DEFAULT_VIEW } from "./layout.ts";
+import { DEFAULT_VIEW, FOV } from "./layout.ts";
 import { LIGHTS, LOOK } from "./look.ts";
 import { stageAt, type StageAt } from "./model.ts";
 import { Screen } from "./Screen.tsx";
 import { modelOf, timeOf, useStage } from "./store.ts";
 import { Timeline } from "./Timeline.tsx";
+import { clientTree } from "./sources.ts";
+
+const CLIENT_PARTS = clientTree();
 import { ViewButtons } from "./ViewButtons.tsx";
 
 const params = new URLSearchParams(location.search);
@@ -64,7 +67,12 @@ function StageScene({ screen }: { screen: string | null }) {
   return (
     <group>
       <Screen url={screen} live={source.kind === "live"} at={at} />
-      <Floor labels={labels} exits={model.exits} at={at} />
+      <Floor
+        labels={labels}
+        exits={model.exits}
+        at={at}
+        clientParts={CLIENT_PARTS}
+      />
       <Activity at={at} model={model} />
     </group>
   );
@@ -82,7 +90,7 @@ export function Stage({ screen }: { screen: string | null }) {
           preserveDrawingBuffer: params.has("capture"),
         }}
         camera={{
-          fov: 42,
+          fov: FOV,
           near: 0.3,
           far: 800,
           position: DEFAULT_VIEW.position,

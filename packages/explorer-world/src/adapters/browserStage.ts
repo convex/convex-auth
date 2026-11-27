@@ -37,6 +37,8 @@ export type StageLabels = {
   pageServer: string;
   /** The client code, left to right: the app's, the auth client, the data client. */
   client: [string, string, string];
+  /** Which of the client code districts holds the structure map's browser modules. */
+  clientMap?: number;
 };
 
 export const DEFAULT_LABELS: StageLabels = {

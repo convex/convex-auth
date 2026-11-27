@@ -22,16 +22,24 @@ including the reuse of a spent refresh token).
 pnpm explorer:live examples/react-username-password
 ```
 
-One browser window opens: the stage (`stage.html`). The app's page stands
-live on a large screen at the back; you use it there (**Face the screen**
-brings you in front of it, close enough to read and type; **Step back**
-returns). On the floor in front of and below the screen is the browser: the
-page (the elements you used stand on it), the client code, localStorage, the
-cookies, and the connections out, HTTP and the WebSocket. At the front edge
-stands one plain exit for each thing outside the browser: the backend, the
-page's server, and any other site the page called. Everything is there from
-the start. More detail (the names of storage keys, a token's label and kind,
-the elements) appears on approach; a click opens the inspector.
+One browser window opens: the stage (`stage.html`). The app's page is on a
+screen the size of a building, a wall standing at the back of a vast open
+ground; you use it there (**Face the screen** brings you square in front of
+it; **Step back** returns). The page is laid out at 800 CSS pixels and
+scaled up, as a display shows it, so the form reads from the default view.
+
+In front of the screen and below it lies the browser: a large territory on
+the ground, with a district for each of its parts: the page (the elements you
+used stand on it), the client code, localStorage, the cookies, and the
+connections out, HTTP and the WebSocket, running forward to one plain exit for
+each thing outside the browser (the backend, the page's server, any other
+site the page called). The ground beyond the exits is left for the servers
+and providers. Big things hold smaller things, shown as you come near and
+hidden as you leave: localStorage holds its keys, a key its value, a token its
+claims; the auth client holds the structure map's modules that run in the
+browser, a module its hooks and functions. Everything is there from the
+start. The camera goes from a metre to kilometres (`ZOOM` in
+`stage/layout.ts`); its depth range and speeds follow the distance.
 
 Only what the recording shows happening moves. A click or typing outlines the
 element on the screen and lights its tile on the page; a message leaves along

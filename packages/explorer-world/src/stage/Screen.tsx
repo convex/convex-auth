@@ -3,7 +3,7 @@ import { memo } from "react";
 import { DoubleSide } from "three";
 import { Label } from "../scene/Label.tsx";
 import { SCREEN_FRAME } from "./frame.ts";
-import { GROUND_Y, SCREEN } from "./layout.ts";
+import { SCREEN } from "./layout.ts";
 import { LOOK, MATTE } from "./look.ts";
 import type { StageAt } from "./model.ts";
 
@@ -88,8 +88,8 @@ function Highlight({
   lit: number;
 }) {
   const r = onScreen(rect, viewport);
-  const t = 0.06;
-  const pad = 0.08;
+  const t = W / 300;
+  const pad = W / 250;
   const w = r.w + pad * 2;
   const h = r.h + pad * 2;
   const bars: [number, number, number, number][] = [
@@ -99,7 +99,7 @@ function Highlight({
     [r.x + w / 2, r.y, t, h],
   ];
   return (
-    <group position={[0, 0, cz + 0.06]}>
+    <group position={[0, 0, cz + 0.4]}>
       {bars.map(([x, y, bw, bh], i) => (
         <mesh key={i} position={[x, y, 0]} renderOrder={10}>
           <planeGeometry args={[bw, bh]} />
@@ -116,10 +116,10 @@ function Highlight({
 }
 
 /**
- * The screen: a frame on a stand, standing on the ground at the back. Live,
- * it shows the app's page; in a replay, which has no page to show, it is dark
- * and says where the page was. Either way the element just used is outlined
- * where it was.
+ * The screen: a wall the size of a building, standing on the ground at the
+ * back, with the page on its face. Live, it shows the app's page; in a
+ * replay, which has no page to show, it is dark and says where the page was.
+ * Either way the element just used is outlined where it was.
  */
 export function Screen({
   url,
@@ -130,44 +130,30 @@ export function Screen({
   live: boolean;
   at: StageAt;
 }) {
-  const b = SCREEN.bezel;
-  const bottom = cy - H / 2 - b;
-  const legH = bottom - GROUND_Y;
+  const { wall } = SCREEN;
   return (
     <group>
-      {/* The frame around the page. */}
-      <mesh position={[cx, cy, cz - 0.3]}>
-        <boxGeometry args={[W + b * 2, H + b * 2, 0.5]} />
+      <mesh position={[cx, wall.top / 2, cz - wall.depth / 2 - 0.05]}>
+        <boxGeometry args={[wall.width, wall.top, wall.depth]} />
         <meshStandardMaterial color={LOOK.bezel} {...MATTE} />
-      </mesh>
-      {/* The stand. */}
-      {[-W / 3, W / 3].map((x) => (
-        <mesh key={x} position={[cx + x, GROUND_Y + legH / 2, cz - 0.4]}>
-          <boxGeometry args={[0.6, legH, 0.6]} />
-          <meshStandardMaterial color={LOOK.stand} {...MATTE} />
-        </mesh>
-      ))}
-      <mesh position={[cx, GROUND_Y + 0.15, cz - 0.4]}>
-        <boxGeometry args={[W * 0.9, 0.3, 2.4]} />
-        <meshStandardMaterial color={LOOK.stand} {...MATTE} />
       </mesh>
       {url !== null && <LivePage url={url} />}
       {(!live || url === null) && (
         <group>
-          <mesh position={[cx, cy, cz + 0.03]} renderOrder={5}>
+          <mesh position={[cx, cy, cz + 0.05]} renderOrder={5}>
             <planeGeometry args={[W, H]} />
             <meshBasicMaterial color={LOOK.screenOff} side={DoubleSide} />
           </mesh>
           <Label
-            position={[cx, cy + 0.6, cz + 0.08]}
-            fontSize={0.7}
+            position={[cx, cy + 8, cz + 0.3]}
+            fontSize={9}
             color={LOOK.screenOffText}
           >
             {url === null ? "No live page" : "Replay"}
           </Label>
           <Label
-            position={[cx, cy - 0.5, cz + 0.08]}
-            fontSize={0.55}
+            position={[cx, cy - 6, cz + 0.3]}
+            fontSize={7}
             weight="mono"
             color={LOOK.screenOffText}
           >

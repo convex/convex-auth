@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { clientTree } from "./sources.ts";
 import { stageAt, type Held, type StageModel } from "./model.ts";
 import { modelOf, timeOf, useStage, type Selection } from "./store.ts";
+
+const CLIENT_PARTS = clientTree();
 
 const rel = (model: StageModel, t: number) =>
   `+${((t - model.start) / 1000).toFixed(2)} s`;
@@ -113,6 +116,32 @@ function Body({
           {sel.id === "socket" && (
             <p>{at.socketOpen ? "Open now." : "Closed now."}</p>
           )}
+        </>
+      );
+    }
+    case "part": {
+      const part =
+        CLIENT_PARTS.find((m) => m.id === sel.id) ??
+        CLIENT_PARTS.flatMap((m) => m.children).find((c) => c.id === sel.id);
+      if (!part) return null;
+      return (
+        <>
+          <h3>{part.name}</h3>
+          <p className="dim">
+            A {part.kind} of the structure map that runs in the browser
+            {part.file ? (
+              <>
+                , in <span className="mono">{part.file}</span>
+              </>
+            ) : null}
+            .
+          </p>
+          {part.children.length > 0 && (
+            <p>Holds {part.children.map((c) => c.name).join(", ")}.</p>
+          )}
+          <p className="dim">
+            Whether it ran is not recorded yet, so nothing here moves.
+          </p>
         </>
       );
     }

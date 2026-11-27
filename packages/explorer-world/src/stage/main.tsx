@@ -14,6 +14,7 @@ import {
 } from "../problems.ts";
 import { screenUrl } from "./frame.ts";
 import { PANEL_CSS } from "./look.ts";
+import { DEFAULT_VIEW, LOCAL, SCREEN } from "./layout.ts";
 import { Stage } from "./Stage.tsx";
 import { liveFeed, projectLabels, RECORDINGS, startLive } from "./sources.ts";
 import { modelOf, timeOf, useStage } from "./store.ts";
@@ -65,6 +66,7 @@ if (replay && RECORDINGS[replay]) {
     return stageAt(modelOf(s), timeOf(s));
   },
   model: () => modelOf(useStage.getState()),
+  layout: { LOCAL, SCREEN, DEFAULT_VIEW },
   /** Where a point of the scene is on the window, in CSS pixels. */
   project: (x: number, y: number, z: number) => {
     const camera = (globalThis as { explorerCamera?: Camera }).explorerCamera;

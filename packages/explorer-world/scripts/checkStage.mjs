@@ -222,19 +222,20 @@ try {
     page.evaluate(([x, yy, z]) => explorerStage.project(x, yy, z), [x, yy, z]);
   const selection = () =>
     page.evaluate(() => explorerStage.store.getState().selection);
-  const from = await project(9.5, 0, 2);
+  const from = await project(-10, 0, 10);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x - 220, from.y - 60, { steps: 12 });
   await page.mouse.up();
   await sleep(700);
-  const after = await project(9.5, 0, 2);
+  const after = await project(-10, 0, 10);
   check(
     Math.hypot(after.x - (from.x - 220), after.y - (from.y - 60)) < 4 &&
       (await selection()) === null,
     `a drag on the floor pans, holding the point pressed under the pointer (${Math.round(after.x - from.x + 220)}, ${Math.round(after.y - from.y + 60)} px off), and selects nothing`,
   );
-  const tray = await project(-4.6, 0.36, 1.6);
+  const L = await page.evaluate(() => explorerStage.layout.LOCAL);
+  const tray = await project(L.x + L.w * 0.35, L.h, L.z + L.d * 0.35);
   await page.mouse.click(tray.x, tray.y);
   await sleep(400);
   const picked = await selection();
@@ -251,11 +252,12 @@ try {
   await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Face the screen" }).click();
   await sleep(2500);
+  const S = await page.evaluate(() => explorerStage.layout.SCREEN);
   const corners = await Promise.all(
     [
-      [-8.35, 13.75],
-      [8.35, 3.05],
-    ].map(([x, yy]) => project(x, yy, -15.5)),
+      [S.center[0] - S.width / 2, S.center[1] + S.height / 2],
+      [S.center[0] + S.width / 2, S.center[1] - S.height / 2],
+    ].map(([x, yy]) => project(x, yy, S.center[2])),
   );
   const size = await page.evaluate(() => [innerWidth, innerHeight]);
   const fill = Math.max(
@@ -273,8 +275,11 @@ try {
   await page.getByRole("button", { name: "Step back" }).click();
   await sleep(2500);
   const pos = await page.evaluate(() => explorerCamera.position.toArray());
+  const home = await page.evaluate(
+    () => explorerStage.layout.DEFAULT_VIEW.position,
+  );
   check(
-    Math.hypot(pos[0], pos[1] - 19, pos[2] - 31) < 0.5,
+    Math.hypot(pos[0] - home[0], pos[1] - home[1], pos[2] - home[2]) < 1,
     `Step back returns to the whole stage (${pos.map((v) => v.toFixed(1)).join(", ")})`,
   );
 

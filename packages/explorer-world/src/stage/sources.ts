@@ -6,6 +6,7 @@
  */
 import type { Event } from "../adapters/convexRecording.ts";
 import { connectLive, LiveFeed, liveUrl } from "../live.ts";
+import { PROJECTS } from "../project.ts";
 import { rebuildLive, useStage } from "./store.ts";
 
 const params = new URLSearchParams(location.search);
@@ -81,4 +82,50 @@ export function startLive(): void {
     onLines: rebuild,
     onStatus: (status) => useStage.getState().setLiveStatus(status),
   });
+}
+
+/** A part of the client code from the structure map, with its own parts. */
+export type ClientPart = {
+  id: string;
+  name: string;
+  kind: string;
+  file: string | null;
+  children: ClientPart[];
+};
+
+/**
+ * The modules of the structure map that run in the browser, each with the
+ * parts it holds (its hooks and functions), for the client code district
+ * that the project names (`clientMap` in its `stage.json`).
+ */
+export function clientTree(): ClientPart[] {
+  const found = Object.entries(PROJECTS);
+  const source = (found.find(([name]) => name === project) ?? found[0])?.[1];
+  const parts = (source?.structure.parts ?? []) as unknown as {
+    id: string;
+    name: string;
+    kind: string;
+    parent?: string;
+    runsIn?: string;
+    source?: { file: string };
+  }[];
+  const browser = parts.filter((p) => p.runsIn === "browser");
+  const modules = browser.filter((p) => p.kind === "module");
+  return modules
+    .map((m) => ({
+      id: m.id,
+      name: m.name,
+      kind: m.kind,
+      file: m.source?.file ?? null,
+      children: browser
+        .filter((p) => p.parent === m.id)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          kind: p.kind,
+          file: p.source?.file ?? null,
+          children: [],
+        })),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
