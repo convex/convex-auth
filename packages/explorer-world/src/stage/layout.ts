@@ -93,3 +93,16 @@ export const LABEL_FAR = 14;
 
 /** The camera's field of view, in degrees, top to bottom. */
 export const FOV = 55;
+
+/** How far the world reaches: the point looked at stays inside it. */
+export const WORLD = { extent: 6000, height: 1200 };
+
+/** What the default view keeps in the window, whatever its shape. */
+export const HOME_FIT: Vec3[] = [
+  [-SCREEN.wall.width / 2, SCREEN.wall.top, SCREEN.center[2]],
+  [SCREEN.wall.width / 2, SCREEN.wall.top, SCREEN.center[2]],
+  [TERRITORY.x[0], 0, TERRITORY.z[1]],
+  [TERRITORY.x[1], 0, TERRITORY.z[1]],
+  [EXITS.page.x - EXITS.page.w / 2, 0, EXIT_Z],
+  [EXITS.backend.x + EXITS.backend.w / 2, 0, EXIT_Z],
+];

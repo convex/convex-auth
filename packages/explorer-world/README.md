@@ -38,8 +38,14 @@ and providers. Big things hold smaller things, shown as you come near and
 hidden as you leave: localStorage holds its keys, a key its value, a token its
 claims; the auth client holds the structure map's modules that run in the
 browser, a module its hooks and functions. Everything is there from the
-start. The camera goes from a metre to kilometres (`ZOOM` in
-`stage/layout.ts`); its depth range and speeds follow the distance.
+start. The camera goes from a metre to kilometres (`ZOOM` in `stage/layout.ts`);
+its depth range and speeds follow the distance. The wheel zooms about the
+thing under the pointer and stops when that thing fills the view, so zooming
+in arrives at it; over the sky it zooms straight in or out. The point looked
+at stays over the world and above the ground. **Home** (or H) returns to the
+default view, which fits the screen and the whole territory to the window's
+shape. A grid on the ground, a decade per level (10 m, 100 m, 1 km), and a
+horizon that fades into the sky give the scale.
 
 Only what the recording shows happening moves. A click or typing outlines the
 element on the screen and lights its tile on the page; a message leaves along

@@ -272,16 +272,132 @@ try {
     `Face the screen shows all of it, square on, filling ${Math.round(fill * 100)}% of the window`,
   );
   await shot("stage-5b-facing");
-  await page.getByRole("button", { name: "Step back" }).click();
+  await page.getByRole("button", { name: "Home" }).click();
   await sleep(2500);
   const pos = await page.evaluate(() => explorerCamera.position.toArray());
-  const home = await page.evaluate(
-    () => explorerStage.layout.DEFAULT_VIEW.position,
+  const homeFit = await page.evaluate(() => {
+    const [w, h] = [innerWidth, innerHeight];
+    return explorerStage.layout.HOME_FIT.map(([x, y, z]) =>
+      explorerStage.project(x, y, z),
+    ).every((p) => p.x >= 0 && p.x <= w && p.y >= 0 && p.y <= h);
+  });
+  check(
+    homeFit,
+    `Home returns to the whole stage, the screen and the territory in view (${pos.map((v) => v.toFixed(1)).join(", ")})`,
+  );
+
+  // The wheel, as a person uses it: in toward a thing arrives at it, and
+  // the camera never shows nothing.
+  const frameOf = () => page.evaluate(() => explorerStage.sampleFrame());
+  const goHome = async () => {
+    await page.getByRole("button", { name: "Home" }).click();
+    await sleep(2500);
+  };
+  const vw = await page.evaluate(() => [innerWidth, innerHeight]);
+  const wheelAt = async (fx, fy, dy, n, gap) => {
+    await page.mouse.move(vw[0] * fx, vw[1] * fy);
+    for (let i = 0; i < n; i++) {
+      await page.mouse.wheel(0, dy);
+      await sleep(gap);
+    }
+    await sleep(1200);
+  };
+  await goHome();
+  const homeFrame = await frameOf();
+  // The first repro: six notches in on localStorage, then on toward two
+  // more points.
+  await wheelAt(0.13, 0.685, -300, 6, 250);
+  const a1 = await frameOf();
+  await wheelAt(0.35, 0.55, -300, 6, 250);
+  await wheelAt(0.5, 0.55, -300, 6, 250);
+  const a2 = await frameOf();
+  const camA = await page.evaluate(() => explorerCamera.position.y);
+  check(
+    a1.spread > 8 && a2.spread > 8 && camA > 0,
+    `wheeling in on localStorage and beyond keeps the world in view (spread ${a1.spread.toFixed(1)}, ${a2.spread.toFixed(1)}; camera ${camA.toFixed(1)} m up)`,
+  );
+  await shot("stage-wheel-a");
+  await goHome();
+  // The second repro: far out, back in, and on toward the storage.
+  await wheelAt(0.5, 0.75, 400, 25, 60);
+  const bOut = await frameOf();
+  await wheelAt(0.5, 0.75, -400, 25, 60);
+  await wheelAt(0.28, 0.72, -400, 14, 60);
+  const b = await frameOf();
+  check(
+    bOut.spread > 3 && b.spread > 8,
+    `far out and back in, the world stays in view (spread ${bOut.spread.toFixed(1)} far, ${b.spread.toFixed(1)} back in)`,
+  );
+  await shot("stage-wheel-b");
+  await goHome();
+  const backHome = await frameOf();
+  const homePos = await page.evaluate(() => explorerCamera.position.toArray());
+  check(
+    Math.abs(backHome.spread - homeFrame.spread) < 3,
+    `Home returns to the default view (${homePos.map((v) => v.toFixed(0)).join(", ")})`,
+  );
+  // In toward a token, as a person does: the pointer on the thing, the wheel
+  // in, until each level shows.
+  const tokenKey = await page.evaluate(
+    () =>
+      explorerStage
+        .model()
+        .local.find((s) => s.held.some((h) => h.secrets.length > 0))?.key ??
+      null,
+  );
+  const wheelUntil = async (target, shownPrefix, most = 40) => {
+    for (let i = 0; i < most; i++) {
+      const names = await page.evaluate(() => explorerStage.shown());
+      if (names.some((n) => n.startsWith(shownPrefix))) return i;
+      const p = await page.evaluate((t) => explorerStage.locate(t), target);
+      if (!p) return null;
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.wheel(0, -240);
+      await sleep(300);
+    }
+    return null;
+  };
+  if (tokenKey) {
+    const steps = {
+      keys: await wheelUntil("thing:localStorage", `label:${tokenKey}`),
+      value: await wheelUntil(`key:${tokenKey}`, `value:${tokenKey}`),
+      claims: await wheelUntil(`value:${tokenKey}`, "label:exp "),
+    };
+    const claimed = await page.evaluate(() =>
+      explorerStage
+        .shown()
+        .filter((n) => /^label:(exp|iat|sub|aud|iss) /.test(n)),
+    );
+    await shot("stage-wheel-token");
+    check(
+      steps.keys !== null && steps.value !== null && steps.claims !== null,
+      `wheeling in on localStorage shows its keys (${steps.keys} notches), then a key's value (${steps.value} more), then the token's claims, labelled (${steps.claims} more): ${claimed.join(", ")}`,
+    );
+    // And back out: the levels hide again.
+    await wheelAt(0.5, 0.5, 400, 12, 120);
+    const after = await page.evaluate(() =>
+      explorerStage.shown().filter((n) => /^(value:|label:exp )/.test(n)),
+    );
+    check(
+      after.length === 0,
+      `wheeling back out hides them (${after.length} left)`,
+    );
+  } else check(false, "a token is in localStorage to wheel in on");
+  await goHome();
+  // The default view fits a narrow window too.
+  await page.setViewportSize({ width: 835, height: 893 });
+  await sleep(800);
+  await goHome();
+  const fit = await page.evaluate(() =>
+    explorerStage.layout.HOME_FIT.map(([x, y, z]) =>
+      explorerStage.project(x, y, z),
+    ),
   );
   check(
-    Math.hypot(pos[0] - home[0], pos[1] - home[1], pos[2] - home[2]) < 1,
-    `Step back returns to the whole stage (${pos.map((v) => v.toFixed(1)).join(", ")})`,
+    fit.every((p) => p.x >= 0 && p.x <= 835 && p.y >= 0 && p.y <= 893),
+    "at 835 × 893 the default view holds the screen and the whole territory",
   );
+  await shot("stage-narrow");
 
   // What the recorder captured, and what the floor holds.
   const seen = await page.evaluate((marks) => {

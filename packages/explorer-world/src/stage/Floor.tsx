@@ -20,6 +20,7 @@ import {
   type Spot,
   type Vec3,
 } from "./layout.ts";
+import { Ground } from "./Ground.tsx";
 import { LOOK, MATTE, mix } from "./look.ts";
 import type { Exit, StageAt } from "./model.ts";
 import type { ClientPart } from "./sources.ts";
@@ -37,7 +38,10 @@ export function Near({
   within,
   beyond = 0,
   children,
+  name,
 }: {
+  /** A name for checks to find what is shown. */
+  name?: string;
   at: Vec3;
   within: number;
   beyond?: number;
@@ -54,7 +58,11 @@ export function Near({
     const d = camera.position.distanceTo(seen);
     g.visible = d < within && d >= beyond;
   });
-  return <group ref={group}>{children}</group>;
+  return (
+    <group ref={group} name={name}>
+      {children}
+    </group>
+  );
 }
 
 /** Selects on a click in place; a drag never selects. */
@@ -133,7 +141,7 @@ export function Container({
   const center: Vec3 = [spot.x, y + spot.h, spot.z];
   const ls = labelSize ?? Math.min(size / 9, 9);
   return (
-    <group>
+    <group name={`thing:${name}`}>
       <mesh
         position={[spot.x, y + spot.h / 2, spot.z]}
         {...(select ? selectOnClick(select) : {})}
@@ -144,7 +152,7 @@ export function Container({
           {...MATTE}
         />
       </mesh>
-      <Near at={center} within={size * labelFar}>
+      <Near at={center} within={size * labelFar} name={`label:${name}`}>
         <TopLabel
           at={[spot.x, y + spot.h + 0.05, spot.z + spot.d / 2 + ls * 0.2]}
           size={ls}
@@ -167,7 +175,7 @@ export function Container({
         </Near>
       )}
       {children && (
-        <Near at={center} within={size * REVEAL}>
+        <Near at={center} within={size * REVEAL} name={`inside:${name}`}>
           {children}
         </Near>
       )}
@@ -297,11 +305,7 @@ export function Floor({
   const extra = exits.filter((e) => !(e.id in EXITS));
   return (
     <group>
-      {/* The ground, far around. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
-        <planeGeometry args={[40_000, 40_000]} />
-        <meshStandardMaterial color={LOOK.ground} {...MATTE} />
-      </mesh>
+      <Ground />
       {/* The browser's territory: marked on the ground, not raised. */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}

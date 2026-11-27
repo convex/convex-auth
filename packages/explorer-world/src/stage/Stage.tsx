@@ -93,7 +93,7 @@ export function Stage({ screen }: { screen: string | null }) {
         camera={{
           fov: FOV,
           near: 0.3,
-          far: 800,
+          far: 50_000,
           position: DEFAULT_VIEW.position,
         }}
         onPointerMissed={(e) => {

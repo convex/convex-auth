@@ -253,7 +253,7 @@ function KeyObject({
   // Positions here are relative to the key's group.
   const size = Math.max(w, d);
   return (
-    <group>
+    <group name={`key:${k}`}>
       <mesh position={[0, h / 2, 0]} {...selectOnClick(select)}>
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial
@@ -276,7 +276,7 @@ function KeyObject({
           </Label>
         </Near>
       )}
-      <Near at={[0, 0, 0]} within={size * 7}>
+      <Near at={[0, 0, 0]} within={size * 7} name={`label:${k}`}>
         <TopLabel
           at={[0, h + 0.05, d / 2 - 0.3]}
           size={Math.min(w / 14, 1.4)}
@@ -285,7 +285,7 @@ function KeyObject({
           {name}
         </TopLabel>
       </Near>
-      <Near at={[0, 0, 0]} within={size * 3}>
+      <Near at={[0, 0, 0]} within={size * 3} name={`value:${k}`}>
         <ValueBlock
           spot={{ x: 0, z: -d * 0.12, w: w * 0.8, d: d * 0.5, h: 0.8 }}
           y={h}

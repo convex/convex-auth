@@ -2,6 +2,7 @@ import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import {
+  Box3,
   Plane,
   Raycaster,
   Vector2,
@@ -9,7 +10,7 @@ import {
   type Camera,
   type PerspectiveCamera,
 } from "three";
-import { DEFAULT_VIEW, SCREEN, ZOOM } from "./layout.ts";
+import { DEFAULT_VIEW, HOME_FIT, SCREEN, WORLD, ZOOM } from "./layout.ts";
 import { useStage } from "./store.ts";
 
 const { ACTION } = CameraControlsImpl;
@@ -47,6 +48,38 @@ export function screenPose(camera: PerspectiveCamera): {
 }
 
 /**
+ * The default view, fitted to the window: from the direction of
+ * `DEFAULT_VIEW`, as near as it can be with the screen and the whole
+ * territory in view at the window's aspect.
+ */
+export function homePose(camera: PerspectiveCamera): {
+  position: Vector3;
+  target: Vector3;
+} {
+  const target = new Vector3(...DEFAULT_VIEW.target);
+  const from = new Vector3(...DEFAULT_VIEW.position);
+  const dir = from.clone().sub(target);
+  const base = dir.length();
+  dir.normalize();
+  const probe = camera.clone();
+  const fits = (k: number) => {
+    probe.position.copy(target).addScaledVector(dir, k);
+    probe.lookAt(target);
+    probe.updateMatrixWorld();
+    probe.updateProjectionMatrix();
+    return HOME_FIT.every(([x, y, z]) => {
+      const v = new Vector3(x, y, z).project(probe);
+      return Math.abs(v.x) <= 0.94 && v.y <= 0.94 && v.y >= -0.86 && v.z < 1;
+    });
+  };
+  let k = base;
+  while (!fits(k) && k < base * 6) k *= 1.04;
+  return { position: target.clone().addScaledVector(dir, k), target };
+}
+
+const raycaster = new Raycaster();
+
+/**
  * The camera of the stage, as in the islands world (`scene/CameraRig.tsx`):
  * a plain drag pans and keeps the point of the floor pressed under the
  * pointer; Cmd-drag, Ctrl-drag or right-drag orbits; the wheel zooms toward
@@ -56,6 +89,9 @@ export function screenPose(camera: PerspectiveCamera): {
  */
 export function StageCamera() {
   const controls = useRef<CameraControls>(null);
+  /** Whether the viewer moved the camera since it was last sent home. */
+  const moved = useRef(false);
+  const scene = useThree((s) => s.scene);
   const flight = useStage((s) => s.flight);
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   // The element R3F and the controls listen on: the canvas lets the pointer
@@ -69,14 +105,43 @@ export function StageCamera() {
     if (!c) return;
     (globalThis as { explorerControls?: unknown }).explorerControls = c;
     (globalThis as { explorerCamera?: unknown }).explorerCamera = camera;
-    const [px, py, pz] = DEFAULT_VIEW.position;
-    const [tx, ty, tz] = DEFAULT_VIEW.target;
-    void c.setLookAt(px, py, pz, tx, ty, tz, false);
+    (globalThis as { explorerScene?: unknown }).explorerScene = scene;
+    // The point looked at stays over the world, never under the ground; the
+    // camera stays above the point it looks at (maxPolarAngle).
+    c.setBoundary(
+      new Box3(
+        new Vector3(-WORLD.extent, 0, -WORLD.extent),
+        new Vector3(WORLD.extent, WORLD.height, WORLD.extent),
+      ),
+    );
+    const { position: p, target: t } = homePose(camera);
+    void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, false);
+    // The window can change its shape: the default view fits it again
+    // while the camera is there.
+    const resize = () => {
+      if (useStage.getState().view !== "default" || moved.current) return;
+      const home = homePose(camera);
+      void c.setLookAt(
+        home.position.x,
+        home.position.y,
+        home.position.z,
+        home.target.x,
+        home.target.y,
+        home.target.z,
+        false,
+      );
+    };
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key.toLowerCase() === "h") {
+        useStage.getState().fly("default");
+        return;
+      }
       KEYS.add(e.key.toLowerCase());
     };
     const up = (e: KeyboardEvent) => {
@@ -106,6 +171,7 @@ export function StageCamera() {
       if (orbit || e.pointerType === "touch") return;
       pressed = groundUnder(c, camera, surface, e.clientX, e.clientY);
       id = e.pointerId;
+      moved.current = true;
     };
     const move = (e: PointerEvent) => {
       const c = controls.current;
@@ -133,6 +199,79 @@ export function StageCamera() {
     };
   }, [surface, camera]);
 
+  // The wheel zooms about the point under the pointer: the thing the pointer
+  // is on stays under it, and the camera never passes it. Over the sky, it
+  // zooms straight in or out, moving nothing sideways.
+  useEffect(() => {
+    const wheel = (e: WheelEvent) => {
+      const c = controls.current;
+      if (!c) return;
+      e.preventDefault();
+      moved.current = true;
+      // Trackpads send small deltas, mice large ones; lines count as 40 px.
+      const dy = e.deltaMode === 1 ? e.deltaY * 40 : e.deltaY;
+      let k = Math.exp(Math.max(-600, Math.min(600, dy)) * 0.0016);
+      const pos = c.getPosition(new Vector3(), true);
+      const target = c.getTarget(new Vector3(), true);
+      const r = surface.getBoundingClientRect();
+      ndc.set(
+        ((e.clientX - r.left) / r.width) * 2 - 1,
+        -((e.clientY - r.top) / r.height) * 2 + 1,
+      );
+      raycaster.setFromCamera(ndc, camera);
+      raycaster.ray.origin.copy(pos);
+      const hit = raycaster
+        .intersectObjects(scene.children, true)
+        .find(
+          (h) =>
+            (h.object as { isMesh?: boolean }).isMesh === true &&
+            shown(h.object),
+        );
+      let about: Vector3 | null = hit ? hit.point : null;
+      // Zooming in arrives at the thing under the pointer and stops there,
+      // with all of it in view, rather than pressing into its surface: the
+      // least distance grows with its size (the ground and the wall count
+      // as large things seen from a moderate height).
+      let least = ZOOM.min;
+      if (hit) {
+        const g = (
+          hit.object as {
+            geometry?: {
+              boundingSphere: unknown;
+              computeBoundingSphere(): void;
+            };
+          }
+        ).geometry;
+        if (g && !g.boundingSphere) g.computeBoundingSphere();
+        const sphere = g?.boundingSphere as { radius: number } | undefined;
+        const scale = hit.object.getWorldScale(new Vector3());
+        const r = (sphere?.radius ?? 0) * Math.max(scale.x, scale.y, scale.z);
+        least = Math.max(ZOOM.min, Math.min(r, 160) * 0.9);
+      }
+      if (!about) {
+        const g = raycaster.ray.intersectPlane(floor, new Vector3());
+        about = g && g.distanceTo(pos) < ZOOM.max ? g : null;
+      }
+      if (!about) about = target;
+      // Keep within the zoom range: no nearer than the least distance to
+      // the point, no farther than the most.
+      const d = pos.distanceTo(about);
+      if (k < 1 && d <= least) return;
+      k = Math.min(
+        Math.max(k, least / Math.max(d, 1e-6)),
+        ZOOM.max / Math.max(d, 1e-6),
+      );
+      const p = about.clone().add(pos.clone().sub(about).multiplyScalar(k));
+      const t = about.clone().add(target.clone().sub(about).multiplyScalar(k));
+      // Never below the ground.
+      if (p.y < 0.4) return;
+      t.y = Math.max(0, t.y);
+      void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, true);
+    };
+    surface.addEventListener("wheel", wheel, { passive: false });
+    return () => surface.removeEventListener("wheel", wheel);
+  }, [surface, camera, scene]);
+
   // A requested flight: to the screen, or back to the default view.
   useEffect(() => {
     const c = controls.current;
@@ -142,9 +281,9 @@ export function StageCamera() {
       const { position: p, target: t } = screenPose(camera);
       void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, true);
     } else {
-      const [px, py, pz] = DEFAULT_VIEW.position;
-      const [tx, ty, tz] = DEFAULT_VIEW.target;
-      void c.setLookAt(px, py, pz, tx, ty, tz, true);
+      moved.current = false;
+      const { position: p, target: t } = homePose(camera);
+      void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, true);
     }
   }, [flight, camera]);
 
@@ -154,7 +293,7 @@ export function StageCamera() {
     // From a metre to kilometres: the depth range follows the distance, and
     // so do the speeds.
     const near = Math.max(0.05, c.distance / 400);
-    const far = Math.max(20_000, c.distance * 60);
+    const far = Math.max(60_000, c.distance * 60);
     if (Math.abs(camera.near - near) > near * 0.05 || camera.far !== far) {
       camera.near = near;
       camera.far = far;
@@ -180,18 +319,25 @@ export function StageCamera() {
         left: ACTION.NONE,
         middle: ACTION.DOLLY,
         right: ACTION.ROTATE,
-        wheel: ACTION.DOLLY,
+        // The wheel zooms about the pointer's point (above).
+        wheel: ACTION.NONE,
       }}
       minDistance={ZOOM.min}
       maxDistance={ZOOM.max}
       maxPolarAngle={Math.PI * 0.49}
-      dollyToCursor
     />
   );
 }
 
 const ray = new Raycaster();
 const ndc = new Vector2();
+
+/** Whether an object is drawn: it and every group around it are visible. */
+function shown(o: { visible: boolean; parent: unknown }): boolean {
+  for (let x: typeof o | null = o; x; x = x.parent as typeof o | null)
+    if (!x.visible) return false;
+  return true;
+}
 const floor = new Plane(new Vector3(0, 1, 0), 0);
 
 /** The point of the floor (y = 0) under the pointer, or null at the sky. */

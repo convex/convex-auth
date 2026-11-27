@@ -89,3 +89,9 @@ export function mix(a: string, b: string, k: number): string {
   const c = (s: number) => Math.round(ch(pa, s) + (ch(pb, s) - ch(pa, s)) * k);
   return `#${((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, "0")}`;
 }
+
+/** The grid on the ground, by which scale reads. */
+export const GRID = { color: "#878781", opacity: 0.5 };
+
+/** The ground fades into the sky far off: the horizon reads as far. */
+export const FOG = { near: 2500, far: 45_000 };
