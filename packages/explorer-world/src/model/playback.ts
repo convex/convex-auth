@@ -124,8 +124,10 @@ export function stateAt(
         id: w.row,
         doc: { ...w.doc },
         slot,
-        insertedAt: c.at,
-        changedAt: c.at,
+        // A row the recording started with was read, not written: it
+        // neither rises nor flashes.
+        insertedAt: c.run ? c.at : -Infinity,
+        changedAt: c.run ? c.at : -Infinity,
         changedFields: Object.keys(w.doc),
         history: [entry],
       };

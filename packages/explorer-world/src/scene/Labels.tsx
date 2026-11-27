@@ -72,7 +72,8 @@ const reachCache = new WeakMap<Timeline, Map<string, number>>();
 
 /**
  * When running code first reached each island (shown time): an activation
- * of a part on it, a write to a table on it, or a movement landing on it;
+ * of a part on it, a write of a run to a table on it, or a movement landing
+ * on it;
  * an island inside another reaches its parents too.
  */
 export function reachedAt(tl: Timeline): Map<string, number> {
@@ -94,7 +95,9 @@ export function reachedAt(tl: Timeline): Map<string, number> {
     }
   };
   for (const a of tl.activations) reach(a.node, a.start);
-  for (const c of tl.rowChanges) reach(c.write.table, c.at);
+  // Not the rows the recording started with (no run): the recorder read
+  // them, no code ran.
+  for (const c of tl.rowChanges) if (c.run) reach(c.write.table, c.at);
   for (const m of tl.movements) reach(m.to, m.end);
   reachCache.set(tl, out);
   return out;
