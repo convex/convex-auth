@@ -107,7 +107,7 @@ interface PlaybackStore {
   /** The camera follows the action until the viewer takes the controls. */
   director: boolean;
   /** Bumped to ask the camera to fly somewhere. */
-  flight: { target: "overview" | Selection; seq: number } | null;
+  flight: { target: "overview" | "home" | Selection; seq: number } | null;
   overlays: Overlays;
   /** Bumped when the world is rebuilt (a live recording grew). */
   version: number;
@@ -125,7 +125,7 @@ interface PlaybackStore {
   setSpeed: (speed: number) => void;
   select: (selection: Selection | null) => void;
   setDirector: (on: boolean) => void;
-  flyTo: (target: "overview" | Selection) => void;
+  flyTo: (target: "overview" | "home" | Selection) => void;
   toggleOverlay: (name: keyof Overlays) => void;
 }
 

@@ -139,6 +139,12 @@ try {
     await page.waitForTimeout(1500);
     return at;
   };
+  // The world opens at Home; these drags are checked from the overview.
+  await page.evaluate(() => {
+    const { position: P, target: T } = explorerWorld.layout.overview;
+    explorerControls.setLookAt(...P, ...T, false);
+  });
+  await page.waitForTimeout(1200);
   for (const tilt of ["overview", "flat"]) {
     if (tilt === "flat") {
       await page.evaluate(() => explorerControls.rotatePolarTo(1.25, false));

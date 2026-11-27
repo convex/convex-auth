@@ -17,6 +17,9 @@ import { Rows } from "./Rows.tsx";
 import { SanitizePass } from "./safety.ts";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
+/** Seconds of playback a live world may lag before it speeds up. */
+const CATCH_UP = 8;
+
 /** Advances the playback time while playing, and counts the frames drawn. */
 function Clock() {
   useFrame(({ camera }, delta) => {
@@ -27,7 +30,12 @@ function Clock() {
     if (build && build.drawnAt === null) build.drawnAt = Date.now();
     const s = usePlayback.getState();
     if (!s.playing) return;
-    const next = s.time + Math.min(delta, 0.1) * s.speed;
+    // Live, the world plays what was reported at a pace a person can watch,
+    // and faster the further it falls behind, so it is never more than about
+    // CATCH_UP seconds behind what happened.
+    const behind = world.timeline.duration - s.time;
+    const hurry = s.live ? Math.max(1, behind / CATCH_UP) : 1;
+    const next = s.time + Math.min(delta, 0.1) * s.speed * hurry;
     if (next >= world.timeline.duration) {
       s.setTime(world.timeline.duration);
       // A live recording that still grows waits at its end for what comes.

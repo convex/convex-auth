@@ -56,6 +56,16 @@ const overview = {
   },
 };
 
+/** Home: the browser region with the world beyond it, else the overview. */
+const home = {
+  get position() {
+    return vec((world.layout.home ?? world.layout.overview).position);
+  },
+  get target() {
+    return vec((world.layout.home ?? world.layout.overview).target);
+  },
+};
+
 const KEYS = new Set<string>();
 
 /** Seconds of playback during which Follow keeps the overview. */
@@ -101,7 +111,8 @@ export function CameraRig() {
     if (!c) return;
     // For scripted checks: to look from chosen places.
     (globalThis as { explorerControls?: unknown }).explorerControls = c;
-    const { position, target } = overview;
+    // The world opens at Home.
+    const { position, target } = home;
     void c.setLookAt(
       position.x,
       position.y,
@@ -186,8 +197,8 @@ export function CameraRig() {
   useEffect(() => {
     const c = controls.current;
     if (!c || !flight) return;
-    if (flight.target === "overview") {
-      const { position, target } = overview;
+    if (flight.target === "overview" || flight.target === "home") {
+      const { position, target } = flight.target === "home" ? home : overview;
       void c.setLookAt(
         position.x,
         position.y,

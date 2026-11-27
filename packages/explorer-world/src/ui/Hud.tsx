@@ -113,6 +113,9 @@ export function CameraHud() {
   return (
     <>
       <div className="camera panel">
+        <button onClick={() => flyTo("home")} title="Home (H)">
+          Home
+        </button>
         <button
           onClick={() => flyTo("overview")}
           title="Back to the overview (O)"
@@ -167,6 +170,7 @@ export function useShortcuts() {
       } else if (e.key === "ArrowRight") s.step(1);
       else if (e.key === "ArrowLeft") s.step(-1);
       else if (e.key === "o" || e.key === "O") s.flyTo("overview");
+      else if (e.key === "h" || e.key === "H") s.flyTo("home");
       else if (e.key === "f" || e.key === "F") s.setDirector(!s.director);
       else if (e.key === "r" || e.key === "R") s.toggleOverlay("relations");
       else if (e.key === "l" || e.key === "L") s.toggleOverlay("links");

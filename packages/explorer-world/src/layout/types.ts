@@ -51,6 +51,12 @@ export interface Layout {
   /** The floor the platform islands stand on. */
   platform: { center: Vec3; radius: number };
   overview: { position: Vec3; target: Vec3 };
+  /**
+   * The view Home returns to: the region a recorded page runs in
+   * (`presentation.client`), with the world beyond it toward the platform.
+   * Absent when there is no such region; Home is the overview then.
+   */
+  home?: { position: Vec3; target: Vec3 };
   /** Parts the layout could not place, with the reason. */
   unplaced: { id: string; reason: string }[];
 }

@@ -536,8 +536,32 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
   const depth = Math.max(...zs) - Math.min(...zs);
   const distance = 1.08 * Math.max(width / 2 / 0.68, depth / 2 / 0.3);
   const direction = [0, 0.78, 0.63];
+  // Home: the client region, and the near side of the platform beyond it.
+  const client = presentation.client
+    ? parts.get(presentation.client)
+    : undefined;
+  const homeView = client
+    ? (() => {
+        const r = client.radius;
+        const target: Vec3 = [
+          client.position[0] + r * 0.45,
+          0,
+          client.position[2],
+        ];
+        const d = 1.05 * ((r * 3) / 2 / 0.68);
+        return {
+          target,
+          position: [
+            target[0],
+            direction[1] * d,
+            target[2] + direction[2] * d,
+          ] as Vec3,
+        };
+      })()
+    : undefined;
   return {
     strategy: "islands",
+    home: homeView,
     parts,
     islands: placements,
     platform: { center: [0, -2.4, 0], radius: platformRadius },
