@@ -11,7 +11,7 @@ import {
   type Camera,
 } from "three";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
-import { frameRegion, homeRect } from "./homeFrame.ts";
+import { frameHome } from "./homeFrame.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
@@ -74,9 +74,9 @@ const overview = {
 };
 
 /**
- * Home: the browser region with the world beyond it, else the overview.
- * Fitted to the window: the whole region clear of the panel over the
- * canvas (see `homeFrame.ts`).
+ * Home: the browser region and the island its calls land on first (the
+ * running app's), else the overview. Fitted to the window: the whole region
+ * clear of the panel over the canvas (see `homeFrame.ts`).
  */
 function home(
   camera: Camera,
@@ -100,7 +100,11 @@ function home(
       : null;
   const platform = world.layout.platform.center;
   const direction = vec(h.position).sub(vec(h.target)).normalize();
-  const rect = homeRect(
+  return frameHome(
+    h.region,
+    h.beyond,
+    direction,
+    camera.fov,
     box.width,
     box.height,
     panel,
@@ -108,14 +112,6 @@ function home(
     platform[0] >= h.region.center[0],
     // A circle on the ground seen from above at this elevation.
     1 / Math.max(0.2, direction.y),
-  );
-  return frameRegion(
-    h.region,
-    direction,
-    camera.fov,
-    box.width,
-    box.height,
-    rect,
   );
 }
 

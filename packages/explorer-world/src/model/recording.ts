@@ -189,6 +189,11 @@ export interface Recording {
   name?: string;
   /** When the recording started, in ms. */
   startedAt: number;
+  /**
+   * The app the recording ran in: the one its `recording` event names, else
+   * the presentation's `focus`, else the app its runs name most.
+   */
+  app?: string;
   runs: Run[];
   /** Rows that existed when the recording started. */
   snapshot: Write[];

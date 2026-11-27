@@ -38,6 +38,8 @@ export function homeRect(
   beyondRight: boolean,
   /** The region's width over its height on screen. */
   aspect = 1.3,
+  /** The share of the free room the region takes. */
+  share = SHARE,
 ): Rect {
   const all: Rect = {
     left: 0,
@@ -60,20 +62,20 @@ export function homeRect(
       const w = r.right - r.left;
       const h = r.bottom - r.top;
       return w >= h
-        ? Math.min(w * SHARE, h * aspect)
-        : Math.min(w, h * SHARE * aspect);
+        ? Math.min(w * share, h * aspect)
+        : Math.min(w, h * share * aspect);
     };
     free = room(beside) >= room(above) ? beside : above;
   }
   const w = free.right - free.left;
   const h = free.bottom - free.top;
   if (w >= h) {
-    const share = w * SHARE;
+    const across = w * share;
     return beyondRight
-      ? { ...free, right: free.left + share }
-      : { ...free, left: free.right - share };
+      ? { ...free, right: free.left + across }
+      : { ...free, left: free.right - across };
   }
-  return { ...free, bottom: free.top + h * SHARE };
+  return { ...free, bottom: free.top + h * share };
 }
 
 /**
@@ -82,26 +84,24 @@ export function homeRect(
  * `width` × `height` window.
  */
 export function frameRegion(
-  region: Region,
+  region: Region | Region[],
   direction: Vector3,
   fov: number,
   width: number,
   height: number,
   rect: Rect,
 ): { position: Vector3; target: Vector3 } {
+  const regions = Array.isArray(region) ? region : [region];
   const cam = new PerspectiveCamera(fov, width / height, 0.1, 1e5);
   const dir = direction.clone().normalize();
-  const target = new Vector3(...region.center);
-  target.y = 0;
-  let distance = region.radius * 3;
-  const ring = Array.from({ length: 32 }, (_, i) => {
-    const a = (i / 32) * Math.PI * 2;
-    return new Vector3(
-      region.center[0] + region.radius * Math.cos(a),
-      0,
-      region.center[2] + region.radius * Math.sin(a),
-    );
-  });
+  const ring = regions.flatMap((r) => ringOf(r));
+  const middle = ring
+    .reduce((m, p) => m.add(p), new Vector3())
+    .divideScalar(ring.length);
+  const target = new Vector3(middle.x, 0, middle.z);
+  let distance =
+    3 *
+    Math.max(...ring.map((p) => Math.hypot(p.x - middle.x, p.z - middle.z)));
   // The rectangle in normalized device coordinates.
   const want = {
     x0: (rect.left / width) * 2 - 1,
@@ -149,4 +149,98 @@ export function frameRegion(
     position: target.clone().addScaledVector(dir, distance),
     target,
   };
+}
+
+/** Points around a region's rim on the ground. */
+function ringOf(region: Region): Vector3[] {
+  return Array.from({ length: 32 }, (_, i) => {
+    const a = (i / 32) * Math.PI * 2;
+    return new Vector3(
+      region.center[0] + region.radius * Math.cos(a),
+      0,
+      region.center[2] + region.radius * Math.sin(a),
+    );
+  });
+}
+
+/** A region's box on the window, in pixels, from a camera. */
+export function regionBox(
+  region: Region,
+  view: { position: Vector3; target: Vector3 },
+  fov: number,
+  width: number,
+  height: number,
+): Rect {
+  const cam = new PerspectiveCamera(fov, width / height, 0.1, 1e5);
+  cam.position.copy(view.position);
+  cam.lookAt(view.target);
+  cam.updateMatrixWorld();
+  const out = {
+    left: Infinity,
+    right: -Infinity,
+    top: Infinity,
+    bottom: -Infinity,
+  };
+  for (const p of ringOf(region)) {
+    p.project(cam);
+    const x = ((p.x + 1) / 2) * width;
+    const y = ((1 - p.y) / 2) * height;
+    out.left = Math.min(out.left, x);
+    out.right = Math.max(out.right, x);
+    out.top = Math.min(out.top, y);
+    out.bottom = Math.max(out.bottom, y);
+  }
+  return out;
+}
+
+/**
+ * How large the region must stay, on the window, when Home also shows the
+ * island beyond it: this share of its width when Home shows it alone.
+ */
+const KEEP = 0.6;
+
+/**
+ * Home with a second place in view: the region and `beyond` (the island a
+ * call lands on first) both on the window's free rectangle, when the region
+ * then keeps at least {@link KEEP} of the width it has alone; else the
+ * region alone, as {@link homeRect} places it.
+ */
+export function frameHome(
+  region: Region,
+  beyond: Region | undefined,
+  direction: Vector3,
+  fov: number,
+  width: number,
+  height: number,
+  panel: Rect | null,
+  bottomBar: number,
+  beyondRight: boolean,
+  aspect: number,
+): { position: Vector3; target: Vector3 } {
+  const rect = homeRect(width, height, panel, bottomBar, beyondRight, aspect);
+  const alone = frameRegion(region, direction, fov, width, height, rect);
+  if (!beyond) return alone;
+  // The whole free room: a share of 1.
+  const room = homeRect(
+    width,
+    height,
+    panel,
+    bottomBar,
+    beyondRight,
+    aspect,
+    1,
+  );
+  const both = frameRegion(
+    [region, beyond],
+    direction,
+    fov,
+    width,
+    height,
+    room,
+  );
+  const across = (view: typeof both) => {
+    const b = regionBox(region, view, fov, width, height);
+    return b.right - b.left;
+  };
+  return across(both) >= KEEP * across(alone) ? both : alone;
 }

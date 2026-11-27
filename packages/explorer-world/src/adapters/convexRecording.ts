@@ -557,6 +557,7 @@ export function recordingFromTimeline(
   return {
     recording: {
       startedAt: startedAt || (runs[0]?.startedAt ?? 0),
+      app: app ?? undefined,
       runs,
       snapshot,
       unplaced,

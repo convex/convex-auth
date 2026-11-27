@@ -49,10 +49,12 @@ export function prepareProject(source: ProjectSource): PreparedProject {
 }
 
 /**
- * The world of a recording given as its events. With `previous`, a world of
- * the same project, the layout is reused when the recording adds no part to
- * the map that `previous` lacks; `relaidOut` says whether it was laid out
- * again.
+ * The world of a recording given as its events, laid out around the app the
+ * recording ran in (its `recording` event's `app`; with none, the
+ * presentation's `focus`). With `previous`, a world of the same project, the
+ * layout is reused when the recording adds no part to the map that
+ * `previous` lacks and runs in the same app; `relaidOut` says whether it was
+ * laid out again.
  */
 export function worldFromEvents(
   project: PreparedProject,
@@ -72,15 +74,22 @@ export function worldFromEvents(
       ),
   );
   const graph = withObserved(structure, observed);
+  // The world is laid out around the app the recording runs in: it is what
+  // the page calls.
+  const focus =
+    recording.app && graph.parts.some((p) => p.id === `app:${recording.app}`)
+      ? `app:${recording.app}`
+      : presentation.focus;
   const same =
     previous !== undefined &&
+    previous.presentation.focus === focus &&
     previous.graph.parts.length === graph.parts.length &&
     observed.every((part) => previous.index.part.has(part.id));
   return {
     world: createWorld(
       same ? previous.graph : graph,
       { ...recording, name },
-      presentation,
+      { ...presentation, focus },
       same ? previous.layout : undefined,
     ),
     relaidOut: !same,

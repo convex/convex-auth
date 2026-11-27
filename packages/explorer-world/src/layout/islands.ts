@@ -83,37 +83,57 @@ export function packCircles(
   /** Center the group on its bounds; else the first circle stays at the middle. */
   centered = true,
 ): Circle[] {
+  return pack(
+    radii.map((r) => ({ r, start })),
+    gap,
+    centered,
+  );
+}
+
+interface Packed {
+  r: number;
+  /** Where its sweep starts (radians from +x toward +z). */
+  start: number;
+  /** Spots it may not take, as the direction from the middle (radians). */
+  avoid?: { angle: number; half: number };
+}
+
+const angleBetween = (a: number, b: number) =>
+  Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+/** {@link packCircles}, with each circle's own start and a wedge it avoids. */
+function pack(items: Packed[], gap: number, centered: boolean): Circle[] {
   const placed: Circle[] = [];
-  let reach = 0;
-  for (const r of radii) {
+  for (const { r, start, avoid } of items) {
     if (!placed.length) {
       placed.push({ r, x: 0, z: 0 });
-      reach = r;
       continue;
     }
     const fits = (x: number, z: number) =>
-      placed.every((c) => Math.hypot(c.x - x, c.z - z) >= c.r + r + gap);
+      placed.every((c) => Math.hypot(c.x - x, c.z - z) >= c.r + r + gap) &&
+      // The whole circle stays out of the wedge.
+      (!avoid ||
+        angleBetween(Math.atan2(z, x), avoid.angle) >
+          avoid.half +
+            Math.asin(Math.min(1, r / Math.max(r, Math.hypot(x, z)))));
     let done: Circle | null = null;
     const step = Math.max(0.25, Math.min(r, 1) * 0.5);
-    // Beyond `reach + r + gap` every spot is free, so the sweep ends.
+    // Beyond every placed circle each spot is free (outside the wedge), so the sweep ends.
     for (let d = Math.max(0, placed[0].r + r + gap - 0.01); !done; d += step) {
       const n = Math.max(6, Math.ceil((2 * Math.PI * d) / step));
-      let best: Circle | null = null;
       for (let k = 0; k < n; k++) {
-        // Alternate around the front: 0, +1, -1, +2, -2, ...
+        // Alternate around the start: 0, +1, -1, +2, -2, ...
         const j = k % 2 ? (k + 1) / 2 : -k / 2;
         const a = start + (j * 2 * Math.PI) / n;
         const x = d * Math.cos(a);
         const z = d * Math.sin(a);
         if (fits(x, z)) {
-          best = { r, x, z };
+          done = { r, x, z };
           break;
         }
       }
-      done = best;
     }
     placed.push(done);
-    reach = Math.max(reach, Math.hypot(done.x, done.z) + r);
   }
   // Center the group on the middle of its bounds.
   if (centered && placed.length > 1) {
@@ -162,6 +182,42 @@ function flowColumns(nodes: Node[]): Circle[] {
   const x0 = Math.min(...out.map((c) => c.x - c.r));
   const x1 = Math.max(...out.map((c) => c.x + c.r));
   for (const c of out) c.x -= (x0 + x1) / 2;
+  return out;
+}
+
+/**
+ * Circles packed with the one at `first` on the rim toward the clients
+ * (-x): the others pack from the far side (+x), then it stands just
+ * outside them, level with the group's middle. The result is centered.
+ */
+function nearRim(radii: number[], first: number): Circle[] {
+  const rest = radii.flatMap((r, i) => (i === first ? [] : [{ r, i }]));
+  const packed = packCircles(
+    rest.map((x) => x.r),
+    GAP,
+    0,
+  );
+  const out: Circle[] = radii.map((r) => ({ r, x: 0, z: 0 }));
+  rest.forEach(({ i }, k) => (out[i] = packed[k]));
+  // Just past the nearest circle in its row, so it touches the group.
+  const r = radii[first];
+  const z = 0;
+  const x = Math.min(
+    ...packed.map((c) => {
+      const dz = Math.abs(c.z - z);
+      const reach = c.r + r + GAP * 2;
+      return dz >= reach ? Infinity : c.x - Math.sqrt(reach * reach - dz * dz);
+    }),
+  );
+  out[first] = { r, x: Number.isFinite(x) ? x : -r, z };
+  const x0 = Math.min(...out.map((c) => c.x - c.r));
+  const x1 = Math.max(...out.map((c) => c.x + c.r));
+  const z0 = Math.min(...out.map((c) => c.z - c.r));
+  const z1 = Math.max(...out.map((c) => c.z + c.r));
+  for (const c of out) {
+    c.x -= (x0 + x1) / 2;
+    c.z -= (z0 + z1) / 2;
+  }
   return out;
 }
 
@@ -421,15 +477,32 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     ].sort(
       (a, b) => a.order - b.order || weightOf(b) - weightOf(a) || b.r - a.r,
     );
-    const circles = nodes.some((n) => n.flow !== undefined)
-      ? flowColumns(nodes)
-      : // A district with a heart keeps it at its middle.
-        packCircles(
-          nodes.map((n) => n.r),
-          GAP,
-          Math.PI / 2,
-          !nodes.some((n) => heart.has(n.id) || n.weight !== undefined),
-        );
+    // The child island holding the focus (the app the page calls) stands
+    // on the rim toward the clients, the rest behind it.
+    const focal =
+      !inClientZone(island.id) && nodes.length > 1
+        ? nodes.findIndex(
+            (n) =>
+              n.flow === undefined &&
+              childIslands.get(island.id)?.some((c) => c.id === n.id) &&
+              containsFocus(n.id),
+          )
+        : -1;
+    const circles =
+      focal >= 0 && !nodes.some((n) => n.flow !== undefined)
+        ? nearRim(
+            nodes.map((n) => n.r),
+            focal,
+          )
+        : nodes.some((n) => n.flow !== undefined)
+          ? flowColumns(nodes)
+          : // A district with a heart keeps it at its middle.
+            packCircles(
+              nodes.map((n) => n.r),
+              GAP,
+              Math.PI / 2,
+              !nodes.some((n) => heart.has(n.id) || n.weight !== undefined),
+            );
     // An island's kind can ask for more room than its contents need.
     const radius = Math.max(
       4 * (look(island).size ?? 1),
@@ -494,6 +567,27 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
     [...platformIslands].sort(
       (a, b) => arrange(b, 0).radius - arrange(a, 0).radius,
     )[0];
+  // With a focus, what it uses (the components its app mounts) stands
+  // beside it on the clients' side, and the rest on the far side; the
+  // wedge straight between the focus and the clients stays open.
+  const focusLinks = focus
+    ? coupling(index, (id) => {
+        let h: string | null | undefined = id;
+        while (h) {
+          if (h === focus) return focus;
+          const p = index.part.get(h);
+          const up: string | null | undefined =
+            p && isIsland(p) ? parentIsland.get(h) : home.get(h);
+          if (!up) return p && isIsland(p) ? h : null;
+          h = up;
+        }
+        return null;
+      })
+    : null;
+  const usedBy = (i: Part) =>
+    focusLinks && anchor && containsFocus(anchor.id)
+      ? focusLinks(i.id, focus!)
+      : 0;
   const ordered = anchor
     ? [
         anchor,
@@ -501,6 +595,8 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
           .filter((i) => i !== anchor)
           .sort(
             (a, b) =>
+              Number(usedBy(b) > 0) - Number(usedBy(a) > 0) ||
+              usedBy(b) - usedBy(a) ||
               linkCount(b.id, anchor.id) - linkCount(a.id, anchor.id) ||
               arrange(b, 0).radius - arrange(a, 0).radius ||
               a.id.localeCompare(b.id),
@@ -508,10 +604,22 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
       ]
     : [];
   // From the right of the anchor: the clients wait on the left.
-  const platformCircles = packCircles(
-    ordered.map((i) => arrange(i, 0).radius),
+  const towardClients = Math.PI;
+  const platformCircles = pack(
+    ordered.map((i, k) => {
+      const r = arrange(i, 0).radius;
+      if (k === 0 || !focusLinks || !containsFocus(anchor!.id))
+        return { r, start: 0 };
+      return usedBy(i) > 0
+        ? {
+            r,
+            start: towardClients,
+            avoid: { angle: towardClients, half: 0.28 },
+          }
+        : { r, start: 0, avoid: { angle: towardClients, half: 0.9 } };
+    }),
     3.5,
-    0,
+    true,
   );
   ordered.forEach((i, k) =>
     arrange(i, 0).place([platformCircles[k].x, 0, platformCircles[k].z]),
@@ -594,7 +702,8 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
   const depth = Math.max(...zs) - Math.min(...zs);
   const distance = 1.08 * Math.max(width / 2 / 0.68, depth / 2 / 0.3);
   const direction = [0, 0.78, 0.63];
-  // Home: the client region, and the near side of the platform beyond it.
+  // Home: the client region, and the near side of the platform beyond it,
+  // with the island of the focus (the app its calls reach first).
   const client = presentation.client
     ? parts.get(presentation.client)
     : undefined;
@@ -607,9 +716,13 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
           client.position[2],
         ];
         const d = 1.05 * ((r * 3) / 2 / 0.68);
+        const landing = focus ? parts.get(focus) : undefined;
         return {
           target,
           region: { center: client.position, radius: r },
+          beyond: landing
+            ? { center: landing.position, radius: landing.radius }
+            : undefined,
           position: [
             target[0],
             direction[1] * d,
