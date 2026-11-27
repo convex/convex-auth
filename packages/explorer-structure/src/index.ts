@@ -16,3 +16,9 @@ export type * from "./convex-auth/model.ts";
 export const structure = model as unknown as ConvexAuthStructure;
 
 export { joinRecording, type Join } from "./join.ts";
+export {
+  stepOrigin,
+  stepSites,
+  type RecordedStep,
+  type StepOrigin,
+} from "./convex-auth/join.ts";
