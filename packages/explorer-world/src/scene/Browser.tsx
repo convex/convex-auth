@@ -1,18 +1,30 @@
 /**
  * What the client library reports in the browser, drawn where it happens:
  * the sign-in state of each page as one shape, and on each module a ring of
- * marks, one per kind of step it has reported, lit while it reports it.
+ * marks, one per kind of step it has reported, lit while it reports it;
+ * and around the module reporting now, a halo that keeps its size on the
+ * window, with a ripple for each step it reports, so that from the whole
+ * browser region the eye finds the one module acting.
  * Everything here is a function of the playback time: nothing moves unless
  * a step was reported.
  */
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
-import { Color, type Group, type Mesh, type MeshBasicMaterial } from "three";
+import { Billboard } from "@react-three/drei";
+import {
+  AdditiveBlending,
+  Color,
+  Vector3,
+  type Group,
+  type Mesh,
+  type MeshBasicMaterial,
+} from "three";
+import type { ClientStep } from "../model/schedule.ts";
 import type { PageState } from "../model/recording.ts";
 import { currentState, hover, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
 import { Lod } from "./Lod.tsx";
-import { placementOf } from "./look.ts";
+import { anchorPosition, placementOf } from "./look.ts";
 import { STATE_COLORS } from "./palette.ts";
 
 /** Each state as arcs of one ring: [start, length] in turns. */
@@ -47,6 +59,7 @@ export function Browser() {
   }, []);
   return (
     <>
+      <Halos />
       {states.map((p) => (
         <StateShape key={p.id} id={p.id} />
       ))}
@@ -187,6 +200,159 @@ function StepRing({ part, steps }: { part: string; steps: string[] }) {
           </mesh>
         );
       })}
+    </group>
+  );
+}
+
+/** Shown seconds a halo takes to fade after its module's last step. */
+const HALO_FADE = 0.35;
+/** A halo's radius as a fraction of its distance to the camera, at least. */
+export const HALO_ON_SCREEN = 0.03;
+
+const nextCache = new WeakMap<ClientStep[], (ClientStep | undefined)[]>();
+/** For each step, the next step at another module. */
+function nextElsewhere(steps: ClientStep[]) {
+  let out = nextCache.get(steps);
+  if (out) return out;
+  out = new Array(steps.length);
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const n = steps[i + 1];
+    out[i] = !n ? undefined : n.part !== steps[i].part ? n : out[i + 1];
+  }
+  nextCache.set(steps, out);
+  return out;
+}
+
+/**
+ * How much each module is acting at time `t`, 0..1: the module of the
+ * newest step reported (and not yet over) fully; one whose step a newer
+ * one followed, or whose step is over, fading over {@link HALO_FADE}.
+ * `steps` are in order of start.
+ */
+export function actingModules(
+  steps: ClientStep[],
+  t: number,
+): { now: string | null; on: Map<string, number> } {
+  const on = new Map<string, number>();
+  let now: ClientStep | null = null;
+  const after = nextElsewhere(steps);
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i];
+    if (s.start > t) break;
+    if (t > s.end + HALO_FADE || !placementOf(s.part)) continue;
+    const next = after[i];
+    const until = Math.min(s.end, next && next.start <= t ? next.start : s.end);
+    const v = t < until ? 1 : Math.max(0, 1 - (t - until) / HALO_FADE);
+    if (v > 0) on.set(s.part, Math.max(on.get(s.part) ?? 0, v));
+    if (t < s.end && (!next || next.start > t)) now = s;
+  }
+  return { now: now?.part ?? null, on };
+}
+
+function Halos() {
+  const version = usePlayback((s) => s.version);
+  const steps = useMemo(() => {
+    void version;
+    return world.timeline.clientSteps;
+  }, [version]);
+  const ids = usePlayback((s) =>
+    [...actingModules(steps, s.time).on.keys()].sort().join(","),
+  );
+  return (
+    <>
+      {ids
+        ? ids.split(",").map((id) => <Halo key={id} part={id} steps={steps} />)
+        : null}
+    </>
+  );
+}
+
+/**
+ * The halo of a module while it reports: a soft disc and a ring facing the
+ * camera, at least {@link HALO_ON_SCREEN} of the distance across, and a
+ * ripple out of it at the start of each step.
+ */
+function Halo({ part, steps }: { part: string; steps: ClientStep[] }) {
+  const p = placementOf(part)!;
+  const group = useRef<Group>(null);
+  const disc = useRef<Mesh>(null);
+  const ring = useRef<Mesh>(null);
+  const ripple = useRef<Mesh>(null);
+  const mine = useMemo(
+    () => steps.filter((s) => s.part === part),
+    [steps, part],
+  );
+  const color = useMemo(
+    () => new Color(p.color).lerp(new Color("#ffffff"), 0.35),
+    [p.color],
+  );
+  const at = useMemo(() => anchorPosition(part, new Vector3()), [part]);
+  useFrame(({ camera }) => {
+    const g = group.current;
+    if (!g) return;
+    const t = currentState().time;
+    // The step now, or the last one before now.
+    let last: ClientStep | null = null;
+    for (const s of mine) {
+      if (s.start > t) break;
+      last = s;
+    }
+    const on = actingModules(steps, t).on.get(part) ?? 0;
+    g.position.copy(at);
+    g.scale.setScalar(
+      Math.max(p.radius * 1.6, camera.position.distanceTo(at) * HALO_ON_SCREEN),
+    );
+    const since = last ? t - last.start : 1;
+    const set = (m: Mesh | null, opacity: number, scale = 1) => {
+      if (!m) return;
+      (m.material as MeshBasicMaterial).opacity = opacity;
+      m.scale.setScalar(scale);
+    };
+    set(disc.current, 0.18 * on);
+    set(
+      ring.current,
+      0.9 * on,
+      1 + 0.08 * Math.sin(Math.min(1, since / 0.5) * Math.PI),
+    );
+    const k = Math.min(1, since / 0.5);
+    set(ripple.current, 0.6 * (1 - k) * on, 1 + 1.4 * k);
+  });
+  return (
+    <group ref={group}>
+      <Billboard>
+        <mesh ref={disc} raycast={() => null}>
+          <circleGeometry args={[1, 40]} />
+          <meshBasicMaterial
+            color={color}
+            toneMapped={false}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+        <mesh ref={ring} raycast={() => null}>
+          <ringGeometry args={[0.9, 1, 48]} />
+          <meshBasicMaterial
+            color={color.clone().multiplyScalar(2)}
+            toneMapped={false}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+          />
+        </mesh>
+        <mesh ref={ripple} raycast={() => null}>
+          <ringGeometry args={[0.94, 1, 48]} />
+          <meshBasicMaterial
+            color={color}
+            toneMapped={false}
+            transparent
+            depthWrite={false}
+            depthTest={false}
+            blending={AdditiveBlending}
+          />
+        </mesh>
+      </Billboard>
     </group>
   );
 }

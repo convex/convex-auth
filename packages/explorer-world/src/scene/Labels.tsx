@@ -19,6 +19,7 @@ import { FOOTPRINT } from "../layout/islands.ts";
 import type { IslandPlacement } from "../layout/types.ts";
 import { currentState, usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
+import { actingModules, HALO_ON_SCREEN } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
 import { HEIGHT, partOf, placementOf } from "./look.ts";
 
@@ -186,12 +187,15 @@ function useActing(): string[] {
     last.current.t = clock.elapsedTime;
     const state = currentState();
     const ids = new Set<string>(state.active.keys());
+    // The module reporting the newest step: its name beside its halo.
+    const now = actingModules(world.timeline.clientSteps, state.time).now;
+    if (now) ids.add(`report:${now}`);
     for (const t of state.travellers) {
       ids.add(t.progress < 0.5 ? t.movement.from : t.movement.to);
     }
     const list = [...ids]
       .filter((id) => {
-        const p = placementOf(id);
+        const p = placementOf(id.replace(/^report:/, ""));
         return p && p.shape !== "island" && p.shape !== "state";
       })
       .sort();
@@ -204,16 +208,31 @@ function useActing(): string[] {
   return acting;
 }
 
-function PartLabel({ id, rank }: { id: string; rank: 1 | 2 }) {
+/**
+ * The name of a module reporting a step: kept at a readable size on the
+ * window at any distance, beside its halo (`Browser.tsx`).
+ */
+const REPORT_GROW = { distance: 22, max: 1e4 };
+
+function PartLabel({
+  id,
+  rank,
+  reporting = false,
+}: {
+  id: string;
+  rank: 1 | 2;
+  reporting?: boolean;
+}) {
   const p = placementOf(id);
   const part = partOf(id);
-  const size = rank === 2 ? 0.36 : 0.32;
+  const size = rank === 2 ? 0.36 : reporting ? 0.42 : 0.32;
+  const grow = reporting ? REPORT_GROW : PART_GROW;
   const group = useDeclutter(`part:${id}`, {
     chars: part?.label.length ?? 4,
     lines: 1,
     size,
-    grow: PART_GROW,
-    priority: rank === 2 ? 200 : 120,
+    grow,
+    priority: rank === 2 ? 200 : reporting ? 250 : 120,
   });
   if (!p || !part) return null;
   const [x, y, z] = p.position;
@@ -221,11 +240,19 @@ function PartLabel({ id, rank }: { id: string; rank: 1 | 2 }) {
   return (
     <group position={[x, y, z]}>
       <group ref={group} position={[0, h, 0]}>
-        <KeepSize distance={PART_GROW.distance} max={PART_GROW.max}>
+        <KeepSize distance={grow.distance} max={grow.max}>
           <Billboard>
             <Label
               fontSize={size}
               color="#ffffff"
+              // Beside the halo, which is HALO_ON_SCREEN of the distance
+              // across: the same in this group's units.
+              anchorX={reporting ? "left" : "center"}
+              position={
+                reporting
+                  ? [HALO_ON_SCREEN * grow.distance * 1.15, -0.2, 0]
+                  : undefined
+              }
               weight={rank === 2 ? "bold" : "regular"}
               outlineWidth={0.025}
               outlineColor="#03050a"
@@ -258,10 +285,23 @@ export function Labels() {
         <PartLabel key={`s:${id}`} id={id} rank={2} />
       ))}
       {acting
-        .filter((id) => !chosen.includes(id))
-        .map((id) => (
-          <PartLabel key={`a:${id}`} id={id} rank={1} />
-        ))}
+        .filter(
+          (id) =>
+            !chosen.includes(id) &&
+            !(acting.includes(`report:${id}`) && !id.startsWith("report:")),
+        )
+        .map((id) =>
+          id.startsWith("report:") ? (
+            <PartLabel
+              key={`r:${id}`}
+              id={id.slice("report:".length)}
+              rank={1}
+              reporting
+            />
+          ) : (
+            <PartLabel key={`a:${id}`} id={id} rank={1} />
+          ),
+        )}
     </>
   );
 }
