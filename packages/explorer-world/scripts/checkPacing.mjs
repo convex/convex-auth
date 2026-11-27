@@ -16,8 +16,10 @@
 //   place to the next (MIN_HOP_KEY between a module and a storage key in
 //   it): seven places in a third of a second is a flash, not a path.
 //
-// SLACK covers the software renderer of a headless browser, whose frames
-// are slow; on a real GPU the playhead keeps shown time.
+// The page is drawn at double density, so that the software renderer of a
+// headless browser draws slow frames: shown time must follow the wall clock
+// all the same (a slow machine drops frames, not time). SLACK covers the
+// time from a control's press to its work's end, and polling.
 //
 // Needs the example's dependencies, `pnpm build` at the root, and Playwright
 // with a Chromium (`require("playwright")`). Takes about two minutes.
@@ -48,7 +50,7 @@ const MIN_HOP = 0.33;
 /** The same between a module and a storage key in it (s); `HOP_KEY`. */
 const MIN_HOP_KEY = 0.28;
 /** Wall seconds allowed past the shown span, for slow headless frames. */
-const SLACK = 8;
+const SLACK = 3;
 
 const failures = [];
 const check = (ok, message) => {
@@ -129,7 +131,10 @@ try {
     ],
   });
   const page = await (
-    await browser.newContext({ viewport: { width: 1280, height: 800 } })
+    await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: 2,
+    })
   ).newPage();
   await page.goto(link);
 

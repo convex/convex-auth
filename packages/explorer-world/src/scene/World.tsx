@@ -19,6 +19,9 @@ import { SanitizePass } from "./safety.ts";
 import { Operations } from "./Operations.tsx";
 import { Holdings, Travellers } from "./Travellers.tsx";
 
+/** The longest wall time one frame plays (s). */
+const LONGEST_FRAME = 5;
+
 /** Advances the playback time while playing, and counts the frames drawn. */
 function Clock() {
   useFrame(({ camera }, delta) => {
@@ -29,11 +32,21 @@ function Clock() {
     if (build && build.drawnAt === null) build.drawnAt = Date.now();
     const s = usePlayback.getState();
     if (!s.playing) return;
-    // Live, the world plays what was reported at a pace a person can watch;
-    // a newer pressed control makes the one playing finish quickly.
-    const rate = s.live ? hurry(world.timeline, s.time) : 1;
-    // Slow frames still keep time (up to half a second at once).
-    const next = s.time + Math.min(delta, 0.5) * s.speed * rate;
+    // Shown time follows the wall clock: a slow machine draws fewer frames
+    // and each one goes further. Only a gap longer than LONGEST_FRAME (a
+    // hidden tab, a debugger) is not played through.
+    let left = Math.min(delta, LONGEST_FRAME);
+    let next = s.time;
+    while (left > 0) {
+      // Live, the world plays what was reported at a pace a person can
+      // watch; a newer pressed control makes the one playing finish
+      // quickly. The rate is taken again every tenth of a second.
+      const dt = Math.min(left, 0.1);
+      const rate = s.live ? hurry(world.timeline, next) : 1;
+      next += dt * s.speed * rate;
+      left -= dt;
+      if (next >= world.timeline.duration) break;
+    }
     if (next >= world.timeline.duration) {
       s.setTime(world.timeline.duration);
       // A live recording that still grows waits at its end for what comes.
