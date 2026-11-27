@@ -221,13 +221,42 @@ export function readPageFeed(
         const t = (e.target ?? {}) as Record<string, string | null>;
         const what = t.text ?? t.name ?? t.id ?? t.selector ?? t.tag;
         const value = typeof e.value === "string" ? ` "${e.value}"` : "";
-        count(e.kind, item(e, "input", `${String(e.action)} ${what}${value}`));
+        const verb: Record<string, string> = {
+          click: `clicks "${what}"`,
+          type: `types${value || " a hidden value"} into ${what}`,
+          submit: "submits the form",
+          key: `presses a key in ${what}`,
+        };
+        count(
+          e.kind,
+          item(
+            e,
+            "input",
+            verb[String(e.action)] ?? `${String(e.action)} ${what}`,
+          ),
+        );
         break;
       }
       case "page": {
         const path =
           String(e.url).replace(/^[a-z]+:\/\/[^/]+/, "") || String(e.url);
-        count(e.kind, item(e, "page", `${String(e.event)} ${path}`));
+        const blank = /^about:/.test(String(e.url));
+        const sentence: Record<string, string> = {
+          open: blank
+            ? "a browser tab opens"
+            : `a browser tab opens on ${path}`,
+          navigated: `goes to ${path}`,
+          load: `finishes loading ${path}`,
+          close: "the tab closes",
+        };
+        count(
+          e.kind,
+          item(
+            e,
+            "page",
+            sentence[String(e.event)] ?? `${String(e.event)} ${path}`,
+          ),
+        );
         break;
       }
       case "scenario": {
@@ -239,7 +268,11 @@ export function readPageFeed(
           item(
             e,
             "scenario",
-            `${String(e.status)} · ${String(e.step)}${e.error ? ` · ${String(e.error)}` : ""}`,
+            e.status === "start"
+              ? `the scenario: ${String(e.step)}`
+              : e.status === "end"
+                ? `the scenario step is done: ${String(e.step)}`
+                : `the scenario step failed: ${String(e.step)}${e.error ? ` (${String(e.error)})` : ""}`,
             tone,
           ),
         );
@@ -256,7 +289,7 @@ export function readPageFeed(
             time: e.time,
             kind: "storage",
             part: pageOf(e.pageId),
-            text: `${where}: drops ${drop.label}`,
+            text: `removes ${drop.label} from ${where}`,
             tone: "normal",
             hold: { op: "drop", cargo: drop, where },
           });
@@ -265,7 +298,7 @@ export function readPageFeed(
             time: e.time,
             kind: "storage",
             part: pageOf(e.pageId),
-            text: `${where}: stores ${gain.label}`,
+            text: `stores ${gain.label} in ${where}`,
             tone: "normal",
             hold: { op: "gain", cargo: gain, where },
           });

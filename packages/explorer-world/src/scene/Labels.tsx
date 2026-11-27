@@ -56,11 +56,16 @@ function useDeclutter(key: string, entry: Omit<Entry, "group">) {
   return group;
 }
 
-const ISLAND_GROW = { distance: 40, max: 2.2 };
+const ISLAND_GROW = { distance: 40, max: 3.6 };
 const PART_GROW = { distance: 22, max: 2.6 };
 
 function islandLabelSize(i: IslandPlacement) {
-  return i.depth ? 0.5 + i.radius * 0.03 : 0.7 + i.radius * 0.04;
+  // Every island name reads at the overview; large ones stay modest.
+  const clamp = (v: number, lo: number, hi: number) =>
+    Math.min(hi, Math.max(lo, v));
+  return i.depth
+    ? clamp(0.6 + i.radius * 0.03, 0.95, 1.4)
+    : clamp(0.7 + i.radius * 0.03, 1.15, 1.9);
 }
 
 function IslandLabel({ island }: { island: IslandPlacement }) {

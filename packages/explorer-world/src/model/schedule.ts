@@ -158,7 +158,7 @@ export function buildTimeline(
         at,
         at + PACE.page,
         run.id,
-        `${name(it.part)} · ${it.text}`,
+        `${name(it.part)}: ${it.text}`,
         it.tone,
         it.part,
       );

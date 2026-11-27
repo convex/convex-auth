@@ -74,7 +74,7 @@ describe("a made-up chat app", () => {
       },
     ]);
     expect(send.after.map((i) => i.text)).toEqual([
-      "localStorage ticket: stores ticket s1",
+      "stores ticket s1 in localStorage ticket",
       "query messages:list: not linked to one run (2 runs fit)",
     ]);
     // A call the recorder could not link stays unlinked, with its candidates.
