@@ -85,8 +85,16 @@ const RECEDE = 0.3;
 export const groupName = (c: Cluster) =>
   world.presentation.groups?.[c.id]?.label ?? c.label;
 
+/**
+ * The groups drawn: not one that holds all its island holds (the keys of
+ * one storage), which would only repeat the island.
+ */
 const all = () =>
-  world.layout.islands.flatMap((i) => i.clusters.map((c) => ({ i, c })));
+  world.layout.islands.flatMap((i) =>
+    i.clusters
+      .filter((c) => c.members.length < i.members.length)
+      .map((c) => ({ i, c })),
+  );
 
 const disc = new CircleGeometry(1, 48).rotateX(-Math.PI / 2);
 const ring = new RingGeometry(0.94, 1, 64).rotateX(-Math.PI / 2);
@@ -144,7 +152,7 @@ export function Groups() {
     if (controls?.getTarget) controls.getTarget(target, false);
     let best: string | null = null;
     let score = Infinity;
-    for (const { c } of list) {
+    for (const { i, c } of list) {
       centre.set(...c.center);
       const off = Math.hypot(target.x - centre.x, target.z - centre.z);
       const slack = c.radius * 1.3 + 2;
@@ -152,7 +160,7 @@ export function Groups() {
       if (camera.position.distanceTo(centre) > c.radius * 3 + 12) continue;
       if (off / slack < score) {
         score = off / slack;
-        best = c.id;
+        best = `${i.id}|${c.id}`;
       }
     }
     if (best !== near) setNear(best);
@@ -208,7 +216,13 @@ export function Groups() {
         />
       </instancedMesh>
       {list.map(({ i, c }) => (
-        <GroupNames key={c.id} island={i} cluster={c} open={near === c.id} />
+        <GroupNames
+          key={`${i.id}|${c.id}`}
+          island={i}
+          cluster={c}
+          open={near === `${i.id}|${c.id}`}
+          inOther={near !== null && near !== `${i.id}|${c.id}`}
+        />
       ))}
     </>
   );
@@ -224,18 +238,21 @@ function GroupNames({
   island,
   cluster: c,
   open,
+  inOther,
 }: {
   island: IslandPlacement;
   cluster: Cluster;
   /** Whether its members are named (the camera is close, looking at it). */
   open: boolean;
+  /** Whether another group's members are named. */
+  inOther: boolean;
 }) {
   const text = groupName(c);
   const size = 0.25;
   const { ref: color, standing } = useStanding(c.id);
   // Off when the whole region around is in view: the district's own name
   // is enough from there.
-  const group = useDeclutter(`group:${c.id}`, {
+  const group = useDeclutter(`group:${island.id}|${c.id}`, {
     chars: text.length,
     lines: 1,
     size,
@@ -246,10 +263,13 @@ function GroupNames({
       (standing === "took" ? 30 : standing === "wired" ? 15 : 0),
     hideFar: island.radius * 4 + 20,
     // Close to the group and looking at it, its members' names take over.
-    when: () => !openRef.current,
+    // and while another group's are, the names of quiet groups step back.
+    when: () =>
+      !openRef.current.open &&
+      !(openRef.current.inOther && openRef.current.standing === "quiet"),
   });
-  const openRef = useRef(open);
-  openRef.current = open;
+  const openRef = useRef({ open, inOther, standing });
+  openRef.current = { open, inOther, standing };
   const [x, y, z] = c.center;
   const roots = useMemo(
     () => c.members.filter((id) => !c.members.includes(parentOf(id) ?? "")),
