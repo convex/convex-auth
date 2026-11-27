@@ -1,8 +1,16 @@
 import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
-import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
+import {
+  PerspectiveCamera,
+  Plane,
+  Raycaster,
+  Vector2,
+  Vector3,
+  type Camera,
+} from "three";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
+import { frameRegion, homeRect } from "./homeFrame.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
@@ -64,15 +72,54 @@ const overview = {
   },
 };
 
-/** Home: the browser region with the world beyond it, else the overview. */
-const home = {
-  get position() {
-    return vec((world.layout.home ?? world.layout.overview).position);
-  },
-  get target() {
-    return vec((world.layout.home ?? world.layout.overview).target);
-  },
-};
+/**
+ * Home: the browser region with the world beyond it, else the overview.
+ * Fitted to the window: the whole region clear of the panel over the
+ * canvas (see `homeFrame.ts`).
+ */
+function home(
+  camera: Camera,
+  canvas: HTMLElement,
+): { position: Vector3; target: Vector3 } {
+  const h = world.layout.home;
+  if (!h) return overview;
+  const box = canvas.getBoundingClientRect();
+  if (!(camera instanceof PerspectiveCamera) || !box.width || !box.height)
+    return { position: vec(h.position), target: vec(h.target) };
+  const el = document.querySelector(".controls");
+  const r = el?.getBoundingClientRect();
+  const panel =
+    r && r.width && r.height
+      ? {
+          left: r.left - box.left,
+          right: r.right - box.left,
+          top: r.top - box.top,
+          bottom: r.bottom - box.top,
+        }
+      : null;
+  const platform = world.layout.platform.center;
+  const direction = vec(h.position).sub(vec(h.target)).normalize();
+  const rect = homeRect(
+    box.width,
+    box.height,
+    panel,
+    BOTTOM_BAR,
+    platform[0] >= h.region.center[0],
+    // A circle on the ground seen from above at this elevation.
+    1 / Math.max(0.2, direction.y),
+  );
+  return frameRegion(
+    h.region,
+    direction,
+    camera.fov,
+    box.width,
+    box.height,
+    rect,
+  );
+}
+
+/** The height of the time line along the bottom of the window (px). */
+const BOTTOM_BAR = 44;
 
 const KEYS = new Set<string>();
 
@@ -95,8 +142,12 @@ const typing = (e: KeyboardEvent) => {
   );
 };
 
+/** Whether the camera is at Home as it opened or was flown there. */
+let atHome = false;
+
 /** The viewer takes the camera: Follow stops until turned on again. */
 const takeOver = () => {
+  atHome = false;
   if (usePlayback.getState().director)
     usePlayback.getState().setDirector(false);
 };
@@ -114,23 +165,50 @@ export function CameraRig() {
   const flight = usePlayback((s) => s.flight);
   const lastFocus = useRef<string | null>(null);
 
+  const canvas = useThree((s) => s.gl.domElement);
+  const camera = useThree((s) => s.camera);
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
     // For scripted checks: to look from chosen places.
     (globalThis as { explorerControls?: unknown }).explorerControls = c;
-    // The world opens at Home.
-    const { position, target } = home;
-    void c.setLookAt(
-      position.x,
-      position.y,
-      position.z,
-      target.x,
-      target.y,
-      target.z,
-      false,
-    );
-  }, []);
+    // The world opens at Home, and stays fitted to the window and the
+    // panel until the viewer moves the camera.
+    const fit = (smooth: boolean) => {
+      const { position, target } = home(camera, canvas);
+      void c.setLookAt(
+        position.x,
+        position.y,
+        position.z,
+        target.x,
+        target.y,
+        target.z,
+        smooth,
+      );
+    };
+    fit(false);
+    atHome = true;
+    const refit = () => {
+      if (atHome) fit(false);
+    };
+    const seen = new ResizeObserver(refit);
+    seen.observe(canvas);
+    // The panel comes, and changes size, after the canvas.
+    const panel = () => document.querySelector(".controls");
+    let watched: Element | null = null;
+    const watch = setInterval(() => {
+      const el = panel();
+      if (el && el !== watched) {
+        if (watched) seen.unobserve(watched);
+        seen.observe(el);
+        watched = el;
+      }
+    }, 500);
+    return () => {
+      seen.disconnect();
+      clearInterval(watch);
+    };
+  }, [camera, canvas]);
 
   // The keys are read on the window: the canvas need not have focus.
   useEffect(() => {
@@ -156,8 +234,6 @@ export function CameraRig() {
 
   // A plain drag pans: the point of the ground pressed stays under the
   // pointer, as on a map. With Cmd or Ctrl the controls orbit instead.
-  const canvas = useThree((s) => s.gl.domElement);
-  const camera = useThree((s) => s.camera);
   useEffect(() => {
     let pressed: Vector3 | null = null;
     let id = -1;
@@ -206,7 +282,9 @@ export function CameraRig() {
     const c = controls.current;
     if (!c || !flight) return;
     if (flight.target === "overview" || flight.target === "home") {
-      const { position, target } = flight.target === "home" ? home : overview;
+      const { position, target } =
+        flight.target === "home" ? home(camera, canvas) : overview;
+      atHome = flight.target === "home";
       void c.setLookAt(
         position.x,
         position.y,
@@ -218,6 +296,7 @@ export function CameraRig() {
       );
       return;
     }
+    atHome = false;
     const { target, distance } = selectionFocus(flight.target);
     const from = new Vector3();
     c.getPosition(from);
@@ -234,7 +313,7 @@ export function CameraRig() {
       target.z,
       true,
     );
-  }, [flight]);
+  }, [flight, camera, canvas]);
 
   useFrame((_, delta) => {
     const c = controls.current;
@@ -259,6 +338,7 @@ export function CameraRig() {
     if (moved) takeOver();
 
     if (!director) return;
+    atHome = false;
     // Director: frame every part the current beat touches. The world is shown
     // whole from above first; the director starts after the first moments.
     const { time } = usePlayback.getState();

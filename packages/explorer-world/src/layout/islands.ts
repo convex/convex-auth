@@ -551,6 +551,7 @@ export const islandsLayout: LayoutStrategy = (graph, presentation) => {
         const d = 1.05 * ((r * 3) / 2 / 0.68);
         return {
           target,
+          region: { center: client.position, radius: r },
           position: [
             target[0],
             direction[1] * d,

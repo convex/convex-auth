@@ -56,7 +56,12 @@ export interface Layout {
    * (`presentation.client`), with the world beyond it toward the platform.
    * Absent when there is no such region; Home is the overview then.
    */
-  home?: { position: Vec3; target: Vec3 };
+  home?: {
+    position: Vec3;
+    target: Vec3;
+    /** The region on the ground, for the camera to fit to the window. */
+    region: { center: Vec3; radius: number };
+  };
   /** Parts the layout could not place, with the reason. */
   unplaced: { id: string; reason: string }[];
 }
