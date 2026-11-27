@@ -77,6 +77,8 @@ export function CameraRig() {
   useEffect(() => {
     const c = controls.current;
     if (!c) return;
+    // For scripted checks: to look from chosen places.
+    (globalThis as { explorerControls?: unknown }).explorerControls = c;
     const { position, target } = overview;
     void c.setLookAt(
       position.x,

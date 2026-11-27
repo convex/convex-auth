@@ -156,7 +156,7 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 URL parameters for scripted screenshots: `?t=42&paused` opens at 42 s,
 `?free` starts at the overview without following, `?select=<part id>` opens
 with a part selected, `?noeffects` turns off bloom, `?capture` keeps the
-drawing buffer for screenshots.
+drawing buffer for screenshots, `?diag` shows the diagnostics (below).
 
 ## How it is built
 
@@ -253,6 +253,33 @@ that events show while the scenario runs (and the lag, as above), that pause,
 scrub back, resume and skip to live work mid-run, that the final world equals
 the world of the saved file and received every line, and that no process is
 left after Ctrl-C. About two minutes; needs Playwright with a Chromium.
+
+### When the scene draws wrong on one machine
+
+The bloom blurs through a chain of ever smaller textures, so one NaN or
+infinite pixel in the scene buffer turns into a large black rectangle, and
+the more of the map is on screen, the more of the frame goes black. Whether a
+shader gives NaN (a division by zero, a `pow` of a negative number, `atan(0,
+0)`, an alpha that overflows half floats) depends on the GPU: a software
+renderer can give a finite value where a GPU does not. So the shaders avoid
+those operations, and a pass before the bloom replaces any non-finite value
+with 0 and clamps the rest (`src/scene/safety.ts`).
+
+`?diag` shows what is needed to find such a problem from one screenshot: the
+GPU and what it supports, the size of the canvas and its pixel ratio, the
+camera, the count of NaN, infinite and negative pixels in the scene buffer
+before the effects (read back once a second), and a switch for each effect
+(the sanitize pass, bloom, vignette, fog) and each layer of the scene. Turn
+the layers off one at a time until the count drops to 0.
+
+`pnpm --filter @convex-dev/explorer-world check:rendering` checks in
+Chromium, at pixel ratio 1 and 2, from the overview, mid range and close up,
+that the scene buffer holds no NaN, infinite or negative pixel, and that the
+frame with effects has no black area where the frame without has content. It
+also draws a quad that outputs NaN and checks that the frame survives it,
+and that without the sanitize pass the check would see the black area. It
+runs on SwiftShader, which is not a GPU: passing does not prove that a GPU
+draws right.
 
 Everything the app needs is bundled, fonts included. Text in the 3D scene goes
 through `glyphSafe` so that troika never fetches a fallback font.
