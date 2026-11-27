@@ -95,6 +95,13 @@ export type StepSite = {
    * e.g. `outcomeOf(result)`: the report may hold more keys than `detailKeys`.
    */
   detailOpen?: string[];
+  /**
+   * The detail values the call writes as literals in the source (a string,
+   * a number, or a boolean), by key, e.g. `{ via: "signUp" }`. Source text,
+   * never a value the code computes; a computed value stays a name in
+   * `detailKeys` only.
+   */
+  detailLiterals?: Record<string, string | number | boolean>;
 };
 
 /** A use of a stored key: a key of a `NamespacedStorage` or a `SignInStorage` (`browser/storage.ts`). */

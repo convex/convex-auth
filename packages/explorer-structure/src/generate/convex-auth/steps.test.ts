@@ -27,7 +27,7 @@ export class Client {
     report(STEPS, "run.start", { n, ...known() });
   }
   #inner = () => {
-    report("module:b", "inner", { ...open(), x: 1 });
+    report("module:b", "inner", { ...open(), x: -1, on: true, via: "lit", n: Date.now() });
   };
 }
 
@@ -141,8 +141,9 @@ describe("the step sites", () => {
         export: "Client",
         within: ["Client", "#inner"],
         reportsAs: "module:b",
-        detailKeys: ["x"],
+        detailKeys: ["x", "on", "via", "n"],
         detailOpen: ["open()"],
+        detailLiterals: { x: -1, on: true, via: "lit" },
       },
       {
         step: "relay",

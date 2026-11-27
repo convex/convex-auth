@@ -63,10 +63,41 @@ describe("joining a recorded step", () => {
           .map((s) => `${s.part ?? "server"} ${s.step}`),
       ),
     ].sort();
-    expect(ambiguous).toEqual([
-      "module:browser/sessionManager signOut.revoke",
-      "module:browser/sessionManager state",
-      "server session.issued",
+    // The SPA and the SSR branch of the constructor both report
+    // `signOut.revoke` with `skipped: false` (the SPA one computes it).
+    expect(ambiguous).toEqual(["module:browser/sessionManager signOut.revoke"]);
+  });
+
+  test("a literal the source writes narrows the sites", () => {
+    const issued = (via: string) =>
+      stepSites(structure, { step: "session.issued", detail: { via } }).map(
+        (s) => s.within.at(-1),
+      );
+    expect(issued("signUp")).toEqual(["completeSignUp"]);
+    expect(issued("signIn")).toEqual(["completeSignIn"]);
+    const state = (detail: Record<string, unknown>) =>
+      stepSites(structure, {
+        runsIn: "browser",
+        part: "module:browser/sessionManager",
+        step: "state",
+        detail,
+      }).map((s) => s.within.at(-1));
+    const base = {
+      isLoading: false,
+      isAuthenticated: true,
+      tokenChanged: true,
+    };
+    expect(state(base)).toEqual(["#notify"]);
+    expect(state({ ...base, tokenChanged: false, initial: true })).toEqual([
+      "init",
+    ]);
+  });
+
+  test("a site holds only literals, never a computed value", () => {
+    const revoke = structure.steps.filter((s) => s.step === "signOut.revoke");
+    expect(revoke.map((s) => s.detailLiterals)).toEqual([
+      undefined,
+      { skipped: false },
     ]);
   });
 });

@@ -34,7 +34,8 @@ export type StepOrigin = {
 /**
  * The places that can have reported a recorded step. When several match by
  * name and part, the ones whose detail keys cannot hold the recorded ones
- * are dropped.
+ * are dropped, and then the ones that write a literal the recorded detail
+ * does not hold (a missing key, or another value).
  */
 export function stepSites(
   model: { steps: StepSite[] },
@@ -59,7 +60,14 @@ export function stepSites(
       site.detailOpen !== undefined ||
       keys.every((key) => site.detailKeys.includes(key)),
   );
-  return byKeys.length === 0 ? byName : byKeys;
+  const candidates = byKeys.length === 0 ? byName : byKeys;
+  const detail = recorded.detail;
+  const byLiterals = candidates.filter((site) =>
+    Object.entries(site.detailLiterals ?? {}).every(
+      ([key, value]) => key in detail && detail[key] === value,
+    ),
+  );
+  return byLiterals.length === 0 ? candidates : byLiterals;
 }
 
 /** Where a recorded step came from, or `null` when no place in the source reports it. */

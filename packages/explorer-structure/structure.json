@@ -23998,7 +23998,8 @@
       "export": "AuthClient",
       "within": ["AuthClient", "constructor", "#signOutInternal"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["skipped"]
+      "detailKeys": ["skipped"],
+      "detailLiterals": { "skipped": false }
     },
     {
       "step": "init",
@@ -24024,7 +24025,8 @@
       "export": "AuthClient",
       "within": ["AuthClient", "init"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged", "initial"]
+      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged", "initial"],
+      "detailLiterals": { "tokenChanged": false, "initial": true }
     },
     {
       "step": "ambientSignIn.init",
@@ -24193,7 +24195,8 @@
       "export": "AuthClient",
       "within": ["AuthClient", "#refreshHoldingLock"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["reason", "hasToken"]
+      "detailKeys": ["reason", "hasToken"],
+      "detailLiterals": { "reason": "refreshedByAnotherTab" }
     },
     {
       "step": "refresh.start",
@@ -24545,7 +24548,8 @@
         "makeHelpers",
         "completeSignUp"
       ],
-      "detailKeys": ["via", "method", "authenticatedBy", "userId"]
+      "detailKeys": ["via", "method", "authenticatedBy", "userId"],
+      "detailLiterals": { "via": "signUp" }
     },
     {
       "step": "session.issued",
@@ -24559,7 +24563,8 @@
         "makeHelpers",
         "completeSignIn"
       ],
-      "detailKeys": ["via", "method", "authenticatedBy", "userId"]
+      "detailKeys": ["via", "method", "authenticatedBy", "userId"],
+      "detailLiterals": { "via": "signIn" }
     },
     {
       "step": "user.created",
@@ -24587,7 +24592,8 @@
         "makeHelpers",
         "revokeOtherSessions"
       ],
-      "detailKeys": ["scope", "count"]
+      "detailKeys": ["scope", "count"],
+      "detailLiterals": { "scope": "others" }
     },
     {
       "step": "sessions.revoked",
@@ -24601,7 +24607,8 @@
         "makeHelpers",
         "revokeAllSessions"
       ],
-      "detailKeys": ["scope", "count"]
+      "detailKeys": ["scope", "count"],
+      "detailLiterals": { "scope": "all" }
     },
     {
       "step": "method.start",

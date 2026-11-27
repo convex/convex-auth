@@ -297,13 +297,42 @@ function keysOfType(checker: ts.TypeChecker, type: ts.Type): string[] | null {
   return keys;
 }
 
-/** The names of a detail's keys, and the code of the parts whose keys are not known. */
+/** The value of a string, number, or boolean literal written in the source, if `expr` is one. */
+function literalValue(expr: ts.Expression): string | number | boolean | null {
+  if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+    return expr.text;
+  }
+  if (ts.isNumericLiteral(expr)) {
+    return Number(expr.text);
+  }
+  if (
+    ts.isPrefixUnaryExpression(expr) &&
+    expr.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(expr.operand)
+  ) {
+    return -Number(expr.operand.text);
+  }
+  if (expr.kind === ts.SyntaxKind.TrueKeyword) return true;
+  if (expr.kind === ts.SyntaxKind.FalseKeyword) return false;
+  return null;
+}
+
+/**
+ * The names of a detail's keys, the code of the parts whose keys are not
+ * known, and the values the source writes as literals (source text, never a
+ * value the code computes).
+ */
 export function detailKeys(
   checker: ts.TypeChecker,
   expr: ts.Expression | undefined,
-): { keys: string[]; open: string[] } {
+): {
+  keys: string[];
+  open: string[];
+  literals: Record<string, string | number | boolean>;
+} {
   const keys: string[] = [];
   const open: string[] = [];
+  const literals: Record<string, string | number | boolean> = {};
   const fromType = (e: ts.Expression) => {
     const found = keysOfType(checker, checker.getTypeAtLocation(e));
     if (found === null) {
@@ -313,24 +342,30 @@ export function detailKeys(
     }
   };
   if (expr === undefined) {
-    return { keys, open };
+    return { keys, open, literals };
   }
   if (ts.isObjectLiteralExpression(expr)) {
     for (const property of expr.properties) {
       if (ts.isSpreadAssignment(property)) {
         fromType(property.expression);
       } else if (property.name !== undefined) {
-        keys.push(
+        const name =
           ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
             ? property.name.text
-            : property.name.getText(),
-        );
+            : property.name.getText();
+        keys.push(name);
+        const value = ts.isPropertyAssignment(property)
+          ? literalValue(property.initializer)
+          : null;
+        if (value !== null) {
+          literals[name] = value;
+        }
       }
     }
   } else {
     fromType(expr);
   }
-  return { keys: [...new Set(keys)], open };
+  return { keys: [...new Set(keys)], open, literals };
 }
 
 /** Every call in the files, by the function-like node its callee resolves to. */
@@ -438,7 +473,7 @@ export function scanStepSites(
           `${location.file}:${location.line}: the step's name is not spelled out in the source`,
         );
       }
-      const { keys, open } = detailKeys(
+      const { keys, open, literals } = detailKeys(
         checker,
         call.arguments[reporter.args.detail],
       );
@@ -464,6 +499,9 @@ export function scanStepSites(
             : { reportsAsPassedIn: reportsAs }),
         detailKeys: keys,
         ...(open.length === 0 ? {} : { detailOpen: open }),
+        ...(Object.keys(literals).length === 0
+          ? {}
+          : { detailLiterals: literals }),
       });
     }
   }

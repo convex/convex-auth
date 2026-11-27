@@ -290,6 +290,10 @@ own.
 - `detailKeys`: the names of the detail's keys, read from the object literal
   and the types of its spreads. `detailOpen` lists the spreads whose type
   does not tell its keys (`outcomeOf(result)`).
+- `detailLiterals`: the detail values the call writes as literals in the
+  source (a string, a number, or a boolean), by key, such as
+  `{ "via": "signUp" }`. They are source text, not values the code computes;
+  a computed value stays a name in `detailKeys`.
 
 ### What client modules hold
 
@@ -356,9 +360,15 @@ stepOrigin(structure, { step: "refresh.result" }); // a server step
 
 A client step matches by its name and the part it reports as; a server step
 by its name alone. When several sites match, those whose detail keys cannot
-hold the recorded ones are dropped. Some steps stay with more than one site
-(`session.issued` from sign-up and from sign-in); `stepSites` lists them. A
-test maps every step of the world's recordings.
+hold the recorded ones are dropped, then those that write a literal the
+recorded detail does not hold: `via` tells the `session.issued` of a sign-up
+from that of a sign-in, `scope` the two `sessions.revoked`, and `initial` the
+first `state` from the later ones. One recorded step still has two sites:
+`signOut.revoke` with `skipped: false`, which the SSR branch of
+`AuthClient`'s constructor writes as a literal and the SPA branch computes
+(`refreshToken === null`), so the step alone cannot tell them apart; the
+page's `init` step, whose `mode` is `spa` or `ssr`, can. `stepSites` lists
+both. A test maps every step of the world's recordings.
 
 ## What it does not model yet
 
