@@ -407,6 +407,31 @@ frame takes milliseconds; that is not measured here.
   write, a call, an answer) in the preset's `phrases`. A step with no
   phrase shows its code name alone. A line holds names, labels, flags and
   error codes only, never a value.
+- **A story walks the viewer through it** (`src/ui/Story.tsx`,
+  `src/model/story.ts`), in live mode: **Stories** in the list's header
+  lists the project's (Convex Auth's in `projects/convex-auth/stories/`,
+  one JSON file each). A story is an ordered list of stops. Each stop has a
+  sentence or two a person wrote (`say`) and a pin: a matcher for a line of
+  the list (by step, operation kind, the part that reported it, fields of
+  its report, the nth one), or a span between two lines. Each pin is looked
+  for after the stop before, so "the second start" is the next one after
+  the stop that found the first. A stop may name a part to look at (opened
+  up or not, with a member or hold inside it named), and checks on its
+  operation: a line that must be there, or one that must not. The words
+  never stand in for the code: a pin or check that did not hold in this run
+  says so ("This did not happen in this run"), in the warning colour; one
+  whose line has not arrived reads "Waiting for the code"; and that
+  something was not reported is known only once the press is over. A stop
+  with no pin is a note, and is shown as one. A story can start with a
+  press (`press`: the action and its label): its button presses the
+  control, and the stops bind to the lines of that press as they arrive.
+  The caption keeps the top of the left column, with the list (and a
+  docked card) under it. On Next or Back (`]`, `[`) time goes to the
+  stop's line and holds, the list shows the line, the stop's thing is
+  selected, and the camera goes to frame it: the one place a story moves
+  the camera, since the viewer asked to be taken there. **Play to next**
+  (`p`) plays at normal pace from the stop to the next and holds there.
+  **Exit** leaves time, selection and camera where they are.
 - **The recording plays**: a request leaves its caller, calls travel between
   functions, the commit sends its writes to their tables, rows rise in, change
   state and dissolve, a warning shows over the function that logged it, and the
@@ -431,6 +456,7 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 | F / Follow                    | the camera follows the action (on at start)           |
 | R, L, U                       | toggle the relations, all links, unresolved overlays  |
 | Space, ← →                    | play or pause; step to the previous or next line      |
+| `[`, `]`, P                   | in a story: back, next, play to the next stop         |
 | timeline, run list            | scrub; click a run to jump to it and inspect it       |
 
 URL parameters for scripted screenshots: `?t=42&paused` opens at 42 s,

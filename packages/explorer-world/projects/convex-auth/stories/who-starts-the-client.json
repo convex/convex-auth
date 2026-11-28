@@ -2,16 +2,25 @@
   "id": "who-starts-the-client",
   "title": "Who starts and stops the client",
   "about": "A reload in development: the provider starts the client, React's StrictMode stops it, and the provider starts it again.",
-  "press": { "action": "reload", "label": "Reload the page" },
+  "press": {
+    "action": "reload",
+    "label": "Reload the page"
+  },
   "stops": [
     {
       "say": "The page loads and React mounts the auth provider. ConvexAuthProvider built the client; this provider, inside it, is the one that starts it.",
-      "pin": { "step": "provider.mount" },
-      "look": { "part": "module:react/client" }
+      "pin": {
+        "step": "provider.mount"
+      },
+      "look": {
+        "part": "module:react/client"
+      }
     },
     {
       "say": "The client starts. First it listens for changes from other tabs, then it reports that it is loading.",
-      "pin": { "op": "init" },
+      "pin": {
+        "op": "init"
+      },
       "look": {
         "part": "module:browser/sessionManager",
         "open": true,
@@ -20,13 +29,18 @@
       "checks": [
         {
           "say": "It listens for changes from other tabs.",
-          "has": { "step": "crossTab.listen" }
+          "has": {
+            "step": "crossTab.listen"
+          }
         },
         {
           "say": "It reports that it is loading.",
           "has": {
             "step": "state",
-            "detail": { "initial": true, "isLoading": true }
+            "detail": {
+              "initial": true,
+              "isLoading": true
+            }
           }
         }
       ]
@@ -36,20 +50,30 @@
       "pin": {
         "from": {
           "step": "storage.read",
-          "detail": { "key": "__convexAuthJWT" }
+          "detail": {
+            "key": "__convexAuthJWT"
+          }
         },
         "to": {
           "step": "storage.read",
-          "detail": { "key": "__convexAuthRefreshToken" }
+          "detail": {
+            "key": "__convexAuthRefreshToken"
+          }
         }
       },
-      "look": { "part": "storageKey:__convexAuthJWT*" }
+      "look": {
+        "part": "storageKey:__convexAuthJWT*"
+      }
     },
     {
       "say": "React's StrictMode unmounts the provider on purpose (in development only). The provider stops the client it started, and the client stops listening to other tabs.",
       "pin": {
-        "from": { "step": "provider.unmount" },
-        "to": { "step": "dispose" }
+        "from": {
+          "step": "provider.unmount"
+        },
+        "to": {
+          "step": "dispose"
+        }
       },
       "look": {
         "part": "module:browser/sessionManager",
@@ -60,18 +84,32 @@
     {
       "say": "From here until the client listens again, nothing is listening. A change made in another tab now would be missed, and memory would drift from storage. This gap is where the drift bugs live.",
       "pin": {
-        "from": { "step": "dispose" },
-        "to": { "step": "crossTab.listen" }
+        "from": {
+          "step": "dispose"
+        },
+        "to": {
+          "step": "crossTab.listen"
+        }
+      },
+      "look": {
+        "part": "module:browser/sessionManager",
+        "open": true
       }
     },
     {
       "say": "React mounts the provider again.",
-      "pin": { "step": "provider.mount" },
-      "look": { "part": "module:react/client" }
+      "pin": {
+        "step": "provider.mount"
+      },
+      "look": {
+        "part": "module:react/client"
+      }
     },
     {
       "say": "The provider starts the same client again. This time the client only listens again: it does not start over, and it does not read storage a second time.",
-      "pin": { "op": "init" },
+      "pin": {
+        "op": "init"
+      },
       "look": {
         "part": "module:browser/sessionManager",
         "open": true,
@@ -80,21 +118,32 @@
       "checks": [
         {
           "say": "It listens for changes from other tabs again.",
-          "has": { "step": "crossTab.listen" }
+          "has": {
+            "step": "crossTab.listen"
+          }
         },
         {
           "say": "No new start was reported.",
-          "not": { "step": "init" }
+          "not": {
+            "step": "init"
+          }
         },
         {
           "say": "No storage read was reported in this start.",
-          "not": { "step": "storage.read" }
+          "not": {
+            "step": "storage.read"
+          }
         }
       ]
     },
     {
       "say": "Only now does the first start finish: memory takes what it read, and the client stops loading. Memory agrees with storage: signed in or signed out, as storage said. The list shows this line under the first start, where it belongs, though it came last.",
-      "pin": { "step": "state", "detail": { "isLoading": false } },
+      "pin": {
+        "step": "state",
+        "detail": {
+          "isLoading": false
+        }
+      },
       "look": {
         "part": "module:browser/sessionManager",
         "open": true,
@@ -103,7 +152,9 @@
       "checks": [
         {
           "say": "It belongs to the first start.",
-          "has": { "step": "init" }
+          "has": {
+            "step": "init"
+          }
         }
       ]
     },
