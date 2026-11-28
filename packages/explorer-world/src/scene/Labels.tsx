@@ -24,6 +24,7 @@ import {
 import { FOOTPRINT } from "../layout/islands.ts";
 import type { IslandPlacement } from "../layout/types.ts";
 import { currentState, usePlayback, world } from "../store.ts";
+import { CHAR_EM, nameBox, overlapsAny, type Box } from "./declutter.ts";
 import { highlightOf } from "./highlight.ts";
 import { actingModules, haloRadius } from "./Browser.tsx";
 import { KeepSize, Label } from "./Label.tsx";
@@ -210,7 +211,26 @@ function IslandLabel({ island }: { island: IslandPlacement }) {
   );
 }
 
+/**
+ * The width of the text under a name, over its font size, once it is laid
+ * out; until then, none.
+ */
+function laidWidth(group: Group): number | undefined {
+  let em: number | undefined;
+  group.traverse((o) => {
+    const t = o as Group & {
+      textRenderInfo?: { blockBounds: number[] };
+      fontSize?: number;
+    };
+    if (em !== undefined || !t.textRenderInfo || !t.fontSize) return;
+    const b = t.textRenderInfo.blockBounds;
+    em = (b[2] - b[0]) / t.fontSize;
+  });
+  return em;
+}
+
 const projected = new Vector3();
+const viewAt = new Vector3();
 const at = new Vector3();
 
 /** Hides labels that would cover more important ones on screen. */
@@ -225,7 +245,7 @@ function Declutter() {
     last.current = clock.elapsedTime;
     const fovScale =
       1 / Math.tan((((camera as PerspectiveCamera).fov ?? 42) * Math.PI) / 360);
-    const shown: [number, number, number, number][] = [];
+    const shown: Box[] = [];
     const entries = [...registry.values()].sort(
       (a, b) => b.priority - a.priority,
     );
@@ -271,10 +291,7 @@ function Declutter() {
         continue;
       }
       if (e.beside) {
-        const free = (r: [number, number, number, number]) =>
-          !shown.some(
-            (q) => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1],
-          );
+        const free = (r: Box) => !overlapsAny(r, shown);
         const side = e.beside.rect(camera, size, "side");
         const below = e.beside.rect(camera, size, "below");
         const rect = free(side) ? side : free(below) ? below : null;
@@ -293,24 +310,25 @@ function Declutter() {
       const k = e.grow
         ? Math.min(e.grow.max, Math.max(1, d / e.grow.distance))
         : 1;
-      const px = ((e.size * k * fovScale) / d) * (size.height / 2);
+      // Its size on screen goes by its depth along the view, not its
+      // distance: off the middle of the view, a name is larger than its
+      // distance makes it.
+      const depth = -viewAt.copy(at).applyMatrix4(camera.matrixWorldInverse).z;
+      const px = ((e.size * k * fovScale) / depth) * (size.height / 2);
       if (px < 5) {
         e.group.visible = false;
         continue;
       }
-      const w = (e.chars * 0.56 * px) / 2;
       const cx = (projected.x * 0.5 + 0.5) * size.width;
       const cy = (-projected.y * 0.5 + 0.5) * size.height;
-      const rect: [number, number, number, number] = [
-        cx - w,
-        cy - px * 0.6,
-        cx + w,
-        cy + px * (0.6 + (e.lines - 1) * 0.6),
-      ];
-      const overlaps = shown.some(
-        (r) =>
-          rect[0] < r[2] && rect[2] > r[0] && rect[1] < r[3] && rect[3] > r[1],
+      const rect = nameBox(
+        cx,
+        cy,
+        px,
+        laidWidth(e.group) ?? e.chars * CHAR_EM,
+        e.lines,
       );
+      const overlaps = overlapsAny(rect, shown);
       e.group.visible = !overlaps;
       if (!overlaps) shown.push(rect);
     }
@@ -476,7 +494,9 @@ function PartLabel({
         : undefined,
     [reporting, p, h, grow, part, size],
   );
-  const group = useDeclutter(`part:${id}`, {
+  // A selected part can be reporting too: each of its two names has its
+  // own entry, or the one that goes takes the other's with it.
+  const group = useDeclutter(reporting ? `report:${id}` : `part:${id}`, {
     chars: part?.label.length ?? 4,
     lines: 1,
     size,
