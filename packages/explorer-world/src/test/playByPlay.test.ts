@@ -15,6 +15,7 @@ import {
   newestPress,
   openSectionOf,
   phraseText,
+  stepPhrase,
   playByPlayOf,
   type PlayLine,
 } from "../model/playByPlay.ts";
@@ -316,5 +317,31 @@ describe("the line at a time", () => {
     expect(lines.some((l) => l.at === next)).toBe(true);
     expect(lineStop(sections, next, -1)).toBe(call.at);
     expect(lineStop(sections, Infinity, 1)).toBeNull();
+  });
+});
+
+describe("the tokens labels", () => {
+  const state = phrases.steps!.state;
+  test("name which tokens memory holds, and keep the old text where a recording has none", () => {
+    expect(
+      stepPhrase(phrases, "state", { state: "signed in", tokens: 2 }),
+    ).toBe("now signed in, tokens 2");
+    expect(phraseText(state, { tokens: "none" })).toBe(
+      "now {state}, no tokens",
+    );
+    expect(phraseText(state, {})).toBe("now {state}");
+    expect(
+      stepPhrase(phrases, "storage.read", {
+        key: "__convexAuthJWT",
+        found: true,
+        tokens: 1,
+      }),
+    ).toBe("reads __convexAuthJWT: tokens 1");
+    expect(
+      stepPhrase(phrases, "storage.read", {
+        key: "__convexAuthJWT",
+        found: true,
+      }),
+    ).toBe("reads __convexAuthJWT");
   });
 });

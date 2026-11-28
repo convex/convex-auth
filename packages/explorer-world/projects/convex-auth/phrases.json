@@ -31,17 +31,27 @@
     "session.revoked": "sees the session revoked, signs out",
     "init": "starts, {mode} mode",
     "state": [
+      {
+        "when": { "initial": true, "tokens": "none" },
+        "text": "starts out {state}, no tokens"
+      },
       { "when": { "initial": true }, "text": "starts out {state}" },
-      { "text": "now {state}" }
+      { "when": { "tokens": null }, "text": "now {state}" },
+      { "when": { "tokens": "none" }, "text": "now {state}, no tokens" },
+      { "text": "now {state}, tokens {tokens}" }
     ],
     "ambientSignIn.init": "runs the start-up hook of the {id} sign-in",
     "dispose": "stops listening to other tabs",
     "crossTab.listen": "listens for changes from other tabs",
     "crossTab.change": [
       { "when": { "cleared": true }, "text": "another tab cleared {key}" },
-      { "text": "another tab changed {key}" }
+      { "when": { "tokens": null }, "text": "another tab changed {key}" },
+      { "text": "another tab changed {key}: tokens {tokens}" }
     ],
-    "session.set": "takes the new session",
+    "session.set": [
+      { "when": { "tokens": null }, "text": "takes the new session" },
+      { "text": "takes the new session, tokens {tokens}" }
+    ],
     "signIn.pending.start": "a sign-in is pending",
     "signIn.pending.end": "the pending sign-in is over",
     "signOut.start": "starts signing out",
@@ -59,7 +69,15 @@
         "when": { "forceRefresh": true },
         "text": "is asked for a new access token"
       },
-      { "text": "hands over the access token it holds" }
+      {
+        "when": { "tokens": null },
+        "text": "hands over the access token it holds"
+      },
+      {
+        "when": { "tokens": "none" },
+        "text": "has no access token to hand over"
+      },
+      { "text": "hands over the access token it holds, tokens {tokens}" }
     ],
     "lock.request": "waits for the refresh lock",
     "lock.acquired": "holds the refresh lock",
@@ -68,16 +86,57 @@
     "refresh.start": "refreshes the session",
     "refresh.throw": "the refresh failed",
     "refresh.end": [
-      { "when": { "outcome": "rotated" }, "text": "refreshed: new tokens" },
+      {
+        "when": { "outcome": "rotated", "tokens": null },
+        "text": "refreshed: new tokens"
+      },
+      {
+        "when": { "outcome": "rotated" },
+        "text": "refreshed: new tokens, tokens {tokens}"
+      },
       { "when": { "outcome": "noSession" }, "text": "refreshed: no session" },
       { "text": "refreshed: {outcome}" }
     ],
     "retry": "network error, tries again (attempt {attempt})",
     "storage.read": [
       { "when": { "found": false }, "text": "reads {key}: empty" },
+      {
+        "when": { "key": "__convexAuthJWT", "tokens": null },
+        "text": "reads {key}"
+      },
+      {
+        "when": { "key": "__convexAuthJWT" },
+        "text": "reads {key}: tokens {tokens}"
+      },
+      {
+        "when": { "key": "__convexAuthRefreshToken", "tokens": null },
+        "text": "reads {key}"
+      },
+      {
+        "when": { "key": "__convexAuthRefreshToken" },
+        "text": "reads {key}: tokens {tokens}"
+      },
       { "text": "reads {key}" }
     ],
-    "storage.write": "writes {key}",
+    "storage.write": [
+      {
+        "when": { "key": "__convexAuthJWT", "tokens": null },
+        "text": "writes {key}"
+      },
+      {
+        "when": { "key": "__convexAuthJWT" },
+        "text": "writes {key}: tokens {tokens}"
+      },
+      {
+        "when": { "key": "__convexAuthRefreshToken", "tokens": null },
+        "text": "writes {key}"
+      },
+      {
+        "when": { "key": "__convexAuthRefreshToken" },
+        "text": "writes {key}: tokens {tokens}"
+      },
+      { "text": "writes {key}" }
+    ],
     "storage.remove": "removes {key}",
     "signIn.call": "calls {function}",
     "signIn.return": [

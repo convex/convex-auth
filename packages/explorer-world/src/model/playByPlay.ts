@@ -125,7 +125,11 @@ export function fill(
     .trim();
 }
 
-/** The text of a phrase for a detail: the first variant whose `when` holds. */
+/**
+ * The text of a phrase for a detail: the first variant whose `when` holds. A
+ * `when` value of null also matches a field the detail does not have, such as
+ * a field that older recordings lack.
+ */
 export function phraseText(
   phrase: Phrase | undefined,
   detail: Record<string, unknown> | undefined,
@@ -133,7 +137,9 @@ export function phraseText(
   if (phrase === undefined) return null;
   if (typeof phrase === "string") return phrase;
   const hit = phrase.find((v) =>
-    Object.entries(v.when ?? {}).every(([k, want]) => detail?.[k] === want),
+    Object.entries(v.when ?? {}).every(
+      ([k, want]) => (detail?.[k] ?? null) === want,
+    ),
   );
   return hit?.text ?? null;
 }
