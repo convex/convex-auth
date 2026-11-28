@@ -6,7 +6,9 @@
  *
  * It also declares the actions a viewer can ask for one at a time
  * (`--actions`): sign up, sign in, sign in with a wrong password, sign out,
- * reload. They fill in and submit the app's own forms.
+ * reload. They fill in and submit the app's own forms. One more, "Sign in
+ * while the first load is still reading", makes the race of the first load
+ * happen (see {@link SLOW_STORAGE_KEY}).
  *
  * The scenario takes about a minute: the access token lives 60 s by default
  * (`packages/core/src/lib/ttl.ts`), and the page refreshes it shortly before
@@ -33,7 +35,40 @@ type Memory = {
   /** The account the actions signed up last; null before any sign-up. */
   username: string | null;
   password: string | null;
+  /** Whether the page has the script that turns on slow storage. */
+  slowStorageScript: boolean;
 };
+
+/**
+ * The page's `sessionStorage` key that asks the next load of the app for
+ * slow storage, and the delay of each storage call in ms. The script below
+ * turns it into the global `__CONVEX_AUTH_EXPLORER_STORAGE__` that
+ * `examples/react-username-password/src/explorer.tsx` reads.
+ *
+ * With slow storage, the client's first load reads the stored session for
+ * `SLOW_STORAGE_DELAY_MS`, and a sign-in made meanwhile is overwritten in
+ * memory when the read answers: the race fixed by 3e952bb on
+ * `erquhart/fix-init-race`, which this branch's library does not have.
+ */
+const SLOW_STORAGE_KEY = "__convexAuthExplorerSlowStorage";
+const SLOW_STORAGE_DELAY_MS = 2500;
+
+/** The app's explorer hook (see `src/explorer.tsx` of the example). */
+type ExplorerWindow = {
+  __CONVEX_AUTH_EXPLORER_SIGN_IN__?: (
+    username: string,
+    password: string,
+  ) => Promise<string>;
+};
+
+function slowStorageScript(key: string) {
+  const delay = window.sessionStorage.getItem(key);
+  if (delay !== null) {
+    (globalThis as Record<string, unknown>).__CONVEX_AUTH_EXPLORER_STORAGE__ = {
+      delayMs: Number(delay),
+    };
+  }
+}
 
 const INCORRECT = "Incorrect username or password.";
 
@@ -80,7 +115,7 @@ const loading = (observed: Observed) =>
   observed.loading ? "the page is loading" : null;
 
 const actions: PageActions<Memory> = {
-  memory: () => ({ username: null, password: null }),
+  memory: () => ({ username: null, password: null, slowStorageScript: false }),
   username: (memory) => memory.username,
   async observe(frame, steps) {
     // The client library's own report of its state, when it gave one.
@@ -187,6 +222,61 @@ const actions: PageActions<Memory> = {
         await frame.waitForURL((url) => url.pathname === "/login");
         await frame.locator("#username").waitFor();
         return "signed out";
+      },
+    },
+    {
+      id: "signInDuringFirstLoad",
+      label: "Sign in while the first load is still reading",
+      unavailable: (o, m) =>
+        loading(o) ??
+        (o.signedIn !== false
+          ? "signed in: sign out first"
+          : m.password === null
+            ? "sign up first"
+            : null),
+      async run({ page, frame, reload }, memory) {
+        if (!memory.slowStorageScript) {
+          await page.addInitScript(slowStorageScript, SLOW_STORAGE_KEY);
+          memory.slowStorageScript = true;
+        }
+        await frame.evaluate(
+          ([key, delay]) => window.sessionStorage.setItem(key, delay),
+          [SLOW_STORAGE_KEY, String(SLOW_STORAGE_DELAY_MS)],
+        );
+        try {
+          await reload();
+          // The app is mounted and its first load is reading storage. The
+          // form is not on screen while it loads, so sign in through the
+          // app's explorer hook, which calls the same public hook as the form.
+          await frame.waitForFunction(
+            () =>
+              (window as ExplorerWindow).__CONVEX_AUTH_EXPLORER_SIGN_IN__ !==
+              undefined,
+          );
+          const status = await frame.evaluate(
+            ([username, password]) =>
+              (window as ExplorerWindow).__CONVEX_AUTH_EXPLORER_SIGN_IN__!(
+                username,
+                password,
+              ),
+            [memory.username!, memory.password!],
+          );
+          if (status !== "complete")
+            throw new Error(`the sign-in did not complete: ${status}`);
+        } finally {
+          // The next load uses normal storage again.
+          await frame.evaluate(
+            (key) => window.sessionStorage.removeItem(key),
+            SLOW_STORAGE_KEY,
+          );
+        }
+        await Promise.race([
+          frame.locator(signedIn).waitFor({ timeout: 20_000 }),
+          frame.locator("#username").waitFor({ timeout: 20_000 }),
+        ]);
+        return (await where(frame)) === "signedIn"
+          ? "signed in during the first load: the page shows signed in (slow storage until the next reload)"
+          : "signed in during the first load: the page shows signed out (slow storage until the next reload)";
       },
     },
     {
