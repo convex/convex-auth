@@ -1178,3 +1178,168 @@ button {
 .playlist .mark-op {
   box-shadow: 0 0 6px currentColor;
 }
+
+/* A story (ui/Story.tsx): its caption keeps the top of the left column,
+   above the play-by-play, which stands under it. */
+.story {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 320px;
+  box-sizing: border-box;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 0 12px 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(10, 14, 28, 0.94);
+  border: 1px solid rgba(160, 180, 255, 0.28);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+.story header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.story header .title {
+  color: var(--text);
+  font-weight: 600;
+}
+.story header .close {
+  margin-left: auto;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.story header .close:hover {
+  color: var(--text);
+}
+.story .say {
+  margin: 6px 0;
+  font-size: 13px;
+}
+.story .say.note {
+  font-style: italic;
+  color: var(--dim);
+}
+.story .status,
+.story .inside {
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--dim);
+}
+.story .status .who {
+  color: var(--dim);
+}
+.story .status.reported .said {
+  color: var(--text);
+}
+.story .status.missing,
+.story .checks .missing {
+  color: var(--warn, #f5b14c);
+}
+.story .status.waiting,
+.story .checks .waiting {
+  color: var(--dim);
+  font-style: italic;
+}
+.story code {
+  font-size: 10.5px;
+}
+.story .checks {
+  list-style: none;
+  margin: 6px 0 2px;
+  padding: 0;
+  font-size: 11.5px;
+}
+.story .checks li {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.story .checks .mark {
+  width: 10px;
+  flex: none;
+}
+.story .checks .holds .mark {
+  color: var(--live, #6fe3b5);
+}
+.story .checks .why {
+  flex-basis: 100%;
+  padding-left: 16px;
+}
+.story .press {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+.story .press .state {
+  font-size: 11px;
+  color: var(--dim);
+}
+.story button {
+  font-size: 11.5px;
+}
+.story .press button,
+.story footer button {
+  padding: 3px 9px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.story .press button {
+  align-self: flex-start;
+}
+.story footer {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.story footer button:last-child {
+  margin-left: auto;
+}
+.story button:disabled {
+  opacity: 0.4;
+}
+.story button:not(:disabled):hover {
+  border-color: rgba(160, 180, 255, 0.5);
+}
+.story-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.story-menu li button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 4px;
+  text-align: left;
+  border-radius: 6px;
+}
+.story-menu li button:hover {
+  background: rgba(160, 180, 255, 0.08);
+}
+.story-menu .about {
+  font-size: 11px;
+  color: var(--dim);
+}
+.playlist .stories-open {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.playlist .stories-open:hover {
+  color: var(--text);
+}
+.playlist .stories-open + .fold {
+  margin-left: 0;
+}

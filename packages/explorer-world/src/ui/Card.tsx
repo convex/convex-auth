@@ -317,6 +317,10 @@ export function Card() {
         left:
           (document.querySelector(".playlist")?.getBoundingClientRect().right ??
             0) + 12,
+        // A docked card stands under a story's caption (`Story.tsx`).
+        top:
+          (document.querySelector(".story")?.getBoundingClientRect().bottom ??
+            6) + 10,
       });
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       el.dataset.docked = cardAt.on && !aside ? "" : "docked";

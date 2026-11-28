@@ -31,7 +31,8 @@ import {
   STATE_COLORS,
   TONE_COLORS,
 } from "../scene/palette.ts";
-import { usePlayback, world, type Selection } from "../store.ts";
+import { project, usePlayback, world, type Selection } from "../store.ts";
+import { useStory } from "./Story.tsx";
 import { settle } from "./listRest.ts";
 
 const FOLDED_KEY = "explorer.playByPlay.folded";
@@ -167,6 +168,15 @@ export function PlayList() {
     const line = lineRef.current;
     if (line) setChosen({ section: line.section, under: newestRef.current });
   }, [selectionKey]);
+  // A story's stop shows its line: its section open, the line lit. After the
+  // selection's own choice above, so the stop's section wins.
+  const listTo = usePlayback((s) => s.listTo);
+  useEffect(() => {
+    if (!listTo) return;
+    setFolded(false);
+    setChosen({ section: listTo.section, under: newestRef.current });
+    setPicked({ id: listTo.line, time: usePlayback.getState().time });
+  }, [listTo]);
 
   const toggle = (id: string, now: boolean) =>
     setOpened((m) => new Map(m).set(id, !now));
@@ -199,11 +209,15 @@ export function PlayList() {
     let frame = 0;
     const place = () => {
       frame = requestAnimationFrame(place);
+      // A story's caption (`Story.tsx`) keeps the corner too.
+      const story = document.querySelector<HTMLElement>(".story");
       const card = document.querySelector<HTMLElement>(".card");
-      const top =
+      const top = Math.max(
+        story ? story.getBoundingClientRect().bottom + 10 : 18,
         card?.dataset.docked === "docked"
           ? card.getBoundingClientRect().bottom + 10
-          : 18;
+          : 18,
+      );
       for (const el of [nav.current, tab.current])
         if (el && el.style.top !== `${top}px`) el.style.top = `${top}px`;
     };
@@ -270,6 +284,17 @@ export function PlayList() {
     <nav className="playlist" aria-label="What happened" ref={nav}>
       <header>
         <span>What happened</span>
+        {(project.source.stories?.length ?? 0) > 0 && (
+          <button
+            className="stories-open"
+            onClick={() =>
+              useStory.setState((s) => ({ menu: !s.menu && !s.story }))
+            }
+            title="Walk through what the code reported, stop by stop"
+          >
+            Stories
+          </button>
+        )}
         <button
           className="fold"
           onClick={() => {

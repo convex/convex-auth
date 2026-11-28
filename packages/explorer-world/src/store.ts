@@ -143,6 +143,11 @@ interface PlaybackStore {
    * rest instead of passing quickly.
    */
   watchQuiet: boolean;
+  /**
+   * Bumped to show a line in the play-by-play: its section open, the line
+   * lit and resting whole (a story's stop, `ui/Story.tsx`).
+   */
+  listTo: { line: string; section: string; seq: number } | null;
   /** Plays the newest run of a live recording. */
   skipToLive: () => void;
   setTime: (t: number) => void;
@@ -178,6 +183,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   framed: null,
   overlays: { links: false, relations: true, unresolved: false },
   watchQuiet: false,
+  listTo: null,
   version: 0,
   layoutVersion: 0,
   live: liveSource

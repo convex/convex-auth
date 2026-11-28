@@ -11,6 +11,7 @@ import { Inspector } from "./ui/Inspector.tsx";
 import { Problems, SceneBoundary } from "./ui/Problems.tsx";
 import { LiveLine, Timeline } from "./ui/Timeline.tsx";
 import { PlayList } from "./ui/PlayList.tsx";
+import { Story } from "./ui/Story.tsx";
 
 const params = new URLSearchParams(location.search);
 /**
@@ -57,6 +58,7 @@ export function App() {
       {replay && <Chapters />}
       {replay && <Caption />}
       {!replay && <PlayList />}
+      {!replay && <Story />}
       <CameraHud full={replay} />
       <Card />
       <Inspector />

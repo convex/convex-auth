@@ -134,27 +134,29 @@ function find(
   return null;
 }
 
+/** The sections pressed with the label of a story's press, in order. */
+export function pressSections(
+  story: Story,
+  sections: PlaySection[],
+): PlaySection[] {
+  if (!story.press) return [];
+  const label = story.press.label.toLowerCase();
+  return sections.filter(
+    (s) => s.kind === "press" && s.title.toLowerCase() === label,
+  );
+}
+
 /**
  * The section a story's press binds to: the newest one pressed with its
- * label at or after `since`. Null while there is none.
+ * label, after the first `skip` (the presses there were before the viewer
+ * pressed it from the story). Null while there is none.
  */
 export function pressSection(
   story: Story,
   sections: PlaySection[],
-  since = -Infinity,
+  skip = 0,
 ): PlaySection | null {
-  if (!story.press) return null;
-  const label = story.press.label.toLowerCase();
-  return (
-    sections
-      .filter(
-        (s) =>
-          s.kind === "press" &&
-          s.title.toLowerCase() === label &&
-          s.at >= since - 1e-6,
-      )
-      .at(-1) ?? null
-  );
+  return pressSections(story, sections).slice(skip).at(-1) ?? null;
 }
 
 /**
@@ -169,11 +171,9 @@ export function pressSection(
 export function bindStory(
   story: Story,
   sections: PlaySection[],
-  opts: { since?: number; complete?: boolean } = {},
+  opts: { skip?: number; complete?: boolean } = {},
 ): BoundStory {
-  const section = story.press
-    ? pressSection(story, sections, opts.since)
-    : null;
+  const section = story.press ? pressSection(story, sections, opts.skip) : null;
   const lines = inOrder(
     story.press ? (section?.lines ?? []) : allLines(sections),
   );

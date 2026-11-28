@@ -191,7 +191,7 @@ describe("while the press is being recorded", () => {
   });
 
   test("a press from before the story started is not used", () => {
-    const bound = bindStory(story, sections, { since: Infinity });
+    const bound = bindStory(story, sections, { skip: 1 });
     expect(bound.section).toBeNull();
   });
 });
