@@ -212,12 +212,12 @@ export function PlayList() {
       // A story's caption (`Story.tsx`) keeps the corner too.
       const story = document.querySelector<HTMLElement>(".story");
       const card = document.querySelector<HTMLElement>(".card");
-      const top = Math.max(
-        story ? story.getBoundingClientRect().bottom + 10 : 18,
-        card?.dataset.docked === "docked"
+      // While a story runs, a docked card stands beside the column instead.
+      const top = story
+        ? story.getBoundingClientRect().bottom + 10
+        : card?.dataset.docked === "docked"
           ? card.getBoundingClientRect().bottom + 10
-          : 18,
-      );
+          : 18;
       for (const el of [nav.current, tab.current])
         if (el && el.style.top !== `${top}px`) el.style.top = `${top}px`;
     };

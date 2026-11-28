@@ -91,6 +91,17 @@ export type Selection =
   | { type: "op"; id: string }
   | { type: "cargo"; holder: string; table: string; row: string };
 
+/**
+ * Where the camera can be asked to fly: the overview, Home, a selection, or
+ * close to a part to open it up (`fixed`: from the same direction every
+ * time, as a story does, rather than from where the camera is).
+ */
+export type FlightTarget =
+  | "overview"
+  | "home"
+  | Selection
+  | { type: "open"; id: string; fixed?: boolean };
+
 /** What is drawn over the world besides the selection. */
 export interface Overlays {
   /** Every dependency, as a thin line. */
@@ -129,7 +140,7 @@ interface PlaybackStore {
   /** Bumped to ask the camera close to a part, where its inside opens (`Inside.tsx`). */
   opening: { id: string; seq: number } | null;
   /** Bumped to ask the camera to fly somewhere. */
-  flight: { target: "overview" | "home" | Selection; seq: number } | null;
+  flight: { target: FlightTarget; seq: number } | null;
   overlays: Overlays;
   /** Bumped when the world is rebuilt (a live recording grew). */
   version: number;
@@ -158,9 +169,10 @@ interface PlaybackStore {
   setSpeed: (speed: number) => void;
   select: (selection: Selection | null) => void;
   setDetail: (on: boolean) => void;
-  openUp: (id: string) => void;
+  /** Flies close to a part, where its inside opens (`scene/openFrame.ts`). */
+  openUp: (id: string, fixed?: boolean) => void;
   setDirector: (on: boolean) => void;
-  flyTo: (target: "overview" | "home" | Selection) => void;
+  flyTo: (target: FlightTarget) => void;
   toggleOverlay: (name: keyof Overlays) => void;
 }
 
@@ -239,10 +251,13 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
         : { selected, detail: false },
     ),
   setDetail: (detail) => set({ detail }),
-  openUp: (id) =>
+  openUp: (id, fixed = false) =>
     set((s) => ({
       director: false,
-      opening: { id, seq: (s.opening?.seq ?? 0) + 1 },
+      flight: {
+        target: { type: "open", id, fixed },
+        seq: (s.flight?.seq ?? 0) + 1,
+      },
     })),
   setDirector: (director) => set({ director }),
   flyTo: (target) =>

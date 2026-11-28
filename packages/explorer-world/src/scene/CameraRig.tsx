@@ -11,7 +11,10 @@ import {
   type Camera,
 } from "three";
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
-import { frameHome } from "./homeFrame.ts";
+import { frameHome, type Rect } from "./homeFrame.ts";
+import { discCentre, discRadius } from "./Inside.tsx";
+import { frameOpen, openDirection } from "./openFrame.ts";
+import { OPEN_UP_DISTANCE } from "../model/insideLayout.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
@@ -123,6 +126,34 @@ function home(
 function columnEdge(box: DOMRect): number {
   const r = document.querySelector(".playlist")?.getBoundingClientRect();
   return r && r.width ? r.right - box.left + 12 : 0;
+}
+
+/** Where a story looks at an opened part from: the side Home looks from. */
+const STORY_HEADING = new Vector3(0, 0, 1);
+
+/** A docked card's width and gap, beside the column while a story runs. */
+const CARD_ROOM = 300;
+
+/**
+ * The free rectangle of the canvas for a part opened up (px): right of the
+ * left column (and, while a story runs, of the card docked beside it),
+ * above the controls row and the time line.
+ */
+function openRect(box: DOMRect): Rect {
+  const story = document.querySelector(".story:not(.story-menu)");
+  const column = Math.max(
+    columnEdge(box),
+    story ? story.getBoundingClientRect().right - box.left + 12 : 0,
+  );
+  const controls = document.querySelector(".controls")?.getBoundingClientRect();
+  return {
+    left: Math.max(12, column + (story ? CARD_ROOM : 0)),
+    top: 12,
+    right: box.width - 12,
+    bottom: controls
+      ? controls.top - box.top - 10
+      : box.height - BOTTOM_BAR - 40,
+  };
 }
 
 /** The height of the time line along the bottom of the window (px). */
@@ -479,6 +510,33 @@ export function CameraRig() {
       return;
     }
     atHome = false;
+    if (flight.target.type === "open") {
+      const { id, fixed } = flight.target;
+      const centre = discCentre(id);
+      const from = new Vector3();
+      c.getPosition(from);
+      // A story looks from the same side every time, so the inside's
+      // members stand in the same places on the window at every stop.
+      const heading = fixed ? STORY_HEADING : from.sub(centre);
+      const box = canvas.getBoundingClientRect();
+      const { position: p, target: t } = frameOpen(
+        centre,
+        discRadius(id) || 2,
+        openDirection(heading),
+        camera instanceof PerspectiveCamera ? camera.fov : 42,
+        box.width,
+        box.height,
+        openRect(box),
+        // Near enough that the part opens and counts as framed (Inside.tsx).
+        OPEN_UP_DISTANCE * 1.3,
+      );
+      (globalThis as { explorerOpenFrame?: unknown }).explorerOpenFrame = {
+        radius: discRadius(id),
+        distance: p.distanceTo(t),
+      };
+      void c.setLookAt(p.x, p.y, p.z, t.x, t.y, t.z, true);
+      return;
+    }
     const { target, distance } = selectionFocus(flight.target);
     const from = new Vector3();
     c.getPosition(from);

@@ -289,6 +289,12 @@ export function cardOf(s: Selection, state: WorldState): CardContent {
   }
 }
 
+/** Where a docked card stands while a story's caption keeps the corner. */
+function storyDock(): { top?: number; beside?: boolean } {
+  const story = document.querySelector(".story");
+  return story ? { top: story.getBoundingClientRect().top, beside: true } : {};
+}
+
 export function Card() {
   const selected = usePlayback((s) => s.selected);
   const detail = usePlayback((s) => s.detail);
@@ -317,10 +323,9 @@ export function Card() {
         left:
           (document.querySelector(".playlist")?.getBoundingClientRect().right ??
             0) + 12,
-        // A docked card stands under a story's caption (`Story.tsx`).
-        top:
-          (document.querySelector(".story")?.getBoundingClientRect().bottom ??
-            6) + 10,
+        // While a story runs, a docked card stands beside the column, level
+        // with the caption (`Story.tsx`), and the list keeps the column.
+        ...storyDock(),
       });
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       el.dataset.docked = cardAt.on && !aside ? "" : "docked";

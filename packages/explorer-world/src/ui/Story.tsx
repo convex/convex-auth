@@ -105,7 +105,7 @@ function show(b: BoundStop, camera: boolean) {
   if (part) {
     s.select({ type: "part", id: part });
     if (camera) {
-      if (look?.open) s.openUp(part);
+      if (look?.open) s.openUp(part, true);
       else s.flyTo({ type: "part", id: part });
     }
   } else if (b.line.target) s.select(b.line.target);

@@ -35,8 +35,13 @@ export interface CardFit {
    * keeps the corner (the column moves under it).
    */
   left?: number;
-  /** Where a docked card stands from the top (px): under a story's caption. */
+  /** Where a docked card stands from the top (px). */
   top?: number;
+  /**
+   * A docked card stands beside the column (at `left`), not in its corner:
+   * while a story's caption keeps the corner.
+   */
+  beside?: boolean;
 }
 
 /** Room kept clear above the point: the part's name and where its arcs leave. */
@@ -61,11 +66,12 @@ export function placeCard({
   aside,
   left: free = 12,
   top = 16,
+  beside = false,
 }: CardFit): {
   x: number;
   y: number;
 } {
-  if (aside || !at) return { x: 16, y: top };
+  if (aside || !at) return { x: beside ? free : 16, y: top };
   const fits = (x: number, y: number) =>
     x >= free && x + w <= W - 12 && y >= 12 && y + h <= H - BOTTOM;
   const right = at.x + SIDE;
