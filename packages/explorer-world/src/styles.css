@@ -992,9 +992,7 @@ button {
   padding: 0 4px 6px;
   background: rgba(6, 9, 18, 0.88);
   /* Lines come to rest whole under the open section's heading, which
-     stays at the top while they scroll. */
-  scroll-snap-type: y mandatory;
-  scroll-padding-top: 26px;
+     stays at the top while they scroll: see ui/listRest.ts. */
   border: 1px solid var(--line);
   border-top: none;
   border-radius: 0 0 10px 10px;
@@ -1016,10 +1014,6 @@ button {
 }
 .playlist .heading:hover {
   background: rgba(255, 255, 255, 0.04);
-}
-.playlist .heading,
-.playlist .line {
-  scroll-snap-align: start;
 }
 .playlist .sections .section.expanded > .heading {
   position: sticky;

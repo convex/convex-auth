@@ -32,6 +32,7 @@ import {
   TONE_COLORS,
 } from "../scene/palette.ts";
 import { usePlayback, world, type Selection } from "../store.ts";
+import { settle } from "./listRest.ts";
 
 const FOLDED_KEY = "explorer.playByPlay.folded";
 
@@ -172,10 +173,26 @@ export function PlayList() {
 
   const nav = useRef<HTMLElement>(null);
   const tab = useRef<HTMLButtonElement>(null);
-  const lit = useRef<HTMLLIElement>(null);
+  // The list rests with a whole line under the open section's heading, and
+  // the line being played whole (`listRest.ts`).
+  const box = useRef<HTMLOListElement>(null);
+  const spacer = useRef<HTMLLIElement>(null);
   useEffect(() => {
-    lit.current?.scrollIntoView({ block: "nearest" });
+    if (box.current) settle(box.current, spacer.current, true);
   }, [current?.id, folded, openSection]);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const scrolled = () => settle(el, spacer.current, false);
+    // The list stands under a docked card, or the window changes.
+    const resized = new ResizeObserver(() => settle(el, spacer.current, true));
+    el.addEventListener("scrollend", scrolled);
+    resized.observe(el);
+    return () => {
+      el.removeEventListener("scrollend", scrolled);
+      resized.disconnect();
+    };
+  }, [folded, sections.length > 0]);
   // A card docked at the top left (a part opened up) keeps the corner: the
   // list stands under it.
   useEffect(() => {
@@ -226,7 +243,6 @@ export function PlayList() {
     return (
       <li
         key={l.id}
-        ref={now ? lit : undefined}
         className={`line d${l.depth}${now ? " now" : ""}${later ? " later" : ""}${marks(l, selected) ? " marked" : ""}${faint ? " faint" : ""}`}
         data-line={l.id}
       >
@@ -266,7 +282,7 @@ export function PlayList() {
           ‹
         </button>
       </header>
-      <ol className="sections">
+      <ol className="sections" ref={box}>
         {sections.map((s) => {
           const open = openSection === s.id;
           const faint = s.kind === "unasked";
@@ -332,6 +348,7 @@ export function PlayList() {
             </li>
           );
         })}
+        <li className="rest" ref={spacer} aria-hidden />
       </ol>
     </nav>
   );
