@@ -137,6 +137,12 @@ interface PlaybackStore {
   layoutVersion: number;
   /** Null unless the world shows a live recording. */
   live: LiveStatus | null;
+  /**
+   * The viewer asked to watch what nobody asked for (opened it in the
+   * play-by-play): its stretches (`Timeline.quiet`) play at the pace of the
+   * rest instead of passing quickly.
+   */
+  watchQuiet: boolean;
   /** Plays the newest run of a live recording. */
   skipToLive: () => void;
   setTime: (t: number) => void;
@@ -171,6 +177,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   open: null,
   framed: null,
   overlays: { links: false, relations: true, unresolved: false },
+  watchQuiet: false,
   version: 0,
   layoutVersion: 0,
   live: liveSource

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useDiag } from "../diag.ts";
 import { frames } from "../problems.ts";
 import { liveStep } from "../live.ts";
+import { BRIEF } from "../model/operations.ts";
 import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
@@ -49,14 +50,21 @@ function Clock() {
       // quickly. Played back from where the viewer moved to, it goes at
       // shown speed. The rate is taken again every tenth of a second.
       const dt = Math.min(left, 0.1);
+      // What nobody asked for passes quickly; asked to watch it, it plays
+      // at the pace of the rest.
+      const speed =
+        s.watchQuiet &&
+        world.timeline.quiet.some(([a, b]) => next >= a && next < b)
+          ? s.speed * BRIEF
+          : s.speed;
       if (s.live)
         ({ time: next, replaying } = liveStep(
           world.timeline,
           { time: next, replaying },
           dt,
-          s.speed,
+          speed,
         ));
-      else next += dt * s.speed;
+      else next += dt * speed;
       left -= dt;
       if (next >= world.timeline.duration) break;
     }

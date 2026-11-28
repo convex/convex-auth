@@ -390,7 +390,11 @@ frame takes milliseconds; that is not measured here.
   played open to its steps (a run's own steps while it plays), until
   something else is pressed or the viewer opens another section. What
   nobody asked for stays one faint heading, lit while it plays, unless the
-  viewer opens it. The line being played is lit and kept in view; after the
+  viewer opens it. On the time line it takes a small share too: every step
+  of it plays, in order, at `BRIEF` (0.15) of its length, waits included,
+  so a refresh every 50 s is about a second; opened in the list, its
+  stretches (`Timeline.quiet`) play slowed by as much, at the pace of the
+  rest. The line being played is lit and kept in view; after the
   playhead, lines read as not yet. A click on a line takes time there,
   holds it, and selects the thing (the camera stays); what is selected in
   the world marks its lines. ← → step line by line. Home frames the world

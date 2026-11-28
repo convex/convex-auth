@@ -134,6 +134,15 @@ export function PlayList() {
   const newest = sections.filter((s) => s.kind === "press").at(-1)?.id;
   useEffect(() => setChosen(undefined), [newest]);
   const openSection = chosen === undefined ? lastPress : chosen;
+  // Opened by the viewer, what nobody asked for plays at the pace of the
+  // rest (see `Timeline.quiet`); shut, it passes quickly.
+  const watching =
+    !folded &&
+    sections.some((s) => s.id === openSection && s.kind === "unasked");
+  useEffect(() => {
+    if (usePlayback.getState().watchQuiet !== watching)
+      usePlayback.setState({ watchQuiet: watching });
+  }, [watching]);
 
   // The first line about the selection opens its section and block.
   const selectedLine = useMemo(() => {
