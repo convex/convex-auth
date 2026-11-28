@@ -1,7 +1,7 @@
 {
   "file": "main.ndjson",
-  "library": "erquhart/explorer-recorder at 7b542320 (without the fix)",
-  "recordedAt": "2026-11-28T09:27:42.805000+00:00",
+  "library": "erquhart/explorer-recorder at 44cc0f09 (without the fix)",
+  "recordedAt": "2026-11-28T09:45:30.490000+00:00",
   "command": "pnpm explorer:live examples/react-username-password, controls pressed in order",
   "controls": [
     "Sign up",
