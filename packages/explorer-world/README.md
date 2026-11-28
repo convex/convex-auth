@@ -425,8 +425,12 @@ frame takes milliseconds; that is not measured here.
   with no pin is a note, and is shown as one. A story can start with a
   press (`press`: the action and its label): its button presses the
   control, and the stops bind to the lines of that press as they arrive.
-  The caption keeps the top of the left column, with the list (and a
-  docked card) under it. On Next or Back (`]`, `[`) time goes to the
+  The caption keeps the top of the left column, with the list under it; a
+  docked card stands beside the column, level with the caption. A part
+  opened up in a story is always seen from the side Home looks from, so
+  its members stand in the same places at every stop. Opened up anywhere,
+  a part's disc and the names on it stand clear of the column, the
+  controls row and the time line (`src/scene/openFrame.ts`). On Next or Back (`]`, `[`) time goes to the
   stop's line and holds, the list shows the line, the stop's thing is
   selected, and the camera goes to frame it: the one place a story moves
   the camera, since the viewer asked to be taken there. **Camera follows
