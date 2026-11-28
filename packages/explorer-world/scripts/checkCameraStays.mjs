@@ -260,6 +260,42 @@ try {
     `the scene mounted afresh: the camera stays (${show(beforeRemount)} → ${show(await pose())})`,
   );
 
+  // A story moves the camera on Next only when it follows the story; the
+  // switch is remembered, and flipping it moves nothing.
+  await page.click(".playlist .stories-open");
+  await page.click(".story-menu li button");
+  const follows = page.locator(".story .camera input");
+  if (await follows.isChecked()) await follows.click();
+  const beforeStory = await settle();
+  for (const key of ["]", "]", "]"]) {
+    await page.keyboard.press(key);
+    await sleep(600);
+  }
+  const afterOff = await settle();
+  check(
+    far(beforeStory, afterOff) < 0.01,
+    `with the story's camera off, Next leaves the camera (${show(beforeStory)} → ${show(afterOff)})`,
+  );
+  await follows.click();
+  const flipped = await settle();
+  check(
+    far(afterOff, flipped) < 0.01,
+    "turning the story's camera on moves nothing until the next Next",
+  );
+  await page.keyboard.press("]");
+  const onNext = await settle();
+  check(
+    far(flipped, onNext) > 1,
+    `with it on, Next takes the camera to the stop (${show(onNext)})`,
+  );
+  await page.click(".story header .close");
+  check(
+    far(onNext, await settle()) < 0.01,
+    "Exit leaves the camera where it is",
+  );
+  // Exit leaves the stop's selection; its card would take the wheel below.
+  await page.keyboard.press("Escape");
+
   // Home moves it, and a resize refits Home while the camera is there.
   await page.mouse.move(centre.x, centre.y);
   await page.keyboard.press("h");

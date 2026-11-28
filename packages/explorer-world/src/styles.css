@@ -1343,3 +1343,28 @@ button {
 .playlist .stories-open + .fold {
   margin-left: 0;
 }
+.story .camera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--dim);
+}
+.story .camera label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.story .camera input {
+  margin: 0;
+  accent-color: var(--live);
+}
+.story .camera .go {
+  margin-left: auto;
+  padding: 1px 8px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}

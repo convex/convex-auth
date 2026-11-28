@@ -39,6 +39,31 @@ interface StoryState {
   skip: number;
   /** The stop the viewer went to that had not arrived: it is gone to when it does. */
   pending: number | null;
+  /**
+   * Whether Next and Back take the camera to the stop. Off, the camera
+   * stays wherever the viewer put it, through the whole story. Remembered.
+   */
+  camera: boolean;
+}
+
+const CAMERA_KEY = "explorer.story.camera";
+
+function readCamera(): boolean {
+  try {
+    return localStorage.getItem(CAMERA_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+/** Turns the camera's following of the story on or off; it moves nothing now. */
+export function setStoryCamera(on: boolean) {
+  useStory.setState({ camera: on });
+  try {
+    localStorage.setItem(CAMERA_KEY, on ? "1" : "0");
+  } catch {
+    // A page without storage keeps it for this visit only.
+  }
 }
 
 export const useStory = create<StoryState>(() => ({
@@ -47,6 +72,7 @@ export const useStory = create<StoryState>(() => ({
   at: -1,
   skip: 0,
   pending: null,
+  camera: readCamera(),
 }));
 
 /** The part a look names: `prefix*` is the first of the line's parts that starts so. */
@@ -65,7 +91,8 @@ let listSeq = 0;
 
 /**
  * Shows a bound stop: time at its line, held; the line in the list; its
- * thing selected; and, with `camera`, the camera framing it.
+ * thing selected; and, with `camera`, the camera framing it (opening a part
+ * up takes the camera to it, so without `camera` it is only selected).
  */
 function show(b: BoundStop, camera: boolean) {
   const t = stopTime(b);
@@ -93,7 +120,7 @@ let holdAt: number | null = null;
 const MARK: Record<Holds, string> = { holds: "✓", missing: "!", waiting: "…" };
 
 export function Story() {
-  const { menu, story, at, skip, pending } = useStory();
+  const { menu, story, at, skip, pending, camera } = useStory();
   usePlayback((s) => s.version);
   const controls = useControls();
   const sections = playByPlayOf(world);
@@ -112,7 +139,7 @@ export function Story() {
       at: j,
       pending: b && b.status === "waiting" ? j : null,
     });
-    if (b) show(b, camera);
+    if (b) show(b, camera && useStory.getState().camera);
   };
 
   // A stop gone to before its line arrived: shown when it does.
@@ -121,7 +148,7 @@ export function Story() {
     const b = bound.stops[pending];
     if (b?.line) {
       useStory.setState({ pending: null });
-      show(b, true);
+      show(b, useStory.getState().camera);
     }
   }, [bound, pending]);
 
@@ -338,6 +365,31 @@ export function Story() {
           )}
         </>
       ) : null}
+      <div className="camera">
+        <label title="Whether Next and Back take the camera to the stop">
+          <input
+            type="checkbox"
+            checked={camera}
+            onChange={(e) => {
+              setStoryCamera(e.currentTarget.checked);
+              e.currentTarget.blur();
+            }}
+          />
+          Camera follows the story
+        </label>
+        {!camera && b?.line && (
+          <button
+            className="go"
+            onClick={(e) => {
+              e.currentTarget.blur();
+              show(b, true);
+            }}
+            title="Take the camera to this stop, this once"
+          >
+            Go there
+          </button>
+        )}
+      </div>
       <footer>
         <button
           onClick={(e) => {

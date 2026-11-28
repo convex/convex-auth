@@ -429,7 +429,11 @@ frame takes milliseconds; that is not measured here.
   docked card) under it. On Next or Back (`]`, `[`) time goes to the
   stop's line and holds, the list shows the line, the stop's thing is
   selected, and the camera goes to frame it: the one place a story moves
-  the camera, since the viewer asked to be taken there. **Play to next**
+  the camera, since the viewer asked to be taken there. **Camera follows
+  the story** turns that off (remembered): Next and Back then do the rest
+  and the camera stays on whatever the viewer is looking at, with **Go
+  there** to be taken to one stop. Turning it on moves nothing until the
+  next Next or Back. **Play to next**
   (`p`) plays at normal pace from the stop to the next and holds there.
   **Exit** leaves time, selection and camera where they are.
 - **The recording plays**: a request leaves its caller, calls travel between
