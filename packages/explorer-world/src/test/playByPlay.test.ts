@@ -102,7 +102,7 @@ describe("the navigations", () => {
     ({
       kind: "page",
       id: `p1#${n}`,
-      time: header.time + n,
+      time: (header.time ?? 0) + n,
       pageId: "p1",
       event,
       url: `http://localhost:5173${path}`,
