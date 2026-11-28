@@ -10,6 +10,7 @@ import { checkFonts, frames, watchFirstFrame } from "./problems.ts";
 import { parseNdjson } from "./adapters/convexRecording.ts";
 import { summarize } from "./live.ts";
 import { worldFromEvents } from "./project.ts";
+import { playByPlayOf } from "./model/playByPlay.ts";
 import { liveTrace, project, usePlayback, world } from "./store.ts";
 import { configureTextBuilder } from "troika-three-text";
 
@@ -31,6 +32,9 @@ if (selected) usePlayback.getState().select({ type: "part", id: selected });
   frames;
 // The world as it is now: a live recording replaces it as it grows.
 Object.defineProperty(window, "explorerWorld", { get: () => world });
+// The play-by-play of the world as it is now (`model/playByPlay.ts`).
+(window as unknown as { explorerPlayByPlay: unknown }).explorerPlayByPlay =
+  () => playByPlayOf(world);
 // For the live check: when each event arrived and each rebuild was drawn,
 // and the summary of the world now and of a saved timeline, to compare.
 (window as unknown as { explorerLive: unknown }).explorerLive = {

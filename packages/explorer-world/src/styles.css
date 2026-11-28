@@ -905,3 +905,234 @@ button {
   background: var(--text);
   color: var(--bg);
 }
+
+/* The play-by-play (ui/PlayList.tsx): a narrow column on the left, quiet,
+   with no panel of its own; it can fold to a tab. */
+.playlist {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  bottom: 84px;
+  width: 296px;
+  display: flex;
+  flex-direction: column;
+  font-size: 11.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  line-height: 1.35;
+  color: var(--dim);
+  pointer-events: none;
+}
+.playlist > * {
+  pointer-events: auto;
+}
+.playlist header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 6px;
+  font-size: 11px;
+  color: var(--dim);
+  opacity: 0.8;
+}
+.playlist .fold {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.playlist .fold:hover {
+  color: var(--text);
+}
+.playlist-tab {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8, 12, 22, 0.45);
+}
+.playlist-tab:hover {
+  color: var(--text);
+}
+.playlist ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.playlist .sections {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 180, 255, 0.18) transparent;
+  border-radius: 8px;
+  padding: 4px 2px;
+  transition: background 0.2s;
+}
+.playlist .sections:hover {
+  background: rgba(4, 6, 12, 0.55);
+}
+.playlist .section {
+  margin: 0 0 2px;
+}
+.playlist .heading {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  border-radius: 5px;
+  color: var(--text);
+  opacity: 0.75;
+  font-weight: 500;
+}
+.playlist .heading:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.playlist .section.now > .heading {
+  opacity: 1;
+}
+.playlist .section.unasked > .heading,
+.playlist .section.open > .heading {
+  font-weight: 400;
+  color: var(--dim);
+}
+.playlist .section.later > .heading {
+  opacity: 0.4;
+}
+.playlist .line {
+  display: flex;
+  align-items: flex-start;
+  border-left: 2px solid transparent;
+}
+.playlist .line .caret {
+  flex: 0 0 12px;
+  width: 12px;
+  padding: 3px 0 0;
+  font-size: 9px;
+  color: var(--dim);
+  text-align: center;
+}
+.playlist .what {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 12px 92px 1fr;
+  column-gap: 5px;
+  text-align: left;
+  padding: 2px 4px 2px 0;
+  border-radius: 4px;
+  color: inherit;
+}
+.playlist .what:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.playlist .line.d2 .what {
+  padding-left: 10px;
+  grid-template-columns: 12px 82px 1fr;
+}
+.playlist .line.d3 .what {
+  padding-left: 20px;
+  grid-template-columns: 12px 72px 1fr;
+}
+.playlist .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+.playlist .text {
+  color: #b9c3e0;
+  overflow-wrap: anywhere;
+}
+.playlist code {
+  grid-column: 3;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+.playlist .line.later {
+  opacity: 0.38;
+}
+.playlist .line.faint {
+  opacity: 0.6;
+}
+.playlist .line.now {
+  border-left-color: var(--live);
+  opacity: 1;
+}
+.playlist .line.now .what {
+  background: rgba(71, 230, 255, 0.08);
+}
+.playlist .line.now .text {
+  color: var(--text);
+}
+.playlist .line.marked .what {
+  box-shadow: inset 0 0 0 1px rgba(255, 211, 107, 0.55);
+}
+/* The marks: the look of each kind of thing in the world, small. */
+.playlist .mark {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  background: currentColor;
+  border-radius: 50%;
+}
+.playlist .mark-step {
+  background: none;
+  border: 1.5px solid currentColor;
+}
+.playlist .mark-key {
+  border-radius: 2px;
+  transform: rotate(45deg) scale(0.8);
+}
+.playlist .mark-state {
+  background: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+}
+.playlist .mark-send,
+.playlist .mark-answer,
+.playlist .mark-call {
+  height: 2px;
+  margin-top: 7px;
+  border-radius: 1px;
+}
+.playlist .mark-run {
+  border-radius: 1px;
+}
+.playlist .mark-run.run-query {
+  border-radius: 50%;
+}
+.playlist .mark-run.run-mutation {
+  border-radius: 0;
+  clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+}
+.playlist .mark-write {
+  width: 9px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 1px;
+}
+.playlist .mark-note,
+.playlist .mark-rerun {
+  width: 5px;
+  height: 5px;
+  margin: 5px 0 0 1.5px;
+  opacity: 0.8;
+}
+.playlist .mark-input,
+.playlist .mark-page {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  opacity: 0.7;
+}
+.playlist .mark-op {
+  box-shadow: 0 0 6px currentColor;
+}

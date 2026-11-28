@@ -13,6 +13,7 @@ import {
   withToken,
 } from "./live.ts";
 import { nextStop, previousStop } from "./model/playback.ts";
+import { lineStop, playByPlayOf } from "./model/playByPlay.ts";
 import type { World } from "./model/world.ts";
 import { prepareProject, PROJECTS, worldFromEvents } from "./project.ts";
 import { reportProblem } from "./problems.ts";
@@ -189,14 +190,16 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   },
   pause: () => set({ playing: false, held: true }),
   toggle: () => (get().playing ? get().pause() : get().play()),
+  // A step goes line by line through the play-by-play, else beat by beat.
   step: (direction) =>
     set((s) => ({
       playing: false,
       held: true,
       time:
-        direction === 1
+        lineStop(playByPlayOf(world), s.time, direction) ??
+        (direction === 1
           ? nextStop(world.timeline, s.time)
-          : previousStop(world.timeline, s.time),
+          : previousStop(world.timeline, s.time)),
     })),
   setSpeed: (speed) => set({ speed }),
   select: (selected) =>

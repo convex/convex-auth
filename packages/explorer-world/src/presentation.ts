@@ -115,6 +115,27 @@ export interface StepLook {
   statusField?: string;
 }
 
+/**
+ * A plain phrase for one kind of thing that happened: a text, or the first
+ * of several whose `when` fields equal those of the step's detail. A text
+ * may name a field of the detail in braces (`writes {key}`); only names and
+ * flags are filled in, never a value a step does not report.
+ */
+export type Phrase =
+  string | { when?: Record<string, unknown>; text: string }[];
+
+/** The words of the play-by-play list (`model/playByPlay.ts`). */
+export interface Phrases {
+  /** Per step name, as running code reports it. */
+  steps?: Record<string, Phrase>;
+  /** Per kind of operation of the client, as it reports it (`opKind`). */
+  ops?: Record<string, string>;
+  /** Per part id: who it is, in a word or two. */
+  who?: Record<string, string>;
+  /** The things every project has: a run, a write, a call, an answer. */
+  generic?: Record<string, string>;
+}
+
 export interface Presentation {
   /** The name of a preset under `presets/` that this one extends. */
   extends?: string;
@@ -176,6 +197,8 @@ export interface Presentation {
    * name than the data gives (the owner's label, or the directory).
    */
   groups?: Record<string, { label?: string }>;
+  /** The words of the play-by-play list. */
+  phrases?: Phrases;
 }
 
 /** Merges a project's presentation over the preset it extends. */
@@ -195,6 +218,12 @@ export function extendPresentation(
     steps: { ...base.steps, ...own.steps },
     callers: { ...base.callers, ...own.callers },
     groups: { ...base.groups, ...own.groups },
+    phrases: {
+      steps: { ...base.phrases?.steps, ...own.phrases?.steps },
+      ops: { ...base.phrases?.ops, ...own.phrases?.ops },
+      who: { ...base.phrases?.who, ...own.phrases?.who },
+      generic: { ...base.phrases?.generic, ...own.phrases?.generic },
+    },
   };
 }
 

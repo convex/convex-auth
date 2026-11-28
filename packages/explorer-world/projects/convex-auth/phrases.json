@@ -1,0 +1,133 @@
+{
+  "who": {
+    "module:browser/sessionManager": "session manager",
+    "module:browser/storage": "storage",
+    "module:browser/mutex": "lock",
+    "module:browser/retry": "retry",
+    "module:react/client": "React provider",
+    "module:react/index": "React binding",
+    "module:ssr/nextjs/client": "Next.js binding",
+    "component:auth": "core",
+    "component:authPassword": "password",
+    "component:authPassword/rateLimiter": "rate limiter",
+    "component:authUsername": "username"
+  },
+  "ops": {
+    "providerMount": "the auth provider mounts",
+    "providerUnmount": "the auth provider unmounts",
+    "init": "the client starts",
+    "dispose": "the client stops",
+    "signIn": "a sign-in call",
+    "setSession": "a session is handed in",
+    "signInPending": "a sign-in completes on its own",
+    "signOut": "signing out",
+    "tokenFetch": "Convex asks for the access token",
+    "crossTab": "another tab changed the session",
+    "sessionRevoked": "the server revoked the session"
+  },
+  "steps": {
+    "provider.mount": "mounts and starts the client",
+    "provider.unmount": "unmounts and stops the client",
+    "session.revoked": "sees the session revoked, signs out",
+    "init": "starts, {mode} mode",
+    "state": [
+      { "when": { "initial": true }, "text": "starts out {state}" },
+      { "text": "now {state}" }
+    ],
+    "ambientSignIn.init": "runs the start-up hook of the {id} sign-in",
+    "dispose": "stops listening to other tabs",
+    "crossTab.listen": "listens for changes from other tabs",
+    "crossTab.change": [
+      { "when": { "cleared": true }, "text": "another tab cleared {key}" },
+      { "text": "another tab changed {key}" }
+    ],
+    "session.set": "takes the new session",
+    "signIn.pending.start": "a sign-in is pending",
+    "signIn.pending.end": "the pending sign-in is over",
+    "signOut.start": "starts signing out",
+    "signOut.revoke": [
+      {
+        "when": { "skipped": true },
+        "text": "has no refresh token, revokes nothing"
+      },
+      { "text": "asks the backend to revoke the session" }
+    ],
+    "signOut.revokeFailed": "the revoke failed, signs out here anyway",
+    "signOut.end": "signed out here",
+    "token.fetch": [
+      {
+        "when": { "forceRefresh": true },
+        "text": "is asked for a new access token"
+      },
+      { "text": "hands over the access token it holds" }
+    ],
+    "lock.request": "waits for the refresh lock",
+    "lock.acquired": "holds the refresh lock",
+    "lock.released": "releases the refresh lock",
+    "refresh.skipped": "another tab refreshed first, takes its token",
+    "refresh.start": "refreshes the session",
+    "refresh.throw": "the refresh failed",
+    "refresh.end": [
+      { "when": { "outcome": "rotated" }, "text": "refreshed: new tokens" },
+      { "when": { "outcome": "noSession" }, "text": "refreshed: no session" },
+      { "text": "refreshed: {outcome}" }
+    ],
+    "retry": "network error, tries again (attempt {attempt})",
+    "storage.read": [
+      { "when": { "found": false }, "text": "reads {key}: empty" },
+      { "text": "reads {key}" }
+    ],
+    "storage.write": "writes {key}",
+    "storage.remove": "removes {key}",
+    "signIn.call": "calls {function}",
+    "signIn.return": [
+      { "when": { "status": "error" }, "text": "{function} refused" },
+      { "text": "{function} answered: {status}" }
+    ],
+    "signIn.throw": "{function} threw",
+    "call": "calls {target}",
+    "return": "{target} returns",
+    "throw": "{target} threw",
+    "method.start": "the {method} method starts",
+    "method.throw": "the {method} method threw",
+    "method.result": [
+      { "when": { "status": "error" }, "text": "the {method} method refuses" },
+      { "text": "the {method} method is done: {status}" }
+    ],
+    "session.issued": [
+      {
+        "when": { "via": "signUp" },
+        "text": "issues a session to the new user"
+      },
+      { "text": "issues a session" }
+    ],
+    "user.created": "creates the user, with no session",
+    "sessions.revoked": [
+      {
+        "when": { "scope": "others" },
+        "text": "revokes the user's other sessions ({count})"
+      },
+      { "text": "revokes all the user's sessions ({count})" }
+    ],
+    "refresh.result": [
+      {
+        "when": { "kind": "rotated" },
+        "text": "swaps the refresh token for new tokens"
+      },
+      {
+        "when": { "kind": "noSession" },
+        "text": "finds no session to refresh"
+      },
+      { "text": "refresh: {kind}" }
+    ],
+    "signOut.done": "the session is revoked",
+    "isAuthenticated.result": [
+      { "when": { "sessionLive": true }, "text": "the session is live" },
+      {
+        "when": { "tokenAccepted": true },
+        "text": "the token is valid, the session is gone"
+      },
+      { "text": "no valid token" }
+    ]
+  }
+}

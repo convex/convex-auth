@@ -13,12 +13,14 @@ import { structure } from "@convex-dev/explorer-structure";
 import type { ProjectSource } from "../../src/project.ts";
 import type { Presentation } from "../../src/presentation.ts";
 import presentation from "./presentation.json";
+import phrases from "./phrases.json";
 import page from "./recording-page.ndjson?raw";
 import cli from "./recording-cli.ndjson?raw";
 import { insideOf } from "./inside.ts";
 
 export const source: ProjectSource = {
-  presentation: presentation as Presentation,
+  // The words of the play-by-play list: one phrase per step its code reports.
+  presentation: { ...presentation, phrases } as Presentation,
   structure,
   timelines: { page, cli },
   inside: insideOf(structure),

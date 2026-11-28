@@ -210,5 +210,42 @@
       "label": "Scheduler",
       "summary": "Runs the functions that a committed mutation scheduled."
     }
+  },
+  "phrases": {
+    "generic": {
+      "open": "On open",
+      "unasked": "Not asked for",
+      "backend": "backend",
+      "scheduler": "scheduler",
+      "page": "page",
+      "send": "sends the {type} {function}",
+      "carrying": "with {what}",
+      "blanked": "{field}, blanked",
+      "run": "{function} runs, {ms} ms",
+      "scheduled": "runs {function}, scheduled",
+      "call": "calls {target}",
+      "answer": "the answer comes back",
+      "refused": "the answer comes back: refused",
+      "write.delete": "deletes from {tables}",
+      "rerun": "{functions} run again for their subscribers",
+      "log": "logs a {level}",
+      "holds": "now holds the {what}",
+      "drops": "no longer holds the {what}",
+      "storage": "changes",
+      "console": "the console shows an {level}",
+      "unlinked": "calls the {type} {function}, not linked to one run",
+      "input.click": "clicks {what}",
+      "input.type": "types into {what}",
+      "input.submit": "submits the form",
+      "input.key": "presses a key in {what}",
+      "state.loading": "loading",
+      "state.signedOut": "signed out",
+      "state.signingIn": "signing in",
+      "state.signedIn": "signed in",
+      "state.error": "error",
+      "island.app": "app",
+      "write": "writes {tables}",
+      "run.query": "{function} runs"
+    }
   }
 }
