@@ -13,6 +13,7 @@ import { done, insideOf } from "../insides.ts";
 import { groupFacts, groupName } from "../scene/Groups.tsx";
 import { highlightOf } from "../scene/highlight.ts";
 import { cardAt } from "../scene/CardAnchor.tsx";
+import { cardLine, placeCard, wayThere } from "./cardRules.ts";
 import { nounOfPart, partOf, placementOf } from "../scene/look.ts";
 import { TONE_COLORS } from "../scene/palette.ts";
 import { loadName } from "../model/operations.ts";
@@ -288,47 +289,31 @@ export function cardOf(s: Selection, state: WorldState): CardContent {
   }
 }
 
-/** The card's gap from the point it stands beside (px). */
-const GAP = 22;
-
 export function Card() {
   const selected = usePlayback((s) => s.selected);
   const detail = usePlayback((s) => s.detail);
-  const open = usePlayback((s) => s.open);
+  const framed = usePlayback((s) => s.framed);
   usePlayback((s) => Math.floor(s.time * 4));
   usePlayback((s) => s.version);
   const box = useRef<HTMLElement>(null);
 
-  // Follow the point on the window; dock at the top right when it is off it.
+  // Follow the point on the window (see placeCard).
   useEffect(() => {
     let frame = 0;
     const place = () => {
       frame = requestAnimationFrame(place);
       const el = box.current;
       if (!el) return;
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      const W = window.innerWidth;
-      const H = window.innerHeight;
-      let x: number;
-      let y: number;
-      const sel = usePlayback.getState().selected;
-      const aside =
-        sel?.type === "part" && usePlayback.getState().open === sel.id;
-      if (aside) {
-        // Its inside is open: the card stands at the side, not over it.
-        x = 16;
-        y = 16;
-      } else if (cardAt.on) {
-        x = cardAt.x + GAP;
-        if (x + w > W - 12) x = cardAt.x - GAP - w;
-        y = cardAt.y - h / 2;
-      } else {
-        x = W - w - 16;
-        y = 72;
-      }
-      x = Math.min(Math.max(12, x), W - w - 12);
-      y = Math.min(Math.max(12, y), H - h - 96);
+      const s = usePlayback.getState();
+      const aside = s.selected?.type === "part" && s.framed === s.selected.id;
+      const { x, y } = placeCard({
+        W: window.innerWidth,
+        H: window.innerHeight,
+        w: el.offsetWidth,
+        h: el.offsetHeight,
+        at: cardAt.on ? { x: cardAt.x, y: cardAt.y } : null,
+        aside,
+      });
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       el.dataset.docked = cardAt.on && !aside ? "" : "docked";
     };
@@ -356,6 +341,10 @@ export function Card() {
     .map((x) => x.other)
     .filter((id, i, all) => all.indexOf(id) === i && placementOf(id));
   const { select, flyTo, setDetail } = usePlayback.getState();
+  const way =
+    selected.type === "part"
+      ? wayThere(selected.id, c.opens ?? false, framed)
+      : "go";
   return (
     <aside className="card panel" ref={box} aria-label={c.title}>
       <div className="card-kind">
@@ -365,7 +354,7 @@ export function Card() {
       <h2>{c.title}</h2>
       {c.line && (
         <p className="card-line">
-          {c.line.text}
+          {cardLine(c.line.text)}
           {c.line.from && (
             <span className="dim small">
               {" "}
@@ -405,16 +394,16 @@ export function Card() {
         </div>
       )}
       <div className="card-actions">
-        {!(selected.type === "part" && open === selected.id) && (
+        {way && (
           <button
             onClick={() => {
-              if (selected.type === "part" && c.opens)
+              if (way === "open" && selected.type === "part")
                 usePlayback.getState().openUp(selected.id);
               else flyTo(selected);
             }}
-            title={c.opens ? "Go close: it opens up" : "Go there"}
+            title={way === "open" ? "Go close: it opens up" : "Go there"}
           >
-            {c.opens ? "Open up" : "Go there"}
+            {way === "open" ? "Open up" : "Go there"}
           </button>
         )}
         <button
