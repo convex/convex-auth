@@ -393,6 +393,10 @@ function PlaceName({
             outlineColor="#03050a"
             weight={size >= 0.15 ? "bold" : "regular"}
             anchorY={top ? "top" : "middle"}
+            // After the disc: the step names hang from their top line, and
+            // seen from aside their last line is under the disc's surface;
+            // drawn before it, the disc would cover it.
+            renderOrder={1}
           >
             {entry.text}
           </Label>
