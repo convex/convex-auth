@@ -459,6 +459,8 @@ export function readPageFeed(
               "normal",
               {
                 candidates,
+                fn: String(e.identifier),
+                callType: String(e.udfType).toLowerCase(),
               },
             ),
           );
@@ -498,7 +500,10 @@ export function readPageFeed(
             "input",
             verb[String(e.action)] ?? `${String(e.action)} ${what}`,
             "normal",
-            { lights: [element] },
+            {
+              lights: [element],
+              input: { action: String(e.action), what: String(what) },
+            },
           ),
         );
         break;
@@ -542,7 +547,9 @@ export function readPageFeed(
                 ? `the scenario step is done: ${String(e.step)}`
                 : `the scenario step failed: ${String(e.step)}${e.error ? ` (${String(e.error)})` : ""}`,
             tone,
-            { scenario: e.status === "start" ? "start" : "end" },
+            e.status === "start"
+              ? { scenario: "start", pressed: String(e.step) }
+              : { scenario: "end" },
           ),
         );
         break;

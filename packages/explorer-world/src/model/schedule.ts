@@ -23,6 +23,7 @@ import type {
   Cargo,
   Derivation,
   Doc,
+  PageItem,
   PageState,
   Recording,
   Run,
@@ -118,6 +119,18 @@ export interface Chapter {
   start: number;
   end: number;
   commitAt: number;
+  /** When each of the run's steps plays (shown time), by its index in `run.steps`. */
+  stepsAt: number[];
+  /** When the response leaves the function, if the run has one. */
+  answerAt?: number;
+}
+
+/** Something a page did outside the runs, at its shown time. */
+export interface PlacedItem {
+  at: number;
+  item: PageItem;
+  /** The run it plays with; null for what the page did before any run. */
+  run: string | null;
 }
 
 export interface Timeline {
@@ -141,6 +154,8 @@ export interface Timeline {
   actionEnds: number[];
   /** The operations of the client, one moving thing each. */
   ops: OpPath[];
+  /** Everything the pages did outside the runs, in shown order. */
+  items: PlacedItem[];
 }
 
 /**
@@ -546,6 +561,7 @@ export function buildTimeline(
     actions: [],
     actionEnds: [],
     ops: [],
+    items: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
   // Ids count within each run, so that a run keeps the ids of its movements
@@ -662,6 +678,11 @@ export function buildTimeline(
   for (const p of placed.all)
     if (p.kind === "item") {
       playItem(p.run, p.item, placed.at.get(p)!);
+      tl.items.push({
+        at: placed.at.get(p)!,
+        item: p.item,
+        run: p.run?.id ?? null,
+      });
       if (p.item.scenario === "start") tl.actions.push(placed.at.get(p)!);
       if (p.item.scenario === "end") tl.actionEnds.push(placed.at.get(p)!);
     }
@@ -733,7 +754,9 @@ export function buildTimeline(
 
     const rootStart = t;
     const open: { target: string; arrived: number }[] = [];
+    const stepsAt: number[] = [];
     for (const s of run.steps) {
+      stepsAt.push(t);
       const caller = open.length ? open[open.length - 1].target : root;
       switch (s.kind) {
         case "call": {
@@ -884,8 +907,10 @@ export function buildTimeline(
     });
 
     // The response, back to the caller.
+    let answerAt: number | undefined;
     if (!scheduled) {
       const resStart = t;
+      answerAt = resStart;
       t += (quick ? P.quick : P.response) + leg;
       const back = run.via ? t - (leg || (t - resStart) * 0.35) : t;
       if (run.via) calls.set(run.id, { run, out, back, home: t });
@@ -928,6 +953,8 @@ export function buildTimeline(
       start,
       end: t,
       commitAt,
+      stepsAt,
+      ...(answerAt !== undefined ? { answerAt } : {}),
     });
   }
   tl.chapters.sort((a, b) => a.start - b.start);
@@ -978,6 +1005,7 @@ export function buildTimeline(
       .filter((h) => h.op === "drop")
       .map((h) => h.at + STATE_PULSE),
   );
+  tl.items.sort((a, b) => a.at - b.at);
   tl.beats.sort((a, b) => a.start - b.start);
   tl.rowChanges.sort((a, b) => a.at - b.at);
   tl.movements.sort((a, b) => a.start - b.start);

@@ -114,6 +114,8 @@ export interface PageItem {
   order?: { page: string; seq: number };
   /** For an unlinked call: the runs it may be, one of which it is. */
   candidates?: string[];
+  /** For an unlinked call: the kind of function it called (`query`). */
+  callType?: string;
   /** The parts it lights while it plays: the module that reported a step, the key it named. */
   lights?: string[];
   /** For a step the client library reported: its name. */
@@ -140,6 +142,10 @@ export interface PageItem {
   loaded?: true;
   /** For a step of the scenario (a pressed control): whether it starts or ends. */
   scenario?: "start" | "end";
+  /** For the start of a step of the scenario: its name, as the scenario gives it. */
+  pressed?: string;
+  /** For an input: what the person did, and to which element (by its name, never a value). */
+  input?: { action: string; what: string };
   parentOp?: string;
 }
 
