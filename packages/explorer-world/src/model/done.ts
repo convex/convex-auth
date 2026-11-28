@@ -46,6 +46,12 @@ const order = (it: PageItem) => it.order?.seq ?? 0;
 function clientItems(recording: Recording, timeline: Timeline) {
   const seen = new Set<PageItem>();
   const items: PageItem[] = [];
+  // What the page reported before any run (on load) counts too.
+  for (const it of recording.early ?? [])
+    if (it.step && !seen.has(it)) {
+      seen.add(it);
+      items.push(it);
+    }
   for (const r of recording.runs)
     for (const it of [...r.before, ...r.after])
       if (it.step && !seen.has(it)) {
