@@ -27,6 +27,7 @@ import {
   CallTracker,
   CLIENT_STEP_REPORTS_SCRIPT,
   diffCookies,
+  PageNavigations,
   readHttp,
   readInput,
   readPageStep,
@@ -125,6 +126,7 @@ type PendingRequest = Omit<
 /** A browser that the recorder drives and reads. */
 export class BrowserSession {
   private readonly pageIds = new WeakMap<Page, string>();
+  private readonly attached = new WeakMap<Page, Promise<void>>();
   private readonly readers: SocketReader[] = [];
   private pageCount = 0;
   private cookieCount = 0;
@@ -288,7 +290,12 @@ export class BrowserSession {
     }
   }
 
-  pageEvent(pageId: string, event: PageEvent["event"], url: string): void {
+  pageEvent(
+    pageId: string,
+    event: PageEvent["event"],
+    url: string,
+    sameDocument?: boolean,
+  ): void {
     const id = this.nextId(pageId);
     const time = Date.now();
     this.emit([
@@ -299,14 +306,26 @@ export class BrowserSession {
         pageId,
         event,
         url: this.options.redactor.url(url, time, id),
+        ...(sameDocument === undefined ? {} : { sameDocument }),
       },
     ]);
   }
 
-  private async attach(page: Page): Promise<void> {
-    if (this.pageIds.has(page)) {
-      return;
+  /**
+   * Starts recording a page, once. The first page is attached twice, by
+   * `context.on("page")` and by `start`, which must wait for the protocol's
+   * events to be on before the page navigates.
+   */
+  private attach(page: Page): Promise<void> {
+    let attached = this.attached.get(page);
+    if (attached === undefined) {
+      attached = this.attachNow(page);
+      this.attached.set(page, attached);
     }
+    return attached;
+  }
+
+  private async attachNow(page: Page): Promise<void> {
     const pageId = `p${++this.pageCount}`;
     this.pageIds.set(page, pageId);
     const { redactor, deploymentUrl } = this.options;
@@ -321,18 +340,6 @@ export class BrowserSession {
       this.pageEvent(pageId, "open", page.url());
       opened = true;
     }
-    page.on("framenavigated", (frame) => {
-      if (!this.isScreen(frame)) {
-        return;
-      }
-      lastUrl = frame.url();
-      if (!opened) {
-        // On a stage the page opens when its frame first gets a URL.
-        opened = true;
-        this.pageEvent(pageId, "open", frame.url());
-      }
-      this.pageEvent(pageId, "navigated", frame.url());
-    });
     if (!stage) {
       // On a stage, the listener reports the load of the frame.
       page.on("load", () => this.pageEvent(pageId, "load", page.url()));
@@ -392,6 +399,50 @@ export class BrowserSession {
     });
 
     const cdp = await this.context.newCDPSession(page);
+    // The navigations of the recorded frame. The protocol tells a new
+    // document (`Page.frameNavigated`) from a change of URL within one
+    // (`Page.navigatedWithinDocument`), which Playwright's `framenavigated`
+    // reports alike.
+    const navigations = new PageNavigations();
+    let mainFrameId: string | null = null;
+    let screenFrameId: string | null = null;
+    const navigated = (url: string, sameDocument: boolean) => {
+      lastUrl = url;
+      if (!opened) {
+        // On a stage the page opens when its frame first gets a URL.
+        opened = true;
+        this.pageEvent(pageId, "open", url);
+      }
+      if (navigations.report(url, sameDocument)) {
+        this.pageEvent(pageId, "navigated", url, sameDocument);
+      }
+    };
+    cdp.on("Page.frameNavigated", ({ frame }) => {
+      if (frame.parentId === undefined) {
+        mainFrameId = frame.id;
+      }
+      const screen = stage
+        ? frame.name === SCREEN_FRAME &&
+          frame.parentId !== undefined &&
+          frame.parentId === mainFrameId
+        : frame.parentId === undefined;
+      if (screen) {
+        screenFrameId = frame.id;
+        navigated(frame.url + (frame.urlFragment ?? ""), false);
+      } else if (frame.id === screenFrameId) {
+        // The screen frame left the stage's frame or lost its name.
+        screenFrameId = null;
+      }
+    });
+    cdp.on("Page.navigatedWithinDocument", ({ frameId, url }) => {
+      if (frameId === screenFrameId) {
+        navigated(url, true);
+      }
+    });
+    await cdp.send("Page.enable");
+    // A page attached once it had navigated (a popup) has its main frame.
+    const { frameTree } = await cdp.send("Page.getFrameTree");
+    mainFrameId ??= frameTree.frame.id;
     await cdp.send("Network.enable");
     await cdp.send("DOMStorage.enable");
     this.readNetwork(cdp, pageId, calls, reader, deploymentUrl);

@@ -838,6 +838,28 @@ export function diffCookies(
   return events;
 }
 
+/**
+ * Decides which reports of a navigation of one page to record. A new document
+ * is a navigation, also at the URL the page is at (a reload). Within a
+ * document, only a change of URL is one: a page that rewrites its history
+ * entry in place, at its own URL, goes nowhere. React Router does that when it
+ * starts (`history.replaceState` adds its index to the state), and a
+ * `<Navigate replace>` that React's StrictMode runs twice does it the second
+ * time.
+ */
+export class PageNavigations {
+  private url: string | null = null;
+
+  /** Whether to record a navigation to `url`, the raw URL, not redacted. */
+  report(url: string, sameDocument: boolean): boolean {
+    if (sameDocument && url === this.url) {
+      return false;
+    }
+    this.url = url;
+    return true;
+  }
+}
+
 /** What the listener in the page reports. */
 export type PageInput = {
   action: InputEvent["action"];

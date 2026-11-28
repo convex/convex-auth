@@ -17,6 +17,7 @@ import {
   BrowserRedactor,
   CallTracker,
   diffCookies,
+  PageNavigations,
   readHttp,
   readInput,
   readPageStep,
@@ -82,6 +83,7 @@ export class PageIngest {
   private counter = 0;
   private cookieCount = 0;
   private opened = false;
+  private readonly navigations = new PageNavigations();
   private socketCount = 0;
   /** The page's socket number in each document, to the timeline's id. */
   private readonly sockets = new Map<string, string>();
@@ -192,11 +194,13 @@ export class PageIngest {
             this.opened = true;
             this.page("open", item.url, time);
           }
-          this.page("navigated", item.url, time);
+          this.navigated(item.url, time, false);
           return;
         case "navigated":
+          if (httpUrl(item.url)) this.navigated(item.url, time, true);
+          return;
         case "load":
-          if (httpUrl(item.url)) this.page(item.type, item.url, time);
+          if (httpUrl(item.url)) this.page("load", item.url, time);
           return;
         case "input":
           this.input(item, time);
@@ -250,7 +254,12 @@ export class PageIngest {
     }
   }
 
-  private page(event: PageEvent["event"], url: string, time: number): void {
+  private page(
+    event: PageEvent["event"],
+    url: string,
+    time: number,
+    sameDocument?: boolean,
+  ): void {
     const id = this.nextId();
     this.emit([
       {
@@ -260,8 +269,16 @@ export class PageIngest {
         pageId: PAGE_ID,
         event,
         url: this.options.redactor.url(url, time, id),
+        ...(sameDocument === undefined ? {} : { sameDocument }),
       },
     ]);
+  }
+
+  /** A new document, or the history API or a fragment within one. */
+  private navigated(url: string, time: number, sameDocument: boolean): void {
+    if (this.navigations.report(url, sameDocument)) {
+      this.page("navigated", url, time, sameDocument);
+    }
   }
 
   private input(item: Item, time: number): void {

@@ -178,6 +178,44 @@ describe("PageIngest", () => {
     expect(JSON.stringify(events)).not.toContain("abc");
   });
 
+  test("reports each navigation once, and tells a new document from a change within one", () => {
+    const { page, events } = ingest();
+    page.receive({
+      doc: "a",
+      seq: 0,
+      items: [
+        { type: "document", url: "http://localhost:5173/", time: 1 },
+        { type: "load", url: "http://localhost:5173/", time: 2 },
+        // React Router on start: replaceState at the same URL.
+        { type: "navigated", url: "http://localhost:5173/", time: 3 },
+        { type: "navigated", url: "http://localhost:5173/login", time: 4 },
+        // StrictMode runs the <Navigate replace> twice.
+        { type: "navigated", url: "http://localhost:5173/login", time: 5 },
+        // Back across a fragment: popstate and hashchange.
+        { type: "navigated", url: "http://localhost:5173/login#a", time: 6 },
+        { type: "navigated", url: "http://localhost:5173/login#a", time: 7 },
+      ],
+    });
+    // A reload.
+    page.receive({
+      doc: "b",
+      seq: 0,
+      items: [
+        { type: "document", url: "http://localhost:5173/login#a", time: 8 },
+      ],
+    });
+    expect(
+      events
+        .filter((e) => e.kind === "page" && e.event === "navigated")
+        .map((e) => [e.time, (e as { sameDocument?: boolean }).sameDocument]),
+    ).toEqual([
+      [1, false],
+      [4, true],
+      [6, true],
+      [8, false],
+    ]);
+  });
+
   test("a cookie that the page and the server both see is one cookie", () => {
     const { page, events } = ingest();
     const cookie: Cookie = {

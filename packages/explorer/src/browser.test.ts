@@ -6,6 +6,7 @@ import {
   decodeSyncTs,
   diffCookies,
   httpApiType,
+  PageNavigations,
   readInput,
   SocketReader,
 } from "./browser.ts";
@@ -421,5 +422,35 @@ describe("readPageStep", () => {
     const event = readPageStep(line, "p1", ids(), 0);
     expect(event?.part).toBeNull();
     expect(JSON.stringify(event)).not.toContain("eyJ");
+  });
+});
+
+describe("PageNavigations", () => {
+  const app = "http://localhost:5173";
+
+  test("a history update that keeps the URL is no navigation", () => {
+    // React Router on start, then a <Navigate replace> that StrictMode runs
+    // twice.
+    const navigations = new PageNavigations();
+    expect(navigations.report(`${app}/`, false)).toBe(true);
+    expect(navigations.report(`${app}/`, true)).toBe(false);
+    expect(navigations.report(`${app}/login`, true)).toBe(true);
+    expect(navigations.report(`${app}/login`, true)).toBe(false);
+  });
+
+  test("a new document is a navigation, also at the same URL", () => {
+    const navigations = new PageNavigations();
+    expect(navigations.report(`${app}/signup`, false)).toBe(true);
+    // A reload.
+    expect(navigations.report(`${app}/signup`, false)).toBe(true);
+  });
+
+  test("a change of URL within the document is a navigation", () => {
+    const navigations = new PageNavigations();
+    expect(navigations.report(`${app}/`, false)).toBe(true);
+    expect(navigations.report(`${app}/#a`, true)).toBe(true);
+    expect(navigations.report(`${app}/#b`, true)).toBe(true);
+    // Back to a URL seen before is a navigation too.
+    expect(navigations.report(`${app}/#a`, true)).toBe(true);
   });
 });

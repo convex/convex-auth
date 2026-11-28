@@ -330,6 +330,10 @@ the format and change none of the kinds above; a viewer ignores the kinds it
 does not know.
 
 - `page`: a tab opened, navigated, loaded, or closed (`pageId` names the tab).
+  A navigation is a new document (a load or a reload), or a new URL within
+  the document (the history API, a fragment), which `sameDocument` tells
+  apart. A history update that keeps the URL is none: React Router makes one
+  when it starts. Recordings made before `sameDocument` hold those too.
 - `input`: what the person did: a click, the text of a field (once they
   paused or left it), a submit, or Enter or Escape, with the element.
 - `http`: a request of the page and its response. For a call of the HTTP API

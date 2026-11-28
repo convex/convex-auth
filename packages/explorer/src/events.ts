@@ -284,6 +284,13 @@ export type PageEvent = {
   event: "open" | "navigated" | "load" | "close";
   /** The URL, with query values and fragment replaced (see `redactUrl`). */
   url: string;
+  /**
+   * On "navigated": false when a new document came (a load, a reload), true
+   * when the URL changed within the document (the history API, a fragment).
+   * Absent in recordings made before the recorder told them apart, which
+   * also reported a history update that kept the URL.
+   */
+  sameDocument?: boolean;
 };
 
 /** The element of the page that an {@link InputEvent} happened on. */
