@@ -374,6 +374,29 @@ frame takes milliseconds; that is not measured here.
   the steps of the scenario play between runs, and the run list is grouped
   by scenario step. A call the recorder could not link to one run stays
   unlinked, with the runs it may be.
+- **A list says what is being played** (`src/ui/PlayList.tsx`,
+  `src/model/playByPlay.ts`), in live mode, in a narrow column on the left
+  (‹ folds it to a tab, and it stays folded). One line per thing the running
+  code reported, in the order it happened: who did it, what it did in plain
+  words, and the code name beside it, small (`session.set`). Each pressed
+  control is a section, so is what the page did on open, and what the client
+  did by itself while nothing was pressed (a token refreshed on its timer)
+  folds into a faint "Not asked for" section. In a section, each operation
+  of the client is a block, a line and then its steps; the call it made, the
+  run it reached, the run's steps and its writes (one line per island) and
+  the answer sit in it. Each line carries the mark of its thing in the
+  world. By default only the headings show, and under the section being
+  played the block being played (a run's own steps only while it plays): a
+  click on a heading opens the whole section, a caret a block. The line
+  being played is lit and kept in view; after the playhead, lines read as
+  not yet. A click on a line takes time there, holds it, and selects the
+  thing (the camera stays); what is selected in the world marks its lines.
+  ← → step line by line. The words are fixed phrases, never written for one
+  recording: the project's, one per step and kind of operation (Convex
+  Auth's in `projects/convex-auth/phrases.json`), and the generic ones (a
+  run, a write, a call, an answer) in the preset's `phrases`. A step with no
+  phrase shows its code name alone. A line holds names, labels, flags and
+  error codes only, never a value.
 - **The recording plays**: a request leaves its caller, calls travel between
   functions, the commit sends its writes to their tables, rows rise in, change
   state and dissolve, a warning shows over the function that logged it, and the
@@ -397,7 +420,7 @@ dependencies, one thin line each), **Unresolved** (every unresolved stub).
 | O / Overview                  | fly back to the overview                              |
 | F / Follow                    | the camera follows the action (on at start)           |
 | R, L, U                       | toggle the relations, all links, unresolved overlays  |
-| Space, ← →                    | play or pause; step to the previous or next beat      |
+| Space, ← →                    | play or pause; step to the previous or next line      |
 | timeline, run list            | scrub; click a run to jump to it and inspect it       |
 
 URL parameters for scripted screenshots: `?t=42&paused` opens at 42 s,
@@ -488,6 +511,9 @@ from npm) is added and marked **observed**.
   project.
 - `src/test/layout.test.ts`: another layout strategy plugs in; packing does
   not overlap.
+- `src/test/playByPlay.test.ts`: the list of a sign-up in order; a phrase
+  for every place in the source that reports a step; no value in any line;
+  what nobody asked for folded; the line at a time.
 - `src/test/live.test.ts`: a recording fed batch by batch ends as the world
   of its file; scrambled, it ends with the same content; a late run keeps the
   playhead in its run; the behind-live measure; `?live=` takes only a local
