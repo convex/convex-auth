@@ -13,8 +13,9 @@ import {
 import { currentState, usePlayback, world, type Selection } from "../store.ts";
 import { frameHome, type Rect } from "./homeFrame.ts";
 import { discCentre, discRadius } from "./Inside.tsx";
-import { frameOpen, openDirection } from "./openFrame.ts";
-import { OPEN_UP_DISTANCE } from "../model/insideLayout.ts";
+import { frameOpen, openDirection, type FitName } from "./openFrame.ts";
+import { insideNames, layInside } from "../model/insideLayout.ts";
+import { insideOf } from "../insides.ts";
 import { anchorPosition, placementOf } from "./look.ts";
 
 /** Where a selection is, and how far away to look at it from. */
@@ -131,6 +132,54 @@ function columnEdge(box: DOMRect): number {
 /** Where a story looks at an opened part from: the side Home looks from. */
 const STORY_HEADING = new Vector3(0, 0, 1);
 
+/**
+ * The names on an opened part that the framing keeps on the window: its
+ * places' names and the steps under them, and the keys it holds, at the
+ * size they are drawn from that far (`Inside.tsx`: grown up to 1.8 times).
+ */
+function openNames(id: string, centre: Vector3): FitName[] {
+  const inside = insideOf(id);
+  if (!inside) return [];
+  const lay = layInside(inside);
+  const GROW = 1.8;
+  const EM = 0.58;
+  const out: FitName[] = [];
+  const shown = new Set(lay.sites.map((s) => s.id));
+  for (const n of insideNames(lay, shown)) {
+    if (n.kind === "state") continue;
+    const place = n.place
+      ? lay.places.find((p) => p.place.id === n.place)
+      : null;
+    const hold = n.place
+      ? null
+      : lay.holds.find((h) => `hold:${h.kind}:${h.name}` === n.key);
+    const x = place?.x ?? hold?.x ?? 0;
+    const z = place?.z ?? hold?.z ?? 0;
+    const lines = n.text.split("\n");
+    const size =
+      n.kind === "steps"
+        ? 0.058
+        : n.kind === "key"
+          ? 0.075
+          : place?.shape === "member"
+            ? 0.085
+            : place?.shape === "class"
+              ? 0.17
+              : 0.11;
+    const wide = Math.max(...lines.map((l) => l.length)) * size * EM * GROW;
+    out.push({
+      at: centre.clone().add(new Vector3(x, 0.3, z)),
+      halfWidth: wide / 2,
+      // Steps hang down from under their place; other names stand over it.
+      rise:
+        n.kind === "steps"
+          ? -lines.length * size * 1.3 * GROW
+          : size * 1.3 * GROW,
+    });
+  }
+  return out;
+}
+
 /** A docked card's width and gap, beside the column while a story runs. */
 const CARD_ROOM = 300;
 
@@ -231,6 +280,8 @@ function holdView(
 /** The viewer takes the camera: Follow stops until turned on again. */
 const takeOver = () => {
   atHome = false;
+  // Moved by hand: an opened part is framed again only by distance.
+  if (usePlayback.getState().openedOn) usePlayback.setState({ openedOn: null });
   if (usePlayback.getState().director)
     usePlayback.getState().setDirector(false);
 };
@@ -527,8 +578,7 @@ export function CameraRig() {
         box.width,
         box.height,
         openRect(box),
-        // Near enough that the part opens and counts as framed (Inside.tsx).
-        OPEN_UP_DISTANCE * 1.3,
+        openNames(id, centre),
       );
       (globalThis as { explorerOpenFrame?: unknown }).explorerOpenFrame = {
         radius: discRadius(id),

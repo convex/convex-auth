@@ -228,7 +228,9 @@ export interface InsideName {
  * stored keys are named from the same distance; state only close in.
  */
 export function insideNames(lay: InsideLayout, lit: Set<string>): InsideName[] {
-  const far = OPEN_UP_DISTANCE * 1.5;
+  // As far as an opened part is framed whole (`scene/openFrame.ts`), names
+  // on its far side included; farther, they are too small to read anyway.
+  const far = OPEN_UP_DISTANCE * 2.5;
   const out: InsideName[] = [];
   for (const p of lay.places) {
     if (p.shape === "type" || p.shape === "reexport") continue;

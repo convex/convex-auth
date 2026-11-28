@@ -18,7 +18,13 @@ import { nounOfPart, partOf, placementOf } from "../scene/look.ts";
 import { TONE_COLORS } from "../scene/palette.ts";
 import { loadName } from "../model/operations.ts";
 import type { WorldState } from "../model/playback.ts";
-import { currentState, usePlayback, world, type Selection } from "../store.ts";
+import {
+  currentState,
+  framedPart,
+  usePlayback,
+  world,
+  type Selection,
+} from "../store.ts";
 
 const labelOf = (id: string) => partOf(id)?.label ?? id;
 const chapterOf = (run: string) =>
@@ -298,7 +304,7 @@ function storyDock(): { top?: number; beside?: boolean } {
 export function Card() {
   const selected = usePlayback((s) => s.selected);
   const detail = usePlayback((s) => s.detail);
-  const framed = usePlayback((s) => s.framed);
+  const framed = usePlayback(framedPart);
   usePlayback((s) => Math.floor(s.time * 4));
   usePlayback((s) => s.version);
   const box = useRef<HTMLElement>(null);
@@ -311,7 +317,8 @@ export function Card() {
       const el = box.current;
       if (!el) return;
       const s = usePlayback.getState();
-      const aside = s.selected?.type === "part" && s.framed === s.selected.id;
+      const aside =
+        s.selected?.type === "part" && framedPart(s) === s.selected.id;
       const { x, y } = placeCard({
         W: window.innerWidth,
         H: window.innerHeight,

@@ -24,30 +24,48 @@ function onWindow(frame: ReturnType<typeof frameOpen>, p: Vector3) {
 const centre = new Vector3(-160, 3, 8);
 const radius = 3.2;
 
-test("the disc's rim stands whole in the free rectangle, its centre in the middle", () => {
+test("the rim and the names stand whole in the free rectangle, in its middle", () => {
+  // A long name hanging out past the rim, on the right.
+  const names = [
+    {
+      at: centre.clone().add(new Vector3(radius - 0.2, 0.3, 1.3)),
+      halfWidth: 1.2,
+      rise: 0.2,
+    },
+  ];
   for (const heading of [new Vector3(0, 0, 1), new Vector3(-1, 0, 0.3)]) {
-    const frame = frameOpen(
-      centre,
-      radius,
-      openDirection(heading),
-      42,
-      W,
-      H,
-      rect,
-    );
+    const from = openDirection(heading);
+    const frame = frameOpen(centre, radius, from, 42, W, H, rect, names);
+    const xs: number[] = [];
+    const ys: number[] = [];
     for (let a = 0; a < 2 * Math.PI; a += Math.PI / 16) {
       const rim = centre
         .clone()
         .add(new Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
       const p = onWindow(frame, rim);
-      expect(p.x).toBeGreaterThanOrEqual(rect.left);
-      expect(p.x).toBeLessThanOrEqual(rect.right);
-      expect(p.y).toBeGreaterThanOrEqual(rect.top);
-      expect(p.y).toBeLessThanOrEqual(rect.bottom);
+      xs.push(p.x);
+      ys.push(p.y);
     }
-    const c = onWindow(frame, centre);
-    expect(c.x).toBeCloseTo((rect.left + rect.right) / 2, -1);
-    expect(c.y).toBeCloseTo((rect.top + rect.bottom) / 2, -1);
+    // The name's ends, along the window's horizontal.
+    const right = new Vector3()
+      .crossVectors(from.clone().negate(), new Vector3(0, 1, 0))
+      .normalize();
+    for (const side of [-1, 1]) {
+      const p = onWindow(
+        frame,
+        names[0].at.clone().addScaledVector(right, side * 1.2),
+      );
+      xs.push(p.x);
+      ys.push(p.y);
+    }
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(rect.left);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(rect.right);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(rect.top);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(rect.bottom);
+    // It fills the room, not a corner of it.
+    const mid = (v: number[]) => (Math.min(...v) + Math.max(...v)) / 2;
+    expect(Math.abs(mid(xs) - (rect.left + rect.right) / 2)).toBeLessThan(15);
+    expect(Math.abs(mid(ys) - (rect.top + rect.bottom) / 2)).toBeLessThan(15);
   }
 });
 

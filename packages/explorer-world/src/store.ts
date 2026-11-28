@@ -137,6 +137,12 @@ interface PlaybackStore {
   open: string | null;
   /** The open part, when the camera is close and looking at it. */
   framed: string | null;
+  /**
+   * The part opened on purpose (Open up, a story's stop): framed whole from
+   * however far that takes, until the viewer moves the camera or selects
+   * something else.
+   */
+  openedOn: string | null;
   /** Bumped to ask the camera close to a part, where its inside opens (`Inside.tsx`). */
   opening: { id: string; seq: number } | null;
   /** Bumped to ask the camera to fly somewhere. */
@@ -176,6 +182,17 @@ interface PlaybackStore {
   toggleOverlay: (name: keyof Overlays) => void;
 }
 
+/**
+ * The part framed open: the one the camera is close to and looking at, or
+ * the one opened on purpose while it is open.
+ */
+export const framedPart = (s: {
+  framed: string | null;
+  open: string | null;
+  openedOn: string | null;
+}): string | null =>
+  s.framed ?? (s.openedOn && s.open === s.openedOn ? s.openedOn : null);
+
 const clamp = (t: number) => Math.min(Math.max(t, 0), world.timeline.duration);
 
 export const usePlayback = create<PlaybackStore>((set, get) => ({
@@ -193,6 +210,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   opening: null,
   open: null,
   framed: null,
+  openedOn: null,
   overlays: { links: false, relations: true, unresolved: false },
   watchQuiet: false,
   listTo: null,
@@ -248,12 +266,19 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
     set((s) =>
       JSON.stringify(selected) === JSON.stringify(s.selected)
         ? {}
-        : { selected, detail: false },
+        : {
+            selected,
+            detail: false,
+            ...(selected?.type === "part" && selected.id === s.openedOn
+              ? {}
+              : { openedOn: null }),
+          },
     ),
   setDetail: (detail) => set({ detail }),
   openUp: (id, fixed = false) =>
     set((s) => ({
       director: false,
+      openedOn: id,
       flight: {
         target: { type: "open", id, fixed },
         seq: (s.flight?.seq ?? 0) + 1,
