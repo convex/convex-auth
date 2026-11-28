@@ -376,25 +376,31 @@ frame takes milliseconds; that is not measured here.
   unlinked, with the runs it may be.
 - **A list says what is being played** (`src/ui/PlayList.tsx`,
   `src/model/playByPlay.ts`), in live mode, in a narrow column on the left
-  (‹ folds it to a tab, and it stays folded). One line per thing the running
-  code reported, in the order it happened: who did it, what it did in plain
-  words, and the code name beside it, small (`session.set`). Each pressed
-  control is a section, so is what the page did on open, and what the client
-  did by itself while nothing was pressed (a token refreshed on its timer)
-  folds into a faint "Not asked for" section. In a section, each operation
-  of the client is a block, a line and then its steps; the call it made, the
-  run it reached, the run's steps and its writes (one line per island) and
-  the answer sit in it. Each line carries the mark of its thing in the
-  world. By default only the headings show, and under the section being
-  played the block being played (a run's own steps only while it plays): a
-  click on a heading opens the whole section, a caret a block. The line
-  being played is lit and kept in view; after the playhead, lines read as
-  not yet. A click on a line takes time there, holds it, and selects the
-  thing (the camera stays); what is selected in the world marks its lines.
-  ← → step line by line. The words are fixed phrases, never written for one
-  recording: the project's, one per step and kind of operation (Convex
-  Auth's in `projects/convex-auth/phrases.json`), and the generic ones (a
-  run, a write, a call, an answer) in the preset's `phrases`. A step with no
+  on a backing of its own (‹ folds it to a tab, and it stays folded). One
+  line per thing the running code reported, in the order it happened: who
+  did it, what it did in plain words, and the code name under it, small
+  (`session.set`). Each pressed control is a section, so is what the page
+  did on open, and what the client did by itself while nothing was pressed
+  (a token refreshed on its timer) is a faint "Not asked for" section. In a
+  section, each operation of the client is a block, a line and then its
+  steps; the call it made, the run it reached, the run's steps and its
+  writes (one line per island) and the answer sit in it. Each line carries
+  the mark of its thing in the world. Every heading shows; the last thing
+  pressed stands open, one line per thing it set off, with the block being
+  played open to its steps (a run's own steps while it plays), until
+  something else is pressed or the viewer opens another section. What
+  nobody asked for stays one faint heading, lit while it plays, unless the
+  viewer opens it. The line being played is lit and kept in view; after the
+  playhead, lines read as not yet. A click on a line takes time there,
+  holds it, and selects the thing (the camera stays); what is selected in
+  the world marks its lines. ← → step line by line. Home frames the world
+  right of the column (folded, it uses the room again); a card standing by
+  its part keeps right of it, and a card docked at the top left (a part
+  opened up) keeps the corner, with the column under it. The words are
+  fixed phrases, never written for one recording: the project's, one per
+  step and kind of operation (Convex Auth's in
+  `projects/convex-auth/phrases.json`), and the generic ones (a run, a
+  write, a call, an answer) in the preset's `phrases`. A step with no
   phrase shows its code name alone. A line holds names, labels, flags and
   error codes only, never a value.
 - **The recording plays**: a request leaves its caller, calls travel between
