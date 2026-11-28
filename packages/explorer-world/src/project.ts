@@ -17,6 +17,7 @@ import {
 } from "./adapters/convexRecording.ts";
 import type { Graph } from "./model/graph.ts";
 import type { ProjectInside } from "./model/inside.ts";
+import type { Story } from "./model/story.ts";
 import { createWorld, type World } from "./model/world.ts";
 import { PRESETS } from "./presets.ts";
 import { extendPresentation, type Presentation } from "./presentation.ts";
@@ -31,6 +32,8 @@ export interface ProjectSource {
    * exports and holds, where it reports steps), if it says anything.
    */
   inside?: ProjectInside;
+  /** Guided walks over what the code reported (`model/story.ts`). */
+  stories?: Story[];
 }
 
 export function resolvePresentation(own: Presentation): Presentation {

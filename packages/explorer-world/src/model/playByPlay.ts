@@ -84,6 +84,15 @@ export interface PlayLine {
   /** For a line of what ran inside a function (its steps, its writes): the run. */
   inRun?: string;
   section: string;
+  /**
+   * What the line was, for finding it (`model/story.ts`), never shown: the
+   * step's name, the part that reported it and the report's detail; or, for
+   * an operation's line, its kind.
+   */
+  step?: string;
+  reporter?: string;
+  detail?: Record<string, unknown>;
+  opKind?: string;
 }
 
 export interface PlaySection {
@@ -93,6 +102,8 @@ export interface PlaySection {
   /** When it starts and ends, in shown time. */
   at: number;
   end: number;
+  /** For a press: whether its end was recorded (nothing more of it will come). */
+  closed?: boolean;
   lines: PlayLine[];
 }
 
@@ -214,6 +225,7 @@ export function playByPlay(input: PlayInput): PlaySection[] {
         title: capital(span.title),
         at: span.at,
         end: span.end,
+        closed: span.end !== Infinity,
         lines: [],
       };
       sections.push(made);
@@ -260,6 +272,7 @@ export function playByPlay(input: PlayInput): PlaySection[] {
         who: who(item.part),
         text: phrases.ops?.[op.kind] ?? op.kind,
         code: op.kind,
+        opKind: op.kind,
         mark: "op",
         tone: op.tone,
         op: op.id,
@@ -291,6 +304,9 @@ export function playByPlay(input: PlayInput): PlaySection[] {
         who: who(item.part),
         text: text ?? "",
         code: item.step + (item.code ? ` · ${item.code}` : ""),
+        step: item.step,
+        reporter: item.part,
+        ...(item.report?.detail ? { detail: item.report.detail } : {}),
         mark: item.state ? "state" : key ? "key" : "step",
         ...(item.state ? { state: item.state.state } : {}),
         ...(item.op ? { op: item.op } : {}),
