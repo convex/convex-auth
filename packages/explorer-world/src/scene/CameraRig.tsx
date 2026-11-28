@@ -112,7 +112,17 @@ function home(
     platform[0] >= h.region.center[0],
     // A circle on the ground seen from above at this elevation.
     1 / Math.max(0.2, direction.y),
+    columnEdge(box),
   );
+}
+
+/**
+ * The right edge of the play-by-play column on the canvas (px), with a
+ * gap, or 0 when it is folded away: Home keeps what it frames clear of it.
+ */
+function columnEdge(box: DOMRect): number {
+  const r = document.querySelector(".playlist")?.getBoundingClientRect();
+  return r && r.width ? r.right - box.left + 12 : 0;
 }
 
 /** The height of the time line along the bottom of the window (px). */
@@ -253,12 +263,19 @@ export function CameraRig() {
     // The panel comes, and changes size, after the canvas.
     const panel = () => document.querySelector(".controls");
     let watched: Element | null = null;
+    // The play-by-play column, folded or not, changes the room too.
+    let edge = columnEdge(canvas.getBoundingClientRect());
     const watch = setInterval(() => {
       const el = panel();
       if (el && el !== watched) {
         if (watched) seen.unobserve(watched);
         seen.observe(el);
         watched = el;
+      }
+      const now = columnEdge(canvas.getBoundingClientRect());
+      if (now !== edge) {
+        edge = now;
+        refit();
       }
     }, 500);
     return () => {

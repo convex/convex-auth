@@ -40,9 +40,11 @@ export function homeRect(
   aspect = 1.3,
   /** The share of the free room the region takes. */
   share = SHARE,
+  /** Where the room starts on the left: right of a column along that side. */
+  left = 0,
 ): Rect {
   const all: Rect = {
-    left: 0,
+    left,
     // Room above the region for its name, which stands over its rim.
     top: Math.min(72, Math.max(36, height * 0.07)),
     right: width,
@@ -216,8 +218,19 @@ export function frameHome(
   bottomBar: number,
   beyondRight: boolean,
   aspect: number,
+  /** The right edge of a column along the left side (px), if one stands there. */
+  left = 0,
 ): { position: Vector3; target: Vector3 } {
-  const rect = homeRect(width, height, panel, bottomBar, beyondRight, aspect);
+  const rect = homeRect(
+    width,
+    height,
+    panel,
+    bottomBar,
+    beyondRight,
+    aspect,
+    SHARE,
+    left,
+  );
   const alone = frameRegion(region, direction, fov, width, height, rect);
   if (!beyond.length) return alone;
   // The whole free room: a share of 1.
@@ -229,6 +242,7 @@ export function frameHome(
     beyondRight,
     aspect,
     1,
+    left,
   );
   const both = frameRegion(
     [region, ...beyond],
