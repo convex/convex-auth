@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { parseNdjson } from "../adapters/convexRecording.ts";
-import { hurry, liveEdge, nextStart } from "../live.ts";
+import { hurry, liveEdge, liveStep, nextStart, playLive } from "../live.ts";
 import {
   HOP,
   HOP_KEY,
@@ -142,5 +142,25 @@ describe("pacing", () => {
     expect(hurry({ ...cut, duration: second + 10 }, second + 0.5)).toBe(1);
     expect(liveEdge(cut)).toBeGreaterThanOrEqual(second);
     expect(nextStart(tl, second - 0.01)).toBeCloseTo(second, 5);
+  });
+
+  test("played from where the viewer moved back to, it plays at shown pace, then follows live", () => {
+    // Moved back to before the second pressed control, paused, then play.
+    const [, second] = tl.actions;
+    const from = second - 1;
+    let at = playLive(tl, from);
+    expect(at.replaying).toBe(true);
+    // At shown speed: not hurried, as following live would be here.
+    expect(hurry(tl, from)).toBeGreaterThan(1);
+    expect(liveStep(tl, at, 0.1, 1).time).toBeCloseTo(from + 0.1, 9);
+    // On to the newest moment, where it no longer plays back: it follows
+    // live, and what arrives then plays as it comes.
+    let steps = 0;
+    while (at.replaying && steps++ < 1e5) at = liveStep(tl, at, 0.1, 1);
+    expect(at.time).toBe(tl.duration);
+    expect(at.replaying).toBe(false);
+    expect(hurry(tl, at.time)).toBe(1);
+    // Pressed at the newest moment, play follows live from the start.
+    expect(playLive(tl, tl.duration).replaying).toBe(false);
   });
 });

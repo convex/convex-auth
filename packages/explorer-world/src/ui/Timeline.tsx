@@ -132,15 +132,19 @@ export function Timeline() {
 /**
  * The time line of live mode: a thin line over this session with a handle.
  * Dragging the handle goes back in time and holds there; "Back to live"
- * returns to the newest action and plays on. While it follows live, it says
- * so with a dot.
+ * returns to the newest action and plays on. Play plays on from where the
+ * handle is, at shown pace, and follows live again once it reaches the
+ * newest moment. While it follows live, it says so with a dot.
  */
 export function LiveLine() {
   const time = usePlayback((s) => s.time);
   const held = usePlayback((s) => s.held);
+  const playing = usePlayback((s) => s.playing);
+  const replaying = usePlayback((s) => s.replaying);
   const live = usePlayback((s) => s.live);
   usePlayback((s) => s.version);
-  const { setTime, pause, skipToLive } = usePlayback.getState();
+  const { setTime, pause, skipToLive, toggle } = usePlayback.getState();
+  const following = !held && !replaying;
   const bar = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const span = Math.max(world.timeline.duration, 1e-6);
@@ -172,9 +176,26 @@ export function LiveLine() {
   return (
     <div
       className="liveline"
-      data-following={held ? "no" : "yes"}
+      data-following={following ? "yes" : "no"}
       data-connection={state}
     >
+      <button
+        type="button"
+        className="play"
+        onClick={toggle}
+        title="Play / pause (space)"
+        aria-label={playing ? "Pause" : "Play"}
+      >
+        {playing ? (
+          <svg viewBox="0 0 24 24">
+            <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24">
+            <path d="M7 4v16l13-8z" />
+          </svg>
+        )}
+      </button>
       <div
         className="track"
         ref={bar}
@@ -194,7 +215,7 @@ export function LiveLine() {
         <div className="fill" style={{ width: `${(time / span) * 100}%` }} />
         <div className="handle" style={{ left: `${(time / span) * 100}%` }} />
       </div>
-      {held ? (
+      {!following ? (
         <button
           type="button"
           className="back"

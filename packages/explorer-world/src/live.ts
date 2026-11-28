@@ -158,6 +158,41 @@ export function hurry(timeline: Timeline, time: number): number {
   return Math.max(1, (timeline.duration - time) / BEHIND_AT_MOST);
 }
 
+/** Where a live playhead stands: what it shows, and whether it plays back. */
+export interface LivePlayhead {
+  time: number;
+  /**
+   * Playing what was recorded, from where the viewer moved back to, at
+   * shown pace; not following live until it reaches the newest moment.
+   */
+  replaying: boolean;
+}
+
+/**
+ * The viewer pressed play at `time`, live: behind the newest moment it plays
+ * back from there; at it, it follows live.
+ */
+export function playLive(timeline: Timeline, time: number): LivePlayhead {
+  return { time, replaying: time < timeline.duration - 1e-6 };
+}
+
+/**
+ * The playhead `dt` seconds of wall time later, playing live. Played back,
+ * it goes at shown speed; following live, at the pace of {@link hurry}.
+ * Once it reaches the newest moment it no longer plays back: it follows
+ * live, as after "Back to live".
+ */
+export function liveStep(
+  timeline: Timeline,
+  at: LivePlayhead,
+  dt: number,
+  speed: number,
+): LivePlayhead {
+  const rate = at.replaying ? 1 : hurry(timeline, at.time);
+  const time = Math.min(timeline.duration, at.time + dt * speed * rate);
+  return { time, replaying: at.replaying && time < timeline.duration - 1e-6 };
+}
+
 /**
  * The URL of the stream from `?live=`, which must be on this machine: the
  * world makes no request elsewhere. Null when absent; throws when invalid.

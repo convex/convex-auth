@@ -3,7 +3,7 @@ import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { useMemo } from "react";
 import { useDiag } from "../diag.ts";
 import { frames } from "../problems.ts";
-import { hurry } from "../live.ts";
+import { liveStep } from "../live.ts";
 import { liveTrace, usePlayback, world } from "../store.ts";
 import { Alerts } from "./Alerts.tsx";
 import { Backdrop } from "./Backdrop.tsx";
@@ -42,16 +42,26 @@ function Clock() {
     // hidden tab, a debugger) is not played through.
     let left = Math.min(delta, LONGEST_FRAME);
     let next = s.time;
+    let replaying = s.replaying;
     while (left > 0) {
       // Live, the world plays what was reported at a pace a person can
       // watch; a newer pressed control makes the one playing finish
-      // quickly. The rate is taken again every tenth of a second.
+      // quickly. Played back from where the viewer moved to, it goes at
+      // shown speed. The rate is taken again every tenth of a second.
       const dt = Math.min(left, 0.1);
-      const rate = s.live ? hurry(world.timeline, next) : 1;
-      next += dt * s.speed * rate;
+      if (s.live)
+        ({ time: next, replaying } = liveStep(
+          world.timeline,
+          { time: next, replaying },
+          dt,
+          s.speed,
+        ));
+      else next += dt * s.speed;
       left -= dt;
       if (next >= world.timeline.duration) break;
     }
+    // Played back to the newest moment: it follows live again.
+    if (replaying !== s.replaying) usePlayback.setState({ replaying });
     if (next >= world.timeline.duration) {
       s.setTime(world.timeline.duration);
       // A live recording that still grows waits at its end for what comes.

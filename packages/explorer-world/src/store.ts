@@ -7,6 +7,7 @@ import {
   LiveFeed,
   liveEdge,
   liveToken,
+  playLive,
   liveUrl,
   nextStart,
   placedBehind,
@@ -105,6 +106,11 @@ interface PlaybackStore {
   playing: boolean;
   /** The viewer paused: what arrives live does not start playback. */
   held: boolean;
+  /**
+   * Live, playing back from where the viewer moved time to: not following
+   * live until it reaches the newest moment (`liveStep`).
+   */
+  replaying: boolean;
   speed: number;
   selected: Selection | null;
   /**
@@ -154,6 +160,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   // Still on load: nothing plays until something new happens.
   playing: false,
   held: false,
+  replaying: false,
   speed: 1,
   selected: null,
   detail: false,
@@ -176,7 +183,12 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
       }
     : null,
   skipToLive: () =>
-    set({ time: liveEdge(world.timeline), playing: true, held: false }),
+    set({
+      time: liveEdge(world.timeline),
+      playing: true,
+      held: false,
+      replaying: false,
+    }),
   setTime: (t) => set({ time: clamp(t) }),
   play: () => {
     const live = get().live;
@@ -186,15 +198,20 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
       !(live && live.connection !== "ended")
     )
       set({ time: 0 });
-    set({ playing: true, held: false });
+    set({
+      playing: true,
+      held: false,
+      replaying: live ? playLive(world.timeline, get().time).replaying : false,
+    });
   },
-  pause: () => set({ playing: false, held: true }),
+  pause: () => set({ playing: false, held: true, replaying: false }),
   toggle: () => (get().playing ? get().pause() : get().play()),
   // A step goes line by line through the play-by-play, else beat by beat.
   step: (direction) =>
     set((s) => ({
       playing: false,
       held: true,
+      replaying: false,
       time:
         lineStop(playByPlayOf(world), s.time, direction) ??
         (direction === 1

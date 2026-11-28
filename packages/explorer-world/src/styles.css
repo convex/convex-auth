@@ -836,6 +836,23 @@ button {
 .liveline[data-connection="lost"] .state .dot {
   background: var(--warn);
 }
+.liveline .play {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text);
+}
+.liveline .play:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.liveline .play svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
 .liveline .back {
   font-size: 12px;
   padding: 4px 10px;
