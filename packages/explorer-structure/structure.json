@@ -13435,7 +13435,7 @@
       "from": "module:browser/sessionManager",
       "to": "module:browser/storage",
       "evidence": [
-        { "file": "packages/core/src/browser/sessionManager.ts", "line": 21 }
+        { "file": "packages/core/src/browser/sessionManager.ts", "line": 23 }
       ]
     },
     {
@@ -17158,7 +17158,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.isAuthenticated",
       "evidence": [
-        { "file": "examples/react-username-password/src/main.tsx", "line": 18 },
+        { "file": "examples/react-username-password/src/main.tsx", "line": 20 },
         { "file": "packages/core/src/react/index.tsx", "line": 174 }
       ],
       "app": "react-username-password"
@@ -17168,7 +17168,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.refreshSession",
       "evidence": [
-        { "file": "examples/react-username-password/src/main.tsx", "line": 16 }
+        { "file": "examples/react-username-password/src/main.tsx", "line": 18 }
       ],
       "app": "react-username-password"
     },
@@ -17177,7 +17177,7 @@
       "from": "app:react-username-password",
       "to": "fn:app:react-username-password:auth.signOut",
       "evidence": [
-        { "file": "examples/react-username-password/src/main.tsx", "line": 17 }
+        { "file": "examples/react-username-password/src/main.tsx", "line": 19 }
       ],
       "app": "react-username-password"
     },
@@ -20341,7 +20341,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 347
+        "line": 349
       },
       "code": "setup({ client: this, values: this.#ambientValues.forSignIn(id), storage: this.#storage.forSignIn...",
       "reason": "The callee is a parameter, or comes from one, and the walk does not know its argument",
@@ -20351,7 +20351,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 503
+        "line": 513
       },
       "code": "this.#signOutInternal(op)",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20375,7 +20375,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 577
+        "line": 591
       },
       "code": "this.#refresh(op)",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20399,7 +20399,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 788
+        "line": 810
       },
       "code": "listener()",
       "reason": "The callee is a value the analysis cannot trace",
@@ -20426,7 +20426,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 169
+        "line": 179
       },
       "code": "this.storage.getItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20460,7 +20460,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 184
+        "line": 198
       },
       "code": "this.storage.setItem(this.key(key), value)",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -20494,7 +20494,7 @@
       "kind": "call",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 193
+        "line": 207
       },
       "code": "this.storage.removeItem(this.key(key))",
       "reason": "The callee is a member of a type that has no single implementation the analysis can find",
@@ -21192,98 +21192,98 @@
         {
           "name": "SpaAuthApi",
           "kind": "interface",
-          "line": 35,
+          "line": 37,
           "summary": "The refresh and sign-out API for a **SPA** client, where JS holds the refresh token directly."
         },
         {
           "name": "SsrAuthApi",
           "kind": "interface",
-          "line": 48,
+          "line": 50,
           "summary": "The refresh and sign-out API for an **SSR** client, where the refresh token lives in an httpOnly cookie that JS can't read."
         },
         {
           "name": "AuthClientConfig",
           "kind": "type",
-          "line": 92,
+          "line": 94,
           "summary": "Configuration for the AuthClient, discriminated by session `mode`."
         },
         {
           "name": "AuthState",
           "kind": "interface",
-          "line": 97,
+          "line": 99,
           "summary": "Auth state that can be subscribed to via AuthClient.subscribe"
         },
         {
           "name": "INITIAL_AUTH_STATE",
           "kind": "const",
-          "line": 113,
+          "line": 115,
           "summary": "The state a fresh client reports until AuthClient.init has loaded the persisted session."
         },
         {
           "name": "AuthClient",
           "kind": "class",
-          "line": 186,
+          "line": 188,
           "summary": "Framework-agnostic owner of the auth session on the client.",
           "members": [
             {
               "name": "subscribe",
               "kind": "method",
-              "line": 283,
+              "line": 285,
               "summary": "Subscribe to be notified when the AuthState changes."
             },
             {
               "name": "getSnapshot",
               "kind": "method",
-              "line": 291,
+              "line": 293,
               "summary": "Returns the latest AuthState snapshot."
             },
             {
               "name": "getAccessToken",
               "kind": "method",
-              "line": 294,
+              "line": 296,
               "summary": "The current access token, or null."
             },
-            { "name": "storage", "kind": "accessor", "line": 299 },
+            { "name": "storage", "kind": "accessor", "line": 301 },
             {
               "name": "ambientSignInValues",
               "kind": "method",
-              "line": 317,
+              "line": 319,
               "summary": "A read-only view of the values published under an ambient sign-in's id, for hooks and other bindings to read and subscribe to."
             },
             {
               "name": "init",
               "kind": "method",
-              "line": 372,
+              "line": 374,
               "summary": "Run ambient sign-in onInit callbacks, load any persisted session from storage, and start listening for cross-tab changes (if applicable)."
             },
             {
               "name": "dispose",
               "kind": "method",
-              "line": 442,
+              "line": 445,
               "summary": "Detach a registered cross-tab storage listener, if applicable."
             },
             {
               "name": "setSession",
               "kind": "method",
-              "line": 459,
+              "line": 462,
               "summary": "Adopt the session a method just established."
             },
             {
               "name": "withSignInPending",
               "kind": "method",
-              "line": 482,
+              "line": 492,
               "summary": "Run a sign-in completion while reporting `isLoading`."
             },
             {
               "name": "signOut",
               "kind": "method",
-              "line": 499,
+              "line": 509,
               "summary": "Revoke the current session on the server and clear it locally."
             },
             {
               "name": "fetchAccessToken",
               "kind": "method",
-              "line": 519,
+              "line": 529,
               "summary": "The function handed to Convex's `ConvexProviderWithAuth`."
             }
           ]
@@ -21293,7 +21293,7 @@
         {
           "name": "#storage",
           "kind": "field",
-          "line": 194,
+          "line": 196,
           "class": "AuthClient",
           "readonly": true,
           "private": true
@@ -21301,7 +21301,7 @@
         {
           "name": "#verbose",
           "kind": "field",
-          "line": 195,
+          "line": 197,
           "class": "AuthClient",
           "readonly": true,
           "private": true
@@ -21309,7 +21309,7 @@
         {
           "name": "#lockKey",
           "kind": "field",
-          "line": 196,
+          "line": 198,
           "class": "AuthClient",
           "readonly": true,
           "private": true
@@ -21317,7 +21317,7 @@
         {
           "name": "#initialAccessToken",
           "kind": "field",
-          "line": 197,
+          "line": 199,
           "class": "AuthClient",
           "readonly": true,
           "private": true
@@ -21325,7 +21325,7 @@
         {
           "name": "#mode",
           "kind": "field",
-          "line": 202,
+          "line": 204,
           "class": "AuthClient",
           "readonly": true,
           "private": true,
@@ -21334,14 +21334,14 @@
         {
           "name": "#accessToken",
           "kind": "field",
-          "line": 204,
+          "line": 206,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#refreshToken",
           "kind": "field",
-          "line": 209,
+          "line": 211,
           "class": "AuthClient",
           "private": true,
           "summary": "If the client code is running in SSR mode, this value will always be `null`."
@@ -21349,35 +21349,35 @@
         {
           "name": "#isLoading",
           "kind": "field",
-          "line": 210,
+          "line": 212,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#pendingSignIns",
           "kind": "field",
-          "line": 211,
+          "line": 213,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#initialized",
           "kind": "field",
-          "line": 212,
+          "line": 214,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#snapshot",
           "kind": "field",
-          "line": 214,
+          "line": 216,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#listeners",
           "kind": "field",
-          "line": 215,
+          "line": 217,
           "class": "AuthClient",
           "readonly": true,
           "private": true
@@ -21385,14 +21385,14 @@
         {
           "name": "#storageListener",
           "kind": "field",
-          "line": 216,
+          "line": 218,
           "class": "AuthClient",
           "private": true
         },
         {
           "name": "#ambientValues",
           "kind": "field",
-          "line": 310,
+          "line": 312,
           "class": "AuthClient",
           "readonly": true,
           "private": true,
@@ -21401,7 +21401,7 @@
         {
           "name": "#initCallbacks",
           "kind": "field",
-          "line": 322,
+          "line": 324,
           "class": "AuthClient",
           "readonly": true,
           "private": true,
@@ -21417,83 +21417,114 @@
         {
           "name": "CLIENT_STEP_REPORTS_GLOBAL",
           "kind": "const",
-          "line": 73,
+          "line": 94,
           "summary": "The global of the page that turns the client step reports on."
         },
         {
           "name": "ClientStepPart",
           "kind": "type",
-          "line": 78,
+          "line": 99,
           "summary": "The modules that report steps, by their id in `packages/explorer-structure`."
         },
         {
           "name": "ClientOpKind",
           "kind": "type",
-          "line": 88,
+          "line": 109,
           "summary": "The kinds of the operations that client steps belong to."
         },
         {
           "name": "ClientOp",
           "kind": "interface",
-          "line": 106,
+          "line": 127,
           "summary": "An operation of the client (see the module comment)."
+        },
+        {
+          "name": "MAX_LABELLED_TOKENS",
+          "kind": "const",
+          "line": 146,
+          "summary": "How many token values the label map holds at most (see the module comment)."
+        },
+        {
+          "name": "tokensLabel",
+          "kind": "function",
+          "line": 173,
+          "summary": "The label of `value`, a token or none, for the `tokens` field of a report (see the module comment), or null when the reports are off: nothing is labelled then, and the report is not written."
+        },
+        {
+          "name": "tokensDetail",
+          "kind": "function",
+          "line": 186,
+          "summary": "The `tokens` field for a report about `value`, a token or none (see the module comment), or nothing when the reports are off."
+        },
+        {
+          "name": "pairTokens",
+          "kind": "function",
+          "line": 201,
+          "summary": "Give an access token and the refresh token handed in with it the same label, when the reports are on."
         },
         {
           "name": "clientStepReportsEnabled",
           "kind": "function",
-          "line": 125,
+          "line": 215,
           "summary": "Whether the page asked for client step reports."
         },
         {
           "name": "startClientOp",
           "kind": "function",
-          "line": 136,
+          "line": 226,
           "summary": "Start an operation, or return `null` when the reports are off."
         },
         {
           "name": "withClientOp",
           "kind": "function",
-          "line": 153,
+          "line": 243,
           "summary": "Run `fn` as part of `op`: the steps that run synchronously inside it, and the operations it starts synchronously, belong to `op` unless they are given another."
         },
         {
           "name": "linkClientOp",
           "kind": "function",
-          "line": 174,
+          "line": 264,
           "summary": "Record that `object` came out of `op`, so that the code later handed the same object can continue `op` (see linkedClientOp)."
         },
         {
           "name": "linkedClientOp",
           "kind": "function",
-          "line": 181,
+          "line": 271,
           "summary": "The operation that `object` came out of, if one was recorded."
         },
         {
           "name": "reportClientStep",
           "kind": "function",
-          "line": 195,
+          "line": 285,
           "summary": "Write one client step report to the console, if the page asked for them."
         },
         {
           "name": "resetClientOpsForTests",
           "kind": "function",
-          "line": 228,
+          "line": 318,
           "summary": "Exposed for tests: restart the counter of operations."
         }
       ],
       "state": [
-        { "name": "lastOp", "kind": "let", "line": 112 },
+        { "name": "lastOp", "kind": "let", "line": 133 },
         {
           "name": "currentOp",
           "kind": "let",
-          "line": 115,
+          "line": 136,
           "summary": "The operation whose synchronous call is running, set by withClientOp."
         },
         {
           "name": "opsByObject",
           "kind": "collection",
-          "line": 122,
+          "line": 143,
           "summary": "Operations by an object that one of their steps returned, such as the token bundle of a sign-in result, for the code that is later handed that very object (see linkClientOp)."
+        },
+        { "name": "lastTokensLabel", "kind": "let", "line": 148 },
+        {
+          "name": "tokensLabels",
+          "kind": "let",
+          "line": 151,
+          "summary": "Label by token value, oldest first; made on the first label."
         }
       ]
     },
@@ -21505,81 +21536,81 @@
         {
           "name": "TokenStorage",
           "kind": "interface",
-          "line": 24,
+          "line": 25,
           "summary": "Read/write/delete string values by key."
         },
         {
           "name": "JWT_STORAGE_KEY",
           "kind": "const",
-          "line": 36,
+          "line": 37,
           "summary": "Storage key for the current access token (a JWT)."
         },
         {
           "name": "REFRESH_TOKEN_STORAGE_KEY",
           "kind": "const",
-          "line": 38,
+          "line": 39,
           "summary": "Storage key for the current (rotating) refresh token."
         },
         {
           "name": "InMemoryStorage",
           "kind": "class",
-          "line": 45,
+          "line": 46,
           "summary": "An in-memory TokenStorage, used as a fallback when no persistent storage is available (SSR, or a non-browser runtime).",
           "members": [
-            { "name": "getItem", "kind": "method", "line": 47 },
-            { "name": "setItem", "kind": "method", "line": 50 },
-            { "name": "removeItem", "kind": "method", "line": 53 }
+            { "name": "getItem", "kind": "method", "line": 48 },
+            { "name": "setItem", "kind": "method", "line": 51 },
+            { "name": "removeItem", "kind": "method", "line": 54 }
           ]
         },
         {
           "name": "resetInMemoryFallbackWarning",
           "kind": "function",
-          "line": 92,
+          "line": 102,
           "summary": "Exposed for tests; the warning is otherwise once per process."
         },
         {
           "name": "defaultStorage",
           "kind": "function",
-          "line": 101,
+          "line": 111,
           "summary": "The default storage: the browser's `localStorage` when available, otherwise an InMemoryStorage."
         },
         {
           "name": "SignInStorage",
           "kind": "type",
-          "line": 129,
+          "line": 139,
           "summary": "A read/write view over a NamespacedStorage for one ambient sign-in, with every key prefixed by that sign-in's id."
         },
         {
           "name": "NamespacedStorage",
           "kind": "class",
-          "line": 148,
+          "line": 158,
           "summary": "A view over a TokenStorage that suffixes every key with a sanitized namespace.",
           "members": [
             {
               "name": "storage",
               "kind": "field",
-              "line": 151,
+              "line": 161,
               "summary": "The wrapped storage."
             },
             {
               "name": "namespace",
               "kind": "field",
-              "line": 153,
+              "line": 163,
               "summary": "The sanitized namespace that ends each stored key."
             },
             {
               "name": "key",
               "kind": "method",
-              "line": 162,
+              "line": 172,
               "summary": "The fully-qualified (namespaced) key for a logical key."
             },
-            { "name": "get", "kind": "method", "line": 168 },
-            { "name": "set", "kind": "method", "line": 177 },
-            { "name": "remove", "kind": "method", "line": 186 },
+            { "name": "get", "kind": "method", "line": 178 },
+            { "name": "set", "kind": "method", "line": 187 },
+            { "name": "remove", "kind": "method", "line": 200 },
             {
               "name": "forSignIn",
               "kind": "method",
-              "line": 202,
+              "line": 216,
               "summary": "A SignInStorage for the ambient sign-in registered under `id`, mapping `key` to `__convexAuthProvider_<id>_<key>` before the namespace suffix."
             }
           ]
@@ -21589,15 +21620,15 @@
         {
           "name": "store",
           "kind": "field",
-          "line": 46,
+          "line": 47,
           "class": "InMemoryStorage",
           "private": true
         },
-        { "name": "warnedAboutInMemoryFallback", "kind": "let", "line": 58 },
+        { "name": "warnedAboutInMemoryFallback", "kind": "let", "line": 59 },
         {
           "name": "storage",
           "kind": "field",
-          "line": 151,
+          "line": 161,
           "class": "NamespacedStorage",
           "readonly": true,
           "summary": "The wrapped storage."
@@ -21605,7 +21636,7 @@
         {
           "name": "namespace",
           "kind": "field",
-          "line": 153,
+          "line": 163,
           "class": "NamespacedStorage",
           "readonly": true,
           "summary": "The sanitized namespace that ends each stored key."
@@ -23979,7 +24010,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 245
+        "line": 247
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -23992,7 +24023,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 265
+        "line": 267
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24006,7 +24037,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 380
+        "line": 382
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24019,13 +24050,19 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 391
+        "line": 393
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "init"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged", "initial"],
+      "detailKeys": [
+        "isLoading",
+        "isAuthenticated",
+        "tokenChanged",
+        "initial",
+        "tokens"
+      ],
       "detailLiterals": { "tokenChanged": false, "initial": true }
     },
     {
@@ -24033,7 +24070,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 408
+        "line": 411
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24046,7 +24083,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 443
+        "line": 446
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24059,20 +24096,20 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 465
+        "line": 472
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "setSession"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["hasRefreshToken"]
+      "detailKeys": ["hasRefreshToken", "tokens"]
     },
     {
       "step": "signIn.pending.start",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 485
+        "line": 495
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24085,7 +24122,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 491
+        "line": 501
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24098,7 +24135,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 501
+        "line": 511
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24111,7 +24148,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 506
+        "line": 516
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24124,7 +24161,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 510
+        "line": 520
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24137,20 +24174,20 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 525
+        "line": 535
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "fetchAccessToken"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["forceRefresh", "hasToken"]
+      "detailKeys": ["forceRefresh", "hasToken", "tokens"]
     },
     {
       "step": "lock.request",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 542
+        "line": 556
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24163,7 +24200,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 544
+        "line": 558
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24176,7 +24213,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 548
+        "line": 562
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24189,7 +24226,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 562
+        "line": 576
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24203,7 +24240,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 573
+        "line": 587
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24216,7 +24253,7 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 582
+        "line": 596
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24229,46 +24266,46 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 586
+        "line": 600
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "#refreshHoldingLock"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["outcome", "hasToken"]
+      "detailKeys": ["outcome", "hasToken", "tokens"]
     },
     {
       "step": "crossTab.change",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 729
+        "line": 748
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "#attachStorageListener", "listener"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["key", "namespace", "cleared"]
+      "detailKeys": ["key", "namespace", "cleared", "tokens"]
     },
     {
       "step": "crossTab.change",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 744
+        "line": 764
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "#attachStorageListener", "listener"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["key", "namespace", "cleared"]
+      "detailKeys": ["key", "namespace", "cleared", "tokens"]
     },
     {
       "step": "crossTab.listen",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 759
+        "line": 780
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
@@ -24281,47 +24318,49 @@
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/sessionManager.ts",
-        "line": 777
+        "line": 798
       },
       "part": "module:browser/sessionManager",
       "export": "AuthClient",
       "within": ["AuthClient", "#notify"],
       "reportsAs": "module:browser/sessionManager",
-      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged"]
+      "detailKeys": ["isLoading", "isAuthenticated", "tokenChanged", "tokens"]
     },
     {
       "step": "storage.read",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 78
+        "line": 84
       },
       "part": "module:browser/storage",
       "export": null,
       "reachedFrom": ["NamespacedStorage"],
       "within": ["reportRead", "report"],
       "reportsAs": "module:browser/storage",
-      "detailKeys": ["key", "namespace", "found"]
+      "detailKeys": ["key", "namespace", "found"],
+      "detailOpen": ["(isTokenKey(where.key) ? tokensDetail(found) : {})"]
     },
     {
       "step": "storage.write",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 178
+        "line": 188
       },
       "part": "module:browser/storage",
       "export": "NamespacedStorage",
       "within": ["NamespacedStorage", "set"],
       "reportsAs": "module:browser/storage",
-      "detailKeys": ["key", "namespace"]
+      "detailKeys": ["key", "namespace"],
+      "detailOpen": ["(isTokenKey(key) ? tokensDetail(value) : {})"]
     },
     {
       "step": "storage.remove",
       "runsIn": "browser",
       "location": {
         "file": "packages/core/src/browser/storage.ts",
-        "line": 187
+        "line": 201
       },
       "part": "module:browser/storage",
       "export": "NamespacedStorage",
@@ -24669,27 +24708,27 @@
           "evidence": [
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 422
-            },
-            {
-              "file": "packages/core/src/browser/sessionManager.ts",
               "line": 425
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 678
+              "line": 428
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 683
+              "line": 696
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 709
+              "line": 702
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 719
+              "line": 728
+            },
+            {
+              "file": "packages/core/src/browser/sessionManager.ts",
+              "line": 738
             }
           ]
         },
@@ -24700,31 +24739,31 @@
           "evidence": [
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 224
+              "line": 226
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 426
+              "line": 429
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 600
+              "line": 618
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 679
+              "line": 697
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 684
+              "line": 703
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 706
+              "line": 725
             },
             {
               "file": "packages/core/src/browser/sessionManager.ts",
-              "line": 720
+              "line": 739
             }
           ]
         }
@@ -24736,7 +24775,7 @@
           "code": "this.#lockKey",
           "location": {
             "file": "packages/core/src/browser/sessionManager.ts",
-            "line": 543
+            "line": 557
           }
         }
       ]

@@ -53,6 +53,27 @@
  * whose operation is not known has none of the three fields. The numbers are
  * counters, never derived from a token, a user, or a credential.
  *
+ * ## Which tokens
+ *
+ * The reports about the session in memory (`session.set`, `state`,
+ * `token.fetch`, `refresh.end`) and about the stored tokens (`storage.read`
+ * and `storage.write` of the two token keys, `crossTab.change`) carry
+ * `tokens`: a label for the tokens they are about, so that a tool can see
+ * when memory and storage hold different sessions. It is `"none"` for no
+ * token, and otherwise a number from a counter of the page that starts at 1.
+ * The same token gets the same number in every report; an access token and
+ * the refresh token handed in with it get the same number. A refresh token
+ * read from storage that the page has not seen with its access token gets a
+ * number of its own.
+ *
+ * The number says only whether two reports are about equal tokens: it is a
+ * counter, never the token, a hash, or anything else derived from it. To
+ * give equal tokens equal numbers, the page keeps a map from the last
+ * {@link MAX_LABELLED_TOKENS} token values it labelled to their numbers, in
+ * memory only, made only while the reports are on and never reported. Those
+ * tokens are in the page's memory or storage already. The tokens of other
+ * storage keys, such as an ambient sign-in's, get no label.
+ *
  * The reports are console lines, so while the switch is on, a monitoring tool
  * on the page that records the console carries them off-site.
  *
@@ -120,6 +141,75 @@ let currentOp: ClientOp | null = null;
  * object (see {@link linkClientOp}).
  */
 const opsByObject = new WeakMap<object, ClientOp>();
+
+/** How many token values the label map holds at most (see the module comment). */
+export const MAX_LABELLED_TOKENS = 32;
+
+let lastTokensLabel = 0;
+
+/** Label by token value, oldest first; made on the first label. */
+let tokensLabels: Map<string, number> | null = null;
+
+function remember(value: string, label: number): void {
+  const labels = (tokensLabels ??= new Map());
+  labels.delete(value);
+  labels.set(value, label);
+  if (labels.size > MAX_LABELLED_TOKENS) {
+    labels.delete(labels.keys().next().value!);
+  }
+}
+
+function labelOf(value: string): number {
+  const label = tokensLabels?.get(value) ?? ++lastTokensLabel;
+  remember(value, label);
+  return label;
+}
+
+/**
+ * The label of `value`, a token or none, for the `tokens` field of a report
+ * (see the module comment), or null when the reports are off: nothing is
+ * labelled then, and the report is not written.
+ */
+export function tokensLabel(
+  value: string | null | undefined,
+): number | "none" | null {
+  if (!clientStepReportsEnabled()) {
+    return null;
+  }
+  return value === null || value === undefined ? "none" : labelOf(value);
+}
+
+/**
+ * The `tokens` field for a report about `value`, a token or none (see the
+ * module comment), or nothing when the reports are off.
+ */
+export function tokensDetail(
+  value: string | null | undefined,
+): { tokens: number | "none" } | Record<string, never> {
+  if (!clientStepReportsEnabled()) {
+    return {};
+  }
+  return {
+    tokens: value === null || value === undefined ? "none" : labelOf(value),
+  };
+}
+
+/**
+ * Give an access token and the refresh token handed in with it the same
+ * label, when the reports are on.
+ */
+export function pairTokens(
+  accessToken: string,
+  refreshToken: string | null,
+): void {
+  if (!clientStepReportsEnabled()) {
+    return;
+  }
+  const label = labelOf(accessToken);
+  if (refreshToken !== null) {
+    remember(refreshToken, label);
+  }
+}
 
 /** Whether the page asked for client step reports. */
 export function clientStepReportsEnabled(): boolean {
@@ -228,4 +318,6 @@ export function reportClientStep(
 export function resetClientOpsForTests(): void {
   lastOp = 0;
   currentOp = null;
+  lastTokensLabel = 0;
+  tokensLabels = null;
 }

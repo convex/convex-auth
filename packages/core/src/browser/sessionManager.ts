@@ -13,7 +13,9 @@ import type {
 import { retryOnNetworkError } from "./retry.ts";
 import {
   linkedClientOp,
+  pairTokens,
   reportClientStep,
+  tokensLabel,
   startClientOp,
   withClientOp,
   type ClientOp,
@@ -396,6 +398,7 @@ export class AuthClient {
         isAuthenticated: this.#snapshot.isAuthenticated,
         tokenChanged: false,
         initial: true,
+        tokens: tokensLabel(this.#snapshot.token),
       },
       op,
     );
@@ -462,10 +465,17 @@ export class AuthClient {
     // A session that a reported sign-in call returned continues the operation
     // of that call (see `react/signInSteps.ts`).
     const op = linkedClientOp(session) ?? startClientOp("setSession");
+    pairTokens(
+      session.accessToken,
+      hasRefreshToken(session) ? session.refreshToken : null,
+    );
     reportClientStep(
       STEPS,
       "session.set",
-      { hasRefreshToken: hasRefreshToken(session) },
+      {
+        hasRefreshToken: hasRefreshToken(session),
+        tokens: tokensLabel(session.accessToken),
+      },
       op,
     );
     await this.#storeFullTokenResult(session, op);
@@ -525,7 +535,11 @@ export class AuthClient {
     reportClientStep(
       STEPS,
       "token.fetch",
-      { forceRefresh: forceRefreshToken, hasToken: this.#accessToken !== null },
+      {
+        forceRefresh: forceRefreshToken,
+        hasToken: this.#accessToken !== null,
+        tokens: tokensLabel(this.#accessToken),
+      },
       op,
     );
     if (!forceRefreshToken) {
@@ -586,7 +600,11 @@ export class AuthClient {
     reportClientStep(
       STEPS,
       "refresh.end",
-      { outcome: result.kind, hasToken: this.#accessToken !== null },
+      {
+        outcome: result.kind,
+        hasToken: this.#accessToken !== null,
+        tokens: tokensLabel(this.#accessToken),
+      },
       op,
     );
     return this.#accessToken;
@@ -678,6 +696,7 @@ export class AuthClient {
       await this.#storage.remove(JWT_STORAGE_KEY, op);
       await this.#storage.remove(REFRESH_TOKEN_STORAGE_KEY, op);
     } else {
+      pairTokens(bundle.accessToken, bundle.refreshToken);
       this.#accessToken = bundle.accessToken;
       this.#refreshToken = bundle.refreshToken;
       await this.#storage.set(JWT_STORAGE_KEY, bundle.accessToken, op);
@@ -733,6 +752,7 @@ export class AuthClient {
             key: JWT_STORAGE_KEY,
             namespace: this.#storage.namespace,
             cleared: event.newValue === null,
+            tokens: tokensLabel(event.newValue),
           },
           change,
         );
@@ -748,6 +768,7 @@ export class AuthClient {
             key: REFRESH_TOKEN_STORAGE_KEY,
             namespace: this.#storage.namespace,
             cleared: event.newValue === null,
+            tokens: tokensLabel(event.newValue),
           },
           startClientOp("crossTab"),
         );
@@ -781,6 +802,7 @@ export class AuthClient {
           isLoading: this.#snapshot.isLoading,
           isAuthenticated: this.#snapshot.isAuthenticated,
           tokenChanged,
+          tokens: tokensLabel(this.#snapshot.token),
         },
         op,
       );

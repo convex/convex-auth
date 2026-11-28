@@ -13,6 +13,7 @@
 import {
   clientStepReportsEnabled,
   reportClientStep,
+  tokensDetail,
   type ClientOp,
 } from "./steps.ts";
 
@@ -60,6 +61,11 @@ let warnedAboutInMemoryFallback = false;
 /** The part that reports the steps of this module. */
 const STEPS = "module:browser/storage";
 
+/** Whether `key` is one of the two token keys, whose reports carry `tokens`. */
+function isTokenKey(key: string): boolean {
+  return key === JWT_STORAGE_KEY || key === REFRESH_TOKEN_STORAGE_KEY;
+}
+
 /**
  * Report a read, with whether it found a value, once the value is known. The
  * value itself is never reported.
@@ -78,7 +84,11 @@ function reportRead(
     reportClientStep(
       STEPS,
       "storage.read",
-      { ...where, found: found !== null && found !== undefined },
+      {
+        ...where,
+        found: found !== null && found !== undefined,
+        ...(isTokenKey(where.key) ? tokensDetail(found) : {}),
+      },
       op,
     );
   if (value instanceof Promise) {
@@ -178,7 +188,11 @@ export class NamespacedStorage {
     reportClientStep(
       STEPS,
       "storage.write",
-      { key, namespace: this.namespace },
+      {
+        key,
+        namespace: this.namespace,
+        ...(isTokenKey(key) ? tokensDetail(value) : {}),
+      },
       op,
     );
     return this.storage.setItem(this.key(key), value);

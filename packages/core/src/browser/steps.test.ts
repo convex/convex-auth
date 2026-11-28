@@ -232,6 +232,19 @@ describe("client step reports", () => {
     // No part of a token: its JWT header, or the secret half of a refresh token.
     expect(text).not.toContain("eyJ");
     expect(text).not.toContain("session-secret");
+    // A tokens label is a small counter or "none", never a token or a hash.
+    const labels = reports()
+      .filter((r) => "tokens" in r)
+      .map((r) => r.tokens);
+    expect(labels.length).toBeGreaterThan(5);
+    for (const label of labels) {
+      expect(
+        label === "none" ||
+          (Number.isInteger(label) &&
+            (label as number) > 0 &&
+            (label as number) < 100),
+      ).toBe(true);
+    }
   });
 
   test("report a sign-in call that throws, and pass the error on", async () => {

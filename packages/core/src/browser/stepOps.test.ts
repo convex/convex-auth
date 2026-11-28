@@ -6,6 +6,7 @@ import { reportedSignInCall } from "../react/signInSteps.ts";
 import { AuthClient } from "./sessionManager.ts";
 import {
   CLIENT_STEP_REPORTS_GLOBAL,
+  MAX_LABELLED_TOKENS,
   reportClientStep,
   resetClientOpsForTests,
   startClientOp,
@@ -373,6 +374,7 @@ describe("the initial state", () => {
       isAuthenticated: false,
       tokenChanged: false,
       initial: true,
+      tokens: "none",
       op: 1,
       opKind: "init",
     });
@@ -427,5 +429,133 @@ describe("operations when the reports are off", () => {
     const on = await run();
     expect(consoleLines.length).toBeGreaterThan(0);
     expect(on).toEqual(off);
+  });
+});
+
+describe("tokens labels", () => {
+  const labelled = () =>
+    reports()
+      .filter((r) => "tokens" in r)
+      .map((r) =>
+        [
+          r.key === undefined
+            ? r.step
+            : `${r.step as string} ${r.key as string}`,
+          r.tokens,
+        ].join(" "),
+      );
+
+  test("label a session, its refresh, and the sign-out the same way in memory and storage", async () => {
+    enable();
+    const client = newClient(async () => ({
+      kind: "rotated",
+      tokens: tokens("a2", "r2"),
+    }));
+    await client.init();
+    const result = await signInCall(async () => ({
+      status: "complete",
+      tokens: tokens("a1", "r1"),
+    }));
+    await client.setSession(result.tokens);
+    await client.fetchAccessToken({ forceRefreshToken: true });
+    await client.signOut();
+    expect(labelled()).toEqual([
+      "state none",
+      `storage.read ${JWT_KEY} none`,
+      `storage.read ${REFRESH_KEY} none`,
+      "state none",
+      "session.set 1",
+      `storage.write ${JWT_KEY} 1`,
+      `storage.write ${REFRESH_KEY} 1`,
+      "state 1",
+      "token.fetch 1",
+      `storage.read ${REFRESH_KEY} 1`,
+      `storage.write ${JWT_KEY} 2`,
+      `storage.write ${REFRESH_KEY} 2`,
+      "state 2",
+      "refresh.end 2",
+      `storage.read ${REFRESH_KEY} 2`,
+      "state none",
+    ]);
+  });
+
+  test("show memory and storage holding different tokens after the first-load race", async () => {
+    enable();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const store = new InMemoryStorage();
+    const client = new AuthClient({
+      mode: "spa",
+      authApi: {
+        refreshSession: async () => ({ kind: "noSession" }),
+        signOut: async () => {},
+      },
+      storage: {
+        getItem: async (key) => {
+          const value = store.getItem(key);
+          await gate;
+          return value;
+        },
+        setItem: (key, value) => store.setItem(key, value),
+        removeItem: (key) => store.removeItem(key),
+      },
+      storageNamespace: NAMESPACE,
+    });
+    const loading = client.init();
+    await client.setSession(tokens("a1", "r1"));
+    release();
+    await loading;
+    // Storage was written tokens 1; the late reads hand memory none.
+    expect(labelled()).toEqual([
+      "state none",
+      "session.set 1",
+      `storage.write ${JWT_KEY} 1`,
+      `storage.write ${REFRESH_KEY} 1`,
+      "state 1",
+      `storage.read ${JWT_KEY} none`,
+      `storage.read ${REFRESH_KEY} none`,
+      "state none",
+    ]);
+  });
+
+  test("give a stored session the page has not seen a label at its read", async () => {
+    enable();
+    const storage = new InMemoryStorage();
+    storage.setItem(`${JWT_KEY}_http1270013210`, "a9");
+    storage.setItem(`${REFRESH_KEY}_http1270013210`, "r9");
+    const client = new AuthClient({
+      mode: "spa",
+      authApi: {
+        refreshSession: async () => ({ kind: "noSession" }),
+        signOut: async () => {},
+      },
+      storage,
+      storageNamespace: NAMESPACE,
+    });
+    await client.init();
+    // Read apart, the two get labels of their own; memory holds the first.
+    expect(labelled()).toEqual([
+      "state none",
+      `storage.read ${JWT_KEY} 1`,
+      `storage.read ${REFRESH_KEY} 2`,
+      "state 1",
+    ]);
+  });
+
+  test("forget the oldest tokens past the limit, and label nothing when off", async () => {
+    const client = newClient(async () => ({ kind: "noSession" }));
+    await client.init();
+    await client.setSession(tokens("off", "off-r"));
+    expect(consoleLines).toEqual([]);
+    enable();
+    for (let n = 0; n <= MAX_LABELLED_TOKENS / 2; n++) {
+      await client.setSession(tokens(`a${n}`, `r${n}`));
+    }
+    consoleLines = [];
+    await client.setSession(tokens("a0", "r0"));
+    // Seventeen pairs fill 34 places; the first pair was forgotten.
+    expect(reports().find((r) => r.step === "session.set")?.tokens).toBe(
+      MAX_LABELLED_TOKENS / 2 + 2,
+    );
   });
 });
