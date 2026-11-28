@@ -29,6 +29,12 @@ export interface CardFit {
   at: { x: number; y: number } | null;
   /** The part is open and framed: the card stands at the side. */
   aside: boolean;
+  /**
+   * Where the window is free on the left (px): right of a column standing
+   * there. A card standing by its part keeps right of it; a docked card
+   * keeps the corner (the column moves under it).
+   */
+  left?: number;
 }
 
 /** Room kept clear above the point: the part's name and where its arcs leave. */
@@ -44,13 +50,21 @@ const BOTTOM = 96;
  * and above, clear of the name; to the right first. Off the window, or
  * while the part is open and framed, at the top left.
  */
-export function placeCard({ W, H, w, h, at, aside }: CardFit): {
+export function placeCard({
+  W,
+  H,
+  w,
+  h,
+  at,
+  aside,
+  left: free = 12,
+}: CardFit): {
   x: number;
   y: number;
 } {
   if (aside || !at) return { x: 16, y: 16 };
   const fits = (x: number, y: number) =>
-    x >= 12 && x + w <= W - 12 && y >= 12 && y + h <= H - BOTTOM;
+    x >= free && x + w <= W - 12 && y >= 12 && y + h <= H - BOTTOM;
   const right = at.x + SIDE;
   const left = at.x - SIDE - w;
   const below = at.y + 24;
@@ -63,7 +77,7 @@ export function placeCard({ W, H, w, h, at, aside }: CardFit): {
   ] as const)
     if (fits(x, y)) return { x, y };
   return {
-    x: Math.min(Math.max(12, right), W - w - 12),
+    x: Math.min(Math.max(free, right), W - w - 12),
     y: Math.min(Math.max(12, below), H - h - BOTTOM),
   };
 }

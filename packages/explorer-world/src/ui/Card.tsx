@@ -313,6 +313,10 @@ export function Card() {
         h: el.offsetHeight,
         at: cardAt.on ? { x: cardAt.x, y: cardAt.y } : null,
         aside,
+        // Clear of the play-by-play column, when it stands on the left.
+        left:
+          (document.querySelector(".playlist")?.getBoundingClientRect().right ??
+            0) + 12,
       });
       el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       el.dataset.docked = cardAt.on && !aside ? "" : "docked";
