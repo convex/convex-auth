@@ -308,8 +308,15 @@ export function readPageFeed(
     extra: Partial<PageItem> = {},
   ) => {
     const part = extra.lights?.[0] ?? pageOf(e.pageId);
-    // Repeats in a row (a page navigating to the same URL twice) show once.
-    if (`${part}|${text}` === lastText && !extra.hold) return true;
+    // Repeats in a row (a page that loaded twice) show once. A navigation of
+    // a recording that tells a new document from a change within one is
+    // never a repeat: twice to the same URL is a reload.
+    const navigation =
+      e.kind === "page" &&
+      e.event === "navigated" &&
+      e.sameDocument !== undefined;
+    if (`${part}|${text}` === lastText && !extra.hold && !navigation)
+      return true;
     lastText = `${part}|${text}`;
     items.push({
       time: e.time,
@@ -322,6 +329,30 @@ export function readPageFeed(
     });
     return true;
   };
+
+  // Recordings made before the recorder told a new document from a change
+  // within one (no `sameDocument`) also hold a history update that kept the
+  // URL (React Router stamps its state on start, after the load). Such a
+  // "navigated" goes to the URL the page is at, and no load follows it,
+  // which a reload's does.
+  const stayed = new Set<string>();
+  {
+    const at = new Map<string, string>();
+    const pending = new Map<string, Event>();
+    for (const e of feed) {
+      if (e.kind !== "page") continue;
+      const page = String(e.pageId);
+      const held = pending.get(page);
+      pending.delete(page);
+      if (held && e.event !== "load") stayed.add(held.id);
+      if (e.event !== "navigated") continue;
+      const url = String(e.url);
+      if (e.sameDocument === undefined && at.get(page) === url)
+        pending.set(page, e);
+      at.set(page, url);
+    }
+    for (const held of pending.values()) stayed.add(held.id);
+  }
 
   // Document loads per page: a client's operation numbers count within one.
   // The recorder can report a load twice (from the page and from the
@@ -509,6 +540,11 @@ export function readPageFeed(
         break;
       }
       case "page": {
+        if (stayed.has(e.id)) {
+          // Folded into the navigation before it, as a repeat is.
+          count(e.kind, true);
+          break;
+        }
         const path =
           String(e.url).replace(/^[a-z]+:\/\/[^/]+/, "") || String(e.url);
         const blank = /^about:/.test(String(e.url));

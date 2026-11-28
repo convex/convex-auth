@@ -90,6 +90,77 @@ describe("the lines of a sign-up", () => {
   });
 });
 
+describe("the navigations", () => {
+  const navigations = (events: Event[]) =>
+    playByPlayOf(worldFromEvents(project, events, "page").world).flatMap((s) =>
+      s.lines
+        .filter((l) => l.who === "page" && /^(goes to|finishes)/.test(l.text))
+        .map((l) => l.text),
+    );
+  const header = pageEvents[0];
+  const page = (n: number, event: string, path: string, extra = {}) =>
+    ({
+      kind: "page",
+      id: `p1#${n}`,
+      time: header.time + n,
+      pageId: "p1",
+      event,
+      url: `http://localhost:5173${path}`,
+      ...extra,
+    }) as Event;
+
+  test("each shows once in a recording made before the recorder told them apart", () => {
+    // That recorder also reported React Router's history update on start,
+    // at the URL the page had just loaded.
+    const open = sections.find((s) => s.title === "Open the sign-up page")!;
+    expect(
+      open.lines
+        .filter((l) => l.who === "page" && /^(goes to|finishes)/.test(l.text))
+        .map((l) => l.text),
+    ).toEqual(["goes to /signup", "finishes loading /signup"]);
+  });
+
+  test("an old recording drops a history update that kept the URL", () => {
+    expect(
+      navigations([
+        header,
+        page(1, "navigated", "/"),
+        page(2, "load", "/"),
+        page(3, "navigated", "/"),
+        page(4, "navigated", "/login"),
+        page(5, "navigated", "/login"),
+        page(6, "navigated", "/login"),
+        page(7, "load", "/login"),
+      ]),
+    ).toEqual([
+      "goes to /",
+      "finishes loading /",
+      "goes to /login",
+      // Folded with the one before, as any repeat in a row: that recorder
+      // reported a reload as it reported a history update.
+      "finishes loading /login",
+    ]);
+  });
+
+  test("a recording that tells them apart is read as it is", () => {
+    // A reload that the recording ended before it loaded.
+    expect(
+      navigations([
+        header,
+        page(1, "navigated", "/", { sameDocument: false }),
+        page(2, "load", "/"),
+        page(3, "navigated", "/login", { sameDocument: true }),
+        page(4, "navigated", "/login", { sameDocument: false }),
+      ]),
+    ).toEqual([
+      "goes to /",
+      "finishes loading /",
+      "goes to /login",
+      "goes to /login",
+    ]);
+  });
+});
+
 describe("the phrases", () => {
   test("every place in the source that reports a step has one", () => {
     const missing = structure.steps
