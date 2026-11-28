@@ -32,7 +32,8 @@ import {
   type LaidPlace,
 } from "../model/insideLayout.ts";
 import { done, insideOf } from "../insides.ts";
-import { currentState, hover, usePlayback, world } from "../store.ts";
+import { hoverFrom, hoverGone } from "../hover.ts";
+import { currentState, usePlayback, world } from "../store.ts";
 import { isDrag } from "./clicks.ts";
 import { KeepSize, Label } from "./Label.tsx";
 import { openDisc, useDeclutter } from "./Labels.tsx";
@@ -168,8 +169,14 @@ export function Inside() {
   return open ? <OpenPart key={open} id={open} /> : null;
 }
 
+/** Who sets the hover lines of a part's disc. */
+const hoverKey = (part: string) => `inside:${part}`;
+
 function OpenPart({ id }: { id: string }) {
   const inside = insideOf(id)!;
+  // It can close under the pointer, which then gets no pointerout: the line
+  // of the place it was on goes with it.
+  useEffect(() => () => hoverGone(hoverKey(id)), [id]);
   const lay = useMemo(() => layInside(inside), [inside]);
   const color = placementOf(id)?.color ?? "#9fc4ff";
   const at = useMemo(() => discCentre(id), [id]);
@@ -293,11 +300,14 @@ function PlaceShape({
   const handlers = {
     onPointerMove: (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
-      hover.label = `${place.of ? `${place.of}.` : ""}${place.name} · ${place.kind}${
-        place.summary ? ` — ${place.summary}` : ""
-      }`;
+      hoverFrom(
+        hoverKey(part),
+        `${place.of ? `${place.of}.` : ""}${place.name} · ${place.kind}${
+          place.summary ? ` — ${place.summary}` : ""
+        }`,
+      );
     },
-    onPointerOut: () => (hover.label = ""),
+    onPointerOut: () => hoverGone(hoverKey(part)),
     onClick: (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
       if (isDrag(e)) return;
@@ -404,14 +414,16 @@ function HoldShape({
   const handlers = {
     onPointerMove: (e: ThreeEvent<PointerEvent>) => {
       e.stopPropagation();
-      hover.label =
+      hoverFrom(
+        hoverKey(part),
         hold.kind === "key"
           ? `${hold.name} · a key it stores`
           : hold.kind === "lock"
             ? `a lock named after ${hold.name}`
-            : `${hold.name} · state it keeps`;
+            : `${hold.name} · state it keeps`,
+      );
     },
-    onPointerOut: () => (hover.label = ""),
+    onPointerOut: () => hoverGone(hoverKey(part)),
   };
   if (hold.kind === "lock")
     return (
@@ -515,11 +527,15 @@ function Marks({
             <mesh
               onPointerMove={(e) => {
                 e.stopPropagation();
-                hover.label = `${s.step} · ${k ? "reported" : "not reported yet"}, line ${
-                  insideOf(part)?.sites.find((x) => x.id === s.id)?.line ?? "?"
-                }`;
+                hoverFrom(
+                  hoverKey(part),
+                  `${s.step} · ${k ? "reported" : "not reported yet"}, line ${
+                    insideOf(part)?.sites.find((x) => x.id === s.id)?.line ??
+                    "?"
+                  }`,
+                );
               }}
-              onPointerOut={() => (hover.label = "")}
+              onPointerOut={() => hoverGone(hoverKey(part))}
             >
               <torusGeometry args={[radius, k ? 0.04 : 0.028, 6, 12, span]} />
               <meshBasicMaterial color={color} toneMapped={false} />

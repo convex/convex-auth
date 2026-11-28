@@ -357,5 +357,4 @@ if (liveSource) {
   });
 }
 
-/** Hover state, outside React so hovering does not re-render the scene. */
-export const hover = { label: "" };
+export { hover } from "./hover.ts";

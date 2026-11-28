@@ -103,16 +103,31 @@ export function CameraHud({ full }: { full: boolean }) {
   const { setDirector, flyTo, toggleOverlay } = usePlayback.getState();
   const tip = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const move = (e: PointerEvent) => {
+    const show = () => {
       const el = tip.current;
       if (!el) return;
       el.textContent = hover.label;
       el.style.opacity = hover.label ? "1" : "0";
-      el.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`;
       document.body.style.cursor = hover.label ? "pointer" : "";
     };
+    const move = (e: PointerEvent) => {
+      show();
+      const el = tip.current;
+      if (el)
+        el.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`;
+    };
+    // A line can also go while the pointer rests (what it named went away).
+    let frame = 0;
+    const watch = () => {
+      if (!hover.label && tip.current?.style.opacity === "1") show();
+      frame = requestAnimationFrame(watch);
+    };
+    frame = requestAnimationFrame(watch);
     window.addEventListener("pointermove", move);
-    return () => window.removeEventListener("pointermove", move);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("pointermove", move);
+    };
   }, []);
   return (
     <>
