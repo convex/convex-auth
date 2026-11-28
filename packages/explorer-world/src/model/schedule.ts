@@ -384,7 +384,8 @@ function place(
   }
   // A page's own order of events wins over its times, which the recorder
   // takes as the events reach it: along each page's order, an event is
-  // taken no earlier than the one before it.
+  // taken after the one before it (a microsecond, where their times are
+  // equal, so that the sort below cannot put them the other way round).
   const byPage = new Map<string, { p: Placed; seq: number }[]>();
   for (const p of all) {
     const order = p.kind === "item" ? p.item.order : p.run.order;
@@ -397,7 +398,7 @@ function place(
     list.sort((a, b) => a.seq - b.seq);
     let floor = -Infinity;
     for (const { p } of list) {
-      p.real = Math.max(p.real, floor);
+      p.real = Math.max(p.real, floor + 1e-3);
       floor = p.real;
     }
   }
