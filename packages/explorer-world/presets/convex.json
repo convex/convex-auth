@@ -220,7 +220,7 @@
       "page": "page",
       "send": "sends the {type} {function}",
       "carrying": "with {what}",
-      "blanked": "{field}, blanked",
+      "redacted": "{field}, redacted",
       "run": "{function} runs, {ms} ms",
       "scheduled": "runs {function}, scheduled",
       "call": "calls {target}",

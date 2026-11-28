@@ -40,7 +40,7 @@ describe("the lines of a sign-up", () => {
       "types into password",
       "submits the form",
       "calls auth:signUpWithUsernamePassword",
-      "sends the mutation signUpWithUsernamePassword, with password, blanked",
+      "sends the mutation signUpWithUsernamePassword, with password, redacted",
       "signUpWithUsernamePassword runs, 154 ms",
       "the usernamePassword method starts",
       "calls getUserIdByUsername",

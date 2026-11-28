@@ -516,7 +516,7 @@ function body(
                 ))}
                 <p className="small">
                   From the recording: the recorder replaces each token by a
-                  label and blanks the fields it hides; a token is followed by
+                  label and redacts the fields it hides; a token is followed by
                   its label. No value is shown or kept.
                 </p>
               </Section>

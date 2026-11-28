@@ -257,7 +257,7 @@ const LOAD_LIFT = 4.2;
 /**
  * What the operation's call carried, riding over its body: a row facing
  * the camera, one shape per thing, as the storage keys draw a token (a coin,
- * a key), and a hollow ring for a field the recorder blanked. A load
+ * a key), and a hollow ring for a field the recorder redacted. A load
  * appears where the body picked it up, goes into the way out, or comes
  * back from it and is put down onto the key that took it.
  */
@@ -350,24 +350,24 @@ function Loads({ op, positions }: { op: OpPath; positions: Vector3[] }) {
   );
 }
 
-const BLANKED_COLOR = "#c3cad8";
+const REDACTED_COLOR = "#c3cad8";
 
 /** The colour a carried thing is drawn in, and named in. */
 export const loadColor = (load: OpLoad["load"]) =>
-  load.kind === "blanked"
-    ? BLANKED_COLOR
+  load.kind === "redacted"
+    ? REDACTED_COLOR
     : load.cargo
       ? cargoLook(load.cargo.table).color
       : cargoLook("").color;
 
 function LoadMesh({ load }: { load: OpLoad["load"] }) {
-  if (load.kind === "blanked")
+  if (load.kind === "redacted")
     return (
       <mesh>
         <torusGeometry args={[0.36, 0.12, 10, 28]} />
         <meshStandardMaterial
-          color={BLANKED_COLOR}
-          emissive={BLANKED_COLOR}
+          color={REDACTED_COLOR}
+          emissive={REDACTED_COLOR}
           emissiveIntensity={1.4}
           toneMapped={false}
         />

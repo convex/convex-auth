@@ -76,7 +76,7 @@ export interface Cargo {
 /**
  * One thing a request or a response carried, as the recording shows it: a
  * token the recorder replaced by its label (`{"$secret":"s5"}`), or a field
- * it blanked (`"password":"[redacted]"`). Never a value.
+ * it redacted (`"password":"[redacted]"`). Never a value.
  */
 export type Load =
   | {
@@ -90,7 +90,7 @@ export type Load =
       /** The row it is, when the recording links it to one. */
       cargo?: Cargo;
     }
-  | { kind: "blanked"; field: string };
+  | { kind: "redacted"; field: string };
 
 /** The sign-in state of a page, as its client library reports it. */
 export type PageState =

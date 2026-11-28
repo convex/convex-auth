@@ -585,8 +585,8 @@ export function playByPlay(input: PlayInput): PlaySection[] {
       return g("carrying", {
         what: loads
           .map((l) =>
-            l.kind === "blanked"
-              ? g("blanked", { field: l.field })
+            l.kind === "redacted"
+              ? g("redacted", { field: l.field })
               : (l.cargo?.noun ?? l.field),
           )
           .join(", "),

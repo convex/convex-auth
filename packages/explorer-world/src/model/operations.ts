@@ -75,18 +75,19 @@ export interface OpLoad {
 
 /** How a load is named on hover and in the inspector: its kind and label, never a value. */
 export function loadName(l: OpLoad["load"]): string {
-  if (l.kind === "blanked") return `${l.field} (a field the recorder blanked)`;
+  if (l.kind === "redacted")
+    return `${l.field} (a field the recorder redacted)`;
   return l.cargo?.label ?? `${l.type} secret ${l.secret}`;
 }
 
 /**
  * What a carried thing is called at the moment it is picked up or put
  * down: from the recording's own facts, never its value or its label. A
- * blanked field by its field; a token by the noun the presentation gives
+ * redacted field by its field; a token by the noun the presentation gives
  * its table, else by its field.
  */
 export function loadWord(l: OpLoad["load"]): string {
-  if (l.kind === "blanked") return `${l.field} · blanked`;
+  if (l.kind === "redacted") return `${l.field} · redacted`;
   return l.cargo?.noun ?? l.field;
 }
 

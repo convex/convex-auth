@@ -54,7 +54,7 @@ export interface PageFeed {
       link: string;
       cargoIn: Cargo[];
       cargoOut: Cargo[];
-      /** What the request and the response carried: labels and blanked fields. */
+      /** What the request and the response carried: labels and redacted fields. */
       loadIn: Load[];
       loadOut: Load[];
       /** Where the request stands in its page's order of events. */
@@ -93,10 +93,10 @@ function secretsIn(value: unknown, out: string[] = []): string[] {
 const secretOf = (value: unknown): string | undefined => secretsIn(value)[0];
 
 /** The value the recorder puts in place of a field it hides. */
-const BLANKED = "[redacted]";
+const REDACTED = "[redacted]";
 
 /**
- * Every token label and every blanked field inside a value, with the field
+ * Every token label and every redacted field inside a value, with the field
  * each was in, in the order they appear; a label once.
  */
 function loadsIn(
@@ -104,7 +104,7 @@ function loadsIn(
   field = "",
   out: { secret?: string; field: string }[] = [],
 ): { secret?: string; field: string }[] {
-  if (value === BLANKED) out.push({ field });
+  if (value === REDACTED) out.push({ field });
   else if (Array.isArray(value)) for (const v of value) loadsIn(v, field, out);
   else if (value && typeof value === "object") {
     const ref = (value as { $secret?: unknown }).$secret;
@@ -164,7 +164,7 @@ export function readPageFeed(
   };
   const loadOf = (value: unknown): Load[] =>
     loadsIn(value).map((l) => {
-      if (l.secret === undefined) return { kind: "blanked", field: l.field };
+      if (l.secret === undefined) return { kind: "redacted", field: l.field };
       const cargo = cargoOf(l.secret);
       return {
         kind: "secret",

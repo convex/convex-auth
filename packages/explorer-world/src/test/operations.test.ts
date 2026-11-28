@@ -56,7 +56,7 @@ describe("operations of the client", () => {
     }
   });
 
-  test("a sign-in carries out the blanked password and back two tokens, each put down on the key that took it", () => {
+  test("a sign-in carries out the redacted password and back two tokens, each put down on the key that took it", () => {
     const keyOf = (secret: string) =>
       events.find(
         (e) =>
@@ -66,9 +66,9 @@ describe("operations of the client", () => {
     for (const o of ops.filter((x) => x.kind === "signIn")) {
       const out = o.loads.filter((l) => l.dir === "out");
       const back = o.loads.filter((l) => l.dir === "back");
-      // The recorder blanks the password; it does not label it.
+      // The recorder redacts the password; it does not label it.
       expect(out.map((l) => l.load)).toEqual([
-        { kind: "blanked", field: "password" },
+        { kind: "redacted", field: "password" },
       ]);
       expect(back.map((l) => l.load.kind)).toEqual(["secret", "secret"]);
       const via = o.points.find((p) => p.step === "out")!;
@@ -92,7 +92,7 @@ describe("operations of the client", () => {
     expect(loads.length).toBeGreaterThan(0);
     for (const l of loads) {
       expect(Object.keys(l).sort()).toEqual(
-        l.kind === "blanked"
+        l.kind === "redacted"
           ? ["field", "kind"]
           : ["cargo", "field", "kind", "secret", "type"].filter(
               (k) => k !== "cargo" || "cargo" in l,
@@ -125,7 +125,7 @@ describe("operations of the client", () => {
     const signIn = ops.find((o) => o.kind === "signIn")!;
     const moments = loadMoments(signIn);
     expect(moments.map((m) => loadWord(m.load.load))).toEqual([
-      "password · blanked",
+      "password · redacted",
       "access token",
       "refresh token",
     ]);
