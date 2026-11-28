@@ -3,27 +3,21 @@
  * reported, one line each, in a narrow column on the left that can be
  * folded to a tab.
  *
- * Quiet by default. Every section heading shows (what was pressed, what the
- * page did on open, what nobody asked for): a few words each, the outline
- * of the session. Under the section being played, only the block being
- * played (an operation with its steps, a run with its steps and writes),
- * which is what the world is showing now. A click on a heading opens the
- * whole section, one line per block; a click on a block's caret opens its
- * steps. Before anything is pressed and while nothing plays, even the page
- * load stays shut: the world comes first.
+ * Every section heading shows: what was pressed, what the page did on
+ * open, and, faint, what nobody asked for. The last thing pressed (by the
+ * playhead) stands open until something else is pressed or the viewer opens
+ * another section: one line per thing it set off, in order (an operation,
+ * a run, a load, a change of storage), and the block being played open
+ * with its steps (a run's own steps while it plays). What nobody asked for
+ * stays one faint heading, lit while it plays, until the viewer opens it.
  *
  * Tied to the playhead both ways: the line being played is lit and kept in
  * view, the lines after it read as not yet; a click on a line takes time
  * there and holds it, and marks the thing in the world (it selects it; the
  * camera stays). What is selected in the world marks its lines here.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  lineAt,
-  playByPlayOf,
-  type PlayLine,
-  type PlaySection,
-} from "../model/playByPlay.ts";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lineAt, playByPlayOf, type PlayLine } from "../model/playByPlay.ts";
 import { opColor } from "../scene/Operations.tsx";
 import {
   MOVEMENT_COLORS,
@@ -111,13 +105,15 @@ function Mark({ line }: { line: PlayLine }) {
 
 export function PlayList() {
   const time = usePlayback((s) => s.time);
-  const playing = usePlayback((s) => s.playing);
   const selected = usePlayback((s) => s.selected);
   // A live recording grows: the list is made again with the world.
   usePlayback((s) => s.version);
   const [folded, setFolded] = useState(readFolded);
-  // What the viewer opened or shut by hand, by section or block id.
+  // Blocks the viewer opened or shut by hand.
   const [opened, setOpened] = useState<Map<string, boolean>>(new Map());
+  // The section the viewer opened by hand (null: shut them all); undefined
+  // follows the last press.
+  const [chosen, setChosen] = useState<string | null | undefined>(undefined);
   // The line clicked last: it is the one lit while time stays where the
   // click put it (lines that happen at the same moment light the clicked one).
   const [picked, setPicked] = useState<{ id: string; time: number } | null>(
@@ -129,7 +125,15 @@ export function PlayList() {
       ? sections.flatMap((s) => s.lines).find((l) => l.id === picked.id)
       : undefined;
   const current = pickedLine ?? lineAt(sections, time);
-  const anyPress = sections.some((s) => s.kind === "press" && s.at <= time);
+  // The last thing pressed, by the playhead: open until something else is
+  // pressed or the viewer opens another section.
+  const pressed = sections.filter(
+    (s) => s.kind === "press" && s.at <= time + 1e-6,
+  );
+  const lastPress = pressed.at(-1)?.id ?? null;
+  const newest = sections.filter((s) => s.kind === "press").at(-1)?.id;
+  useEffect(() => setChosen(undefined), [newest]);
+  const openSection = chosen === undefined ? lastPress : chosen;
 
   // The first line about the selection opens its section and block.
   const selectedLine = useMemo(() => {
@@ -138,22 +142,43 @@ export function PlayList() {
       for (const l of s.lines) if (marks(l, selected)) return l;
     return null;
   }, [sections, selected]);
+  useEffect(() => {
+    if (selectedLine) setChosen(selectedLine.section);
+  }, [selectedLine]);
 
-  const isOpen = (id: string, auto: boolean) => opened.get(id) ?? auto;
   const toggle = (id: string, now: boolean) =>
     setOpened((m) => new Map(m).set(id, !now));
 
-  const list = useRef<HTMLDivElement>(null);
+  const nav = useRef<HTMLElement>(null);
+  const tab = useRef<HTMLButtonElement>(null);
   const lit = useRef<HTMLLIElement>(null);
   useEffect(() => {
     lit.current?.scrollIntoView({ block: "nearest" });
-  }, [current?.id, folded]);
+  }, [current?.id, folded, openSection]);
+  // A card docked at the top left (a part opened up) keeps the corner: the
+  // list stands under it.
+  useEffect(() => {
+    let frame = 0;
+    const place = () => {
+      frame = requestAnimationFrame(place);
+      const card = document.querySelector<HTMLElement>(".card");
+      const top =
+        card?.dataset.docked === "docked"
+          ? card.getBoundingClientRect().bottom + 10
+          : 18;
+      for (const el of [nav.current, tab.current])
+        if (el && el.style.top !== `${top}px`) el.style.top = `${top}px`;
+    };
+    place();
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   if (!sections.length) return null;
 
   if (folded)
     return (
       <button
+        ref={tab}
         className="playlist-tab"
         onClick={() => {
           setFolded(false);
@@ -174,12 +199,37 @@ export function PlayList() {
     if (line.target) s.select(line.target);
   };
 
-  const sectionAuto = (s: PlaySection) =>
-    (current?.section === s.id && (s.kind !== "open" || anyPress || playing)) ||
-    selectedLine?.section === s.id;
+  const row = (l: PlayLine, caret: ReactNode, faint: boolean) => {
+    const now = l.id === current?.id;
+    const later = l.at > time + 1e-6;
+    return (
+      <li
+        key={l.id}
+        ref={now ? lit : undefined}
+        className={`line d${l.depth}${now ? " now" : ""}${later ? " later" : ""}${marks(l, selected) ? " marked" : ""}${faint ? " faint" : ""}`}
+        data-line={l.id}
+      >
+        {caret ?? <span className="caret" />}
+        <button
+          className="what"
+          onClick={(e) => {
+            // The keys (space, arrows) stay the world's.
+            e.currentTarget.blur();
+            go(l);
+          }}
+        >
+          <Mark line={l} />
+          <span className="body">
+            <span className="who">{l.who}</span> {l.text}
+            {l.code && <code>{l.code}</code>}
+          </span>
+        </button>
+      </li>
+    );
+  };
 
   return (
-    <nav className="playlist" aria-label="What happened" ref={list}>
+    <nav className="playlist" aria-label="What happened" ref={nav}>
       <header>
         <span>What happened</span>
         <button
@@ -196,11 +246,8 @@ export function PlayList() {
       </header>
       <ol className="sections">
         {sections.map((s) => {
-          // Opened by hand: every block. Else, the section being played
-          // shows the block being played only.
-          const full = opened.get(s.id) === true;
-          const open = full || (opened.get(s.id) !== false && sectionAuto(s));
-          const future = s.at > time + 1e-6;
+          const open = openSection === s.id;
+          const faint = s.kind === "unasked";
           // Blocks of the section, each its first line and the rest.
           const blocks: PlayLine[][] = [];
           for (const l of s.lines) {
@@ -211,24 +258,35 @@ export function PlayList() {
           return (
             <li
               key={s.id}
-              className={`section ${s.kind}${future ? " later" : ""}${current?.section === s.id ? " now" : ""}`}
+              className={`section ${s.kind}${s.at > time + 1e-6 ? " later" : ""}${current?.section === s.id ? " now" : ""}`}
             >
               <button
                 className="heading"
-                onClick={() => toggle(s.id, full)}
-                aria-expanded={full}
+                onClick={() => setChosen(open ? null : s.id)}
+                aria-expanded={open}
               >
                 {s.title}
               </button>
               {open && (
                 <ol className="lines">
-                  {blocks.map((b) => {
+                  {blocks.flatMap((b) => {
                     const head = b[0];
+                    // The block being played opens with its steps.
                     const auto =
                       current?.block === head.block ||
                       selectedLine?.block === head.block;
-                    if (!full && !auto) return null;
-                    const blockOpen = isOpen(head.block, auto);
+                    const blockOpen = opened.get(head.block) ?? auto;
+                    const caret =
+                      b.length > 1 ? (
+                        <button
+                          className="caret"
+                          onClick={() => toggle(head.block, blockOpen)}
+                          aria-expanded={blockOpen}
+                          aria-label={blockOpen ? "Shut" : "Open"}
+                        >
+                          {blockOpen ? "▾" : "▸"}
+                        </button>
+                      ) : null;
                     // What ran inside a function shows while it plays, or
                     // when the block was opened by hand.
                     const shown = !blockOpen
@@ -243,44 +301,9 @@ export function PlayList() {
                                 current.target.id === l.inRun) ||
                               l.id === selectedLine?.id,
                           );
-                    return shown.map((l, i) => {
-                      const now = l.id === current?.id;
-                      const later = l.at > time + 1e-6;
-                      return (
-                        <li
-                          key={l.id}
-                          ref={now ? lit : undefined}
-                          className={`line d${l.depth}${now ? " now" : ""}${later ? " later" : ""}${marks(l, selected) ? " marked" : ""}${s.kind === "unasked" ? " faint" : ""}`}
-                          data-line={l.id}
-                        >
-                          {i === 0 && b.length > 1 ? (
-                            <button
-                              className="caret"
-                              onClick={() => toggle(head.block, blockOpen)}
-                              aria-expanded={blockOpen}
-                              aria-label={blockOpen ? "Shut" : "Open"}
-                            >
-                              {blockOpen ? "▾" : "▸"}
-                            </button>
-                          ) : (
-                            <span className="caret" />
-                          )}
-                          <button
-                            className="what"
-                            onClick={(e) => {
-                              // The keys (space, arrows) stay the world's.
-                              e.currentTarget.blur();
-                              go(l);
-                            }}
-                          >
-                            <Mark line={l} />
-                            <span className="who">{l.who}</span>
-                            <span className="text">{l.text}</span>
-                            {l.code && <code>{l.code}</code>}
-                          </button>
-                        </li>
-                      );
-                    });
+                    return shown.map((l, i) =>
+                      row(l, i === 0 ? caret : null, faint),
+                    );
                   })}
                 </ol>
               )}

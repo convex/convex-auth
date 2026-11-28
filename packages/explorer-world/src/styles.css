@@ -923,18 +923,18 @@ button {
   color: var(--bg);
 }
 
-/* The play-by-play (ui/PlayList.tsx): a narrow column on the left, quiet,
-   with no panel of its own; it can fold to a tab. */
+/* The play-by-play (ui/PlayList.tsx): a narrow column on the left, on a
+   quiet backing of its own so it reads whatever is behind it; it can fold
+   to a tab. Home keeps what it frames clear of it (CameraRig). */
 .playlist {
   position: absolute;
   top: 18px;
   left: 18px;
   bottom: 84px;
-  width: 316px;
+  width: 320px;
   display: flex;
   flex-direction: column;
   font-size: 11.5px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   line-height: 1.35;
   color: var(--dim);
   pointer-events: none;
@@ -946,10 +946,14 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 4px 6px;
+  padding: 6px 8px 6px 10px;
   font-size: 11px;
   color: var(--dim);
-  opacity: 0.8;
+  background: rgba(6, 9, 18, 0.88);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  backdrop-filter: blur(10px);
 }
 .playlist .fold {
   margin-left: auto;
@@ -969,7 +973,7 @@ button {
   color: var(--dim);
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: rgba(8, 12, 22, 0.45);
+  background: rgba(6, 9, 18, 0.88);
 }
 .playlist-tab:hover {
   color: var(--text);
@@ -985,15 +989,15 @@ button {
   min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: rgba(160, 180, 255, 0.18) transparent;
-  border-radius: 8px;
-  padding: 4px 2px;
-  transition: background 0.2s;
-}
-.playlist .sections:hover {
-  background: rgba(4, 6, 12, 0.55);
+  padding: 2px 4px 6px;
+  background: rgba(6, 9, 18, 0.88);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  backdrop-filter: blur(10px);
 }
 .playlist .section {
-  margin: 0 0 2px;
+  margin: 0 0 1px;
 }
 .playlist .heading {
   display: block;
@@ -1001,15 +1005,13 @@ button {
   text-align: left;
   padding: 3px 6px;
   border-radius: 5px;
+  border-left: 2px solid transparent;
   color: var(--text);
-  opacity: 0.75;
+  opacity: 0.8;
   font-weight: 500;
 }
 .playlist .heading:hover {
   background: rgba(255, 255, 255, 0.04);
-}
-.playlist .section.now > .heading {
-  opacity: 1;
 }
 .playlist .section.unasked > .heading,
 .playlist .section.open > .heading {
@@ -1018,6 +1020,11 @@ button {
 }
 .playlist .section.later > .heading {
   opacity: 0.4;
+}
+/* A faint section being played: its heading is lit, it stays shut. */
+.playlist .section.unasked.now > .heading {
+  border-left-color: var(--live);
+  opacity: 1;
 }
 .playlist .line {
   display: flex;
@@ -1035,9 +1042,9 @@ button {
 .playlist .what {
   flex: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: 12px 92px 1fr;
-  column-gap: 5px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   text-align: left;
   padding: 2px 4px 2px 0;
   border-radius: 4px;
@@ -1048,25 +1055,24 @@ button {
 }
 .playlist .line.d2 .what {
   padding-left: 10px;
-  grid-template-columns: 12px 82px 1fr;
 }
 .playlist .line.d3 .what {
   padding-left: 20px;
-  grid-template-columns: 12px 72px 1fr;
 }
-.playlist .who {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.8;
+.playlist .mark {
+  flex: 0 0 auto;
 }
-.playlist .text {
+.playlist .body {
+  flex: 1;
+  min-width: 0;
   color: #b9c3e0;
   overflow-wrap: break-word;
-  min-width: 0;
+}
+.playlist .who {
+  color: var(--dim);
 }
 .playlist code {
-  grid-column: 3;
+  display: block;
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   color: var(--dim);
@@ -1086,11 +1092,12 @@ button {
 .playlist .line.now .what {
   background: rgba(71, 230, 255, 0.08);
 }
-.playlist .line.now .text {
+.playlist .line.now .body {
   color: var(--text);
 }
-.playlist .line.marked .what {
-  box-shadow: inset 0 0 0 1px rgba(255, 211, 107, 0.55);
+/* About what is selected in the world: its name warm, quietly. */
+.playlist .line.marked .who {
+  color: #ffd36b;
 }
 /* The marks: the look of each kind of thing in the world, small. */
 .playlist .mark {
