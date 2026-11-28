@@ -9,6 +9,7 @@
  */
 import type { GraphIndex } from "./graph.ts";
 import {
+  BRIEF,
   HOP,
   HOP_KEY,
   HOP_SAME,
@@ -18,7 +19,7 @@ import {
   type OpPath,
 } from "./operations.ts";
 
-export { HOP, HOP_KEY, HOP_SAME } from "./operations.ts";
+export { BRIEF, HOP, HOP_KEY, HOP_SAME } from "./operations.ts";
 import type {
   Cargo,
   Derivation,
@@ -156,6 +157,12 @@ export interface Timeline {
   ops: OpPath[];
   /** Everything the pages did outside the runs, in shown order. */
   items: PlacedItem[];
+  /**
+   * The stretches of what nobody asked for (shown time), which play at
+   * {@link BRIEF} of their length: played at that rate, they show at the
+   * pace of the rest.
+   */
+  quiet: [number, number][];
 }
 
 /**
@@ -296,13 +303,6 @@ function browserLeg(run: Run, rerun?: Set<string>): number {
     : 0;
 }
 
-/**
- * How much faster what nobody asked for plays: what the client does by
- * itself (a token refreshed on its timer) while no pressed control is under
- * way, when a scenario drove the page. It is real and plays; it is not an
- * action, and passes by quickly.
- */
-export const BRIEF = 0.5;
 /** The runs nobody asked for (see {@link BRIEF}), for the timeline being built. */
 let unasked = new WeakSet<Run>();
 
@@ -440,6 +440,8 @@ function place(
   let prev: Placed | null = null;
   let prevShown = 0;
   let last = 0;
+  const quiet: [number, number][] = [];
+  let quietOpen = false;
   for (const p of all) {
     let s: number;
     if (!prev) s = GAP.lead;
@@ -452,7 +454,11 @@ function place(
               opOf(p.item) === opOf(prev.item)
             ? GAP.sameOp
             : GAP.item;
-      s = prevShown + Math.max(least, shownGap((p.real - prev.real) / 1000));
+      // What nobody asked for, and the wait into it, take a brief share.
+      const share = asked(p.real) ? 1 : BRIEF;
+      s =
+        prevShown +
+        share * Math.max(least, shownGap((p.real - prev.real) / 1000));
     }
     // After a run's answer: after the run has played.
     for (let i = open.length - 1; i >= 0; i--)
@@ -523,6 +529,14 @@ function place(
         open.push({ answer: p.run.answeredAt ?? p.run.endedAt, end });
       last = Math.max(last, end);
     } else last = Math.max(last, s + LIT);
+    // The stretches of what nobody asked for, in shown time.
+    if (!asked(p.real)) {
+      const end = p.kind === "run" ? s + runLength(p.run, rerun) : s + LIT;
+      const q = quiet.at(-1);
+      if (q && quietOpen) q[1] = Math.max(q[1], end);
+      else quiet.push([s, end]);
+      quietOpen = true;
+    } else quietOpen = false;
     // Steps reported in the same millisecond play one after another: each
     // is its own point, a microsecond of real time apart, so that a wait
     // after them starts where they end.
@@ -537,7 +551,7 @@ function place(
     prev = p;
     prevShown = s;
   }
-  return { all, at, runStart, warp, last, briefOps };
+  return { all, at, runStart, warp, last, briefOps, quiet };
 }
 
 export function buildTimeline(
@@ -562,6 +576,7 @@ export function buildTimeline(
     actionEnds: [],
     ops: [],
     items: [],
+    quiet: [],
   };
   const name = (id: string) => index.part.get(id)?.label ?? id;
   // Ids count within each run, so that a run keeps the ids of its movements
@@ -675,6 +690,7 @@ export function buildTimeline(
   // operations that made them.
   const calls = new Map<string, CallSpan>();
   tl.warp = placed.warp;
+  tl.quiet = placed.quiet;
   for (const p of placed.all)
     if (p.kind === "item") {
       playItem(p.run, p.item, placed.at.get(p)!);

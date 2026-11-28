@@ -50,6 +50,16 @@ export const HOP = 0.33;
  * way (s): a short trip.
  */
 export const HOP_KEY = 0.28;
+/**
+ * How much faster what nobody asked for plays: what the client does by
+ * itself (a token refreshed on its timer) while no pressed control is under
+ * way, when a scenario drove the page. It is real and plays, every step in
+ * order; it is not an action, and takes a small share of the time line.
+ * Every length of it (its waits, its hops, its runs) is this share of what
+ * it would be, so a viewer who asks to watch it plays it at this rate and
+ * sees it at the pace of the rest (see `Timeline.quiet`).
+ */
+export const BRIEF = 0.15;
 /** The least shown time between two steps an operation reports at the same place (s). */
 export const HOP_SAME = 0.08;
 
@@ -248,7 +258,7 @@ export function operations(
         points.push({ at, anchor: item.part, step: item.step! });
       if (key) {
         points.push({
-          at: at + HOP_KEY * (brief.has(id) ? 0.5 : 1),
+          at: at + HOP_KEY * (brief.has(id) ? BRIEF : 1),
           anchor: key,
           step: item.step!,
         });

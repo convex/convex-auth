@@ -273,8 +273,8 @@ try {
   );
 
   const hops = await page.evaluate(() =>
-    // What the client did by itself between pressed controls plays at
-    // half the hops (BRIEF in model/schedule.ts).
+    // What the client did by itself between pressed controls plays at a
+    // share of the hops (BRIEF in model/operations.ts).
     window.explorerWorld.timeline.ops
       .filter((op) => !op.unasked)
       .flatMap((op) =>

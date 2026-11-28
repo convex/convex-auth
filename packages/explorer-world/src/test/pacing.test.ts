@@ -55,7 +55,7 @@ describe("pacing", () => {
 
   test("an operation's body takes at least a hop to get from one place to the next", () => {
     let hops = 0;
-    // What nobody asked for plays briefly (BRIEF), at half the hops.
+    // What nobody asked for plays briefly, at a share (BRIEF) of the hops.
     for (const op of tl.ops.filter((o) => !o.unasked))
       for (let i = 1; i < op.points.length; i++) {
         const [a, b] = [op.points[i - 1], op.points[i]];
@@ -84,6 +84,24 @@ describe("pacing", () => {
     expect(longest).toBeLessThan(Math.min(...asked.map(length)) * 0.75);
     // No pressed control's start is drawn for it.
     expect(tl.actions).toHaveLength(3);
+  });
+
+  test("what nobody asked for takes a small share of the time line, all of it there", () => {
+    const own = tl.ops.filter((o) => o.unasked);
+    expect(own.length).toBeGreaterThanOrEqual(3);
+    // Every step of it plays, inside the stretches the playback can slow
+    // down to watch it at the pace of the rest.
+    for (const o of own)
+      for (const p of o.points)
+        expect(
+          tl.quiet.some(([a, b]) => p.at >= a - 1e-6 && p.at <= b + 1e-6),
+        ).toBe(true);
+    const quiet = tl.quiet.reduce((n, [a, b]) => n + (b - a), 0);
+    // Three refreshes after the last press: a few seconds, not a quarter
+    // of the line.
+    expect(quiet).toBeLessThan(0.15 * tl.duration);
+    const lastEnd = tl.actionEnds.at(-1)!;
+    expect(tl.duration - lastEnd).toBeLessThan(5);
   });
 
   test("shown time is one increasing function of real time", () => {
