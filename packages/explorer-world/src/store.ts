@@ -117,6 +117,8 @@ interface PlaybackStore {
   director: boolean;
   /** The part whose inside is open now (`scene/Inside.tsx`), if any. */
   open: string | null;
+  /** The open part, when the camera is close and looking at it. */
+  framed: string | null;
   /** Bumped to ask the camera close to a part, where its inside opens (`Inside.tsx`). */
   opening: { id: string; seq: number } | null;
   /** Bumped to ask the camera to fly somewhere. */
@@ -159,6 +161,7 @@ export const usePlayback = create<PlaybackStore>((set, get) => ({
   flight: null,
   opening: null,
   open: null,
+  framed: null,
   overlays: { links: false, relations: true, unresolved: false },
   version: 0,
   layoutVersion: 0,

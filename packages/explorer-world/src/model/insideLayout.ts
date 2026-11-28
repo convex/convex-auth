@@ -88,7 +88,7 @@ export function layInside(inside: PartInside): InsideLayout {
 
   const inner = main
     ? members.length
-      ? Math.max(1.1, 0.4 + members.length * 0.11)
+      ? Math.max(1.2, 0.6 + members.length * 0.15)
       : 0
     : 0;
   const middle = Math.max(
@@ -100,9 +100,9 @@ export function layInside(inside: PartInside): InsideLayout {
     !main && others.length <= 1 ? 0.7 : Math.max(1.2, middle + 0.7);
   const places: LaidPlace[] = [];
   if (main)
-    places.push({ place: main, x: 0, z: 0, shape: shapeOf(main), ring: 0.42 });
+    places.push({ place: main, x: 0, z: 0, shape: shapeOf(main), ring: 0.62 });
   around(members.length, inner).forEach(([x, z], i) =>
-    places.push({ place: members[i], x, z, shape: "member", ring: 0.2 }),
+    places.push({ place: members[i], x, z, shape: "member", ring: 0.3 }),
   );
   // Others on the middle ring; with no main export, a single one in the middle.
   if (!main && others.length === 1)
@@ -201,4 +201,70 @@ export function layInside(inside: PartInside): InsideLayout {
     }
   }
   return { radius, places, holds, sites };
+}
+
+/** How far the camera is from an open disc after "Open up" (m). */
+export const OPEN_UP_DISTANCE = Math.hypot(5.2, 6.4);
+
+/** A name drawn on an open disc. */
+export interface InsideName {
+  key: string;
+  /** The place it names, or `null` for a holding. */
+  place: string | null;
+  kind: "export" | "member" | "steps" | "key" | "state";
+  text: string;
+  /** Wins a crowded spot over a lower one. */
+  priority: number;
+  /** Shown from nearer than this (m). */
+  far: number;
+}
+
+/**
+ * The names on an open disc, by rank. Every export that does something and
+ * every member is named from where "Open up" puts the camera, and wins over
+ * everything else on the disc: a step's name never takes a member's place.
+ * Under a place, the names of the steps it reported so far (`lit`), one to
+ * a line; a step not reported has no name (its mark says it is there). The
+ * stored keys are named from the same distance; state only close in.
+ */
+export function insideNames(lay: InsideLayout, lit: Set<string>): InsideName[] {
+  const far = OPEN_UP_DISTANCE * 1.5;
+  const out: InsideName[] = [];
+  for (const p of lay.places) {
+    if (p.shape === "type" || p.shape === "reexport") continue;
+    out.push({
+      key: p.place.id,
+      place: p.place.id,
+      kind: p.shape === "member" ? "member" : "export",
+      text: p.place.name,
+      priority: p.shape === "class" ? 62 : p.shape === "member" ? 60 : 59,
+      far,
+    });
+    const steps = lay.sites
+      .filter((s) => s.place === p.place.id && lit.has(s.id))
+      .map((s) => s.step);
+    const names = [...new Set(steps)];
+    if (names.length)
+      out.push({
+        key: `${p.place.id}|steps`,
+        place: p.place.id,
+        kind: "steps",
+        // One to a line: a list stays within its place's width.
+        text: names.join("\n"),
+        priority: 52,
+        far,
+      });
+  }
+  for (const h of lay.holds) {
+    if (h.kind === "lock") continue;
+    out.push({
+      key: `hold:${h.kind}:${h.name}`,
+      place: null,
+      kind: h.kind === "key" ? "key" : "state",
+      text: h.name,
+      priority: h.kind === "key" ? 55 : 45,
+      far: h.kind === "key" ? far : 3.4,
+    });
+  }
+  return out;
 }

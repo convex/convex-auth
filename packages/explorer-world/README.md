@@ -331,14 +331,19 @@ frame takes milliseconds; that is not measured here.
   session manager, `AuthClient` and its eleven public members), its other
   exports further out, the names of its types small on the rim, what it
   holds at the front (its stored keys, a lock ringing the key it is named
-  after, its state), and a mark for each place in its code that reports a
-  step, on the export or member it sits in. A mark lights once running code
-  reported that step and flashes as it does, at that place. A hook is not
-  drawn again: it stands beside the module. One part is open at a time: the
-  selected one from 16 m, else the nearest from 8 m. Names inside come by
-  distance like everywhere: the exports while it is open, the members and
-  what it holds from 9.5 m, the steps from 3.4 m; a pointer on a place
-  shows its own line. The project gives the inside as data
+  after, its state), and around each export or member a ring with one
+  segment for each place in its code that reports a step. A segment turns
+  warm once running code reported that step, and flashes as it does; the
+  others stay slate, so the reported and the not yet reported can be
+  counted. A place that reported is warm too, with the names of the steps
+  it reported under its name. A hook is not drawn again: it stands beside
+  the module. One part is open at a time: the selected one from 16 m, else
+  the nearest from 8 m. While it is open, nothing under its disc is named
+  (`openDisc` in `src/scene/Labels.tsx`), and its arcs leave from the
+  disc's rim. Every export and member is named from where **Open up** puts
+  the camera, and a step's name never takes a member's place
+  (`insideNames`); what it holds too, its state only close in. A pointer
+  on a place shows its own line. The project gives the inside as data
   (`ProjectInside` in `src/model/inside.ts`; Convex Auth's is
   `projects/convex-auth/inside.ts`, from the structure map's `modules`,
   `holds` and `steps`).

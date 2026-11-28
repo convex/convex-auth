@@ -59,6 +59,28 @@ export interface Entry {
   beside?: Beside;
   /** Shown only while this holds (a member's name, while its group is near). */
   when?: () => boolean;
+  /** Part of an opened part's inside: drawn over its disc, not hidden by it. */
+  over?: boolean;
+}
+
+/**
+ * The disc of the part open now (`Inside.tsx`), if any: a name under it
+ * that is not of the inside is hidden where the disc covers it on screen.
+ */
+export const openDisc = { on: false, x: 0, y: 0, z: 0, r: 0 };
+const rim: [number, number][] = [];
+const rimAt = new Vector3();
+
+/** Whether a screen point is inside a polygon (even-odd). */
+function within(x: number, y: number, poly: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
+      inside = !inside;
+  }
+  return inside;
 }
 
 const registry = new Map<string, Entry>();
@@ -207,8 +229,29 @@ function Declutter() {
     const entries = [...registry.values()].sort(
       (a, b) => b.priority - a.priority,
     );
+    rim.length = 0;
+    if (openDisc.on)
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2;
+        rimAt
+          .set(
+            openDisc.x + Math.cos(a) * openDisc.r,
+            openDisc.y,
+            openDisc.z + Math.sin(a) * openDisc.r,
+          )
+          .project(camera);
+        rim.push([rimAt.x, rimAt.y]);
+      }
     for (const e of entries) {
       e.group.getWorldPosition(at);
+      // Under an open disc, only the disc's own names show.
+      if (rim.length && !e.over && at.y < openDisc.y + 0.3) {
+        projected.copy(at).project(camera);
+        if (projected.z <= 1 && within(projected.x, projected.y, rim)) {
+          e.group.visible = false;
+          continue;
+        }
+      }
       const d = camera.position.distanceTo(at);
       projected.copy(at).project(camera);
       if (

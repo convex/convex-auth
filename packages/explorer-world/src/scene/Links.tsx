@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import { Color, QuadraticBezierCurve3, Vector3 } from "three";
 import { usePlayback, world } from "../store.ts";
 import { highlightOf } from "./highlight.ts";
+import { discCentre, discRadius } from "./Inside.tsx";
 import { callNow } from "./Running.tsx";
 import { anchorPosition, linkColor, placementOf, topIsland } from "./look.ts";
 import { TONE_COLORS } from "./palette.ts";
@@ -226,6 +227,20 @@ function islandArcs(h: ReturnType<typeof highlightOf>) {
   return { points, colors };
 }
 
+/**
+ * Where an arc leaves a part: above it, or from the rim of its disc toward
+ * the other end while it is open, so it does not run across its inside.
+ */
+function leaveFrom(id: string, toward: Vector3, open: string | null) {
+  const from = anchorPosition(id);
+  if (id !== open) return from;
+  const r = discRadius(id);
+  const c = discCentre(id);
+  const dir = new Vector3(toward.x - c.x, 0, toward.z - c.z);
+  if (dir.lengthSq() < 1e-6) return c;
+  return c.add(dir.normalize().multiplyScalar(r));
+}
+
 /** How a recorded contact is drawn: warm white, fading with age. */
 const CONTACT = new Color("#ffe9c2");
 
@@ -238,6 +253,7 @@ function ContactLinks() {
   const selected = usePlayback((s) => s.selected);
   const time = usePlayback((s) => s.time);
   const version = usePlayback((s) => s.version);
+  const open = usePlayback((s) => s.open);
   const h = highlightOf(selected);
   const key = h.contacts.map((c) => `${c.from}>${c.other}:${c.n}`).join();
   const arcs = useMemo(() => {
@@ -247,14 +263,15 @@ function ContactLinks() {
     for (const c of h.contacts) {
       if (!placementOf(c.from) || !placementOf(c.other)) continue;
       const before = points.length;
-      arc(anchorPosition(c.from), anchorPosition(c.other), points, 0.16);
+      const end = anchorPosition(c.other);
+      arc(leaveFrom(c.from, end, open), end, points, 0.16);
       const age = Math.max(0, time - c.last);
       const color = CONTACT.clone().multiplyScalar(0.55 + 1.2 / (1 + age / 6));
       for (let i = before; i < points.length; i++) colors.push(color);
     }
     return { points, colors };
     // Redrawn when who dealt with whom changes, and as the latest one ages.
-  }, [key, Math.floor(time), version]);
+  }, [key, Math.floor(time), version, open]);
   return <Segments points={arcs.points} colors={arcs.colors} width={2.2} />;
 }
 
