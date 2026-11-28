@@ -17,7 +17,14 @@
  * camera stays). What is selected in the world marks its lines here.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { lineAt, playByPlayOf, type PlayLine } from "../model/playByPlay.ts";
+import {
+  lineAt,
+  newestPress,
+  openSectionOf,
+  playByPlayOf,
+  type Chosen,
+  type PlayLine,
+} from "../model/playByPlay.ts";
 import { opColor } from "../scene/Operations.tsx";
 import {
   MOVEMENT_COLORS,
@@ -111,9 +118,8 @@ export function PlayList() {
   const [folded, setFolded] = useState(readFolded);
   // Blocks the viewer opened or shut by hand.
   const [opened, setOpened] = useState<Map<string, boolean>>(new Map());
-  // The section the viewer opened by hand (null: shut them all); undefined
-  // follows the last press.
-  const [chosen, setChosen] = useState<string | null | undefined>(undefined);
+  // The section the viewer opened by hand, under the newest press then.
+  const [chosen, setChosen] = useState<Chosen | null>(null);
   // The line clicked last: it is the one lit while time stays where the
   // click put it (lines that happen at the same moment light the clicked one).
   const [picked, setPicked] = useState<{ id: string; time: number } | null>(
@@ -127,13 +133,10 @@ export function PlayList() {
   const current = pickedLine ?? lineAt(sections, time);
   // The last thing pressed, by the playhead: open until something else is
   // pressed or the viewer opens another section.
-  const pressed = sections.filter(
-    (s) => s.kind === "press" && s.at <= time + 1e-6,
-  );
-  const lastPress = pressed.at(-1)?.id ?? null;
-  const newest = sections.filter((s) => s.kind === "press").at(-1)?.id;
-  useEffect(() => setChosen(undefined), [newest]);
-  const openSection = chosen === undefined ? lastPress : chosen;
+  const newest = newestPress(sections);
+  const openSection = openSectionOf(sections, time, chosen);
+  const choose = (section: string | null) =>
+    setChosen({ section, under: newest });
   // Opened by the viewer, what nobody asked for plays at the pace of the
   // rest (see `Timeline.quiet`); shut, it passes quickly.
   const watching =
@@ -144,16 +147,25 @@ export function PlayList() {
       usePlayback.setState({ watchQuiet: watching });
   }, [watching]);
 
-  // The first line about the selection opens its section and block.
+  // The lines about the selection, and the first of them, which opens its
+  // block.
   const selectedLine = useMemo(() => {
     if (!selected) return null;
     for (const s of sections)
       for (const l of s.lines) if (marks(l, selected)) return l;
     return null;
   }, [sections, selected]);
+  // A new selection opens the section of its first line, once: the list
+  // growing, or a press, does not open it again.
+  const lineRef = useRef(selectedLine);
+  lineRef.current = selectedLine;
+  const newestRef = useRef(newest);
+  newestRef.current = newest;
+  const selectionKey = selected ? JSON.stringify(selected) : null;
   useEffect(() => {
-    if (selectedLine) setChosen(selectedLine.section);
-  }, [selectedLine]);
+    const line = lineRef.current;
+    if (line) setChosen({ section: line.section, under: newestRef.current });
+  }, [selectionKey]);
 
   const toggle = (id: string, now: boolean) =>
     setOpened((m) => new Map(m).set(id, !now));
@@ -231,6 +243,7 @@ export function PlayList() {
           <span className="body">
             <span className="who">{l.who}</span> {l.text}
             {l.code && <code>{l.code}</code>}
+            {l.note && <span className="note">{l.note}</span>}
           </span>
         </button>
       </li>
@@ -267,11 +280,11 @@ export function PlayList() {
           return (
             <li
               key={s.id}
-              className={`section ${s.kind}${s.at > time + 1e-6 ? " later" : ""}${current?.section === s.id ? " now" : ""}`}
+              className={`section ${s.kind}${open ? " expanded" : ""}${s.at > time + 1e-6 ? " later" : ""}${current?.section === s.id ? " now" : ""}`}
             >
               <button
                 className="heading"
-                onClick={() => setChosen(open ? null : s.id)}
+                onClick={() => choose(open ? null : s.id)}
                 aria-expanded={open}
               >
                 {s.title}

@@ -67,6 +67,8 @@ export interface PlayLine {
   text: string;
   /** The code name of what was reported (`session.set`), when it has one. */
   code?: string;
+  /** A plain remark on the line, said below it, dim. */
+  note?: string;
   mark: Mark;
   tone: Tone;
   /** For a mark coloured by its operation: the operation. */
@@ -345,6 +347,7 @@ export function playByPlay(input: PlayInput): PlaySection[] {
           type: item.callType ?? "",
           function: item.fn,
         }),
+        note: g("unlinked.note"),
         mark: "send",
         parts: [item.part],
       };
@@ -385,7 +388,9 @@ export function playByPlay(input: PlayInput): PlaySection[] {
       at: group[0].start,
       depth: 1,
       who: g("backend"),
-      text: g("rerun", { functions: fns.map(short).join(", ") }),
+      text: g(fns.length === 1 ? "rerun.one" : "rerun", {
+        functions: fns.map(short).join(", "),
+      }),
       code: "query",
       mark: "rerun",
       tone: "normal",
@@ -704,4 +709,35 @@ export function lineStop(
   const times = lineTimes(sections);
   if (direction === 1) return times.find((x) => x > t + 1e-3) ?? null;
   return times.filter((x) => x < t - 1e-3).at(-1) ?? null;
+}
+
+/**
+ * A section the viewer opened by hand (null: shut them all), and the newest
+ * press there was when they did. A newer press takes the list back to the
+ * press at the playhead.
+ */
+export interface Chosen {
+  section: string | null;
+  under: string | null;
+}
+
+/** The newest press of the list, if any. */
+export const newestPress = (sections: PlaySection[]): string | null =>
+  sections.filter((s) => s.kind === "press").at(-1)?.id ?? null;
+
+/**
+ * The section that stands open at time `t`: the one the viewer chose, while
+ * no newer press came; else the last press at or before the playhead (none
+ * before the first press).
+ */
+export function openSectionOf(
+  sections: PlaySection[],
+  t: number,
+  chosen?: Chosen | null,
+): string | null {
+  if (chosen && chosen.under === newestPress(sections)) return chosen.section;
+  return (
+    sections.filter((s) => s.kind === "press" && s.at <= t + 1e-6).at(-1)?.id ??
+    null
+  );
 }

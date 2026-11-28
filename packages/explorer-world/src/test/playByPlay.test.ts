@@ -12,6 +12,8 @@ import {
   allLines,
   lineAt,
   lineStop,
+  newestPress,
+  openSectionOf,
   phraseText,
   playByPlayOf,
   type PlayLine,
@@ -189,6 +191,28 @@ describe("what nobody asked for", () => {
     const last = liveSections.at(-1)!;
     expect(last.kind).toBe("unasked");
     expect(last.lines.filter((l) => l.code === "refresh.start").length).toBe(3);
+  });
+
+  test("the open section: the last press, or the viewer's choice until a newer press", () => {
+    const presses = liveSections.filter((s) => s.kind === "press");
+    const [signUp, signOut, signIn] = presses;
+    const open = liveSections[0];
+    expect(openSectionOf(liveSections, 0)).toBeNull();
+    expect(openSectionOf(liveSections, signOut.at + 0.5)).toBe(signOut.id);
+    // In what nobody asked for, after a press: that press stays open.
+    const unasked = liveSections.find(
+      (s) => s.kind === "unasked" && s.at > signOut.at,
+    )!;
+    expect(openSectionOf(liveSections, unasked.at + 0.1)).toBe(signOut.id);
+    // The viewer opens "On open" (say, by selecting something in it): it
+    // stays open while no newer press comes, wherever the playhead is.
+    const chosen = { section: open.id, under: newestPress(liveSections) };
+    expect(openSectionOf(liveSections, signIn.at + 1, chosen)).toBe(open.id);
+    // Chosen while Sign out was the newest press: Sign in, pressed after,
+    // takes the list to it, whatever was selected.
+    const before = { section: open.id, under: signOut.id };
+    expect(openSectionOf(liveSections, signIn.at + 1, before)).toBe(signIn.id);
+    expect(openSectionOf(liveSections, signUp.at + 1, before)).toBe(signUp.id);
   });
 
   test("an operation's steps stay in its block, under its line", () => {

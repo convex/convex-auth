@@ -227,13 +227,13 @@
       "answer": "the answer comes back",
       "refused": "the answer comes back: refused",
       "write.delete": "deletes from {tables}",
-      "rerun": "{functions} run again for their subscribers",
+      "rerun": "runs {functions} again for their subscribers",
       "log": "logs a {level}",
       "holds": "now holds the {what}",
       "drops": "no longer holds the {what}",
       "storage": "changes",
       "console": "the console shows an {level}",
-      "unlinked": "calls the {type} {function}, not linked to one run",
+      "unlinked": "calls the {type} {function}",
       "input.click": "clicks {what}",
       "input.type": "types into {what}",
       "input.submit": "submits the form",
@@ -245,7 +245,9 @@
       "state.error": "error",
       "island.app": "app",
       "write": "writes {tables}",
-      "run.query": "{function} runs"
+      "run.query": "{function} runs",
+      "unlinked.note": "the recording cannot tell which of its runs answered",
+      "rerun.one": "runs {functions} again for its subscribers"
     }
   }
 }
