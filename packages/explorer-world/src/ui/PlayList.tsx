@@ -125,7 +125,7 @@ export function PlayList() {
   );
   const sections = playByPlayOf(world);
   const pickedLine =
-    picked && Math.abs(picked.time - time) < 1e-6
+    picked && Math.abs(picked.time - time) < 0.01
       ? sections.flatMap((s) => s.lines).find((l) => l.id === picked.id)
       : undefined;
   const current = pickedLine ?? lineAt(sections, time);
@@ -265,7 +265,14 @@ export function PlayList() {
                           ) : (
                             <span className="caret" />
                           )}
-                          <button className="what" onClick={() => go(l)}>
+                          <button
+                            className="what"
+                            onClick={(e) => {
+                              // The keys (space, arrows) stay the world's.
+                              e.currentTarget.blur();
+                              go(l);
+                            }}
+                          >
                             <Mark line={l} />
                             <span className="who">{l.who}</span>
                             <span className="text">{l.text}</span>

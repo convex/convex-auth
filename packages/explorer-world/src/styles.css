@@ -930,7 +930,7 @@ button {
   top: 18px;
   left: 18px;
   bottom: 84px;
-  width: 296px;
+  width: 316px;
   display: flex;
   flex-direction: column;
   font-size: 11.5px;
@@ -1062,7 +1062,8 @@ button {
 }
 .playlist .text {
   color: #b9c3e0;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 .playlist code {
   grid-column: 3;
