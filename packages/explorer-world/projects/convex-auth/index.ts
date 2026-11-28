@@ -17,6 +17,17 @@ import phrases from "./phrases.json";
 import page from "./recording-page.ndjson?raw";
 import cli from "./recording-cli.ndjson?raw";
 import { insideOf } from "./inside.ts";
+import { readStory } from "../../src/model/story.ts";
+
+// The stories, one file each, in the order of their names.
+const stories = Object.entries(
+  import.meta.glob<unknown>("./stories/*.json", {
+    eager: true,
+    import: "default",
+  }),
+)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([name, json]) => readStory(json, name));
 
 export const source: ProjectSource = {
   // The words of the play-by-play list: one phrase per step its code reports.
@@ -24,4 +35,5 @@ export const source: ProjectSource = {
   structure,
   timelines: { page, cli },
   inside: insideOf(structure),
+  stories,
 };
