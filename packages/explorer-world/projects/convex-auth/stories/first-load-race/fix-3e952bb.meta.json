@@ -1,0 +1,15 @@
+{
+  "file": "fix-3e952bb.ndjson",
+  "library": "erquhart/explorer-recorder at 7b542320 with 3e952bb cherry-picked onto it locally (never pushed)",
+  "recordedAt": "2026-11-28T09:29:20.534000+00:00",
+  "command": "pnpm explorer:live examples/react-username-password, controls pressed in order",
+  "controls": [
+    "Sign up",
+    "Sign out",
+    "Sign in while the first load is still reading",
+    "Reload the page"
+  ],
+  "slowStorageDelayMs": 2500,
+  "backend": "local",
+  "redacted": "the recorder's redaction, and the generated usernames of the test accounts replaced by [redacted]"
+}
